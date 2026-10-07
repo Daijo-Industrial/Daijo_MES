@@ -107,4 +107,16 @@ class SecondProcessReport extends Model
     {
         return $this->morphMany(QcAttachment::class, 'attachable');
     }
+
+    /**
+     * Check if a given user is authorized to sign for a specific signature role/slot in Second Process.
+     */
+    public static function isUserAuthorizedToSign(?User $user, string $role): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $user->canSign('second_process', $role);
+    }
 }

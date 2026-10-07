@@ -128,6 +128,19 @@ class SecondProcessReportController extends Controller
                 ->with('error', 'Only draft reports can be edited.');
         }
 
+        $user = auth()->user();
+        $canEdit = $user->hasRole('SUPER-ADMIN')
+            || $user->hasRole('ADMIN')
+            || empty($report->created_by_name)
+            || $report->created_by_name === $user->name
+            || SecondProcessReport::isUserAuthorizedToSign($user, 'checker')
+            || SecondProcessReport::isUserAuthorizedToSign($user, 'leader');
+
+        if (! $canEdit) {
+            return redirect()->route('second-process-reports.show', $id)
+                ->with('error', 'You do not have permission to edit this draft report.');
+        }
+
         return view('second_process.edit', compact('report'));
     }
 
@@ -138,6 +151,19 @@ class SecondProcessReportController extends Controller
         if ($report->status !== 'draft') {
             return redirect()->route('second-process-reports.show', $id)
                 ->with('error', 'Only draft reports can be updated.');
+        }
+
+        $user = auth()->user();
+        $canEdit = $user->hasRole('SUPER-ADMIN')
+            || $user->hasRole('ADMIN')
+            || empty($report->created_by_name)
+            || $report->created_by_name === $user->name
+            || SecondProcessReport::isUserAuthorizedToSign($user, 'checker')
+            || SecondProcessReport::isUserAuthorizedToSign($user, 'leader');
+
+        if (! $canEdit) {
+            return redirect()->route('second-process-reports.show', $id)
+                ->with('error', 'You do not have permission to edit this draft report.');
         }
 
         $this->saveReport($request, $report);
@@ -598,6 +624,16 @@ class SecondProcessReportController extends Controller
     public function destroy($id)
     {
         $report = SecondProcessReport::findOrFail($id);
+        $user = auth()->user();
+
+        $canDelete = $user->hasRole('SUPER-ADMIN')
+            || $user->hasRole('ADMIN')
+            || SecondProcessReport::isUserAuthorizedToSign($user, 'acknowledged');
+
+        if (! $canDelete) {
+            return redirect()->back()->withErrors(['error' => 'You do not have permission to delete this report.']);
+        }
+
         $report->delete();
 
         return redirect()->route('second-process-reports.index')
@@ -663,8 +699,11 @@ class SecondProcessReportController extends Controller
         $report = SecondProcessReport::findOrFail($id);
         $user = auth()->user();
 
-        if (! $user->role || ! in_array($user->role->name, ['ADMIN', 'SECONDPROCESS', 'PRODUCTION', 'QUALITY'])) {
-            return redirect()->back()->withErrors(['error' => 'You are not authorized to sign reports in the Second Process department.']);
+        if (! SecondProcessReport::isUserAuthorizedToSign($user, $role)) {
+            $userRoleName = $user->role ? $user->role->name : 'No Role';
+            return redirect()->back()->withErrors([
+                'error' => "Role '{$userRoleName}' is not authorized to sign as " . ucfirst($role) . '.',
+            ]);
         }
 
         switch ($role) {
@@ -680,8 +719,8 @@ class SecondProcessReportController extends Controller
                 break;
 
             case 'pqc':
-                if ($report->status !== 'submitted') {
-                    return redirect()->back()->withErrors(['error' => 'PQC signature can only be applied to submitted reports.']);
+                if (! in_array($report->status, ['leader_approved', 'acknowledged', 'submitted'])) {
+                    return redirect()->back()->withErrors(['error' => 'PQC signature can only be applied after Leader approval.']);
                 }
 
                 // Check First Piece Approval Gate
@@ -696,16 +735,19 @@ class SecondProcessReportController extends Controller
                     ]);
                 }
 
-                $report->update([
+                $updateData = [
                     'pqc_name' => $user->name,
                     'pqc_signed_at' => now(),
-                    'status' => 'pqc_approved',
-                ]);
+                ];
+                if ($report->status === 'leader_approved') {
+                    $updateData['status'] = 'pqc_approved';
+                }
+                $report->update($updateData);
                 break;
 
             case 'leader':
-                if ($report->status !== 'pqc_approved') {
-                    return redirect()->back()->withErrors(['error' => 'Leader signature can only be applied after PQC approval.']);
+                if (! in_array($report->status, ['submitted', 'pqc_approved'])) {
+                    return redirect()->back()->withErrors(['error' => 'Leader signature can only be applied to submitted reports.']);
                 }
                 $report->update([
                     'leader_name' => $user->name,
@@ -715,7 +757,7 @@ class SecondProcessReportController extends Controller
                 break;
 
             case 'acknowledged':
-                if ($report->status !== 'leader_approved') {
+                if (! in_array($report->status, ['leader_approved', 'pqc_approved'])) {
                     return redirect()->back()->withErrors(['error' => 'Supervisor signature can only be applied after Leader approval.']);
                 }
                 $report->update([
@@ -738,8 +780,14 @@ class SecondProcessReportController extends Controller
         $report = SecondProcessReport::findOrFail($id);
         $user = auth()->user();
 
-        if (! $user->role || ! in_array($user->role->name, ['ADMIN', 'SECONDPROCESS', 'PRODUCTION', 'QUALITY'])) {
-            return redirect()->back()->withErrors(['error' => 'You are not authorized to reject reports in this department.']);
+        $canReject = $user->hasRole('SUPER-ADMIN')
+            || $user->hasRole('ADMIN')
+            || SecondProcessReport::isUserAuthorizedToSign($user, 'leader')
+            || SecondProcessReport::isUserAuthorizedToSign($user, 'pqc')
+            || SecondProcessReport::isUserAuthorizedToSign($user, 'acknowledged');
+
+        if (! $canReject) {
+            return redirect()->back()->withErrors(['error' => 'You are not authorized to reject reports.']);
         }
 
         $request->validate([

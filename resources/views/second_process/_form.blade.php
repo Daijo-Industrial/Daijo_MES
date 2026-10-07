@@ -27,7 +27,7 @@
         'setup' => ['date', 'unit_line', 'shift', 'process_prod', 'status', 'output_destination', 'part_number', 'part_name', 'model', 'customer', 'manpower'],
         'materials' => ['materials'],
         'production' => ['target_per_hour', 'jml_input_wip', 'repairan', 'hourly', 'ngs', 'ng_remarks', 'sisa_input', 'sisa_input_remark'],
-        'handover' => ['next_production_schedule', 'absent_employees', 'production_notes', 'troubles', 'created_by_name', 'pqc_name', 'leader_name', 'acknowledged_by_name'],
+        'handover' => ['next_production_schedule', 'absent_employees', 'production_notes', 'troubles', 'created_by_name', 'leader_name', 'pqc_name', 'acknowledged_by_name'],
     ];
 
     $tabErrorCounts = [

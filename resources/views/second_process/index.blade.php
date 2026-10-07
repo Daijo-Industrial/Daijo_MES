@@ -187,30 +187,32 @@
                                     
                                     <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                                         <a href="{{ route('second-process-reports.show', $report->id) }}" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
-                                        @if($report->status === 'draft')
+                                        @if($report->status === 'draft' && (auth()->user()?->hasRole('SUPER-ADMIN') || auth()->user()?->hasRole('ADMIN') || empty($report->created_by_name) || $report->created_by_name === auth()->user()?->name || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'checker') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'leader')))
                                             <a href="{{ route('second-process-reports.edit', $report->id) }}" class="text-yellow-600 hover:text-yellow-900 mr-3">Edit</a>
                                         @endif
-                                        <button onclick="document.getElementById('delete-dialog-{{ $report->id }}').showModal()" class="text-red-600 hover:text-red-900">
-                                            Delete
-                                        </button>
+                                        @if(auth()->user()?->hasRole('SUPER-ADMIN') || auth()->user()?->hasRole('ADMIN') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'acknowledged'))
+                                            <button onclick="document.getElementById('delete-dialog-{{ $report->id }}').showModal()" class="text-red-600 hover:text-red-900">
+                                                Delete
+                                            </button>
 
-                                        {{-- Delete Dialog --}}
-                                        <dialog id="delete-dialog-{{ $report->id }}" class="rounded-lg p-6 shadow-2xl border border-gray-300 w-full max-w-sm backdrop:bg-gray-900/50">
-                                            <form action="{{ route('second-process-reports.destroy', $report->id) }}" method="POST">
-                                                @csrf
-                                                @method('DELETE')
-                                                <h3 class="text-sm font-bold text-gray-900 mb-2 text-left">Confirm Delete</h3>
-                                                <p class="text-xs text-gray-500 mb-4 text-left whitespace-normal">Are you sure you want to delete this report? This action cannot be undone.</p>
-                                                <div class="flex justify-end gap-2">
-                                                    <button type="button" onclick="document.getElementById('delete-dialog-{{ $report->id }}').close()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-xs font-bold transition">
-                                                        Cancel
-                                                    </button>
-                                                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-xs font-bold shadow-sm transition">
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </dialog>
+                                            {{-- Delete Dialog --}}
+                                            <dialog id="delete-dialog-{{ $report->id }}" class="rounded-lg p-6 shadow-2xl border border-gray-300 w-full max-w-sm backdrop:bg-gray-900/50">
+                                                <form action="{{ route('second-process-reports.destroy', $report->id) }}" method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <h3 class="text-sm font-bold text-gray-900 mb-2 text-left">Confirm Delete</h3>
+                                                    <p class="text-xs text-gray-500 mb-4 text-left whitespace-normal">Are you sure you want to delete this report? This action cannot be undone.</p>
+                                                    <div class="flex justify-end gap-2">
+                                                        <button type="button" onclick="document.getElementById('delete-dialog-{{ $report->id }}').close()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-xs font-bold transition">
+                                                            Cancel
+                                                        </button>
+                                                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-xs font-bold shadow-sm transition">
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </dialog>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty

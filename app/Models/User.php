@@ -123,6 +123,41 @@ class User extends Authenticatable
         return $this->role->hasPermission($permissionName);
     }
 
+    /**
+     * Determine if user is authorized to sign for a specific signature role/slot in a given domain.
+     */
+    public function canSign(string $domain, string $role): bool
+    {
+        if ($this->hasRole('SUPER-ADMIN') || $this->hasRole('ADMIN')) {
+            return true;
+        }
+
+        if (! $this->role) {
+            return false;
+        }
+
+        $userRole = strtoupper(trim($this->role->name));
+        $allowed = config("roles.signature_mapping.{$domain}.{$role}", []);
+
+        $normalized = array_map(fn ($r) => strtoupper(trim($r)), $allowed);
+
+        if (in_array($userRole, $normalized)) {
+            return true;
+        }
+
+        // Check role hierarchy from config/roles.php
+        $roleHierarchy = config('roles.hierarchy');
+        if (isset($roleHierarchy[$userRole])) {
+            foreach ($roleHierarchy[$userRole] as $inheritedRole) {
+                if (in_array(strtoupper(trim($inheritedRole)), $normalized)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public function zone()
     {
         return $this->belongsTo(MasterZone::class, 'zone_id');

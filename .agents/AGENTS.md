@@ -27,7 +27,17 @@ Sebelum menulis kode baru, Anda wajib mengikuti tangga keputusan (decision ladde
      - **Tab 1 (Setup & Manpower)**: Shift logistics, part number, customer, manpowers.
      - **Tab 2 (Materials)**: Item Paint (viscosity, mixing ratio, qty — active for `Painting` & `Repair`) and Item Parts / WIP Lots (WIP + Repairan reconciliation).
      - **Tab 3 (Production Logs & NG)**: Target per hour, hourly production slots, NG breakdown by defects & remarks.
-     - **Tab 4 (Handover & Signs)**: Next schedule, downtime/troubles (`loss_time_minutes`), operator, PQC, and Leader approval signoffs.
+     - **Tab 4 (Handover & Signs)**: Next schedule, downtime/troubles (`loss_time_minutes`), operator (Checker), Leader, optional PQC (placed after Leader), and Supervisor signoffs.
+   - **Signature Workflow & Configurable Mapping (`config/roles.php`)**:
+     - Sequential workflow: Checker (`submitted`) -> Leader (`leader_approved`) -> Optional PQC (`pqc_approved`) -> Supervisor (`acknowledged`).
+     - Rejection can be executed by Leader, PQC, or Supervisor back to draft status.
+     - Signature slot authorization is strictly centralized in `config('roles.signature_mapping.second_process')` and evaluated via `$user->canSign('second_process', $slot)`.
+     - `config/roles.php` serves as the Single Source of Truth for IAM/security and signatures, while `config/mes.php` exclusively governs physical shop-floor operational parameters (shifts, lines, chemical processes, workstation station types `sp_manpower_roles`, and defect categories).
+     - **Granular Action & Workflow Guards (`SecondProcessReportController`)**:
+       - `destroy`: Strictly restricted to `SUPER-ADMIN`, `ADMIN`, or `SUPERVISOR` (`acknowledged`).
+       - `reject`: Authorized dynamically for users who can sign as `leader`, `pqc`, or `acknowledged` (or admins).
+       - `edit`/`update`: Strictly restricted to report creator, authorized `checker`/`leader`, and admins when report is in `draft` status.
+     - Universal bypass: `SUPER-ADMIN` and `ADMIN` are globally authorized to sign any approval slot.
    - **Customer Enforcement & Auto-Conversion**:
      - The `customer` field is strictly enforced: must be an official customer name (`MasterCustomerDelivery::customer_name`) or `'N/A'`.
      - Empty, `'0'`, `'-'`, or case-insensitive `'n/a'` are automatically normalized to `'N/A'`.

@@ -10,7 +10,7 @@
                     class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition">
                     Print Report
                 </button>
-                @if ($report->status === 'draft')
+                @if ($report->status === 'draft' && (auth()->user()?->hasRole('SUPER-ADMIN') || auth()->user()?->hasRole('ADMIN') || empty($report->created_by_name) || $report->created_by_name === auth()->user()?->name || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'checker') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'leader')))
                     <a href="{{ route('second-process-reports.edit', $report->id) }}"
                         class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition">
                         Edit Report
@@ -52,15 +52,15 @@
                     @elseif($report->status === 'submitted')
                         <span
                             class="px-2.5 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800 uppercase">Submitted</span>
-                        <span class="text-xs text-gray-500">Pending Quality Inspection (PQC) sign-off.</span>
-                    @elseif($report->status === 'pqc_approved')
-                        <span
-                            class="px-2.5 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800 uppercase">PQC
-                            Approved</span>
                         <span class="text-xs text-gray-500">Pending Team Leader review.</span>
                     @elseif($report->status === 'leader_approved')
                         <span
                             class="px-2.5 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800 uppercase">Leader
+                            Approved</span>
+                        <span class="text-xs text-gray-500">Pending Supervisor acknowledgment (PQC review optional).</span>
+                    @elseif($report->status === 'pqc_approved')
+                        <span
+                            class="px-2.5 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800 uppercase">PQC
                             Approved</span>
                         <span class="text-xs text-gray-500">Pending Supervisor acknowledgment.</span>
                     @elseif($report->status === 'acknowledged')
@@ -73,52 +73,68 @@
 
             <div class="flex items-center space-x-2">
                 @if ($report->status === 'draft')
-                    <form action="{{ route('second-process-reports.sign', [$report->id, 'checker']) }}" method="POST">
-                        @csrf
-                        <button type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
-                            Submit Report
-                        </button>
-                    </form>
+                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'checker'))
+                        <form action="{{ route('second-process-reports.sign', [$report->id, 'checker']) }}" method="POST">
+                            @csrf
+                            <button type="submit"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
+                                Submit Report
+                            </button>
+                        </form>
+                    @endif
                 @elseif($report->status === 'submitted')
-                    <form action="{{ route('second-process-reports.sign', [$report->id, 'pqc']) }}" method="POST"
-                        class="inline">
-                        @csrf
-                        <button type="submit"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
-                            Sign as PQC
+                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'leader'))
+                        <form action="{{ route('second-process-reports.sign', [$report->id, 'leader']) }}" method="POST"
+                            class="inline">
+                            @csrf
+                            <button type="submit"
+                                class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
+                                Sign as Leader
+                            </button>
+                        </form>
+                        <button onclick="document.getElementById('reject-dialog').showModal()"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
+                            Reject
                         </button>
-                    </form>
-                    <button onclick="document.getElementById('reject-dialog').showModal()"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
-                        Reject
-                    </button>
-                @elseif($report->status === 'pqc_approved')
-                    <form action="{{ route('second-process-reports.sign', [$report->id, 'leader']) }}" method="POST"
-                        class="inline">
-                        @csrf
-                        <button type="submit"
-                            class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
-                            Sign as Leader
+                    @endif
+                @elseif($report->status === 'leader_approved' || $report->status === 'pqc_approved')
+                    @if (!$report->pqc_signed_at && \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'pqc'))
+                        <form action="{{ route('second-process-reports.sign', [$report->id, 'pqc']) }}" method="POST"
+                            class="inline">
+                            @csrf
+                            <button type="submit"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
+                                Sign as PQC (Optional)
+                            </button>
+                        </form>
+                    @endif
+                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'acknowledged'))
+                        <form action="{{ route('second-process-reports.sign', [$report->id, 'acknowledged']) }}"
+                            method="POST" class="inline">
+                            @csrf
+                            <button type="submit"
+                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
+                                Acknowledge (Supervisor)
+                            </button>
+                        </form>
+                    @endif
+                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'leader') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'acknowledged') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'pqc'))
+                        <button onclick="document.getElementById('reject-dialog').showModal()"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
+                            Reject
                         </button>
-                    </form>
-                    <button onclick="document.getElementById('reject-dialog').showModal()"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
-                        Reject
-                    </button>
-                @elseif($report->status === 'leader_approved')
-                    <form action="{{ route('second-process-reports.sign', [$report->id, 'acknowledged']) }}"
-                        method="POST" class="inline">
-                        @csrf
-                        <button type="submit"
-                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
-                            Acknowledge (Supervisor)
-                        </button>
-                    </form>
-                    <button onclick="document.getElementById('reject-dialog').showModal()"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
-                        Reject
-                    </button>
+                    @endif
+                @elseif($report->status === 'acknowledged' && !$report->pqc_signed_at)
+                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'pqc'))
+                        <form action="{{ route('second-process-reports.sign', [$report->id, 'pqc']) }}" method="POST"
+                            class="inline">
+                            @csrf
+                            <button type="submit"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
+                                Sign as PQC (Optional)
+                            </button>
+                        </form>
+                    @endif
                 @endif
             </div>
         </div>
@@ -674,22 +690,6 @@
                             </div>
                         </div>
                         <div class="flex flex-col justify-between h-24">
-                            <span class="font-bold">PQC (Quality Lane)</span>
-                            <div>
-                                @if ($report->pqc_signed_at)
-                                    <div
-                                        class="text-[8px] font-bold text-yellow-600 uppercase tracking-wider border border-dashed border-yellow-600 rounded px-1 py-0.5 max-w-xs mx-auto mb-1 leading-none">
-                                        DIGITALLY SIGNED</div>
-                                    <span
-                                        class="underline font-semibold block leading-tight">{{ $report->pqc_name }}</span>
-                                    <span
-                                        class="text-gray-500 text-[9px]">{{ \Carbon\Carbon::parse($report->pqc_signed_at)->format('d/m/Y H:i') }}</span>
-                                @else
-                                    <span class="underline font-semibold block text-gray-400">Not Signed</span>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="flex flex-col justify-between h-24">
                             <span class="font-bold">Diperiksa (Leader)</span>
                             <div>
                                 @if ($report->leader_signed_at)
@@ -702,6 +702,22 @@
                                         class="text-gray-500 text-[9px]">{{ \Carbon\Carbon::parse($report->leader_signed_at)->format('d/m/Y H:i') }}</span>
                                 @else
                                     <span class="underline font-semibold block text-gray-400">Not Signed</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="flex flex-col justify-between h-24">
+                            <span class="font-bold">PQC (Quality Lane)</span>
+                            <div>
+                                @if ($report->pqc_signed_at)
+                                    <div
+                                        class="text-[8px] font-bold text-yellow-600 uppercase tracking-wider border border-dashed border-yellow-600 rounded px-1 py-0.5 max-w-xs mx-auto mb-1 leading-none">
+                                        DIGITALLY SIGNED</div>
+                                    <span
+                                        class="underline font-semibold block leading-tight">{{ $report->pqc_name }}</span>
+                                    <span
+                                        class="text-gray-500 text-[9px]">{{ \Carbon\Carbon::parse($report->pqc_signed_at)->format('d/m/Y H:i') }}</span>
+                                @else
+                                    <span class="underline font-semibold block text-gray-400">Not Signed (Optional)</span>
                                 @endif
                             </div>
                         </div>

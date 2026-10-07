@@ -154,7 +154,7 @@ class SecondProcessReportTest extends TestCase
             'unit_line' => 'Painting Line A',
             'shift' => '1',
             'process_prod' => 'Painting',
-            'status' => 'submitted',
+            'status' => 'leader_approved',
             'part_number' => 'PART-UNAPPROVED-01',
             'part_name' => 'Bumper Cover',
             'model' => 'Sedan 2026',
@@ -167,11 +167,11 @@ class SecondProcessReportTest extends TestCase
         $response->assertSessionHasErrors('error');
 
         $report->refresh();
-        $this->assertEquals('submitted', $report->status);
+        $this->assertEquals('leader_approved', $report->status);
     }
 
     /**
-     * Test full signature workflow including First Piece approval check.
+     * Test full signature workflow including optional PQC after Leader.
      */
     public function test_approval_signature_workflow(): void
     {
@@ -206,24 +206,193 @@ class SecondProcessReportTest extends TestCase
         $report->refresh();
         $this->assertEquals('submitted', $report->status);
 
-        // 2. Sign as PQC
+        // 2. Sign as Leader
+        $response = $this->actingAs($user)->post(route('second-process-reports.sign', [$report->id, 'leader']));
+        $response->assertRedirect();
+        $report->refresh();
+        $this->assertEquals('leader_approved', $report->status);
+        $this->assertEquals('Approver Admin', $report->leader_name);
+
+        // 3. Optional PQC signs after Leader
         $response = $this->actingAs($user)->post(route('second-process-reports.sign', [$report->id, 'pqc']));
         $response->assertRedirect();
         $report->refresh();
         $this->assertEquals('pqc_approved', $report->status);
         $this->assertEquals('Approver Admin', $report->pqc_name);
 
-        // 3. Sign as Leader
-        $response = $this->actingAs($user)->post(route('second-process-reports.sign', [$report->id, 'leader']));
-        $response->assertRedirect();
-        $report->refresh();
-        $this->assertEquals('leader_approved', $report->status);
-
         // 4. Sign as Supervisor (acknowledged)
         $response = $this->actingAs($user)->post(route('second-process-reports.sign', [$report->id, 'acknowledged']));
         $response->assertRedirect();
         $report->refresh();
         $this->assertEquals('acknowledged', $report->status);
+        $this->assertEquals('Approver Admin', $report->acknowledged_by_name);
+    }
+
+    /**
+     * Test signature workflow when optional PQC is skipped.
+     */
+    public function test_approval_signature_workflow_skips_optional_pqc(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id, 'name' => 'Approver Admin']);
+
+        $report = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-XYZ-02',
+            'part_name' => 'Bumper Cover',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Corp',
+        ]);
+
+        // 1. Submit as Checker
+        $this->actingAs($user)->post(route('second-process-reports.sign', [$report->id, 'checker']));
+        $report->refresh();
+        $this->assertEquals('submitted', $report->status);
+
+        // 2. Sign as Leader
+        $this->actingAs($user)->post(route('second-process-reports.sign', [$report->id, 'leader']));
+        $report->refresh();
+        $this->assertEquals('leader_approved', $report->status);
+
+        // 3. Directly sign as Supervisor (skipping optional PQC)
+        $this->actingAs($user)->post(route('second-process-reports.sign', [$report->id, 'acknowledged']));
+        $report->refresh();
+        $this->assertEquals('acknowledged', $report->status);
+        $this->assertNull($report->pqc_name);
+        $this->assertNull($report->pqc_signed_at);
+    }
+
+    /**
+     * Test configurable sign mapping allows designated roles and rejects unauthorized roles.
+     */
+    public function test_configurable_sign_mapping_enforces_allowed_roles(): void
+    {
+        $checkerRole = Role::firstOrCreate(['name' => 'CHECKER']);
+        $leaderRole = Role::firstOrCreate(['name' => 'LEADER']);
+        $qualityRole = Role::firstOrCreate(['name' => 'QUALITY']);
+        $supervisorRole = Role::firstOrCreate(['name' => 'SUPERVISOR']);
+        $maintenanceRole = Role::firstOrCreate(['name' => 'MAINTENANCE']);
+
+        foreach ([$checkerRole, $leaderRole, $qualityRole, $supervisorRole, $maintenanceRole] as $r) {
+            $r->givePermission('second-process-reports');
+        }
+
+        $checkerUser = User::factory()->create(['role_id' => $checkerRole->id, 'name' => 'Checker Bob']);
+        $leaderUser = User::factory()->create(['role_id' => $leaderRole->id, 'name' => 'Leader Alice']);
+        $qualityUser = User::factory()->create(['role_id' => $qualityRole->id, 'name' => 'QC Charlie']);
+        $supervisorUser = User::factory()->create(['role_id' => $supervisorRole->id, 'name' => 'Supervisor Dave']);
+        $maintenanceUser = User::factory()->create(['role_id' => $maintenanceRole->id, 'name' => 'Maint Mike']);
+
+        // First piece for PQC check
+        FirstPieceInspection::create([
+            'date' => '2026-07-07',
+            'model' => 'Sedan 2026',
+            'part_name' => 'Bumper Cover',
+            'part_number' => 'PART-ROLE-TEST-01',
+            'overall_judgement' => 'OK',
+            'checked_by' => 'QC Inspector',
+            'checked_at' => now(),
+        ]);
+
+        $report = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-ROLE-TEST-01',
+            'part_name' => 'Bumper Cover',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Corp',
+        ]);
+
+        // 1. Unauthorized role (MAINTENANCE) cannot sign as Checker
+        $res = $this->actingAs($maintenanceUser)->post(route('second-process-reports.sign', [$report->id, 'checker']));
+        $res->assertSessionHasErrors('error');
+        $report->refresh();
+        $this->assertEquals('draft', $report->status);
+
+        // 2. CHECKER signs draft -> becomes submitted
+        $res = $this->actingAs($checkerUser)->post(route('second-process-reports.sign', [$report->id, 'checker']));
+        $res->assertRedirect();
+        $report->refresh();
+        $this->assertEquals('submitted', $report->status);
+        $this->assertEquals('Checker Bob', $report->created_by_name);
+
+        // 3. CHECKER tries to sign as Leader -> denied
+        $res = $this->actingAs($checkerUser)->post(route('second-process-reports.sign', [$report->id, 'leader']));
+        $res->assertSessionHasErrors('error');
+        $report->refresh();
+        $this->assertEquals('submitted', $report->status);
+
+        // 4. LEADER signs as Leader -> becomes leader_approved
+        $res = $this->actingAs($leaderUser)->post(route('second-process-reports.sign', [$report->id, 'leader']));
+        $res->assertRedirect();
+        $report->refresh();
+        $this->assertEquals('leader_approved', $report->status);
+        $this->assertEquals('Leader Alice', $report->leader_name);
+
+        // 5. LEADER tries to sign as PQC -> denied
+        $res = $this->actingAs($leaderUser)->post(route('second-process-reports.sign', [$report->id, 'pqc']));
+        $res->assertSessionHasErrors('error');
+
+        // 6. QUALITY signs as PQC -> becomes pqc_approved
+        $res = $this->actingAs($qualityUser)->post(route('second-process-reports.sign', [$report->id, 'pqc']));
+        $res->assertRedirect();
+        $report->refresh();
+        $this->assertEquals('pqc_approved', $report->status);
+        $this->assertEquals('QC Charlie', $report->pqc_name);
+
+        // 7. QUALITY tries to sign as Supervisor -> denied
+        $res = $this->actingAs($qualityUser)->post(route('second-process-reports.sign', [$report->id, 'acknowledged']));
+        $res->assertSessionHasErrors('error');
+
+        // 8. SUPERVISOR signs as Acknowledged -> becomes acknowledged
+        $res = $this->actingAs($supervisorUser)->post(route('second-process-reports.sign', [$report->id, 'acknowledged']));
+        $res->assertRedirect();
+        $report->refresh();
+        $this->assertEquals('acknowledged', $report->status);
+        $this->assertEquals('Supervisor Dave', $report->acknowledged_by_name);
+    }
+
+    /**
+     * Test configurable sign mapping can be dynamically overridden in runtime config.
+     */
+    public function test_configurable_sign_mapping_can_be_customized_via_config(): void
+    {
+        $customRole = Role::firstOrCreate(['name' => 'SPECIAL_AUDITOR']);
+        $customRole->givePermission('second-process-reports');
+        $customUser = User::factory()->create(['role_id' => $customRole->id, 'name' => 'Auditor Eve']);
+
+        $report = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-CUSTOM-01',
+            'part_name' => 'Bumper Cover',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Corp',
+        ]);
+
+        // Default config does not allow SPECIAL_AUDITOR to sign checker
+        $this->actingAs($customUser)->post(route('second-process-reports.sign', [$report->id, 'checker']))
+            ->assertSessionHasErrors('error');
+
+        // Override config dynamically
+        config(['roles.signature_mapping.second_process.checker' => ['SPECIAL_AUDITOR']]);
+
+        // Now SPECIAL_AUDITOR is authorized
+        $this->actingAs($customUser)->post(route('second-process-reports.sign', [$report->id, 'checker']))
+            ->assertRedirect();
+
+        $report->refresh();
+        $this->assertEquals('submitted', $report->status);
+        $this->assertEquals('Auditor Eve', $report->created_by_name);
     }
 
     /**
@@ -1380,6 +1549,122 @@ class SecondProcessReportTest extends TestCase
             'sisa_input' => 10,
             'sisa_input_remark' => 'Sisa 10 pcs',
         ]);
+    }
+
+    /**
+     * Test destroying a report is restricted to Admin or Supervisor.
+     */
+    public function test_destroy_is_restricted_to_authorized_roles(): void
+    {
+        $checkerRole = Role::firstOrCreate(['name' => 'CHECKER']);
+        $supervisorRole = Role::firstOrCreate(['name' => 'SUPERVISOR']);
+
+        $checkerRole->givePermission('second-process-reports');
+        $supervisorRole->givePermission('second-process-reports');
+
+        $checkerUser = User::factory()->create(['role_id' => $checkerRole->id, 'name' => 'Checker Bob']);
+        $supervisorUser = User::factory()->create(['role_id' => $supervisorRole->id, 'name' => 'Supervisor Dave']);
+
+        $report = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-DEL-01',
+            'part_name' => 'Bumper Cover',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        // Checker cannot delete
+        $res = $this->actingAs($checkerUser)->delete(route('second-process-reports.destroy', $report->id));
+        $res->assertSessionHasErrors('error');
+        $this->assertDatabaseHas('second_process_reports', ['id' => $report->id]);
+
+        // Supervisor can delete
+        $res = $this->actingAs($supervisorUser)->delete(route('second-process-reports.destroy', $report->id));
+        $res->assertRedirect(route('second-process-reports.index'));
+        $this->assertDatabaseMissing('second_process_reports', ['id' => $report->id]);
+    }
+
+    /**
+     * Test rejecting a report is restricted to Leader, PQC, Supervisor, or Admin.
+     */
+    public function test_reject_is_restricted_to_authorized_roles(): void
+    {
+        $checkerRole = Role::firstOrCreate(['name' => 'CHECKER']);
+        $leaderRole = Role::firstOrCreate(['name' => 'LEADER']);
+
+        $checkerRole->givePermission('second-process-reports');
+        $leaderRole->givePermission('second-process-reports');
+
+        $checkerUser = User::factory()->create(['role_id' => $checkerRole->id, 'name' => 'Checker Bob']);
+        $leaderUser = User::factory()->create(['role_id' => $leaderRole->id, 'name' => 'Leader Alice']);
+
+        $report = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'PART-REJ-01',
+            'part_name' => 'Bumper Cover',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Motor Corp',
+            'created_by_name' => 'Checker Bob',
+        ]);
+
+        // Checker cannot reject
+        $res = $this->actingAs($checkerUser)->post(route('second-process-reports.reject', $report->id), [
+            'rejection_reason' => 'Defect counts mismatch',
+        ]);
+        $res->assertSessionHasErrors('error');
+        $report->refresh();
+        $this->assertEquals('submitted', $report->status);
+
+        // Leader can reject
+        $res = $this->actingAs($leaderUser)->post(route('second-process-reports.reject', $report->id), [
+            'rejection_reason' => 'Defect counts mismatch',
+        ]);
+        $res->assertRedirect(route('second-process-reports.show', $report->id));
+        $report->refresh();
+        $this->assertEquals('draft', $report->status);
+        $this->assertStringContainsString('Rejected by Leader Alice: Defect counts mismatch', $report->ng_remarks);
+    }
+
+    /**
+     * Test editing draft report is restricted to authorized creators/checkers/admins.
+     */
+    public function test_edit_and_update_are_restricted_to_authorized_users_or_creator(): void
+    {
+        $operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $operatorRole->givePermission('second-process-reports');
+
+        $creatorUser = User::factory()->create(['role_id' => $operatorRole->id, 'name' => 'Operator John']);
+        $otherUser = User::factory()->create(['role_id' => $operatorRole->id, 'name' => 'Operator Mike']);
+
+        $report = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-EDIT-01',
+            'part_name' => 'Bumper Cover',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Motor Corp',
+            'created_by_name' => 'Operator John',
+        ]);
+
+        // Other operator cannot edit
+        $res = $this->actingAs($otherUser)->get(route('second-process-reports.edit', $report->id));
+        $res->assertRedirect(route('second-process-reports.show', $report->id));
+        $res->assertSessionHas('error');
+
+        // Creator can edit
+        $res = $this->actingAs($creatorUser)->get(route('second-process-reports.edit', $report->id));
+        $res->assertOk();
     }
 }
 
