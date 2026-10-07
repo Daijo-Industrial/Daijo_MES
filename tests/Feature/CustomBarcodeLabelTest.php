@@ -158,4 +158,86 @@ class CustomBarcodeLabelTest extends TestCase
                 && (string)$labels[0]['month_code'] === '9';
         });
     }
+
+    public function test_itsp_half_code_enlarges_half_code_1_when_position_is_left()
+    {
+        $user = User::create([
+            'name'     => 'ITSP User Left',
+            'email'    => 'itsp_left@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        MasterListItem::create([
+            'item_code'   => 'TSPT10188XA-INJ',
+            'item_name'   => 'PANEL CONSOLE RR SIDE LH',
+            'half_code_1' => 'TSPT10',
+            'half_code_2' => '188XA',
+            'position'    => 'Left',
+        ]);
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('barcode.custom.print'), [
+            'item_code'    => 'TSPT10188XA-INJ',
+            'spk_number'   => 'SPK-ITSP-01',
+            'quantity'     => 80,
+            'warehouse'    => 'WFI',
+            'start_label'  => 1,
+            'end_label'    => 1,
+            'shift'        => 'I',
+            'barcode_type' => 'itsp',
+            'position'     => 'Left',
+        ]);
+
+        $response->assertOk();
+        $response->assertViewHas('labels', function ($labels) {
+            return $labels[0]['position'] === 'LH'
+                && $labels[0]['enlarged_half_code'] === 1;
+        });
+
+        // Verify that half_code_1 has font-size 16pt and half_code_2 has font-size 11pt
+        $content = $response->getContent();
+        $this->assertStringContainsString('font-size: 16pt; font-weight: 900;">TSPT10</span><span style="font-size: 11pt; font-weight: 900;">188XA</span>', $content);
+    }
+
+    public function test_itsp_half_code_enlarges_half_code_2_when_position_is_right()
+    {
+        $user = User::create([
+            'name'     => 'ITSP User Right',
+            'email'    => 'itsp_right@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        MasterListItem::create([
+            'item_code'   => 'TSPT10188XA-INJ',
+            'item_name'   => 'PANEL CONSOLE RR SIDE RH',
+            'half_code_1' => 'TSPT10',
+            'half_code_2' => '188XA',
+            'position'    => 'Right',
+        ]);
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('barcode.custom.print'), [
+            'item_code'    => 'TSPT10188XA-INJ',
+            'spk_number'   => 'SPK-ITSP-02',
+            'quantity'     => 80,
+            'warehouse'    => 'WFI',
+            'start_label'  => 1,
+            'end_label'    => 1,
+            'shift'        => 'I',
+            'barcode_type' => 'itsp',
+            'position'     => 'Right',
+        ]);
+
+        $response->assertOk();
+        $response->assertViewHas('labels', function ($labels) {
+            return $labels[0]['position'] === 'RH'
+                && $labels[0]['enlarged_half_code'] === 2;
+        });
+
+        // Verify that half_code_1 has font-size 11pt and half_code_2 has font-size 16pt
+        $content = $response->getContent();
+        $this->assertStringContainsString('font-size: 11pt; font-weight: 900;">TSPT10</span><span style="font-size: 16pt; font-weight: 900;">188XA</span>', $content);
+    }
 }

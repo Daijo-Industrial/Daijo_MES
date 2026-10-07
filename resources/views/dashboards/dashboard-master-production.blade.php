@@ -415,9 +415,9 @@
                                     <span class="w-2.5 h-5 bg-indigo-600 rounded-sm"></span>
                                     <span>Hourly Remarks</span>
                                 </h4>
-                                <div class="overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-white mt-2">
+                                <div class="rounded-2xl border border-slate-200 shadow-sm bg-white mt-2 relative">
                                     <table class="w-full text-sm text-left text-slate-600 border-collapse">
-                                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold uppercase text-xs tracking-wider">
+                                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold uppercase text-xs tracking-wider rounded-t-2xl">
                                             <tr>
                                                 <th class="px-4 py-3.5">PIC</th>
                                                 <th class="px-4 py-3.5">Item Code</th>
@@ -474,9 +474,60 @@
                                             @endphp
 
                                             <tr class="hover:bg-slate-50/70 transition-colors {{ $borderIndicator }}">
-                                                <td class="px-4 py-3.5 flex items-center space-x-3">
-                                                    <img src="{{ $remark['pic_profile_path'] }}" alt="PIC Profile" class="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-sm">
-                                                    <span class="font-medium text-slate-800">{{ $remark['pic'] }}</span>
+                                                <td class="px-4 py-3.5 relative">
+                                                    @if(($remark['pics_count'] ?? 1) > 1)
+                                                        <div class="relative inline-block pic-dropdown-container">
+                                                            <button type="button" 
+                                                                class="pic-dropdown-btn flex items-center space-x-2 text-left p-1 -m-1 rounded-lg hover:bg-indigo-50/80 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer group"
+                                                                title="Klik untuk melihat {{ $remark['pics_count'] }} PIC">
+                                                                
+                                                                <!-- Avatar Stack -->
+                                                                <div class="flex -space-x-2 overflow-hidden flex-shrink-0">
+                                                                    @foreach(array_slice($remark['pics'], 0, 2) as $p)
+                                                                        <img src="{{ $p['profile_path'] }}" alt="{{ $p['name'] }}" class="inline-block w-7 h-7 rounded-full ring-2 ring-white object-cover shadow-xs">
+                                                                    @endforeach
+                                                                </div>
+
+                                                                <!-- Primary Name & Badge -->
+                                                                <div class="flex items-center space-x-1.5">
+                                                                    <span class="font-semibold text-slate-800 text-xs sm:text-sm group-hover:text-indigo-700 transition-colors">{{ $remark['pic'] }}</span>
+                                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-700 border border-indigo-200 group-hover:bg-indigo-200 transition-colors shadow-2xs">
+                                                                        +{{ count($remark['pics']) - 1 }}
+                                                                        <svg class="w-3 h-3 ml-0.5 transform transition-transform group-hover:translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                                                                        </svg>
+                                                                    </span>
+                                                                </div>
+                                                            </button>
+
+                                                            <!-- Dropdown Menu -->
+                                                            <div class="pic-dropdown-menu hidden absolute left-0 {{ $loop->remaining < 2 && count($data['hourly_remarks']) > 2 ? 'bottom-full mb-2' : 'top-full mt-2' }} z-50 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 p-2.5 transition-all transform origin-top-left">
+                                                                <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 px-1">
+                                                                    <div class="flex items-center space-x-1.5">
+                                                                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                                                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Daftar PIC ({{ $remark['pics_count'] }})</span>
+                                                                    </div>
+                                                                    <span class="text-[10px] text-slate-400 font-medium">Shift {{ $remark['shift'] }}</span>
+                                                                </div>
+                                                                <div class="space-y-1.5">
+                                                                    @foreach($remark['pics'] as $p)
+                                                                        <div class="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                                                                            <img src="{{ $p['profile_path'] }}" alt="{{ $p['name'] }}" class="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-xs flex-shrink-0">
+                                                                            <div class="min-w-0 flex-1">
+                                                                                <div class="text-xs font-bold text-slate-800 truncate">{{ $p['name'] }}</div>
+                                                                                <div class="text-[10px] font-semibold text-indigo-600">{{ $p['role'] }}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @else
+                                                        <div class="flex items-center space-x-2.5">
+                                                            <img src="{{ $remark['pic_profile_path'] }}" alt="PIC Profile" class="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-sm flex-shrink-0">
+                                                            <span class="font-medium text-slate-800 text-xs sm:text-sm">{{ $remark['pic'] }}</span>
+                                                        </div>
+                                                    @endif
                                                 </td>
                                                 <td class="px-4 py-3.5 font-mono text-xs font-semibold text-slate-700">{{ $remark['item_code'] }}</td>
                                                 <td class="px-4 py-3.5 text-xs text-slate-500">
@@ -969,13 +1020,52 @@
                                         <td class="px-5 py-4 text-center text-slate-500 font-mono">{{ $remark['target'] }}</td>
                                         <td class="px-5 py-4 text-center font-bold text-slate-700 font-mono">{{ $remark['actual_production'] }}</td>
                                         <td class="px-5 py-4 text-center font-bold text-rose-600 font-mono">{{ $remark['ng'] }}</td>
-                                        <td class="px-5 py-4">
-                                            <div class="flex items-center space-x-2">
-                                                <img src="{{ asset($remark['pic_profile_path']) }}"
-                                                     alt="{{ $remark['pic'] }}"
-                                                     class="w-7 h-7 rounded-full object-cover border border-gray-200 shadow-sm">
-                                                <span class="font-medium text-slate-700">{{ $remark['pic'] }}</span>
-                                            </div>
+                                        <td class="px-5 py-4 relative">
+                                            @if(($remark['pics_count'] ?? 1) > 1)
+                                                <div class="relative inline-block pic-dropdown-container">
+                                                    <button type="button" 
+                                                        class="pic-dropdown-btn flex items-center space-x-2 text-left p-1 -m-1 rounded-lg hover:bg-indigo-50/80 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer group"
+                                                        title="Klik untuk melihat {{ $remark['pics_count'] }} PIC">
+                                                        <div class="flex -space-x-2 overflow-hidden flex-shrink-0">
+                                                            @foreach(array_slice($remark['pics'], 0, 2) as $p)
+                                                                <img src="{{ asset($p['profile_path']) }}" alt="{{ $p['name'] }}" class="inline-block w-6 h-6 rounded-full ring-2 ring-white object-cover shadow-xs">
+                                                            @endforeach
+                                                        </div>
+                                                        <div class="flex items-center space-x-1.5">
+                                                            <span class="font-medium text-slate-700 text-xs group-hover:text-indigo-700 transition-colors">{{ $remark['pic'] }}</span>
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-700 border border-indigo-200 group-hover:bg-indigo-200 transition-colors shadow-2xs">
+                                                                +{{ count($remark['pics']) - 1 }}
+                                                                <svg class="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                                                                </svg>
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                    <div class="pic-dropdown-menu hidden absolute left-0 top-full mt-2 z-50 w-60 bg-white rounded-xl shadow-2xl border border-slate-200 p-2.5 transition-all">
+                                                        <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-100 px-1">
+                                                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Daftar PIC ({{ $remark['pics_count'] }})</span>
+                                                        </div>
+                                                        <div class="space-y-1">
+                                                            @foreach($remark['pics'] as $p)
+                                                                <div class="flex items-center space-x-2 p-1 rounded-lg hover:bg-slate-50">
+                                                                    <img src="{{ asset($p['profile_path']) }}" alt="{{ $p['name'] }}" class="w-7 h-7 rounded-full object-cover border border-slate-200">
+                                                                    <div class="min-w-0 flex-1">
+                                                                        <div class="text-xs font-bold text-slate-800 truncate">{{ $p['name'] }}</div>
+                                                                        <div class="text-[10px] text-indigo-600 font-semibold">{{ $p['role'] }}</div>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <div class="flex items-center space-x-2">
+                                                    <img src="{{ asset($remark['pic_profile_path']) }}"
+                                                         alt="{{ $remark['pic'] }}"
+                                                         class="w-7 h-7 rounded-full object-cover border border-gray-200 shadow-sm">
+                                                    <span class="font-medium text-slate-700 text-xs">{{ $remark['pic'] }}</span>
+                                                </div>
+                                            @endif
                                         </td>
                                         <td class="px-5 py-4 text-slate-600 italic whitespace-normal break-words min-w-[200px]">{{ $remark['remark'] }}</td>
                                     </tr>
@@ -1509,5 +1599,32 @@ function closeMasterMaintChecklistModal() {
     const modal = document.getElementById('masterMaintChecklistModal');
     if (modal) modal.classList.add('hidden');
 }
+
+// Global click handler to toggle PIC dropdowns in Hourly Remarks
+document.addEventListener('click', function (e) {
+    const toggleBtn = e.target.closest('.pic-dropdown-btn');
+    const container = e.target.closest('.pic-dropdown-container');
+
+    if (toggleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const parent = toggleBtn.closest('.pic-dropdown-container');
+        const menu = parent ? parent.querySelector('.pic-dropdown-menu') : null;
+        if (!menu) return;
+
+        const isOpen = !menu.classList.contains('hidden');
+
+        // Close all open dropdowns first
+        document.querySelectorAll('.pic-dropdown-menu').forEach(m => m.classList.add('hidden'));
+
+        // Toggle current dropdown
+        if (!isOpen) {
+            menu.classList.remove('hidden');
+        }
+    } else if (!container) {
+        // Clicked outside any PIC dropdown container, close all
+        document.querySelectorAll('.pic-dropdown-menu').forEach(m => m.classList.add('hidden'));
+    }
+});
 </script>
 </x-dashboard-layout>

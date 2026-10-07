@@ -198,7 +198,7 @@
                         <!-- Position -->
                         <div>
                             <label for="position" class="block text-sm font-semibold text-slate-700 mb-2">
-                                Position <span class="text-xs font-normal text-slate-500">(Khusus ITSP: Right -> RH, Left -> LH)</span>
+                                Position <span class="text-xs font-normal text-slate-500">(Khusus ITSP: Left/LH -> Half Code 1 besar, Right/RH -> Half Code 2 besar)</span>
                             </label>
                             <input type="text" id="position" name="position" placeholder="Otomatis terisi dari Position (RH / LH)" class="block w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                         </div>

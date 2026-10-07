@@ -297,11 +297,43 @@ class ProductionDashboardController extends Controller
                 }
                 
                 // Process hourly remarks for this daily item
+                $allRemarkPics = $dailyItem->hourlyRemarks->flatMap(function ($hr) {
+                    return [$hr->pic, $hr->pic_2, $hr->pic_3];
+                })->filter(fn($p) => !empty($p) && trim((string)$p) !== '-' && trim((string)$p) !== '0')->unique()->values();
+                $opUserMap = OperatorUser::whereIn('name', $allRemarkPics)->get()->keyBy('name');
+
                 foreach ($dailyItem->hourlyRemarks->sortBy('start_time') as $hourlyRemark) {
-                    $operatorUser = OperatorUser::where('name', $hourlyRemark->pic)->first();
-                    $operatorProfilePath = $operatorUser && $operatorUser->profile_picture 
-                        ? asset('storage/' . $operatorUser->profile_picture) 
-                        : asset('images/default_profile.jpg');
+                    $rawPics = array_values(array_filter([
+                        $hourlyRemark->pic,
+                        $hourlyRemark->pic_2,
+                        $hourlyRemark->pic_3,
+                    ], fn($p) => !empty($p) && trim((string)$p) !== '-' && trim((string)$p) !== '0'));
+
+                    $picsList = [];
+                    foreach ($rawPics as $pIdx => $pName) {
+                        $pUser = $opUserMap->get($pName);
+                        $picsList[] = [
+                            'name' => $pName,
+                            'profile_path' => $pUser && $pUser->profile_picture 
+                                ? asset('storage/' . $pUser->profile_picture) 
+                                : asset('images/default_profile.jpg'),
+                            'role' => 'PIC ' . ($pIdx + 1),
+                        ];
+                    }
+
+                    if (empty($picsList)) {
+                        $defaultUser = $opUserMap->get($hourlyRemark->pic);
+                        $picsList[] = [
+                            'name' => $hourlyRemark->pic ?: '-',
+                            'profile_path' => $defaultUser && $defaultUser->profile_picture 
+                                ? asset('storage/' . $defaultUser->profile_picture) 
+                                : asset('images/default_profile.jpg'),
+                            'role' => 'PIC 1',
+                        ];
+                    }
+
+                    $operatorProfilePath = $picsList[0]['profile_path'];
+                    $primaryPic = $picsList[0]['name'];
 
                     // Calculate achievement percentage
                     $achievementPercentage = 0;
@@ -339,8 +371,12 @@ class ProductionDashboardController extends Controller
                         'is_achieve' => $hourlyRemark->is_achieve,
                         'status' => $status,
                         'shift' => $dailyItem->shift,
-                        'pic' => $hourlyRemark->pic,
+                        'pic' => $primaryPic,
+                        'pic_2' => $hourlyRemark->pic_2,
+                        'pic_3' => $hourlyRemark->pic_3,
                         'pic_profile_path' => $operatorProfilePath,
+                        'pics' => $picsList,
+                        'pics_count' => count($picsList),
                         'created_at' => Carbon::parse($hourlyRemark->created_at)->timezone('Asia/Jakarta')->format('Y-m-d H:i:s'),
                         'updated_at' => Carbon::parse($hourlyRemark->updated_at)->timezone('Asia/Jakarta')->format('Y-m-d H:i:s'),
                         'ng_details' => $hourlyRemark->ngDetails->map(function ($ng) {
@@ -612,11 +648,40 @@ class ProductionDashboardController extends Controller
         ->get();
 
         $zeroActualRemarks = [];
+        $allZeroPics = $allHourlyRemarks->flatMap(function ($hr) {
+            return [$hr->pic, $hr->pic_2, $hr->pic_3];
+        })->filter(fn($p) => !empty($p) && trim((string)$p) !== '-' && trim((string)$p) !== '0')->unique()->values();
+        $zeroOpMap = OperatorUser::whereIn('name', $allZeroPics)->get()->keyBy('name');
+
         foreach ($allHourlyRemarks as $remark) {
-            $operatorUser = OperatorUser::where('name', $remark->pic)->first();
-            $operatorProfilePath = $operatorUser && $operatorUser->profile_picture 
-                ? asset('storage/' . $operatorUser->profile_picture) 
-                : asset('images/default_profile.jpg');
+            $rawZPics = array_values(array_filter([
+                $remark->pic,
+                $remark->pic_2,
+                $remark->pic_3,
+            ], fn($p) => !empty($p) && trim((string)$p) !== '-' && trim((string)$p) !== '0'));
+
+            $zPicsList = [];
+            foreach ($rawZPics as $zIdx => $zName) {
+                $zUser = $zeroOpMap->get($zName);
+                $zPicsList[] = [
+                    'name' => $zName,
+                    'profile_path' => $zUser && $zUser->profile_picture 
+                        ? asset('storage/' . $zUser->profile_picture) 
+                        : asset('images/default_profile.jpg'),
+                    'role' => 'PIC ' . ($zIdx + 1),
+                ];
+            }
+
+            if (empty($zPicsList)) {
+                $defaultZUser = $zeroOpMap->get($remark->pic);
+                $zPicsList[] = [
+                    'name' => $remark->pic ?: '-',
+                    'profile_path' => $defaultZUser && $defaultZUser->profile_picture 
+                        ? asset('storage/' . $defaultZUser->profile_picture) 
+                        : asset('images/default_profile.jpg'),
+                    'role' => 'PIC 1',
+                ];
+            }
 
             $zeroActualRemarks[] = [
                 'id' => $remark->id,
@@ -629,8 +694,12 @@ class ProductionDashboardController extends Controller
                 'actual_production' => $remark->actual_production ?? 0,
                 'ng' => $remark->NG ?? 0,
                 'remark' => $remark->remark ?: '-',
-                'pic' => $remark->pic,
-                'pic_profile_path' => $operatorProfilePath,
+                'pic' => $zPicsList[0]['name'],
+                'pic_2' => $remark->pic_2,
+                'pic_3' => $remark->pic_3,
+                'pic_profile_path' => $zPicsList[0]['profile_path'],
+                'pics' => $zPicsList,
+                'pics_count' => count($zPicsList),
                 'shift' => $remark->dailyItemCode->shift ?? '-',
             ];
         }

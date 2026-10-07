@@ -1525,6 +1525,50 @@ class DashboardController extends Controller
             'label_auto' => 'required|string',
         ]);
 
+        $rawLabel = trim((string) $request->input('label_auto'));
+        $spkCodeClean = trim((string) $request->input('spk_code_auto'));
+        $originalRawLabel = $rawLabel;
+        $wasRecovered = false;
+
+        // 1. Auto-recovery: Jika nomor label tertempel dengan kode SPK di belakangnya (misal '30026026744' dari label 300 + SPK 26026744 karena scan terlalu cepat)
+        if (!empty($spkCodeClean) && str_ends_with($rawLabel, $spkCodeClean) && strlen($rawLabel) > strlen($spkCodeClean)) {
+            $candidateLabel = substr($rawLabel, 0, -strlen($spkCodeClean));
+            if (is_numeric($candidateLabel) && (int) $candidateLabel > 0) {
+                $rawLabel = (string) (int) $candidateLabel;
+                $wasRecovered = true;
+            }
+        }
+
+        // 2. Proteksi Stutter / Repetisi: Jika ada pengulangan digit >= 5 kali (misal '36666666666666666')
+        if (preg_match('/(\d)\1{4,}/', $rawLabel)) {
+            $errMsg = "Nomor label '{$rawLabel}' tidak valid karena scanner mengalami stutter / tombol macet. Harap periksa scanner dan scan ulang.";
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'status' => 'stutter',
+                    'label' => $rawLabel,
+                    'message' => $errMsg
+                ], 422);
+            }
+            return redirect()->back()->withErrors(['error' => $errMsg]);
+        }
+
+        // 3. Validasi batas wajar: nomor urut label box harus berupa angka 1 s/d 6 digit (1 - 999999)
+        if (!preg_match('/^[1-9]\d{0,5}$/', $rawLabel)) {
+            $errMsg = "Format nomor label '{$rawLabel}' tidak valid. Nomor label harus berupa 1 s/d 6 digit angka.";
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'status' => 'invalid_format',
+                    'label' => $rawLabel,
+                    'message' => $errMsg
+                ], 422);
+            }
+            return redirect()->back()->withErrors(['error' => $errMsg]);
+        }
+
+        $label = $rawLabel;
+
         $dicId = $activeDIC->id;
 
         $hourlyRemark = HourlyRemark::where('dic_id', $dicId)
@@ -1535,13 +1579,17 @@ class DashboardController extends Controller
         $existingSpk = SpkMaster::where('spk_number', $spk_code)->first();
 
         if (!$existingSpk) {
+            $errMsg = "Kode SPK '{$spk_code}' (Label #{$label}) tidak ditemukan dalam master SPK.";
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'SPK code tidak ditemukan.'
+                    'status' => 'spk_not_found',
+                    'label' => $label,
+                    'spk_code' => $spk_code,
+                    'message' => $errMsg
                 ], 422);
             }
-            return redirect()->back()->withErrors(['error' => 'SPK code tidak ditemukan.']);
+            return redirect()->back()->withErrors(['error' => $errMsg]);
         }
 
         try {
@@ -1554,13 +1602,17 @@ class DashboardController extends Controller
 
             if ($existingScan) {
                 DB::rollBack();
+                $errMsg = "Label #{$label} pada SPK {$spk_code} sudah pernah discan sebelumnya!";
                 if ($request->ajax()) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Label ini sudah pernah discan sebelumnya.'
+                        'status' => 'duplicate',
+                        'label' => $label,
+                        'spk_code' => $spk_code,
+                        'message' => $errMsg
                     ], 422);
                 }
-                return redirect()->back()->withErrors(['error' => 'Label ini sudah pernah discan sebelumnya.']);
+                return redirect()->back()->withErrors(['error' => $errMsg]);
             }
 
             $trueItemcode = SpkMaster::where('spk_number', $spk_code)->first()?->item_code ?? $activeDIC->item_code;
@@ -1581,6 +1633,7 @@ class DashboardController extends Controller
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
+                    'label' => $label,
                     'message' => 'Gagal memproses scan barcode: ' . $e->getMessage()
                 ], 500);
             }
@@ -1644,10 +1697,22 @@ class DashboardController extends Controller
             ]);
         }
 
+        $successMsg = $wasRecovered
+            ? "Label #{$label} berhasil dicatat (Otomatis dikoreksi dari '{$originalRawLabel}')."
+            : "Label #{$label} berhasil dicatat.";
+
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Barcode scanned successfully!'
+                'status' => $wasRecovered ? 'recovered' : 'success',
+                'was_recovered' => $wasRecovered,
+                'original_label' => $originalRawLabel,
+                'label' => $label,
+                'spk_code' => $spk_code,
+                'quantity' => $quantity,
+                'item_code' => $trueItemcode,
+                'time' => now('Asia/Jakarta')->format('H:i:s'),
+                'message' => $successMsg
             ]);
         }
 
@@ -1934,43 +1999,47 @@ class DashboardController extends Controller
         $nextItemCode = $request->item_code;
 
         if (!$nextItemCode) {
-            // Ambil daftar item hari ini
-            $dailyItems = DailyItemCode::where('user_id', $userId)
-                ->whereDate('start_date', $today)
-                ->orderBy('start_time', 'asc')
-                ->pluck('item_code')
-                ->toArray();
-
-            $currentIndex = array_search($currentItemCode, $dailyItems);
-
-            if ($currentIndex !== false && isset($dailyItems[$currentIndex + 1])) {
-                // Masih ada item berikutnya di hari ini
-                $nextItemCode = $dailyItems[$currentIndex + 1];
+            if ($currentItemCode) {
+                $nextItemCode = $currentItemCode;
             } else {
-                // Kalau current item gak ada di hari ini atau sudah di akhir
-                if ($currentIndex === false) {
-                    // Coba ambil item pertama hari ini
-                    $nextItemCode = $dailyItems[0] ?? null;
-                }
+                // Ambil daftar item hari ini
+                $dailyItems = DailyItemCode::where('user_id', $userId)
+                    ->whereDate('start_date', $today)
+                    ->orderBy('start_time', 'asc')
+                    ->pluck('item_code')
+                    ->toArray();
 
-                // Kalau tetap null, ambil item pertama besok
-                if (!$nextItemCode) {
-                    $nextDay = Carbon::tomorrow()->format('Y-m-d');
-                    $nextDayItem = DailyItemCode::where('user_id', $userId)
-                        ->whereDate('start_date', $nextDay)
-                        ->orderBy('start_time', 'asc')
-                        ->value('item_code');
-                    $nextItemCode = $nextDayItem ?? null;
-                }
+                $currentIndex = array_search($currentItemCode, $dailyItems);
 
-                // 🔥 Fallback terakhir: ambil item_code yang belum selesai (is_done null)
-                if (!$nextItemCode) {
-                    $undoneItem = DailyItemCode::where('user_id', $userId)
-                        ->whereNull('is_done')
-                        ->orderBy('start_time', 'asc')
-                        ->value('item_code');
+                if ($currentIndex !== false && isset($dailyItems[$currentIndex + 1])) {
+                    // Masih ada item berikutnya di hari ini
+                    $nextItemCode = $dailyItems[$currentIndex + 1];
+                } else {
+                    // Kalau current item gak ada di hari ini atau sudah di akhir
+                    if ($currentIndex === false) {
+                        // Coba ambil item pertama hari ini
+                        $nextItemCode = $dailyItems[0] ?? null;
+                    }
 
-                    $nextItemCode = $undoneItem ?? null;
+                    // Kalau tetap null, ambil item pertama besok
+                    if (!$nextItemCode) {
+                        $nextDay = Carbon::tomorrow()->format('Y-m-d');
+                        $nextDayItem = DailyItemCode::where('user_id', $userId)
+                            ->whereDate('start_date', $nextDay)
+                            ->orderBy('start_time', 'asc')
+                            ->value('item_code');
+                        $nextItemCode = $nextDayItem ?? null;
+                    }
+
+                    // 🔥 Fallback terakhir: ambil item_code yang belum selesai (is_done null)
+                    if (!$nextItemCode) {
+                        $undoneItem = DailyItemCode::where('user_id', $userId)
+                            ->whereNull('is_done')
+                            ->orderBy('start_time', 'asc')
+                            ->value('item_code');
+
+                        $nextItemCode = $undoneItem ?? null;
+                    }
                 }
             }
         }
@@ -2004,9 +2073,6 @@ class DashboardController extends Controller
             'item_code' => $nextItemCode,
             'created_at' => Carbon::now(),
         ]);
-
-        // Set machine job user_id to NULL (machine is inactive)
-        MachineJob::where('user_id', $userId)->update(['item_code' => null, 'shift' => null, 'dic_id' => null]);
 
         return response()->json(['message' => 'Adjust Machine started', 'log_id' => $adjustMachine->id, 'operator' => [
             'name' => $operatorUser->name,
@@ -2119,12 +2185,10 @@ class DashboardController extends Controller
             ->first();
 
         if ($AdjustMachine) {
-            $AdjustMachine->update(['end_time' => Carbon::now(),
-            'remark' => $request->remarks,]);
-
-            // Reset machine job langsung di sini
-            $this->resetUserJob($userId);
-
+            $AdjustMachine->update([
+                'end_time' => Carbon::now(),
+                'remark' => $request->remarks,
+            ]);
 
             return response()->json(['message' => 'Adjust Machine completed']);
         }

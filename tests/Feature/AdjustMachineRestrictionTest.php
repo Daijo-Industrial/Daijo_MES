@@ -63,7 +63,7 @@ class AdjustMachineRestrictionTest extends TestCase
             $table->string('pic');
             $table->string('item_code');
             $table->dateTime('end_time')->nullable();
-            $table->text('remarks')->nullable();
+            $table->text('remark')->nullable();
             $table->timestamps();
         });
 
@@ -240,4 +240,51 @@ class AdjustMachineRestrictionTest extends TestCase
             'Joko Widodo',
         ], $kbnAdjusters);
     }
+
+    public function test_start_and_end_adjust_machine_does_not_reset_active_job()
+    {
+        $role = Role::where('name', 'OPERATOR')->first();
+        $machine = User::create([
+            'name'     => '0350F',
+            'email'    => '0350f_job@daijo.com',
+            'password' => bcrypt('password'),
+            'role_id'  => $role->id,
+        ]);
+
+        $machineJob = MachineJob::create([
+            'user_id'   => $machine->id,
+            'item_code' => 'ACTIVE-ITEM-01',
+            'shift'     => 1,
+            'dic_id'    => 99,
+        ]);
+
+        // 1. Start Adjust Machine
+        $responseStart = $this->actingAs($machine)->postJson(route('adjust.machine.start'), [
+            'pic_name'  => 'Budi Santoso',
+            'item_code' => 'ACTIVE-ITEM-01',
+        ]);
+
+        $responseStart->assertStatus(200);
+
+        // Assert MachineJob is NOT reset on start
+        $machineJob->refresh();
+        $this->assertEquals('ACTIVE-ITEM-01', $machineJob->item_code);
+        $this->assertEquals(1, $machineJob->shift);
+        $this->assertEquals(99, $machineJob->dic_id);
+
+        // 2. End Adjust Machine
+        $responseEnd = $this->actingAs($machine)->postJson(route('adjust.machine.end'), [
+            'remarks' => 'Selesai perbaikan/adjusting setting suhu',
+        ]);
+
+        $responseEnd->assertStatus(200);
+        $responseEnd->assertJson(['message' => 'Adjust Machine completed']);
+
+        // Assert MachineJob is STILL NOT reset on end
+        $machineJob->refresh();
+        $this->assertEquals('ACTIVE-ITEM-01', $machineJob->item_code);
+        $this->assertEquals(1, $machineJob->shift);
+        $this->assertEquals(99, $machineJob->dic_id);
+    }
 }
+

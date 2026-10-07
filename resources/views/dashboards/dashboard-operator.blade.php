@@ -263,7 +263,7 @@
                 <input type="password" id="password" class="border p-2 w-full rounded mt-2" placeholder="Enter Password...">
                 
                 <div id="nextItemCodeContainer" class="mt-3 hidden">
-                    <label for="next_item_code" class="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                    <label id="nextItemCodeLabel" for="next_item_code" class="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                         Pilih Item Code Selanjutnya:
                     </label>
                     <select id="next_item_code" class="border border-gray-300 rounded-xl p-2 w-full text-xs shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
@@ -1273,7 +1273,7 @@
                                 </div>
 
                                 <dialog id="addHourlyRemarksModal" class="rounded-md p-6 w-full max-w-md bg-white shadow">
-                                    <form id="addHourlyRemarksForm" method="POST" action="{{ route('hourly-remarks.store') }}" x-data="autoSubmitForm()" >
+                                    <form id="addHourlyRemarksForm" method="POST" action="{{ route('hourly-remarks.store') }}" x-data="{ nikInput: localStorage.getItem('nik') || '' }">
                                         @csrf
                                         <h3 class="text-lg font-bold mb-4">Tambah Hourly Remarks</h3>
 
@@ -1547,8 +1547,25 @@
 
 
                 <div class="bg-white shadow-sm sm:rounded-lg p-4 mt-6">
-                    <h3 class="text-xl font-bold mb-2">Scan Barcode</h3>
-                    <div id="ajaxAlert" class="hidden p-3 rounded mb-4 font-bold text-center"></div>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 mb-3 border-b border-gray-100 gap-2">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900 leading-tight">Scan Barcode</h3>
+                            <p class="text-xs text-gray-500">Scan label kardus hasil produksi secara berurutan</p>
+                        </div>
+                        <!-- Display Ringkasan Label Terakhir -->
+                        <div id="lastScannedBadgeContainer" class="flex items-center bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 shadow-sm transition-all duration-300">
+                            <span class="text-xs font-semibold text-blue-800 uppercase tracking-wider mr-2">Label Terakhir:</span>
+                            <span id="lastScannedLabelNumber" class="text-lg font-black font-mono text-blue-900 bg-white px-2 py-0.5 rounded border border-blue-300 shadow-inner">
+                                {{ (isset($spkData) && $spkData->isNotEmpty()) ? '#' . $spkData->last()->label : '-' }}
+                            </span>
+                            <span id="lastScannedSubMeta" class="ml-2 text-xs text-blue-700 hidden sm:inline-block">
+                                @if(isset($spkData) && $spkData->isNotEmpty())
+                                    (SPK: {{ $spkData->last()->spk_code }} | {{ $spkData->last()->quantity }} pcs)
+                                @endif
+                            </span>
+                        </div>
+                    </div>
+                    <div id="ajaxAlert" class="hidden p-4 rounded-lg mb-4 text-sm font-medium border shadow-sm transition-all duration-300"></div>
                     <form id="scanForm" action="{{ route('process.productionbarcode') }}" method="POST"
                         class="space-y-3" x-data="autoSubmitForm()" >
                         @csrf
@@ -1567,7 +1584,21 @@
                                 <label for="spk_code">SPK Code</label>
                                 <input type="text" id="spk_code" name="spk_code_auto" required
                                     class="border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-full"
-                                    placeholder="SPK Code" x-on:input="debouncedSubmit()" />
+                                    placeholder="SPK Code" 
+                                    x-on:input="
+                                        if ($el.value.includes('\t')) {
+                                            let parts = $el.value.split('\t');
+                                            if (parts.length >= 4) {
+                                                $el.value = parts[0].trim();
+                                                let qEl = document.getElementById('quantity'); if (qEl) qEl.value = parts[1].trim();
+                                                let wEl = document.getElementById('warehouse'); if (wEl) wEl.value = parts[2].trim();
+                                                let lEl = document.getElementById('label'); if (lEl) lEl.value = parts[3].trim();
+                                                checkAndSubmitForm();
+                                                return;
+                                            }
+                                        }
+                                        debouncedSubmit();
+                                    " />
                             </div>
                             <div>
                                 <label for="quantity">Quantity</label>
@@ -1583,9 +1614,19 @@
                             </div>
                             <div>
                                 <label for="label">Label</label>
-                                <input type="number" id="label" name="label_auto" required
+                                <input type="number" id="label" name="label_auto" required min="1" max="999999"
                                     class="border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-full"
-                                    placeholder="Label" x-on:input="debouncedSubmit()" />
+                                    placeholder="Label" 
+                                    x-on:input="
+                                        let spkVal = document.getElementById('spk_code')?.value.trim();
+                                        if (spkVal && $el.value.endsWith(spkVal) && $el.value.length > spkVal.length) {
+                                            $el.value = $el.value.slice(0, -spkVal.length);
+                                        }
+                                        if ($el.value.length > 6) {
+                                            $el.value = $el.value.slice(0, 6);
+                                        }
+                                        debouncedSubmit();
+                                    " />
                             </div>
                         </div>
 
@@ -1836,6 +1877,8 @@
             $(document).on('click', '#startMouldChange', function () {
                 $('#nikModal').removeClass('hidden').attr('data-action', 'mould');
                 $('#nextItemCodeContainer').removeClass('hidden');
+                $('#nextItemCodeLabel').text('Pilih Item Code Selanjutnya:');
+                $('#next_item_code').val('{{ $defaultNextItemCode }}');
                 $('#setupMolderSelectContainer').removeClass('hidden');
                 $('#adjusterSelectContainer').addClass('hidden');
                 $('#nik').val('');
@@ -1847,6 +1890,12 @@
             $(document).on('click', '#startAdjustMachine', function () {
                 $('#nikModal').removeClass('hidden').attr('data-action', 'adjust');
                 $('#nextItemCodeContainer').removeClass('hidden');
+                $('#nextItemCodeLabel').text('Pilih Item Code:');
+                @if($itemCode)
+                    $('#next_item_code').val('{{ $itemCode }}');
+                @else
+                    $('#next_item_code').val('{{ $defaultNextItemCode }}');
+                @endif
                 $('#adjusterSelectContainer').removeClass('hidden');
                 $('#setupMolderSelectContainer').addClass('hidden');
                 $('#nik').val('');
@@ -2062,9 +2111,15 @@
             $('#scanForm').on('submit', function (e) {
                 e.preventDefault();
 
+                // Capture input values before clearing
+                const inputSpk = $('#spk_code').val()?.trim() || '';
+                const inputQty = $('#quantity').val()?.trim() || '';
+                const inputWh = $('#warehouse').val()?.trim() || '';
+                const inputLabel = $('#label').val()?.trim() || '';
+
                 // Clear previous alerts
                 const $alert = $('#ajaxAlert');
-                $alert.addClass('hidden').removeClass('bg-green-100 text-green-700 bg-red-100 text-red-700');
+                $alert.addClass('hidden').removeClass('bg-green-50 text-green-900 border-green-500 bg-amber-50 text-amber-900 border-amber-400 bg-red-50 text-red-900 border-red-500 border-2');
 
                 // Get form details
                 const actionUrl = $(this).attr('action');
@@ -2075,31 +2130,75 @@
                     type: 'POST',
                     data: formData,
                     success: function (response) {
-                        // Reset submit flag di AlpineJS
-                        const alpineElement = document.querySelector('[x-data="autoSubmitForm()"]');
-                        if (alpineElement && window.Alpine) {
-                            Alpine.$data(alpineElement).isSubmitting = false;
+                        // Reset submit flag di AlpineJS pada form scan
+                        const scanFormEl = document.getElementById('scanForm');
+                        if (scanFormEl && window.Alpine) {
+                            Alpine.$data(scanFormEl).isSubmitting = false;
                         }
 
-                        // Display success message in alert
-                        $alert.text(response.message)
+                        const labelNo = response.label || inputLabel;
+                        const spkNo = response.spk_code || inputSpk;
+                        const qtyNo = response.quantity || inputQty;
+                        const scanTime = response.time || new Date().toLocaleTimeString('id-ID', { hour12: false });
+
+                        // Update badge label terakhir
+                        $('#lastScannedLabelNumber').text('#' + labelNo);
+                        $('#lastScannedSubMeta').text('(SPK: ' + spkNo + ' | ' + qtyNo + ' pcs)').removeClass('hidden');
+                        
+                        // Efek highlight pada badge
+                        const $badgeContainer = $('#lastScannedBadgeContainer');
+                        $badgeContainer.addClass('ring-2 ring-green-400 bg-green-50');
+                        setTimeout(() => {
+                            $badgeContainer.removeClass('ring-2 ring-green-400');
+                        }, 1500);
+
+                        // Render rich alert
+                        if (response.was_recovered) {
+                            $alert.html(`
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-3xl">⚠️</span>
+                                        <div>
+                                            <div class="text-xs font-bold uppercase tracking-wider text-amber-700">Scan Berhasil (Auto-Koreksi)</div>
+                                            <div class="text-base font-extrabold text-amber-900">
+                                                Label <span class="px-2 py-0.5 bg-amber-200 text-amber-900 rounded font-mono text-lg shadow-sm border border-amber-300">#${labelNo}</span>
+                                                <span class="text-xs font-normal text-amber-700 ml-2">(Scan asli terkoreksi dari: <code class="line-through font-bold">${response.original_label}</code>)</span>
+                                            </div>
+                                            <div class="text-xs text-amber-800 mt-0.5 font-semibold">Tercatat: SPK ${spkNo} | Qty: ${qtyNo} pcs</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs font-mono font-bold text-amber-800">${scanTime} WIB</div>
+                                </div>
+                            `)
                             .removeClass('hidden')
-                            .addClass('bg-green-100 text-green-700');
+                            .addClass('bg-amber-50 text-amber-900 border-2 border-amber-400');
+                        } else {
+                            $alert.html(`
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-3xl">✅</span>
+                                        <div>
+                                            <div class="text-xs font-bold uppercase tracking-wider text-green-700">Scan Berhasil</div>
+                                            <div class="text-base font-extrabold text-green-900">
+                                                Label <span class="px-2 py-0.5 bg-green-200 text-green-900 rounded font-mono text-lg shadow-sm border border-green-300">#${labelNo}</span>
+                                                <span class="text-sm font-semibold text-green-800 ml-2">(${qtyNo} pcs | SPK: ${spkNo})</span>
+                                            </div>
+                                            <div class="text-xs text-green-700 mt-0.5">Data berhasil disimpan ke sistem</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs font-mono font-bold text-green-800">${scanTime} WIB</div>
+                                </div>
+                            `)
+                            .removeClass('hidden')
+                            .addClass('bg-green-50 text-green-900 border-2 border-green-500');
+                        }
 
                         // Fetch updated page content via background GET to replace elements
                         $.get(window.location.href, function (html) {
                             const $html = $(html);
-                            
-                            // 1. Update pekerjaanTableContainer
                             $('#pekerjaanTableContainer').html($html.find('#pekerjaanTableContainer').html());
-
-                            // 2. Update detailDataModal tbody
                             $('#detailDataModalTbody').html($html.find('#detailDataModalTbody').html());
-
-                            // 3. Update detailRemarkModal tbody
                             $('#detailRemarkModalTbody').html($html.find('#detailRemarkModalTbody').html());
-
-                            // 4. Update summaryTableContainer
                             $('#summaryTableContainer').html($html.find('#summaryTableContainer').html());
                         });
 
@@ -2114,41 +2213,108 @@
                             $('#spk_code').focus();
                         }, 100);
 
-                        // Clear alert after 5 seconds
-                        setTimeout(function () {
+                        // Clear alert after 7 seconds (if no new scan)
+                        clearTimeout(window.scanAlertTimer);
+                        window.scanAlertTimer = setTimeout(function () {
                             $alert.addClass('hidden');
-                        }, 5000);
+                        }, 7000);
                     },
                     error: function (xhr) {
-                        // Reset submit flag di AlpineJS
-                        const alpineElement = document.querySelector('[x-data="autoSubmitForm()"]');
-                        if (alpineElement && window.Alpine) {
-                            Alpine.$data(alpineElement).isSubmitting = false;
+                        // Reset submit flag di AlpineJS pada form scan
+                        const scanFormEl = document.getElementById('scanForm');
+                        if (scanFormEl && window.Alpine) {
+                            Alpine.$data(scanFormEl).isSubmitting = false;
                         }
 
-                        let errMsg = 'Terjadi kesalahan saat menscan barcode.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            errMsg = xhr.responseJSON.message;
-                        } else if (xhr.responseJSON && xhr.responseJSON.errors) {
-                            // Extract validation errors
-                            const errors = xhr.responseJSON.errors;
-                            errMsg = Object.values(errors).map(errArr => errArr.join(', ')).join('; ');
+                        const badLabel = xhr.responseJSON?.label || inputLabel || '-';
+                        const badSpk = xhr.responseJSON?.spk_code || inputSpk || '-';
+                        const status = xhr.responseJSON?.status || 'error';
+                        let errMsg = xhr.responseJSON?.message || 'Terjadi kesalahan saat memproses scan barcode.';
+
+                        if (!xhr.responseJSON?.message && xhr.responseJSON?.errors) {
+                            errMsg = Object.values(xhr.responseJSON.errors).map(errArr => errArr.join(', ')).join('; ');
                         }
-                        
-                        // Display error in alert
-                        $alert.text(errMsg)
+
+                        // Efek highlight error pada badge
+                        const $badgeContainer = $('#lastScannedBadgeContainer');
+                        $badgeContainer.addClass('ring-2 ring-red-400');
+                        setTimeout(() => {
+                            $badgeContainer.removeClass('ring-2 ring-red-400');
+                        }, 2000);
+
+                        let alertHtml = '';
+                        if (status === 'duplicate') {
+                            alertHtml = `
+                                <div class="flex items-center space-x-3 text-left">
+                                    <span class="text-3xl">⛔</span>
+                                    <div>
+                                        <div class="text-xs font-bold uppercase tracking-wider text-red-700">Label Duplikat (Sudah Pernah Di-Scan)</div>
+                                        <div class="text-base font-extrabold text-red-900">
+                                            Label <span class="px-2 py-0.5 bg-red-200 text-red-900 rounded font-mono text-lg shadow-sm border border-red-300">#${badLabel}</span> SUDAH TERCATAT SEBELUMNYA!
+                                        </div>
+                                        <div class="text-xs text-red-700 mt-0.5 font-medium">
+                                            SPK: <strong>${badSpk}</strong>. Kardus dengan nomor label ini sudah discan sebelumnya, mohon pastikan kardus tidak di-scan dua kali.
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (status === 'stutter') {
+                            alertHtml = `
+                                <div class="flex items-center space-x-3 text-left">
+                                    <span class="text-3xl">⚠️</span>
+                                    <div>
+                                        <div class="text-xs font-bold uppercase tracking-wider text-red-700">Scanner Stutter / Key Repeat</div>
+                                        <div class="text-base font-extrabold text-red-900">
+                                            Nilai Terbaca: <span class="px-2 py-0.5 bg-red-200 text-red-900 rounded font-mono text-lg shadow-sm border border-red-300 font-bold">${badLabel}</span>
+                                        </div>
+                                        <div class="text-xs text-red-700 mt-0.5 font-medium">
+                                            Scanner mengirimkan digit berulang (tombol macet). Harap periksa scanner dan scan ulang barcode.
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            alertHtml = `
+                                <div class="flex items-center space-x-3 text-left">
+                                    <span class="text-3xl">⛔</span>
+                                    <div>
+                                        <div class="text-xs font-bold uppercase tracking-wider text-red-700">Scan Barcode Gagal</div>
+                                        <div class="text-base font-extrabold text-red-900">
+                                            Label Diterima: <span class="px-2 py-0.5 bg-red-200 text-red-900 rounded font-mono text-lg shadow-sm border border-red-300">#${badLabel}</span>
+                                        </div>
+                                        <div class="text-xs text-red-700 mt-0.5 font-medium">${errMsg}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        // Display rich error in alert
+                        $alert.html(alertHtml)
                             .removeClass('hidden')
-                            .addClass('bg-red-100 text-red-700');
+                            .addClass('bg-red-50 text-red-900 border-2 border-red-500');
 
                         // Clear inputs but refocus SPK code
                         $('#spk_code').val('');
                         $('#quantity').val('');
                         $('#warehouse').val('');
                         $('#label').val('');
-                        
+
                         setTimeout(function () {
                             $('#spk_code').focus();
                         }, 100);
+
+                        // Keep error visible longer (15s) so operator has time to read
+                        clearTimeout(window.scanAlertTimer);
+                        window.scanAlertTimer = setTimeout(function () {
+                            $alert.addClass('hidden');
+                        }, 15000);
+                    },
+                    complete: function () {
+                        // Pastikan isSubmitting selalu kembali false setelah request selesai
+                        const scanFormEl = document.getElementById('scanForm');
+                        if (scanFormEl && window.Alpine) {
+                            Alpine.$data(scanFormEl).isSubmitting = false;
+                        }
                     }
                 });
             });
@@ -2860,6 +3026,26 @@
                         this.nikInput = localStorage.getItem('nik') || '';
                     }
 
+                    // Auto-clean & validate label if appended with SPK or stutter
+                    const labelEl = document.getElementById('label');
+                    const spkEl = document.getElementById('spk_code');
+                    if (labelEl && spkEl) {
+                        let lVal = labelEl.value.trim();
+                        let sVal = spkEl.value.trim();
+                        // Auto-strip SPK jika tertempel di belakang nomor label (misal 30026026744)
+                        if (sVal && lVal.endsWith(sVal) && lVal.length > sVal.length) {
+                            lVal = lVal.slice(0, -sVal.length);
+                            labelEl.value = lVal;
+                        }
+                        // Cegah submit jika label terindikasi rusak (panjang > 6 digit atau ada 5 digit kembar berulang)
+                        if (lVal.length > 6 || /(\d)\1{4,}/.test(lVal)) {
+                            alert('Nomor label terindikasi salah scan atau scanner mengalami tombol macet (' + lVal + '). Harap scan ulang.');
+                            labelEl.value = '';
+                            setTimeout(() => spkEl.focus(), 50);
+                            return;
+                        }
+                    }
+
                     // Securely set NIK, pic_2, pic_3 in scan form hidden input
                     const form = document.getElementById('scanForm');
                     if (form) {
@@ -2886,6 +3072,11 @@
                     if (allFilled && this.nikInput) {
                         console.log("✅ Form is valid. Submitting...");
                         this.isSubmitting = true;
+                        // Auto-unlock safety timeout (2 detik) jika AJAX lambat / tidak ter-reset
+                        setTimeout(() => {
+                            this.isSubmitting = false;
+                        }, 2000);
+                        if (labelEl) labelEl.blur();
                         $('#scanForm').submit();
                     } else {
                         console.warn("❌ Form not submitted. Missing required fields or NIK.");

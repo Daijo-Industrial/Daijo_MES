@@ -320,12 +320,15 @@ class InitialBarcodeController extends Controller
         // Position format: 'right' -> 'RH', 'left' -> 'LH'
         $positionInput = $customPosition ?: (($item?->position && $item->position !== '0') ? $item->position : '');
         $posRaw = strtolower(trim((string) $positionInput));
-        if ($posRaw === 'right' || $posRaw === 'rh') {
+        if ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r') {
             $position = 'RH';
-        } elseif ($posRaw === 'left' || $posRaw === 'lh') {
+            $enlargedHalfCode = 2;
+        } elseif ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l') {
             $position = 'LH';
+            $enlargedHalfCode = 1;
         } else {
             $position = strtoupper($positionInput ?: '-');
+            $enlargedHalfCode = (str_contains($posRaw, 'left') || str_contains($posRaw, 'lh')) ? 1 : 2;
         }
 
         // Half codes for ITSP
@@ -379,6 +382,7 @@ class InitialBarcodeController extends Controller
                 'half_code_1' => $h1,
                 'half_code_2' => $h2,
                 'itsp_code' => $itspCode,
+                'enlarged_half_code' => $enlargedHalfCode,
                 'is_sp' => $isSp,
                 'spk_number' => $spkNumber,
                 'warehouse' => $warehouse,

@@ -40,6 +40,8 @@ class DailyDeliveryItemSummarySheet implements FromCollection, WithHeadings, Wit
             'Shift 1 (Pcs)',
             'Shift 2 (Pcs)',
             'Shift 3 (Pcs)',
+            'Qty di Gudang (Pcs)',
+            'Qty Keluar (Pcs)',
             'Daftar SPK',
             'Delivery / Pengirim',
         ];
@@ -61,6 +63,8 @@ class DailyDeliveryItemSummarySheet implements FromCollection, WithHeadings, Wit
             $row['shift_breakdown'][1]['qty'] ?? 0,
             $row['shift_breakdown'][2]['qty'] ?? 0,
             $row['shift_breakdown'][3]['qty'] ?? 0,
+            $row['qty_in_warehouse'] ?? $row['total_qty'],
+            $row['qty_out'] ?? 0,
             $spkStr,
             $delStr,
         ];

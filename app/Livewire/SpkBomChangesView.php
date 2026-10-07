@@ -40,6 +40,7 @@ class SpkBomChangesView extends Component
     public string|int|float|null $editPlanQty = null;
     public string|int|float|null $editOldPlanQty = null;
     public string|int|float|null $editBaseQty = null;
+    public ?float $editOriginalBaseQty = null;
     public float $editSpkPlannedQty = 0;
 
     // State Modal Tambah Material Baru
@@ -226,7 +227,7 @@ class SpkBomChangesView extends Component
         }
     }
 
-    public function submitBatchChanges(): void
+    public function submitBatchChanges()
     {
         if (empty($this->editingSpk)) {
             $this->flashError = 'Tidak ada SPK yang sedang dalam mode edit.';
@@ -252,7 +253,10 @@ class SpkBomChangesView extends Component
                 if (!empty($staged['delete'])) {
                     $line['delete'] = true;
                 } else {
-                    if (isset($staged['base_qty']) && $staged['base_qty'] !== null && $staged['base_qty'] !== '') {
+                    $isNewItem = !empty($staged['is_new']) || ($staged['action_type'] ?? '') === 'ADD_MATERIAL';
+                    $hasExplicitBase = !empty($staged['base_qty_changed']) || $isNewItem;
+
+                    if ($hasExplicitBase && isset($staged['base_qty']) && $staged['base_qty'] !== null && $staged['base_qty'] !== '') {
                         $line['base_qty'] = (float) $staged['base_qty'];
                     }
                     if (isset($staged['plan_qty']) && $staged['plan_qty'] !== null && $staged['plan_qty'] !== '') {
@@ -279,25 +283,131 @@ class SpkBomChangesView extends Component
             $spkNo = $this->editingSpk;
             $count = count($payloadLines);
 
-            $result = $service->updateProductionOrderLines(
-                $spkNo,
-                $payloadLines,
-                $userId,
-                $userName
-            );
+            $sapLines = array_map(function ($line) {
+                return array_filter($line, function ($key) {
+                    return !str_starts_with($key, '_');
+                }, ARRAY_FILTER_USE_KEY);
+            }, $payloadLines);
 
-            $this->flashSuccess = "Berhasil mengirim {$count} perubahan material untuk SPK {$spkNo} ke SAP! ({$result['message']})";
-            $this->flashError = null;
+            $sapPayload = [
+                'spk_code' => $spkNo,
+                'lines'    => $sapLines,
+            ];
 
-            // Bersihkan draft & keluar dari mode edit
-            $this->stagedLines = [];
-            $this->editingSpk = null;
-            $this->refreshSpkBom($spkNo);
+            $result = null;
+            $errorMsg = null;
+
+            try {
+                $result = $service->updateProductionOrderLines(
+                    $spkNo,
+                    $payloadLines,
+                    $userId,
+                    $userName
+                );
+
+                $this->flashSuccess = "Berhasil mengirim {$count} perubahan material untuk SPK {$spkNo} ke SAP! ({$result['message']})";
+                $this->flashError = null;
+
+                // Bersihkan draft & keluar dari mode edit
+                $this->stagedLines = [];
+                $this->editingSpk = null;
+                $this->refreshSpkBom($spkNo);
+
+            } catch (\Exception $e) {
+                $errorMsg = $e->getMessage();
+                $this->flashError = 'Gagal mengirim perubahan ke SAP: ' . $e->getMessage();
+                $this->flashSuccess = null;
+            }
+
+            // Simpan ke session untuk ditampilkan di page preview JSON
+            session()->put('sap_payload_preview', [
+                'spk_code'     => $spkNo,
+                'endpoint'     => rtrim(config('services.sap.base_url', 'http://localhost:9000'), '/') . '/api/sap_production_order/update',
+                'method'       => 'POST',
+                'payload'      => $sapPayload,
+                'payload_json' => self::formatJsonWithoutScientific($sapPayload),
+                'result'       => $result,
+                'error'        => $errorMsg,
+                'status'       => $result ? 'SUCCESS' : 'FAILED',
+                'timestamp'    => now()->format('Y-m-d H:i:s'),
+            ]);
+
+            // Dispatch browser event untuk membuka tab/page baru otomatis
+            $this->dispatch('open-payload-preview', url: route('spk.bom-changes.preview-payload'));
 
         } catch (\Exception $e) {
-            $this->flashError = 'Gagal mengirim perubahan ke SAP: ' . $e->getMessage();
+            $this->flashError = 'Gagal memproses perubahan: ' . $e->getMessage();
             $this->flashSuccess = null;
         }
+    }
+
+    public static function formatDecimalClean(float|string|null $val, int $maxDecimals = 8): string
+    {
+        if ($val === null || $val === '') {
+            return '';
+        }
+        $floatVal = (float) $val;
+        $str = sprintf("%.{$maxDecimals}f", $floatVal);
+        return rtrim(rtrim($str, '0'), '.');
+    }
+
+    public static function formatJsonWithoutScientific(mixed $data): string
+    {
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        return preg_replace_callback('/:\s*([0-9]+\.?[0-9]*[eE][-+]?[0-9]+)/', function ($m) {
+            $num = (float) $m[1];
+            $str = sprintf('%.8f', $num);
+            return ': ' . rtrim(rtrim($str, '0'), '.');
+        }, $json);
+    }
+
+    public function previewDraftPayload(): void
+    {
+        if (empty($this->editingSpk) || empty($this->stagedLines)) {
+            $this->flashError = 'Belum ada perubahan material di draft untuk di-preview.';
+            return;
+        }
+
+        $payloadLines = [];
+        foreach ($this->stagedLines as $staged) {
+            $line = ['item_code' => $staged['item_code']];
+            if (!empty($staged['delete'])) {
+                $line['delete'] = true;
+            } else {
+                $isNewItem = !empty($staged['is_new']) || ($staged['action_type'] ?? '') === 'ADD_MATERIAL';
+                $hasExplicitBase = !empty($staged['base_qty_changed']) || $isNewItem;
+
+                if ($hasExplicitBase && isset($staged['base_qty']) && $staged['base_qty'] !== null && $staged['base_qty'] !== '') {
+                    $line['base_qty'] = (float) $staged['base_qty'];
+                }
+                if (isset($staged['plan_qty']) && $staged['plan_qty'] !== null && $staged['plan_qty'] !== '') {
+                    $line['plan_qty'] = (float) $staged['plan_qty'];
+                }
+                if (!empty($staged['warehouse'])) {
+                    $line['warehouse'] = trim($staged['warehouse']);
+                }
+            }
+            $payloadLines[] = $line;
+        }
+
+        $sapPayload = [
+            'spk_code' => $this->editingSpk,
+            'lines'    => $payloadLines,
+        ];
+
+        session()->put('sap_payload_preview', [
+            'spk_code'     => $this->editingSpk,
+            'endpoint'     => rtrim(config('services.sap.base_url', 'http://localhost:9000'), '/') . '/api/sap_production_order/update',
+            'method'       => 'POST',
+            'payload'      => $sapPayload,
+            'payload_json' => self::formatJsonWithoutScientific($sapPayload),
+            'result'       => null,
+            'error'        => null,
+            'status'       => 'DRAFT / PREVIEW',
+            'timestamp'    => now()->format('Y-m-d H:i:s'),
+        ]);
+
+        $this->dispatch('open-payload-preview', url: route('spk.bom-changes.preview-payload'));
     }
 
     // ==========================================
@@ -310,22 +420,35 @@ class SpkBomChangesView extends Component
         $this->editItemCode = $itemCode;
         $this->editItemDescription = $desc ?: '-';
 
-        // Jika item ini sudah pernah diedit di draft, gunakan nilai dari draft
-        if (isset($this->stagedLines[$itemCode])) {
-            $staged = $this->stagedLines[$itemCode];
-            $this->editPlanQty = $staged['plan_qty'] ?? $planQty;
-            $this->editOldPlanQty = $staged['old_plan_qty'] ?? $planQty;
-            $this->editBaseQty = $staged['base_qty'] ?? $baseQty;
-        } else {
-            $this->editPlanQty = $planQty;
-            $this->editOldPlanQty = $planQty;
-            $this->editBaseQty = $baseQty;
-        }
-
         if ($spkPlannedQty === null) {
             $spkPlannedQty = (float) SpkMaster::where('spk_number', $spkNumber)->value('planned_quantity');
         }
         $this->editSpkPlannedQty = (float) $spkPlannedQty;
+
+        // Jika item ini sudah pernah diedit di draft, gunakan nilai dari draft
+        if (isset($this->stagedLines[$itemCode])) {
+            $staged = $this->stagedLines[$itemCode];
+            $rawPlan = $staged['plan_qty'] ?? $planQty;
+            $rawOldPlan = $staged['old_plan_qty'] ?? $planQty;
+            $rawBase = $staged['base_qty'] ?? $baseQty;
+        } else {
+            $rawPlan = $planQty;
+            $rawOldPlan = $planQty;
+            $rawBase = $baseQty;
+        }
+
+        // Jika baseQty masih kosong/0, hitung otomatis dari planQty / spkPlannedQty
+        if (($rawBase === null || (float)$rawBase == 0) && $rawPlan > 0 && $this->editSpkPlannedQty > 0) {
+            $rawBase = round($rawPlan / $this->editSpkPlannedQty, 6);
+        }
+
+        $this->editOldPlanQty = $rawOldPlan;
+        $this->editBaseQty = $rawBase !== null ? self::formatDecimalClean($rawBase) : '';
+        $this->editPlanQty = $rawPlan !== null ? self::formatDecimalClean($rawPlan) : '';
+
+        // Simpan nilai asli base qty untuk deteksi apakah user benar-benar mengubah base_qty
+        $this->editOriginalBaseQty = $rawBase !== null ? (float) $rawBase : null;
+
         $this->showEditModal = true;
     }
 
@@ -334,42 +457,76 @@ class SpkBomChangesView extends Component
         $clean = str_replace(',', '.', trim((string) $this->editBaseQty));
         if ($clean !== '' && is_numeric($clean)) {
             $base = (float) $clean;
-            if ($base > 0 && $this->editSpkPlannedQty > 0) {
-                $this->editPlanQty = round($base * $this->editSpkPlannedQty, 4);
+            if ($base >= 0 && $this->editSpkPlannedQty > 0) {
+                $this->editPlanQty = self::formatDecimalClean(round($base * $this->editSpkPlannedQty, 4));
             }
         }
     }
 
     public function submitEditQty(): void
     {
-        if ($this->editPlanQty !== null) {
-            $this->editPlanQty = str_replace(',', '.', trim((string) $this->editPlanQty));
-        }
         if ($this->editBaseQty !== null && $this->editBaseQty !== '') {
             $this->editBaseQty = str_replace(',', '.', trim((string) $this->editBaseQty));
+        }
+        if ($this->editPlanQty !== null && $this->editPlanQty !== '') {
+            $this->editPlanQty = str_replace(',', '.', trim((string) $this->editPlanQty));
         }
 
         $this->validate([
             'editSpkNumber' => 'required',
             'editItemCode'  => 'required',
-            'editPlanQty'   => 'required|numeric|min:0',
-            'editBaseQty'   => 'nullable|numeric|gt:0',
         ]);
+
+        $target = $this->editSpkPlannedQty > 0 ? (float) $this->editSpkPlannedQty : 1.0;
+
+        $hasBase = $this->editBaseQty !== null && $this->editBaseQty !== '' && is_numeric($this->editBaseQty) && (float)$this->editBaseQty > 0;
+        $hasPlan = $this->editPlanQty !== null && $this->editPlanQty !== '' && is_numeric($this->editPlanQty) && (float)$this->editPlanQty >= 0;
+
+        $isBaseChanged = false;
+        if ($this->editOriginalBaseQty !== null && $hasBase) {
+            $isBaseChanged = abs((float) $this->editBaseQty - (float) $this->editOriginalBaseQty) > 0.0000001;
+        }
+
+        if ($hasBase && ($isBaseChanged || !$hasPlan)) {
+            $this->validate([
+                'editBaseQty' => 'required|numeric|gt:0',
+            ], [
+                'editBaseQty.required' => 'Base Qty (kebutuhan per 1 unit FG) wajib diisi.',
+                'editBaseQty.numeric'  => 'Base Qty harus berupa angka valid.',
+                'editBaseQty.gt'       => 'Base Qty harus lebih besar dari 0.',
+            ]);
+            $base = (float) $this->editBaseQty;
+            $this->editPlanQty = round($base * $target, 4);
+        } elseif ($hasPlan) {
+            $this->validate([
+                'editPlanQty' => 'required|numeric|min:0',
+            ]);
+            $plan = (float) $this->editPlanQty;
+            $this->editBaseQty = round($plan / $target, 6);
+            $base = (float) $this->editBaseQty;
+            $isBaseChanged = true;
+        } else {
+            $this->validate([
+                'editBaseQty' => 'required|numeric|gt:0',
+            ]);
+            $base = (float) $this->editBaseQty;
+        }
 
         if (empty($this->editingSpk) || $this->editingSpk !== $this->editSpkNumber) {
             $this->startEditMode($this->editSpkNumber);
         }
 
         $this->stagedLines[$this->editItemCode] = [
-            'item_code'    => $this->editItemCode,
-            'item_name'    => $this->editItemDescription,
-            'action_type'  => 'UPDATE_QTY',
-            'base_qty'     => ($this->editBaseQty !== null && $this->editBaseQty !== '') ? (float) $this->editBaseQty : null,
-            'plan_qty'     => (float) $this->editPlanQty,
-            'old_plan_qty' => $this->editOldPlanQty ? (float) $this->editOldPlanQty : null,
-            'warehouse'    => null,
-            'delete'       => false,
-            'is_new'       => false,
+            'item_code'         => $this->editItemCode,
+            'item_name'         => $this->editItemDescription,
+            'action_type'       => 'UPDATE_QTY',
+            'base_qty'          => $base,
+            'base_qty_changed'  => true,
+            'plan_qty'          => (float) $this->editPlanQty,
+            'old_plan_qty'      => $this->editOldPlanQty ? (float) $this->editOldPlanQty : null,
+            'warehouse'         => null,
+            'delete'            => false,
+            'is_new'            => false,
         ];
 
         $this->flashSuccess = "Perubahan material {$this->editItemCode} disimpan ke draft. Klik 'Selesai & Kirim ke SAP' untuk menerapkan.";

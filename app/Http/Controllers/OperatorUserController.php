@@ -252,7 +252,7 @@ class OperatorUserController extends Controller
     public function createOperator()
     {
         $departments = ['390', '351'];
-        $positions = ['Operator', 'Adjuster', 'Setup Mold'];
+        $positions = ['Operator', 'Adjuster', 'Setup Mold', 'Maintenance'];
 
         return view('create-operator', compact('departments', 'positions'));
     }
@@ -262,7 +262,7 @@ class OperatorUserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'department' => 'required|in:390,351',
-            'position' => 'required|in:Operator,Adjuster,Setup Mold',
+            'position' => 'required|in:Operator,Adjuster,Setup Mold,Maintenance',
         ]);
 
         $password = Str::random(10);

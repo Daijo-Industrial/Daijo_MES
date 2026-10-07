@@ -284,9 +284,9 @@
                                 <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Shift</label>
                                 <select wire:model="delivery_shift" class="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                                     <option value="">Pilih Shift</option>
-                                    <option value="1">Shift 1</option>
-                                    <option value="2">Shift 2</option>
-                                    <option value="3">Shift 3</option>
+                                    <option value="1">Shift 1 (07:30 - 15:30)</option>
+                                    <option value="2">Shift 2 (15:30 - 23:30)</option>
+                                    <option value="3">Shift 3 (23:30 - 07:30)</option>
                                 </select>
                                 @error('delivery_shift') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                             </div>

@@ -215,9 +215,9 @@
                                 <th class="px-4 py-3 text-center w-28">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            @forelse($recap['items'] as $index => $item)
-                                <tr x-data="{ expanded: false }" class="hover:bg-gray-50/70 transition">
+                        @forelse($recap['items'] as $index => $item)
+                            <tbody x-data="{ expanded: false }" class="divide-y divide-gray-100 border-b border-gray-100">
+                                <tr class="hover:bg-gray-50/70 transition">
                                     <td class="px-4 py-3 text-center font-bold text-gray-400">
                                         {{ $index + 1 }}
                                     </td>
@@ -237,6 +237,17 @@
                                             {{ number_format($item['total_qty']) }}
                                         </span>
                                         <span class="text-[10px] text-gray-400 block font-normal">pcs</span>
+                                        @if(($item['qty_out'] ?? 0) > 0)
+                                            @if(($item['qty_in_warehouse'] ?? 0) == 0)
+                                                <span class="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-100 text-red-700">
+                                                    Semua Keluar
+                                                </span>
+                                            @else
+                                                <span class="text-[9px] text-red-600 font-semibold block mt-0.5" title="Sudah keluar via SO Scan">
+                                                    Keluar: {{ number_format($item['qty_out']) }} pcs
+                                                </span>
+                                            @endif
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3 text-center whitespace-nowrap font-mono font-bold text-gray-800">
                                         {{ number_format($item['total_boxes']) }} <span class="text-[10px] text-gray-400 font-normal">box</span>
@@ -277,79 +288,106 @@
                                     </td>
                                     <td class="px-4 py-3 text-center whitespace-nowrap">
                                         <button type="button" @click="expanded = !expanded" 
-                                                class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 mx-auto"
+                                                class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 mx-auto cursor-pointer"
                                                 :class="expanded ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
                                             <span x-text="expanded ? 'Tutup ▲' : 'Rincian ▼'"></span>
                                         </button>
                                     </td>
+                                </tr>
 
-                                    {{-- Sub-table: Expandable Pallet & Box Details --}}
-                                    <tr x-show="expanded" x-cloak class="bg-blue-50/20">
-                                        <td colspan="10" class="px-6 py-4">
-                                            <div class="space-y-3">
-                                                <div class="text-xs font-bold text-gray-700 flex items-center justify-between">
-                                                    <span>📦 Rincian Pallet yang Memuat [{{ $item['part_no'] }}]:</span>
-                                                    <span class="text-gray-400 font-normal">Total {{ count($item['pallets']) }} Pallet</span>
-                                                </div>
+                                {{-- Sub-table: Expandable Pallet & Box Details --}}
+                                <tr x-show="expanded" x-cloak class="bg-blue-50/25">
+                                    <td colspan="10" class="px-6 py-4">
+                                        <div class="space-y-3">
+                                            <div class="text-xs font-bold text-gray-700 flex items-center justify-between">
+                                                <span>📦 Rincian Pallet yang Memuat [{{ $item['part_no'] }}]:</span>
+                                                <span class="text-gray-400 font-normal">Total {{ count($item['pallets']) }} Pallet</span>
+                                            </div>
 
-                                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                    @foreach($item['pallets'] as $pItem)
-                                                        <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs space-y-2">
-                                                            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
-                                                                <div>
-                                                                    <span class="font-mono font-black text-xs text-blue-700">{{ $pItem['pallet_id'] }}</span>
-                                                                    <span class="inline-block ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold {{ $pItem['delivery_shift'] == 1 ? 'bg-amber-100 text-amber-800' : ($pItem['delivery_shift'] == 2 ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800') }}">
-                                                                        Shift {{ $pItem['delivery_shift'] }}
-                                                                    </span>
-                                                                </div>
-                                                                <span class="text-[11px] font-mono font-bold text-gray-500">{{ $pItem['created_at'] }}</span>
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                @foreach($item['pallets'] as $pItem)
+                                                    <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs space-y-2">
+                                                        <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                                                            <div>
+                                                                <span class="font-mono font-black text-xs text-blue-700">{{ $pItem['pallet_id'] }}</span>
+                                                                <span class="inline-block ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold {{ $pItem['delivery_shift'] == 1 ? 'bg-amber-100 text-amber-800' : ($pItem['delivery_shift'] == 2 ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800') }}">
+                                                                    Shift {{ $pItem['delivery_shift'] }}
+                                                                </span>
                                                             </div>
-
-                                                            <div class="text-xs space-y-1">
-                                                                <div class="flex justify-between">
-                                                                    <span class="text-gray-500">Pengirim:</span>
-                                                                    <span class="font-bold text-gray-800">{{ $pItem['delivery_name'] }}</span>
-                                                                </div>
-                                                                <div class="flex justify-between">
-                                                                    <span class="text-gray-500">Lot / MO:</span>
-                                                                    <span class="font-mono text-gray-700">{{ $pItem['lot_no'] }}</span>
-                                                                </div>
-                                                                <div class="flex justify-between">
-                                                                    <span class="text-gray-500">Slot Rak:</span>
-                                                                    <span class="font-mono font-bold {{ $pItem['slot'] === 'TEMPORARY' ? 'text-amber-600' : 'text-emerald-700' }}">
-                                                                        {{ $pItem['slot'] }}
+                                                            <div class="text-right">
+                                                                @if(!empty($pItem['is_out']))
+                                                                    <span class="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-red-100 text-red-700" title="Waktu Keluar: {{ $pItem['out_time'] ?? '-' }}">
+                                                                        🔴 Keluar {{ $pItem['out_time'] ? '(' . $pItem['out_time'] . ')' : '' }}
                                                                     </span>
-                                                                </div>
-                                                                <div class="flex justify-between pt-1 border-t border-gray-50">
-                                                                    <span class="text-gray-700 font-bold">Qty Part Ini:</span>
-                                                                    <span class="font-mono font-black text-blue-700">
-                                                                        {{ number_format($pItem['item_qty']) }} pcs ({{ $pItem['box_count'] }} box)
+                                                                @elseif(!empty($pItem['is_partial_out']))
+                                                                    <span class="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                                                        🟡 Sebagian Keluar
                                                                     </span>
-                                                                </div>
-                                                            </div>
-
-                                                            {{-- Box items breakdown inside this pallet --}}
-                                                            <div class="pt-2 border-t border-gray-100">
-                                                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Daftar Box Ter-scan:</div>
-                                                                <div class="space-y-1 max-h-28 overflow-y-auto pr-1">
-                                                                    @foreach($pItem['boxes'] as $bIdx => $bEntry)
-                                                                        <div class="flex items-center justify-between text-[10px] bg-gray-50 px-2 py-0.5 rounded font-mono">
-                                                                            <span class="truncate max-w-[130px] text-gray-600" title="{{ $bEntry['label'] }}">
-                                                                                {{ $bEntry['label'] }}
-                                                                            </span>
-                                                                            <span class="font-bold text-gray-800">{{ number_format($bEntry['qty']) }} pcs</span>
-                                                                        </div>
-                                                                    @endforeach
-                                                                </div>
+                                                                @else
+                                                                    <span class="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                                                        🟢 Di Gudang
+                                                                    </span>
+                                                                @endif
                                                             </div>
                                                         </div>
-                                                    @endforeach
-                                                </div>
+
+                                                        <div class="text-xs space-y-1">
+                                                            <div class="flex justify-between">
+                                                                <span class="text-gray-500">Pengirim:</span>
+                                                                <span class="font-bold text-gray-800">{{ $pItem['delivery_name'] }}</span>
+                                                            </div>
+                                                            <div class="flex justify-between">
+                                                                <span class="text-gray-500">Lot / MO:</span>
+                                                                <span class="font-mono text-gray-700">{{ $pItem['lot_no'] }}</span>
+                                                            </div>
+                                                            <div class="flex justify-between">
+                                                                <span class="text-gray-500">Slot Rak:</span>
+                                                                <span class="font-mono font-bold {{ $pItem['slot'] === 'TEMPORARY' ? 'text-amber-600' : ($pItem['slot'] === 'KELUAR (SO)' ? 'text-red-600' : 'text-emerald-700') }}">
+                                                                    {{ $pItem['slot'] }}
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex justify-between pt-1 border-t border-gray-50">
+                                                                <span class="text-gray-700 font-bold">Qty Part Ini:</span>
+                                                                <span class="font-mono font-black text-blue-700">
+                                                                    {{ number_format($pItem['item_qty']) }} pcs ({{ $pItem['box_count'] }} box)
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {{-- Box items breakdown inside this pallet --}}
+                                                        <div class="pt-2 border-t border-gray-100">
+                                                            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Daftar Box Ter-scan:</div>
+                                                            <div class="space-y-1 max-h-32 overflow-y-auto pr-1">
+                                                                @foreach($pItem['boxes'] as $bIdx => $bEntry)
+                                                                    <div class="flex items-center justify-between text-[10px] px-2 py-0.5 rounded font-mono {{ !empty($bEntry['is_out']) ? 'bg-red-50 text-red-800 border border-red-100' : 'bg-gray-50 text-gray-800' }}">
+                                                                        <span class="truncate max-w-[120px]" title="{{ $bEntry['label'] }}">
+                                                                            {{ $bEntry['label'] }}
+                                                                        </span>
+                                                                        <div class="flex items-center gap-1.5 text-right whitespace-nowrap">
+                                                                            <span class="font-bold">{{ number_format($bEntry['qty']) }} pcs</span>
+                                                                            @if(!empty($bEntry['is_out']))
+                                                                                <span class="text-[9px] px-1 py-0.2 rounded bg-red-200 text-red-800 font-sans font-bold" title="Waktu Keluar: {{ $bEntry['out_time'] ?? '-' }}">
+                                                                                    Keluar {{ $bEntry['out_time'] ?? '' }}
+                                                                                </span>
+                                                                            @else
+                                                                                <span class="text-[9px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-sans font-bold">
+                                                                                    Gudang
+                                                                                </span>
+                                                                            @endif
+                                                                        </div>
+                                                                    </div>
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </div>
+                                    </td>
                                 </tr>
-                            @empty
+                            </tbody>
+                        @empty
+                            <tbody>
                                 <tr>
                                     <td colspan="10" class="px-6 py-12 text-center text-gray-400 italic">
                                         <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -358,8 +396,8 @@
                                         Tidak ada data delivery yang ditemukan untuk periode produksi {{ $recap['time_window_label'] }}.
                                     </td>
                                 </tr>
-                            @endforelse
-                        </tbody>
+                            </tbody>
+                        @endforelse
                     </table>
                 </div>
             </div>
@@ -380,11 +418,12 @@
                             <tr>
                                 <th class="px-4 py-3 w-12 text-center">#</th>
                                 <th class="px-4 py-3 min-w-[130px]">Pallet ID</th>
-                                <th class="px-4 py-3">Waktu Scan</th>
+                                <th class="px-4 py-3">Waktu Scan Masuk</th>
                                 <th class="px-4 py-3">Shift</th>
                                 <th class="px-4 py-3 min-w-[140px]">Pengirim / Delivery</th>
                                 <th class="px-4 py-3">Lot No</th>
                                 <th class="px-4 py-3">Slot Rak</th>
+                                <th class="px-4 py-3">Status &amp; Tgl Keluar</th>
                                 <th class="px-4 py-3 min-w-[200px]">Item yang Dimuat</th>
                                 <th class="px-4 py-3 text-center">Total Box</th>
                                 <th class="px-4 py-3 text-right">Total Qty</th>
@@ -411,9 +450,30 @@
                                     <td class="px-4 py-3 font-medium text-gray-800">{{ $p['delivery_name'] }}</td>
                                     <td class="px-4 py-3 font-mono text-gray-600">{{ $p['lot_no'] }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="font-mono font-bold text-xs {{ $p['slot'] === 'TEMPORARY' ? 'text-amber-600' : 'text-emerald-700' }}">
+                                        <span class="font-mono font-bold text-xs {{ $p['slot'] === 'TEMPORARY' ? 'text-amber-600' : ($p['slot'] === 'KELUAR (SO)' ? 'text-red-600' : 'text-emerald-700') }}">
                                             {{ $p['slot'] }}
                                         </span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        @if(!empty($p['is_out']))
+                                            <div>
+                                                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">
+                                                    🔴 Keluar
+                                                </span>
+                                                <div class="text-[10px] text-gray-500 font-mono mt-0.5">{{ $p['out_time'] ?? '-' }}</div>
+                                            </div>
+                                        @elseif(!empty($p['is_partial_out']))
+                                            <div>
+                                                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                                    🟡 Sebagian Keluar
+                                                </span>
+                                                <div class="text-[10px] text-gray-500 font-mono mt-0.5">Sisa {{ $p['boxes_in_warehouse'] }} box</div>
+                                            </div>
+                                        @else
+                                            <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                                🟢 Di Gudang
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="space-y-1">
@@ -435,7 +495,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="11" class="px-6 py-12 text-center text-gray-400 italic">
+                                    <td colspan="12" class="px-6 py-12 text-center text-gray-400 italic">
                                         Tidak ada pallet form yang ditemukan untuk periode ini.
                                     </td>
                                 </tr>
@@ -460,9 +520,10 @@
                         <thead class="bg-gray-100 text-gray-700 uppercase font-bold text-[11px] border-b border-gray-200 sticky top-0">
                             <tr>
                                 <th class="px-3 py-2.5 w-10 text-center">#</th>
-                                <th class="px-3 py-2.5">Waktu Scan</th>
+                                <th class="px-3 py-2.5">Waktu Scan Masuk</th>
                                 <th class="px-3 py-2.5">Shift</th>
                                 <th class="px-3 py-2.5">Pallet ID</th>
+                                <th class="px-3 py-2.5">Status &amp; Tgl Keluar</th>
                                 <th class="px-3 py-2.5">Pengirim</th>
                                 <th class="px-3 py-2.5">Lot No</th>
                                 <th class="px-3 py-2.5">Slot Rak</th>
@@ -485,6 +546,17 @@
                                         </span>
                                     </td>
                                     <td class="px-3 py-2 font-mono font-bold text-blue-700 whitespace-nowrap">{{ $bLog['pallet_id'] }}</td>
+                                    <td class="px-3 py-2 whitespace-nowrap">
+                                        @if(!empty($bLog['is_out']))
+                                            <span class="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-red-100 text-red-700" title="Waktu Keluar: {{ $bLog['out_time'] }}">
+                                                🔴 Keluar ({{ $bLog['out_time'] }})
+                                            </span>
+                                        @else
+                                            <span class="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                                🟢 Di Gudang
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td class="px-3 py-2 text-gray-800">{{ $bLog['delivery_name'] }}</td>
                                     <td class="px-3 py-2 font-mono text-gray-600">{{ $bLog['lot_no'] }}</td>
                                     <td class="px-3 py-2 font-mono text-gray-700 font-bold">{{ $bLog['slot'] }}</td>
@@ -497,7 +569,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="13" class="px-6 py-12 text-center text-gray-400 italic">
+                                    <td colspan="14" class="px-6 py-12 text-center text-gray-400 italic">
                                         Tidak ada log scan box yang ditemukan untuk periode ini.
                                     </td>
                                 </tr>

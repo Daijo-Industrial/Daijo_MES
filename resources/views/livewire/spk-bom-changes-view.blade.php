@@ -7,6 +7,13 @@
                 <div>
                     <div class="text-xs font-black text-emerald-900">Perubahan Berhasil Dikirim ke SAP</div>
                     <div class="text-xs text-emerald-700 font-semibold mt-0.5">{{ $flashSuccess }}</div>
+                    <div class="mt-2">
+                        <a href="{{ route('spk.bom-changes.preview-payload') }}" target="_blank" 
+                           class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition shadow-2xs">
+                            <span>📦</span>
+                            <span>Buka Page Payload JSON (Tab Baru) &rarr;</span>
+                        </a>
+                    </div>
                 </div>
             </div>
             <button type="button" wire:click="$set('flashSuccess', null)" class="text-emerald-500 hover:text-emerald-800 text-sm font-bold">✕</button>
@@ -20,6 +27,13 @@
                 <div>
                     <div class="text-xs font-black text-red-900">Gagal Memproses Permintaan ke SAP</div>
                     <div class="text-xs text-red-700 font-semibold mt-0.5">{{ $flashError }}</div>
+                    <div class="mt-2">
+                        <a href="{{ route('spk.bom-changes.preview-payload') }}" target="_blank" 
+                           class="inline-flex items-center gap-1 px-3 py-1 bg-red-700 hover:bg-red-800 text-white rounded-lg text-xs font-bold transition shadow-2xs">
+                            <span>📦</span>
+                            <span>Buka Page Payload JSON yang Dicoba &rarr;</span>
+                        </a>
+                    </div>
                 </div>
             </div>
             <button type="button" wire:click="$set('flashError', null)" class="text-red-500 hover:text-red-800 text-sm font-bold">✕</button>
@@ -434,6 +448,12 @@
                                                         class="px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs">
                                                         ✕ Batal Edit
                                                     </button>
+                                                    <button type="button" wire:click="previewDraftPayload"
+                                                        @if(empty($stagedLines)) disabled @endif
+                                                        class="px-3 py-1.5 {{ empty($stagedLines) ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'bg-slate-800 hover:bg-slate-900 text-white cursor-pointer shadow-sm' }} rounded-lg text-xs font-bold transition flex items-center gap-1">
+                                                        <span>👁️</span>
+                                                        <span>Preview JSON</span>
+                                                    </button>
                                                     <button type="button" wire:click="submitBatchChanges" 
                                                         @if(empty($stagedLines)) disabled @endif
                                                         class="px-4 py-1.5 {{ empty($stagedLines) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md shadow-emerald-200' }} rounded-lg text-xs font-black transition flex items-center gap-1.5">
@@ -723,40 +743,80 @@
                             <span class="font-medium text-gray-700 text-right">{{ $editItemDescription }}</span>
                         </div>
                         <div class="flex justify-between text-xs pt-1 border-t border-gray-200">
-                            <span class="text-gray-500 font-bold">Planned Qty Saat Ini:</span>
-                            <span class="font-mono font-bold text-gray-700">{{ number_format($editOldPlanQty, 4) }}</span>
+                            <span class="text-gray-500 font-bold">Target Produksi SPK:</span>
+                            <span class="font-mono font-bold text-blue-700">{{ number_format($editSpkPlannedQty) }} PCS</span>
                         </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1">
-                            Plan Qty Baru (Planned Material Quantity) <span class="text-red-500">*</span>
-                        </label>
-                        <input type="text" inputmode="decimal" wire:model="editPlanQty" placeholder="Masukkan jumlah baru..."
-                            class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                        @error('editPlanQty') <span class="text-[11px] text-red-600 font-bold mt-1 block">{{ $message }}</span> @enderror
+                        <div class="flex justify-between text-xs">
+                            <span class="text-gray-500 font-bold">Planned Qty Saat Ini:</span>
+                            <span class="font-mono font-bold text-gray-700">{{ number_format((float)$editOldPlanQty, 4) }}</span>
+                        </div>
                     </div>
 
                     <div x-data="{
                             base: @entangle('editBaseQty'),
                             target: {{ (float) $editSpkPlannedQty }},
+                            plan: @entangle('editPlanQty'),
                             calcPlan() {
-                                let v = parseFloat(String(this.base || '').replace(',', '.'));
-                                if (!isNaN(v) && v > 0 && this.target > 0) {
-                                    $wire.set('editPlanQty', (v * this.target).toFixed(4));
+                                let clean = String(this.base || '').replace(',', '.').trim();
+                                let v = parseFloat(clean);
+                                if (!isNaN(v) && v >= 0 && this.target > 0) {
+                                    let res = v * this.target;
+                                    this.plan = (Math.round(res * 10000) / 10000).toFixed(4).replace(/\.?0+$/, '');
+                                    $wire.set('editPlanQty', this.plan);
                                 }
                             }
-                         }">
-                        <label class="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1">
-                            Base Qty (Opsional / Per Unit FG)
-                        </label>
-                        <input type="text" 
-                            inputmode="decimal" 
-                            x-model="base"
-                            @input="calcPlan()"
-                            wire:model.blur="editBaseQty" 
-                            placeholder="Biarkan kosong jika tidak diubah..."
-                            class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                         }"
+                         class="space-y-4">
+
+                        <!-- 1. BASE QTY (EDITABLE) -->
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-xs font-black text-gray-800 uppercase tracking-wider">
+                                    Base Qty (Unit Qty per 1 FG) <span class="text-red-500">*</span>
+                                </label>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                    ✏️ Dapat Diedit
+                                </span>
+                            </div>
+                            <input type="text" 
+                                inputmode="decimal" 
+                                x-model="base"
+                                @input="calcPlan()"
+                                wire:model.blur="editBaseQty" 
+                                placeholder="Masukkan Base Qty baru (contoh: 0.15 atau 0.000009)..."
+                                class="w-full px-3.5 py-2.5 bg-white border-2 border-blue-400 focus:border-blue-600 rounded-xl text-base font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs">
+                            @error('editBaseQty') <span class="text-[11px] text-red-600 font-bold mt-1 block">{{ $message }}</span> @enderror
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                💡 Kebutuhan pemakaian material untuk <strong>1 unit FG</strong>.
+                            </div>
+                        </div>
+
+                        <!-- 2. PLANNED QUANTITY (LOCKED / READONLY) -->
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-xs font-black text-gray-700 uppercase tracking-wider">
+                                    Planned Material Quantity (Kebutuhan Total SPK)
+                                </label>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 text-gray-700 border border-gray-300">
+                                    🔒 Terkunci (Otomatis Dihitung)
+                                </span>
+                            </div>
+                            <div class="relative">
+                                <input type="text" 
+                                    readonly 
+                                    tabindex="-1"
+                                    :value="plan"
+                                    wire:model="editPlanQty" 
+                                    class="w-full px-3.5 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 cursor-not-allowed select-none outline-none">
+                                <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400 font-bold text-xs">
+                                    TOTAL
+                                </div>
+                            </div>
+                            @error('editPlanQty') <span class="text-[11px] text-red-600 font-bold mt-1 block">{{ $message }}</span> @enderror
+                            <div class="text-[11px] text-gray-500 mt-1 flex items-center gap-1 font-medium">
+                                <span>🔒 Terkunci: Dihitung otomatis dari <strong>Base Qty</strong> × <strong>Target SPK ({{ number_format($editSpkPlannedQty) }} PCS)</strong>.</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="p-3 bg-blue-50/70 rounded-xl border border-blue-200 text-[11px] text-blue-800">
@@ -1331,4 +1391,15 @@
             </div>
         </div>
     @endif
+
+    <script>
+        document.addEventListener('livewire:initialized', () => {
+            Livewire.on('open-payload-preview', (event) => {
+                const targetUrl = event.url || event[0]?.url;
+                if (targetUrl) {
+                    window.open(targetUrl, '_blank');
+                }
+            });
+        });
+    </script>
 </div>

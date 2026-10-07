@@ -816,6 +816,44 @@ class SpkBomChangesTest extends TestCase
             ->assertSet('stagedLines.RM-PAINT-01.plan_qty', 101.7);
     }
 
+    public function test_edit_modal_locks_plan_qty_and_calculates_from_base_qty(): void
+    {
+        $role = Role::create(['name' => 'SUPERADMIN']);
+        $user = User::create([
+            'name'     => 'Andreas BaseQty',
+            'email'    => 'andreas_base@daijo.co.id',
+            'password' => bcrypt('secret'),
+            'role_id'  => $role->id,
+        ]);
+        $this->actingAs($user);
+
+        SpkMaster::create([
+            'spk_number'        => 'SPK-BASE-001',
+            'item_code'         => 'FG-BASE-01',
+            'planned_quantity'  => 1000,
+            'production_status' => 'R',
+        ]);
+
+        Livewire::test(SpkBomChangesView::class)
+            // Buka modal edit untuk material (Plan Qty = 50, Base Qty = 0.05, Target SPK = 1000)
+            ->call('openEditQtyModal', 'SPK-BASE-001', '601-6678-2', 'PAD IMPRABOARD', 50, 0.05, 1000)
+            ->assertSet('showEditModal', true)
+            ->assertSet('editBaseQty', '0.05')
+            ->assertSet('editPlanQty', '50')
+            // User mengubah Base Qty ke 0.08
+            ->set('editBaseQty', '0.08')
+            ->assertSet('editPlanQty', '80') // 0.08 * 1000 = 80
+            // User memasukkan nilai desimal kecil tanpa notasi ilmiah (misal 0.000009)
+            ->set('editBaseQty', '0.000009')
+            ->assertSet('editPlanQty', '0.009') // 0.000009 * 1000 = 0.009
+            // Submit ke draft
+            ->call('submitEditQty')
+            ->assertSet('showEditModal', false)
+            ->assertSet('stagedLines.601-6678-2.base_qty', 0.000009)
+            ->assertSet('stagedLines.601-6678-2.plan_qty', 0.009)
+            ->assertSet('stagedLines.601-6678-2.base_qty_changed', true);
+    }
+
     public function test_tambah_material_button_only_visible_in_edit_mode(): void
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
@@ -979,6 +1017,51 @@ class SpkBomChangesTest extends TestCase
         $this->assertEquals('CAT MERAH GLOSS AUTOMOTIVE', $replaceSuggestions[0]['item_name']);
         $this->assertEquals('LT', $replaceSuggestions[0]['uom']);
     }
+
+    public function test_preview_payload_page_renders_json(): void
+    {
+        $peRole = Role::firstOrCreate(['name' => 'PE']);
+        $peUser = User::create([
+            'name'     => 'PE Tester',
+            'email'    => 'pe_preview@daijo.com',
+            'password' => bcrypt('password'),
+            'role_id'  => $peRole->id,
+        ]);
+
+        $payloadData = [
+            'spk_code'     => '250099999',
+            'endpoint'     => 'http://localhost:9000/api/sap_production_order/update',
+            'method'       => 'POST',
+            'payload'      => [
+                'spk_code' => '250099999',
+                'lines'    => [
+                    ['item_code' => 'RM-STEEL-001', 'plan_qty' => 250],
+                    ['item_code' => 'RM-PAINT-020', 'base_qty' => 0.15, 'plan_qty' => 15, 'warehouse' => 'WH-RM02'],
+                    ['item_code' => 'RM-PAINT-010', 'delete' => true],
+                ],
+            ],
+            'payload_json' => json_encode([
+                'spk_code' => '250099999',
+                'lines'    => [
+                    ['item_code' => 'RM-STEEL-001', 'plan_qty' => 250],
+                ],
+            ], JSON_PRETTY_PRINT),
+            'result'       => ['status' => true, 'message' => 'Success test'],
+            'error'        => null,
+            'status'       => 'SUCCESS',
+            'timestamp'    => now()->format('Y-m-d H:i:s'),
+        ];
+
+        $response = $this->actingAs($peUser)
+            ->withSession(['sap_payload_preview' => $payloadData])
+            ->get(route('spk.bom-changes.preview-payload'));
+
+        $response->assertStatus(200);
+        $response->assertSee('250099999');
+        $response->assertSee('/api/sap_production_order/update');
+        $response->assertSee('RM-STEEL-001');
+    }
 }
+
 
 

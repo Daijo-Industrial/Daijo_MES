@@ -613,7 +613,18 @@
                                     </div>
                                     <div class="itsp-main-code">
                                         @if(!empty($label['half_code_1']) || !empty($label['half_code_2']))
-                                            <span style="font-size: 11pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 16pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
+                                            @php
+                                                $posClean = strtoupper(trim((string)($label['position'] ?? '')));
+                                                $isLeft = ($label['enlarged_half_code'] ?? null) === 1 
+                                                    || in_array($posClean, ['LH', 'LEFT', 'L'])
+                                                    || str_contains($posClean, 'LEFT')
+                                                    || str_contains($posClean, 'LH');
+                                            @endphp
+                                            @if($isLeft)
+                                                <span style="font-size: 16pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 11pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
+                                            @else
+                                                <span style="font-size: 11pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 16pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
+                                            @endif
                                         @else
                                             <span style="font-size: 13.5pt; font-weight: 900;">{{ $label['itsp_code'] }}</span>
                                         @endif

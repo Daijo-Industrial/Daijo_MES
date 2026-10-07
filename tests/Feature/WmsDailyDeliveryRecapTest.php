@@ -378,4 +378,89 @@ class WmsDailyDeliveryRecapTest extends TestCase
             return count($sheets) === 2;
         });
     }
+
+    public function test_shift_schedule_accuracy_0730_1530_2330()
+    {
+        // Shift 1: 07:30 - 15:30
+        $this->assertEquals(1, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 07:30:00')));
+        $this->assertEquals(1, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 07:31:00')));
+        $this->assertEquals(1, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 15:29:59')));
+
+        // Shift 2: 15:30 - 23:30
+        $this->assertEquals(2, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 15:30:00')));
+        $this->assertEquals(2, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 15:44:00')));
+        $this->assertEquals(2, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 21:41:00')));
+        $this->assertEquals(2, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 21:52:00')));
+        $this->assertEquals(2, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 23:25:00')));
+        $this->assertEquals(2, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 23:29:59')));
+
+        // Shift 3: 23:30 - 07:30 next day
+        $this->assertEquals(3, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-06 23:30:00')));
+        $this->assertEquals(3, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-07 01:46:00')));
+        $this->assertEquals(3, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-07 02:54:00')));
+        $this->assertEquals(3, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-07 04:09:00')));
+        $this->assertEquals(3, WmsDeliveryRecapService::determineShiftFromTime(Carbon::parse('2026-10-07 07:29:59')));
+    }
+
+    public function test_recap_preserves_data_when_items_are_dispatched_and_soft_deleted()
+    {
+        $pallet = WmsPalletForm::create([
+            'pallet_id'        => 'PLT-DISPATCH-01',
+            'prod_date'        => '2026-10-06',
+            'delivery_name'    => 'Driver Barri',
+            'delivery_shift'   => 1,
+            'lot_no'           => 'LOT-DISPATCH',
+            'box_qty'          => 2,
+            'total_pallet_qty' => 100,
+            'status'           => 'STORED',
+            'created_at'       => Carbon::parse('2026-10-06 09:00:00'),
+        ]);
+
+        $detail1 = WmsPalletFormDetail::create([
+            'pallet_form_id' => $pallet->pallet_id,
+            'part_no'        => 'PART-OUTBOUND',
+            'model_name'     => 'Handle Door Outer',
+            'spk_no'         => 'SPK-OUT-01',
+            'qty'            => 50,
+            'label'          => 'LBL-OUT-01',
+            'created_at'     => Carbon::parse('2026-10-06 09:05:00'),
+        ]);
+
+        $detail2 = WmsPalletFormDetail::create([
+            'pallet_form_id' => $pallet->pallet_id,
+            'part_no'        => 'PART-OUTBOUND',
+            'model_name'     => 'Handle Door Outer',
+            'spk_no'         => 'SPK-OUT-01',
+            'qty'            => 50,
+            'label'          => 'LBL-OUT-02',
+            'created_at'     => Carbon::parse('2026-10-06 09:06:00'),
+        ]);
+
+        // Simulate Store Out scan: detail 1 is dispatched out (soft deleted at 14:15)
+        $detail1->delete(); // sets deleted_at
+
+        $service = app(WmsDeliveryRecapService::class);
+        $recap = $service->getDailyRecap('2026-10-06');
+
+        // Total delivery intake on that day remains 100 pcs (2 boxes) and DOES NOT disappear!
+        $this->assertEquals(100, $recap['kpis']['total_qty']);
+        $this->assertEquals(2, $recap['kpis']['total_boxes']);
+        $this->assertEquals(1, $recap['kpis']['total_pallets']);
+
+        $itemSummary = collect($recap['items'])->firstWhere('part_no', 'PART-OUTBOUND');
+        $this->assertNotNull($itemSummary);
+        $this->assertEquals(100, $itemSummary['total_qty']);
+        $this->assertEquals(50, $itemSummary['qty_in_warehouse']);
+        $this->assertEquals(50, $itemSummary['qty_out']);
+
+        // Check box logs
+        $boxLog1 = collect($recap['box_logs'])->firstWhere('label', 'LBL-OUT-01');
+        $this->assertTrue($boxLog1['is_out']);
+        $this->assertEquals('KELUAR', $boxLog1['status']);
+        $this->assertNotEmpty($boxLog1['out_time']);
+
+        $boxLog2 = collect($recap['box_logs'])->firstWhere('label', 'LBL-OUT-02');
+        $this->assertFalse($boxLog2['is_out']);
+        $this->assertEquals('DI GUDANG', $boxLog2['status']);
+    }
 }

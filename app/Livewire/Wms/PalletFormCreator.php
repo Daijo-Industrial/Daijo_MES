@@ -61,8 +61,9 @@ class PalletFormCreator extends Component
 
     public function mount(bool $isDelivery = null): void
     {
-        $this->prod_date = now()->format('Y-m-d');
-        $this->isDelivery = $isDelivery ?? true;
+        $this->prod_date      = \App\Services\WmsDeliveryRecapService::getCurrentProductionDate();
+        $this->isDelivery     = $isDelivery ?? true;
+        $this->delivery_shift = (string) \App\Services\WmsDeliveryRecapService::determineShiftFromTime(now());
     }
 
 

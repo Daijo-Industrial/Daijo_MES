@@ -40,7 +40,9 @@ class DailyDeliveryBoxDetailSheet implements FromCollection, WithHeadings, WithM
             'SPK No',
             'No Label',
             'Qty (Pcs)',
-            'Waktu Scan',
+            'Waktu Scan Masuk',
+            'Status',
+            'Waktu Keluar (SO)',
         ];
     }
 
@@ -60,6 +62,8 @@ class DailyDeliveryBoxDetailSheet implements FromCollection, WithHeadings, WithM
             $row['label'],
             $row['qty'],
             $row['scan_time'],
+            $row['status'] ?? ($row['is_out'] ? 'KELUAR' : 'DI GUDANG'),
+            $row['out_time'] ?? '-',
         ];
     }
 
