@@ -333,9 +333,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                         </span>
-                        <h2 class="text-xl font-bold text-gray-800">Shift Performance: Adjuster, Change Mould & NG Tracking</h2>
+                        <h2 class="text-xl font-bold text-gray-800">Shift Performance: Adjuster, Change Mould, Repair & NG Tracking</h2>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">Performa output, NG produk, serta penanggung jawab Adjuster dan Change Mould per shift</p>
+                    <p class="text-xs text-gray-500 mt-1">Performa output, NG produk, serta penanggung jawab Adjuster, Change Mould, dan Repair Machine per shift</p>
                 </div>
 
                 {{-- Quick Summary Stats --}}
@@ -347,6 +347,11 @@
                     <div class="px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg text-xs">
                         <span class="text-gray-500 font-medium">Total Change Mould:</span>
                         <span class="font-bold text-purple-700 ml-1">{{ $shiftPersonnelAnalysis['total_mould_change_count'] ?? 0 }}x</span>
+                    </div>
+                    <div class="px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs">
+                        <span class="text-gray-500 font-medium">Total Repair:</span>
+                        <span class="font-bold text-amber-700 ml-1">{{ $shiftPersonnelAnalysis['total_repair_count'] ?? 0 }}x</span>
+                        <span class="text-[10px] text-gray-400 font-mono">({{ number_format($shiftPersonnelAnalysis['total_repair_time_minutes'] ?? 0, 1) }}m)</span>
                     </div>
                     <div class="px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-lg text-xs">
                         <span class="text-gray-500 font-medium">Total Setup Time:</span>
@@ -450,6 +455,25 @@
                                         {{ $shiftData['mould_changers_str'] ?? 'No Log' }}
                                     </div>
                                 </div>
+
+                                {{-- Repair Machine (Maintenance) PIC --}}
+                                <div class="bg-amber-50/70 border border-amber-100 rounded-lg p-2.5 overflow-hidden">
+                                    <div class="flex items-center justify-between mb-1.5 gap-2">
+                                        <div class="flex items-center gap-1.5 min-w-0">
+                                            <span class="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] shrink-0 font-bold">
+                                                🛠️
+                                            </span>
+                                            <span class="text-[10px] font-bold uppercase text-amber-700 tracking-wide">Repair Machine</span>
+                                        </div>
+                                        <div class="text-right shrink-0">
+                                            <span class="text-xs font-bold text-amber-700">{{ $shiftData['repair_count'] ?? 0 }}x</span>
+                                            <span class="text-[10px] text-gray-500 font-mono ml-0.5">({{ number_format($shiftData['repair_duration_minutes'] ?? 0, 1) }}m)</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs font-semibold text-gray-800 break-words line-clamp-2 pl-6" title="{{ $shiftData['repairers_str'] ?? '-' }}">
+                                        {{ $shiftData['repairers_str'] ?? 'No Log' }}
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Shift Output & Performance KPI Grid --}}
@@ -512,7 +536,7 @@
             <div x-show="showShiftLogs" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="mt-4 pt-4 border-t border-gray-200" style="display: none;">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                     <h3 class="text-sm font-bold text-gray-800 flex items-center gap-2">
-                        <span>📋 Log Aktivitas Adjust Machine & Change Mould</span>
+                        <span>📋 Log Aktivitas Adjust Machine, Change Mould & Repair Machine</span>
                         <span class="px-2 py-0.5 text-xs bg-gray-200 text-gray-700 rounded-full font-semibold">
                             {{ count($shiftPersonnelAnalysis['all_logs'] ?? []) }} Total Data
                         </span>
@@ -563,9 +587,13 @@
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">
                                                 🔧 Adjust Machine
                                             </span>
-                                        @else
+                                        @elseif($log['type'] === 'mould_change')
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800">
                                                 🔄 Mould Change
+                                            </span>
+                                        @elseif($log['type'] === 'repair')
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">
+                                                🛠️ Repair Machine
                                             </span>
                                         @endif
                                     </td>
@@ -578,19 +606,33 @@
                                     <td class="px-3 py-2 whitespace-nowrap font-bold text-gray-800">
                                         {{ $log['pic'] }}
                                     </td>
-                                    <td class="px-3 py-2 whitespace-nowrap text-right font-mono font-bold {{ $log['is_overtime'] ? 'text-red-600' : 'text-gray-800' }}">
+                                    <td class="px-3 py-2 whitespace-nowrap text-right font-mono font-bold {{ (!empty($log['is_overtime'])) ? 'text-red-600' : 'text-gray-800' }}">
                                         {{ number_format($log['duration_minutes'], 1) }}m
-                                        <div class="text-[10px] text-gray-400 font-normal">Target: {{ $log['target_minutes'] }}m</div>
+                                        @if(!empty($log['target_minutes']))
+                                            <div class="text-[10px] text-gray-400 font-normal">Target: {{ $log['target_minutes'] }}m</div>
+                                        @endif
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap text-center">
-                                        @if($log['is_overtime'])
-                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800">
-                                                Overtime
-                                            </span>
+                                        @if($log['type'] === 'repair')
+                                            @if(($log['end_time'] ?? '') === 'In Progress')
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 animate-pulse">
+                                                    In Progress
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800">
+                                                    Selesai
+                                                </span>
+                                            @endif
                                         @else
-                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800">
-                                                Normal
-                                            </span>
+                                            @if(!empty($log['is_overtime']))
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800">
+                                                    Overtime
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800">
+                                                    Normal
+                                                </span>
+                                            @endif
                                         @endif
                                     </td>
                                     <td class="px-3 py-2 text-gray-600 max-w-xs truncate" title="{{ $log['remark'] }}">
@@ -600,7 +642,7 @@
                             @empty
                                 <tr>
                                     <td colspan="8" class="px-4 py-8 text-center text-gray-400 italic">
-                                        Tidak ada log Adjust Machine atau Mould Change untuk periode / filter ini.
+                                        Tidak ada log Adjust Machine, Mould Change, atau Repair Machine untuk periode / filter ini.
                                     </td>
                                 </tr>
                             @endforelse

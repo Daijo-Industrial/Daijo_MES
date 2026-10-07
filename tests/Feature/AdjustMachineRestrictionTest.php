@@ -67,6 +67,17 @@ class AdjustMachineRestrictionTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('repair_machine_logs', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('pic');
+            $table->string('item_code')->nullable();
+            $table->string('problem')->nullable();
+            $table->dateTime('finish_repair')->nullable();
+            $table->text('remark')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('machine_jobs', function ($table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
@@ -102,6 +113,10 @@ class AdjustMachineRestrictionTest extends TestCase
         // KBN adjusters
         OperatorUser::create(['name' => 'Budi Santoso', 'password' => '123', 'position' => 'Adjuster']);
         OperatorUser::create(['name' => 'Joko Widodo', 'password' => '123', 'position' => 'Adjuster']);
+
+        // Maintenance operators
+        OperatorUser::create(['name' => 'Mamat Maintenance', 'password' => '123', 'position' => 'Maintenance']);
+        OperatorUser::create(['name' => 'Ujang Maintenance', 'password' => '123', 'position' => 'Maintenance']);
     }
 
     public function test_karawang_machine_rejects_kbn_adjuster_on_start()
@@ -285,6 +300,71 @@ class AdjustMachineRestrictionTest extends TestCase
         $this->assertEquals('ACTIVE-ITEM-01', $machineJob->item_code);
         $this->assertEquals(1, $machineJob->shift);
         $this->assertEquals(99, $machineJob->dic_id);
+    }
+
+    public function test_start_repair_machine_with_maintenance_operator_and_item_code()
+    {
+        $role = Role::where('name', 'OPERATOR')->first();
+        $machine = User::create([
+            'name'     => '0350F',
+            'email'    => '0350f_repair@daijo.com',
+            'password' => bcrypt('password'),
+            'role_id'  => $role->id,
+        ]);
+
+        $response = $this->actingAs($machine)->postJson(route('repair.machine.start'), [
+            'pic_name'  => 'Mamat Maintenance',
+            'item_code' => 'REPAIR-ITEM-01',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['message' => 'Repair Machine started']);
+
+        $this->assertDatabaseHas('repair_machine_logs', [
+            'user_id'   => $machine->id,
+            'pic'       => 'Mamat Maintenance',
+            'item_code' => 'REPAIR-ITEM-01',
+        ]);
+    }
+
+    public function test_end_repair_machine_does_not_reset_active_job()
+    {
+        $role = Role::where('name', 'OPERATOR')->first();
+        $machine = User::create([
+            'name'     => '0350F',
+            'email'    => '0350f_repair_end@daijo.com',
+            'password' => bcrypt('password'),
+            'role_id'  => $role->id,
+        ]);
+
+        $machineJob = MachineJob::create([
+            'user_id'       => $machine->id,
+            'item_code'     => 'ACTIVE-ITEM-REPAIR-01',
+            'employee_name' => 'Operator Tetap',
+            'shift'         => 2,
+            'dic_id'        => 88,
+        ]);
+
+        // Start Repair
+        $this->actingAs($machine)->postJson(route('repair.machine.start'), [
+            'pic_name'  => 'Mamat Maintenance',
+            'item_code' => 'ACTIVE-ITEM-REPAIR-01',
+        ]);
+
+        // End Repair
+        $responseEnd = $this->actingAs($machine)->postJson(route('repair.machine.end'), [
+            'problem' => 'Motor servo macet',
+            'remarks' => 'Sudah diganti bearing dan pelumasan',
+        ]);
+
+        $responseEnd->assertStatus(200);
+        $responseEnd->assertJson(['message' => 'Repair Machine completed']);
+
+        // Assert MachineJob is STILL NOT reset on end repair
+        $machineJob->refresh();
+        $this->assertEquals('ACTIVE-ITEM-REPAIR-01', $machineJob->item_code);
+        $this->assertEquals(2, $machineJob->shift);
+        $this->assertEquals(88, $machineJob->dic_id);
     }
 }
 

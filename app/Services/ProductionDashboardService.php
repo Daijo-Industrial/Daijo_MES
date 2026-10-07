@@ -6,6 +6,7 @@ use App\Models\AdjustMachineLog;
 use App\Models\DailyItemCode;
 use App\Models\MasterListItem;
 use App\Models\MouldChangeLog;
+use App\Models\RepairMachineLog;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -230,29 +231,39 @@ class ProductionDashboardService
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
 
+        $repairQuery = RepairMachineLog::query()
+            ->with(['user:id,name'])
+            ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
+            ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
+
         if ($itemCode) {
             $adjustQuery->where('item_code', $itemCode);
             $mouldQuery->where('item_code', $itemCode);
+            $repairQuery->where('item_code', $itemCode);
         }
 
         if ($machineUserId) {
             $adjustQuery->where('user_id', $machineUserId);
             $mouldQuery->where('user_id', $machineUserId);
+            $repairQuery->where('user_id', $machineUserId);
         } elseif ($effectivePlant === 'karawang') {
             $krwMachineIds = ($plant === 'karawang' && $plantMachineIds !== null) ? $plantMachineIds : User::where(function ($q) {
                 $q->where('name', 'LIKE', 'K%')->orWhereHas('branch', fn($b) => $b->where('code', 'KRW'));
             })->pluck('id')->toArray();
             $adjustQuery->whereIn('user_id', $krwMachineIds);
             $mouldQuery->whereIn('user_id', $krwMachineIds);
+            $repairQuery->whereIn('user_id', $krwMachineIds);
         } elseif ($effectivePlant === 'kbn') {
             $kbnMachineIds = ($plant === 'kbn' && $plantMachineIds !== null) ? $plantMachineIds : User::where(function ($q) {
                 $q->where('name', 'NOT LIKE', 'K%')->whereDoesntHave('branch', fn($b) => $b->where('code', 'KRW'));
             })->pluck('id')->toArray();
             $adjustQuery->whereIn('user_id', $kbnMachineIds);
             $mouldQuery->whereIn('user_id', $kbnMachineIds);
+            $repairQuery->whereIn('user_id', $kbnMachineIds);
         }
         $adjustLogsRaw = $adjustQuery->get();
         $mouldLogsRaw = $mouldQuery->get();
+        $repairLogsRaw = $repairQuery->get();
 
         // 4. In-Memory Process All Sections Fast
         $productionResult = $this->processProductionData($dailyData, $startDate, $endDate);
@@ -268,7 +279,8 @@ class ProductionDashboardService
             $startDate,
             $endDate,
             $isHalfDay,
-            $preloadedHalfDayDates
+            $preloadedHalfDayDates,
+            $repairLogsRaw
         );
         $adjusterNgTrend = $this->processAdjusterNgTrend(
             $dailyData,
@@ -942,7 +954,8 @@ class ProductionDashboardService
         Carbon $startDate,
         Carbon $endDate,
         bool|array|null $isHalfDay = null,
-        ?array $preloadedHalfDayDates = null
+        ?array $preloadedHalfDayDates = null,
+        $repairLogsRaw = []
     ): array {
         $isSingleDay = $startDate->isSameDay($endDate);
         $isHalfDaySingleDay = false;
@@ -1068,6 +1081,52 @@ class ProductionDashboardService
             $allActivityLogs[] = $entry;
         }
 
+        // Format and categorize Repair Machine Logs fast
+        $processedRepairLogs = [];
+        if (!empty($repairLogsRaw)) {
+            foreach ($repairLogsRaw as $log) {
+                $localCreated = self::getLocalCarbon($log->created_at);
+                $shiftInfo = self::getProductionDateAndShift($localCreated, $isHalfDay, $preloadedHalfDayDates);
+                $shiftNum = $shiftInfo['shift'];
+
+                $durationMin = 0;
+                if ($log->finish_repair) {
+                    $startSec = strtotime((string)$log->created_at);
+                    $endSec = strtotime((string)$log->finish_repair);
+                    $durationMin = max(0, round(($endSec - $startSec) / 60, 1));
+                }
+
+                $localEnd = $log->finish_repair ? self::getLocalCarbon($log->finish_repair) : null;
+
+                $problemStr = trim($log->problem ?? '');
+                $remarkStr = trim($log->remark ?? '');
+                $fullRemark = $problemStr !== '' 
+                    ? ($remarkStr !== '' ? "[{$problemStr}] {$remarkStr}" : "[{$problemStr}]")
+                    : ($remarkStr !== '' ? $remarkStr : '');
+
+                $entry = [
+                    'id'               => $log->id,
+                    'type'             => 'repair',
+                    'type_label'       => 'Repair Machine',
+                    'shift'            => $shiftNum,
+                    'machine_name'     => $log->user->name ?? 'Unknown',
+                    'item_code'        => $log->item_code ?? '-',
+                    'pic'              => trim($log->pic ?? '') ?: 'Unknown',
+                    'start_time'       => $localCreated->format('d M H:i'),
+                    'end_time'         => $localEnd ? $localEnd->format('H:i') : 'In Progress',
+                    'duration_minutes' => $durationMin,
+                    'target_minutes'   => 0,
+                    'is_overtime'      => false,
+                    'problem'          => $problemStr,
+                    'remark'           => $fullRemark,
+                    'created_at'       => $localCreated->format('Y-m-d H:i:s'),
+                    'prod_date'        => $shiftInfo['date'],
+                ];
+                $processedRepairLogs[] = $entry;
+                $allActivityLogs[] = $entry;
+            }
+        }
+
         usort($allActivityLogs, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
         // Aggregate by Shift (1, 2, 3)
@@ -1084,6 +1143,7 @@ class ProductionDashboardService
             $shiftDics = $dicsByShift[$s];
             $shiftAdjusts = array_values(array_filter($processedAdjustLogs, fn($l) => $l['shift'] === $s));
             $shiftMoulds = array_values(array_filter($processedMouldLogs, fn($l) => $l['shift'] === $s));
+            $shiftRepairs = array_values(array_filter($processedRepairLogs, fn($l) => $l['shift'] === $s));
 
             $target = 0;
             $actual = 0;
@@ -1120,12 +1180,14 @@ class ProductionDashboardService
             $ngRate = $totalProduction > 0 ? round(($ng / $totalProduction) * 100, 2) : 0;
             $achievementRate = $target > 0 ? round(($actual / $target) * 100, 1) : 0;
 
-            // Distinct PICs for Adjuster & Mould Change in this shift
+            // Distinct PICs for Adjuster, Mould Change, and Repair in this shift
             $distinctAdjusters = array_values(array_unique(array_filter(array_column($shiftAdjusts, 'pic'))));
             $distinctMouldChangers = array_values(array_unique(array_filter(array_column($shiftMoulds, 'pic'))));
+            $distinctRepairers = array_values(array_unique(array_filter(array_column($shiftRepairs, 'pic'))));
 
             $totalAdjustDuration = array_sum(array_column($shiftAdjusts, 'duration_minutes'));
             $totalMouldDuration = array_sum(array_column($shiftMoulds, 'duration_minutes'));
+            $totalRepairDuration = array_sum(array_column($shiftRepairs, 'duration_minutes'));
 
             $shiftResults[$s] = [
                 'shift_number'                  => $s,
@@ -1136,10 +1198,14 @@ class ProductionDashboardService
                 'adjusters_str'                 => !empty($distinctAdjusters) ? implode(', ', $distinctAdjusters) : 'No Adjuster Logged',
                 'mould_changers'                => $distinctMouldChangers,
                 'mould_changers_str'            => !empty($distinctMouldChangers) ? implode(', ', $distinctMouldChangers) : 'No Mould Changer Logged',
+                'repairers'                     => $distinctRepairers,
+                'repairers_str'                 => !empty($distinctRepairers) ? implode(', ', $distinctRepairers) : 'No Repair Logged',
                 'adjust_count'                  => count($shiftAdjusts),
                 'adjust_duration_minutes'       => $totalAdjustDuration,
                 'mould_change_count'            => count($shiftMoulds),
                 'mould_change_duration_minutes' => $totalMouldDuration,
+                'repair_count'                  => count($shiftRepairs),
+                'repair_duration_minutes'       => $totalRepairDuration,
                 'total_setup_minutes'           => $totalAdjustDuration + $totalMouldDuration,
                 'total_target'                  => $target,
                 'total_actual'                  => $actual,
@@ -1149,15 +1215,18 @@ class ProductionDashboardService
                 'top_ng_types'                  => $topNgTypes,
                 'adjust_logs'                   => $shiftAdjusts,
                 'mould_change_logs'             => $shiftMoulds,
+                'repair_logs'                   => $shiftRepairs,
             ];
         }
 
         return [
-            'shifts'                   => $shiftResults,
-            'all_logs'                 => array_slice($allActivityLogs, 0, 100), // Limit payload size to 100 recent
-            'total_adjust_count'       => count($processedAdjustLogs),
-            'total_mould_change_count' => count($processedMouldLogs),
-            'total_setup_time_minutes' => array_sum(array_column($processedAdjustLogs, 'duration_minutes')) + array_sum(array_column($processedMouldLogs, 'duration_minutes')),
+            'shifts'                    => $shiftResults,
+            'all_logs'                  => array_slice($allActivityLogs, 0, 100), // Limit payload size to 100 recent
+            'total_adjust_count'        => count($processedAdjustLogs),
+            'total_mould_change_count'  => count($processedMouldLogs),
+            'total_repair_count'        => count($processedRepairLogs),
+            'total_setup_time_minutes'  => array_sum(array_column($processedAdjustLogs, 'duration_minutes')) + array_sum(array_column($processedMouldLogs, 'duration_minutes')),
+            'total_repair_time_minutes' => array_sum(array_column($processedRepairLogs, 'duration_minutes')),
         ];
     }
 
@@ -1197,23 +1266,33 @@ class ProductionDashboardService
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
 
+        $repairQuery = RepairMachineLog::query()
+            ->with(['user:id,name'])
+            ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
+            ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
+
         if ($itemCode) {
             $adjustQuery->where('item_code', $itemCode);
             $mouldQuery->where('item_code', $itemCode);
+            $repairQuery->where('item_code', $itemCode);
         }
 
         if ($machineUserId) {
             $adjustQuery->where('user_id', $machineUserId);
             $mouldQuery->where('user_id', $machineUserId);
+            $repairQuery->where('user_id', $machineUserId);
         } elseif ($effectivePlant === 'karawang') {
             $adjustQuery->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
             $mouldQuery->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+            $repairQuery->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
         } elseif ($effectivePlant === 'kbn') {
             $adjustQuery->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
             $mouldQuery->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+            $repairQuery->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
         }
         $adjustLogsRaw = $adjustQuery->get();
         $mouldLogsRaw = $mouldQuery->get();
+        $repairLogsRaw = $repairQuery->get();
 
         $dicQuery = DailyItemCode::query()
             ->with(['hourlyRemarks.ngDetails.ngType', 'user:id,name'])
@@ -1230,7 +1309,10 @@ class ProductionDashboardService
             $mouldLogsRaw,
             $masterItems,
             $startDate,
-            $endDate
+            $endDate,
+            null,
+            null,
+            $repairLogsRaw
         );
     }
 
