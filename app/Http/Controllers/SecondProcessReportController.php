@@ -639,15 +639,33 @@ class SecondProcessReportController extends Controller
 
     public function searchItems(Request $request)
     {
-        $query = $request->get('query') ?: $request->get('q');
-        if (! $query) {
+        $query = trim((string) ($request->get('query') ?: $request->get('q')));
+        if ($query === '') {
             return response()->json([]);
         }
 
-        $items = MasterListItem::with(['customer', 'businessPartner'])
-            ->where('item_code', 'LIKE', "%{$query}%")
-            ->orWhere('item_name', 'LIKE', "%{$query}%")
-            ->limit(20)
+        $by = $request->get('by', 'all');
+
+        $itemsQuery = MasterListItem::with(['customer', 'businessPartner']);
+
+        if ($by === 'number' || $by === 'item_code') {
+            $itemsQuery->where(function ($q) use ($query) {
+                $q->where('item_code', 'LIKE', "%{$query}%")
+                    ->orWhere('item_name', 'LIKE', "%{$query}%");
+            })->orderByRaw("CASE WHEN item_code LIKE ? THEN 0 WHEN item_code LIKE ? THEN 1 ELSE 2 END", ["{$query}%", "%{$query}%"]);
+        } elseif ($by === 'name' || $by === 'item_name') {
+            $itemsQuery->where(function ($q) use ($query) {
+                $q->where('item_name', 'LIKE', "%{$query}%")
+                    ->orWhere('item_code', 'LIKE', "%{$query}%");
+            })->orderByRaw("CASE WHEN item_name LIKE ? THEN 0 WHEN item_name LIKE ? THEN 1 ELSE 2 END", ["{$query}%", "%{$query}%"]);
+        } else {
+            $itemsQuery->where(function ($q) use ($query) {
+                $q->where('item_code', 'LIKE', "%{$query}%")
+                    ->orWhere('item_name', 'LIKE', "%{$query}%");
+            });
+        }
+
+        $items = $itemsQuery->limit(25)
             ->get()
             ->map(function ($item) {
                 $rawCust = $item->customer?->customer_name ?: $item->businessPartner?->bp_name;

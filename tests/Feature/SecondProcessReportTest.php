@@ -1666,6 +1666,80 @@ class SecondProcessReportTest extends TestCase
         $res = $this->actingAs($creatorUser)->get(route('second-process-reports.edit', $report->id));
         $res->assertOk();
     }
+
+    /**
+     * Test searching items supports both part number and part name search modes.
+     */
+    public function test_search_items_supports_part_number_and_part_name_modes(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+
+        MasterListItem::create([
+            'item_code' => 'PN-ALPHA-999',
+            'item_name' => 'Side Mirror Cover Left',
+            'tipe_mesin' => '0',
+            'standart_packaging_list' => 10,
+            'setup_time_minute' => '0',
+            'pair' => '0',
+            'cavity' => 1,
+            'cycle_time' => 1.0,
+            'project_code' => 'MODEL-SEDAN-X',
+            'customer_code' => 'CUST-TOYOTA',
+        ]);
+
+        MasterListItem::create([
+            'item_code' => 'PN-BETA-888',
+            'item_name' => 'Handle Bar Inner Cap',
+            'tipe_mesin' => '0',
+            'standart_packaging_list' => 10,
+            'setup_time_minute' => '0',
+            'pair' => '0',
+            'cavity' => 1,
+            'cycle_time' => 1.0,
+            'project_code' => 'MODEL-BIKE-Y',
+            'customer_code' => 'CUST-TOYOTA',
+        ]);
+
+        // 1. Search by part number
+        $resNumber = $this->actingAs($user)->getJson(route('second-process-reports.search-items', [
+            'query' => 'ALPHA',
+            'by' => 'number',
+        ]));
+        $resNumber->assertOk();
+        $dataNumber = $resNumber->json();
+        $this->assertNotEmpty($dataNumber);
+        $this->assertEquals('PN-ALPHA-999', $dataNumber[0]['item_code']);
+        $this->assertEquals('Side Mirror Cover Left', $dataNumber[0]['item_name']);
+        $this->assertEquals('Toyota Motor Corp', $dataNumber[0]['customer_name']);
+
+        // 2. Search by part name
+        $resName = $this->actingAs($user)->getJson(route('second-process-reports.search-items', [
+            'query' => 'Handle Bar',
+            'by' => 'name',
+        ]));
+        $resName->assertOk();
+        $dataName = $resName->json();
+        $this->assertNotEmpty($dataName);
+        $this->assertEquals('PN-BETA-888', $dataName[0]['item_code']);
+        $this->assertEquals('Handle Bar Inner Cap', $dataName[0]['item_name']);
+        $this->assertEquals('Toyota Motor Corp', $dataName[0]['customer_name']);
+    }
+
+    /**
+     * Test create form renders part number and part name searchable dropdown containers.
+     */
+    public function test_create_form_renders_part_number_and_part_name_searchable_dropdowns(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+
+        $response = $this->actingAs($user)->get(route('second-process-reports.create'));
+        $response->assertOk();
+        $response->assertSee('part-number-dropdown');
+        $response->assertSee('part-name-dropdown');
+        $response->assertSee('name="part_number"', false);
+        $response->assertSee('name="part_name"', false);
+    }
 }
+
 
 

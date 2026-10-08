@@ -315,16 +315,18 @@
                         @enderror
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Part
-                            Number</label>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Part Number <span class="text-red-500">*</span></label>
+                            <span class="text-[10px] text-gray-400 font-medium">Searchable</span>
+                        </div>
                         <div class="relative">
                             <input type="text" name="part_number" id="part_number"
                                 value="{{ old('part_number', $report->part_number) }}"
                                 placeholder="Search Part Number..."
-                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm @error('part_number') border-red-500 ring-1 ring-red-500 @enderror"
+                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm transition @error('part_number') border-red-500 ring-1 ring-red-500 @enderror"
                                 required autocomplete="off">
                             <div id="part-number-dropdown"
-                                class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded shadow-lg z-50 hidden">
+                                class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl z-50 hidden divide-y divide-gray-100">
                             </div>
                         </div>
                         @error('part_number')
@@ -332,12 +334,23 @@
                         @enderror
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Part
-                            Name</label>
-                        <input type="text" name="part_name" value="{{ old('part_name', $report->part_name) }}"
-                            placeholder="Auto-filled from Part Number"
-                            class="w-full rounded border-gray-300 bg-gray-50 focus:border-blue-500 focus:ring-blue-500 text-sm"
-                            >
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Part Name</label>
+                            <span class="text-[10px] text-gray-400 font-medium">Searchable</span>
+                        </div>
+                        <div class="relative">
+                            <input type="text" name="part_name" id="part_name"
+                                value="{{ old('part_name', $report->part_name) }}"
+                                placeholder="Search Part Name..."
+                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm transition @error('part_name') border-red-500 ring-1 ring-red-500 @enderror"
+                                autocomplete="off">
+                            <div id="part-name-dropdown"
+                                class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl z-50 hidden divide-y divide-gray-100">
+                            </div>
+                        </div>
+                        @error('part_name')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Model</label>
@@ -1671,9 +1684,10 @@
         };
 
         // 2. Autocomplete helper
-        function setupAutocomplete(inputId, dropdownId, url, onSelect) {
+        function setupAutocomplete(inputId, dropdownId, url, onSelect, getSearchBy = 'all') {
             const input = document.getElementById(inputId);
             const dropdown = document.getElementById(dropdownId);
+            if (!input || !dropdown) return;
             let debounceTimer;
 
             input.addEventListener('input', function() {
@@ -1687,23 +1701,49 @@
                 }
 
                 debounceTimer = setTimeout(() => {
-                    fetch(`${url}?query=${encodeURIComponent(query)}`)
+                    const searchBy = typeof getSearchBy === 'function' ? getSearchBy() : (getSearchBy || 'all');
+                    const fetchUrl = `${url}?query=${encodeURIComponent(query)}&by=${encodeURIComponent(searchBy)}`;
+
+                    fetch(fetchUrl)
                         .then(res => res.json())
                         .then(data => {
                             dropdown.innerHTML = '';
                             if (data.length === 0) {
-                                dropdown.classList.add('hidden');
+                                const emptyDiv = document.createElement('div');
+                                emptyDiv.className = 'px-4 py-2.5 text-xs text-gray-400 italic bg-gray-50/50';
+                                emptyDiv.textContent = 'Tidak ada hasil ditemukan.';
+                                dropdown.appendChild(emptyDiv);
+                                dropdown.classList.remove('hidden');
                                 return;
                             }
 
                             data.forEach(item => {
                                 const div = document.createElement('div');
                                 div.className =
-                                    'px-4 py-2 hover:bg-blue-50 cursor-pointer text-xs border-b border-gray-100 last:border-b-0 text-gray-800 transition';
+                                    'px-4 py-2.5 hover:bg-blue-50 cursor-pointer text-xs border-b border-gray-100 last:border-b-0 text-gray-800 transition';
 
-                                if (item.item_code) {
-                                    div.innerHTML =
-                                        `<span class="font-bold text-blue-700">${item.item_code}</span> - <span class="text-gray-500">${item.item_description || ''}</span>`;
+                                if (searchBy === 'name' || inputId === 'part_name') {
+                                    div.innerHTML = `
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-bold text-blue-700 text-xs">${escapeHtml(item.item_name || item.item_description || '-')}</span>
+                                            <span class="font-mono bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold px-1.5 py-0.5 rounded">${escapeHtml(item.item_code)}</span>
+                                        </div>
+                                        <div class="text-gray-500 text-[11px] flex items-center gap-1.5 mt-1">
+                                            ${item.project_code && item.project_code !== 'N/A' ? `<span class="bg-gray-100 text-gray-700 px-1 rounded text-[10px]">Model: ${escapeHtml(item.project_code)}</span>` : ''}
+                                            ${item.customer_name && item.customer_name !== 'N/A' ? `<span class="bg-gray-100 text-gray-700 px-1 rounded text-[10px]">Cust: ${escapeHtml(item.customer_name)}</span>` : ''}
+                                        </div>
+                                    `;
+                                } else if (item.item_code) {
+                                    div.innerHTML = `
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-bold text-blue-700 font-mono text-xs">${escapeHtml(item.item_code)}</span>
+                                            ${item.customer_name && item.customer_name !== 'N/A' ? `<span class="bg-gray-100 text-gray-700 px-1 rounded text-[10px]">Cust: ${escapeHtml(item.customer_name)}</span>` : ''}
+                                        </div>
+                                        <div class="text-gray-600 text-[11px] mt-0.5">
+                                            ${escapeHtml(item.item_name || item.item_description || '')}
+                                            ${item.project_code && item.project_code !== 'N/A' ? `<span class="text-gray-400 ml-1">• Model: ${escapeHtml(item.project_code)}</span>` : ''}
+                                        </div>
+                                    `;
                                 } else if (item.display_label) {
                                     div.textContent = item.display_label;
                                 } else if (item.name) {
@@ -1723,29 +1763,54 @@
             });
 
             document.addEventListener('click', function(e) {
-                if (e.target !== input && e.target !== dropdown) {
+                if (e.target !== input && e.target !== dropdown && !dropdown.contains(e.target)) {
                     dropdown.classList.add('hidden');
                 }
             });
         }
 
-        // Initialize Autocompletes
+        // Shared handler for selecting an item from either Part Number or Part Name dropdown
+        function handlePartSelect(item) {
+            const partNumInput = document.getElementById('part_number');
+            const partNameInput = document.getElementById('part_name');
+            const modelInput = document.querySelector('input[name="model"]');
+            const customerInput = document.getElementById('customer');
+
+            if (partNumInput) partNumInput.value = item.item_code || '';
+            if (partNameInput) partNameInput.value = item.item_name || item.item_description || '';
+            if (modelInput && item.project_code && item.project_code !== 'N/A') {
+                modelInput.value = item.project_code;
+            }
+            if (customerInput && item.customer_name && item.customer_name !== 'N/A') {
+                customerInput.value = item.customer_name;
+            }
+
+            // Immediately trigger First Piece Inspection gate check
+            if (typeof checkFirstPieceGate === 'function') {
+                checkFirstPieceGate();
+            }
+        }
+
+        // Initialize Autocompletes for Part Number and Part Name
         setupAutocomplete('part_number', 'part-number-dropdown',
             '{{ route('second-process-reports.search-items') }}',
-            function(item) {
-                document.getElementById('part_number').value = item.item_code;
-                document.querySelector('input[name="part_name"]').value = item.item_name || item
-                    .item_description || '';
-                if (item.project_code) {
-                    document.querySelector('input[name="model"]').value = item.project_code;
-                }
-                document.getElementById('customer').value = item.customer_name || '';
-            });
+            handlePartSelect,
+            'number'
+        );
+
+        setupAutocomplete('part_name', 'part-name-dropdown',
+            '{{ route('second-process-reports.search-items') }}',
+            handlePartSelect,
+            'name'
+        );
+
         setupAutocomplete('customer', 'customer-dropdown',
             '{{ route('second-process-reports.search-customers') }}',
             function(item) {
                 document.getElementById('customer').value = item.customer_name || item.name || '';
             });
+
+
 
         // 3. Dynamic Hour Management (Unified Production Table Sync)
         const addHourBtn = document.getElementById('add-hour-btn');
