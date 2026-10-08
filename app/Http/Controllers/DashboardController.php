@@ -1188,10 +1188,53 @@ class DashboardController extends Controller
     public function updateEmployeeName(Request $request)
     {
         $machineJob = MachineJob::where('user_id', auth()->user()->id)->first();
+        if (!$machineJob) {
+            if ($request->ajax()) {
+                return response()->json(['message' => 'Machine job not found'], 404);
+            }
+            return redirect()->back()->with('error', 'Machine job not found.');
+        }
 
-        // Update the employee_name
-        $machineJob->employee_name = $request->input('employee_name');
+        // Update the employee_name (support both array of operators and single string)
+        if ($request->has('operators')) {
+            $operators = (array) $request->input('operators');
+            $machineJob->employee_name = implode(', ', array_values(array_filter(array_map('trim', $operators))));
+        } elseif ($request->has('employee_name')) {
+            $machineJob->employee_name = $request->input('employee_name');
+        }
         $machineJob->save();
+
+        // Backfill active DIC's hourly remarks if pic_2 or pic_3 are currently missing
+        if ($machineJob->dic_id && !empty($machineJob->employee_name)) {
+            $ops = array_values(array_filter(array_map('trim', explode(',', $machineJob->employee_name))));
+            $p2 = $ops[1] ?? null;
+            $p3 = $ops[2] ?? null;
+            if ($p2 || $p3) {
+                $remarksToUpdate = HourlyRemark::where('dic_id', $machineJob->dic_id)->get();
+                foreach ($remarksToUpdate as $r) {
+                    $changed = false;
+                    if ($p2 && (empty($r->pic_2) || $r->pic_2 === '-')) {
+                        $r->pic_2 = $p2;
+                        $changed = true;
+                    }
+                    if ($p3 && (empty($r->pic_3) || $r->pic_3 === '-')) {
+                        $r->pic_3 = $p3;
+                        $changed = true;
+                    }
+                    if ($changed) {
+                        $r->save();
+                    }
+                }
+            }
+        }
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee name updated successfully.',
+                'employee_name' => $machineJob->employee_name,
+            ]);
+        }
 
         // Redirect back or wherever needed
         return redirect()->back()->with('success', 'Employee name updated successfully.');
@@ -1675,6 +1718,17 @@ class DashboardController extends Controller
         $pic2 = $request->input('pic_2');
         $pic3 = $request->input('pic_3');
 
+        // Fallback ke MachineJob assigned operators jika belum terisi dari request
+        if (empty($pic2) || empty($pic3)) {
+            $machineJobOps = array_values(array_filter(array_map('trim', explode(',', $machineJob?->employee_name ?? ''))));
+            if (empty($pic2) && isset($machineJobOps[1])) {
+                $pic2 = $machineJobOps[1];
+            }
+            if (empty($pic3) && isset($machineJobOps[2])) {
+                $pic3 = $machineJobOps[2];
+            }
+        }
+
         $isAchieve = 0;
 
         if ($hourlyRemark) {
@@ -1683,8 +1737,8 @@ class DashboardController extends Controller
                 'is_achieve' => $isAchieve,
                 'updated_at' => now(),
             ];
-            if ($pic2 !== null) $updateData['pic_2'] = $pic2;
-            if ($pic3 !== null) $updateData['pic_3'] = $pic3;
+            if (!empty($pic2)) $updateData['pic_2'] = $pic2;
+            if (!empty($pic3)) $updateData['pic_3'] = $pic3;
             $hourlyRemark->update($updateData);
         } else {
             HourlyRemark::create([
@@ -1695,8 +1749,8 @@ class DashboardController extends Controller
                 'actual' => $totalActual,
                 'is_achieve' => $isAchieve,
                 'pic' => $user,
-                'pic_2' => $pic2,
-                'pic_3' => $pic3,
+                'pic_2' => !empty($pic2) ? $pic2 : null,
+                'pic_3' => !empty($pic3) ? $pic3 : null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -2649,15 +2703,34 @@ class DashboardController extends Controller
             return back()->with('error', 'Data dengan jam tersebut sudah ada untuk DIC yang sama.');
         }
     
+        // Resolve PICs with fallback to MachineJob assigned operators
+        $machineJob = MachineJob::where('user_id', auth()->user()->id)->first();
+        $assignedOps = [];
+        if ($machineJob && !empty($machineJob->employee_name)) {
+            $assignedOps = array_values(array_filter(array_map('trim', explode(',', $machineJob->employee_name))));
+        }
+
+        $pic1 = $request->input('nik') ?: $request->input('pic') ?: ($assignedOps[0] ?? null) ?: auth()->user()->name;
+        $pic2 = $request->input('pic_2') ?: ($assignedOps[1] ?? null);
+        $pic3 = $request->input('pic_3') ?: ($assignedOps[2] ?? null);
+
+        // Hitung total scan actual jika sudah ada scan pada rentang jam tersebut
+        $totalActual = ProductionScannedData::where('dic_id', $dicId)
+            ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) >= ?", [$startTime->format('H:i:s')])
+            ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) < ?", [$endTime->format('H:i:s')])
+            ->sum('quantity');
+
         // Insert hourly remark
         HourlyRemark::create([
             'dic_id' => $dicId,
             'start_time' => $startTime->format('H:i:s'),
             'end_time' => $endTime->format('H:i:s'),
             'target' => $target,
-            'pic' => $request->nik ?: $request->pic,
-            'pic_2' => $request->pic_2,
-            'pic_3' => $request->pic_3,
+            'actual' => (int) $totalActual,
+            'is_achieve' => ($target > 0 && $totalActual >= $target) ? 1 : 0,
+            'pic' => $pic1,
+            'pic_2' => !empty($pic2) ? $pic2 : null,
+            'pic_3' => !empty($pic3) ? $pic3 : null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
