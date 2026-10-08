@@ -10,6 +10,18 @@ Sebelum menulis kode baru, Anda wajib mengikuti tangga keputusan (decision ladde
 
 *Catatan: Aspek keamanan (security), perlindungan data (data-loss protection), validasi input, penanganan error, dan aksesibilitas TIDAK BOLEH dikurangi atau diabaikan.*
 
+## Post-Test Cleanup & Git Staging Invariant
+Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
+1. **100% Verification**: Pastikan seluruh test suite terkait (Feature/Unit) lulus tanpa regresi sebelum melangkah ke penyelesaian tugas.
+2. **Post-Test Workspace Cleanup**:
+   - Hapus semua file sementara (temporary spreadsheets, scratch scripts, mock uploads) yang dibuat selama proses testing.
+   - Kembalikan/revert file cache atau transient generated artifacts (misalnya `.phpunit.result.cache`) agar tidak mengotori repositori.
+   - Hindari mengecek file spreadsheet dummy/sensitif ke dalam git kecuali secara eksplisit diminta.
+3. **Selective Git Staging**:
+   - JANGAN PERNAH menjalankan blind `git add .` atau `git commit -a`.
+   - Periksa `git status` secara teliti.
+   - Stage hanya file kode yang sengaja diubah dan diuji. Jaga agar konfigurasi lokal pengembang (seperti IP HMR dev server di `vite.config.js` atau catatan kerja) tetap terisolasi dan tidak ter-stage secara tidak sengaja.
+
 ---
 
 # Daijo MES: App Context & Architecture
@@ -67,7 +79,9 @@ Sebelum menulis kode baru, Anda wajib mengikuti tangga keputusan (decision ladde
 
 2. **Master List Items & Customer Relations (`MasterListItem`, `MasterListItemView`)**:
    - Relates to `MasterCustomerDelivery` via `belongsTo(MasterCustomerDelivery::class, 'customer_code', 'customer_code')`.
-   - `/master-list-item` Livewire management view includes connection filters (`Total`, `✓ Terhubung`, `⚠️ Belum Terhubung`), unassigned badges, and inline editing to resolve disconnected part-customer relationships.
+   - Relates to `MasterBusinessPartner` via `belongsTo(MasterBusinessPartner::class, 'customer_code', 'bp_code')`.
+   - `/master-list-manager` Livewire management view includes connection filters (`Semua`, `✓ Terhubung`, `⚠️ Belum Terhubung`), live count badges, and inline `<select>` customer dropdown mapping ([Code] - [Name]) to resolve unassigned parts without needing heavy bulk upload modals.
+   - `SecondProcessReportController::searchItems` resolves customer names hierarchically via `$item->customer?->customer_name ?: $item->businessPartner?->bp_name`, guaranteeing official registered customer names and preventing fallback `'N/A'` entries in Second Process production forms.
 
 3. **First Piece Inspection (`FirstPieceInspection`)**:
    - Quality gate conducted at the start of a production run.
