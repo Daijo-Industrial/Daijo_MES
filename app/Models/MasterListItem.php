@@ -49,4 +49,13 @@ class MasterListItem extends Model
             'customer_code'    // owner key di master_customer_delivery
         );
     }
+
+    public function businessPartner()
+    {
+        return $this->belongsTo(
+            MasterBusinessPartner::class,
+            'customer_code',
+            'bp_code'
+        );
+    }
 }

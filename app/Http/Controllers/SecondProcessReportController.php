@@ -659,18 +659,18 @@ class SecondProcessReportController extends Controller
 
     public function searchItems(Request $request)
     {
-        $query = $request->get('query');
+        $query = $request->get('query') ?: $request->get('q');
         if (! $query) {
             return response()->json([]);
         }
 
-        $items = MasterListItem::with('customer')
+        $items = MasterListItem::with(['customer', 'businessPartner'])
             ->where('item_code', 'LIKE', "%{$query}%")
             ->orWhere('item_name', 'LIKE', "%{$query}%")
             ->limit(20)
             ->get()
             ->map(function ($item) {
-                $rawCust = $item->customer?->customer_name;
+                $rawCust = $item->customer?->customer_name ?: $item->businessPartner?->bp_name;
                 $custName = (!empty($rawCust) && $rawCust !== '0' && $rawCust !== '-') ? $rawCust : 'N/A';
                 $rawModel = $item->project_code;
                 $modelCode = (!empty($rawModel) && $rawModel !== '0' && $rawModel !== '-') ? $rawModel : 'N/A';

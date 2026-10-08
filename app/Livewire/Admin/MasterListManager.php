@@ -2,13 +2,16 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\MasterListItem;
+use App\Models\MasterBusinessPartner;
+use App\Models\MasterCustomerDelivery;
 use App\Models\MasterItemLog;
-use Livewire\Component;
-use Livewire\WithPagination;
-use Livewire\WithFileUploads;
+use App\Models\MasterListItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Component;
+use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class MasterListManager extends Component
@@ -17,7 +20,8 @@ class MasterListManager extends Component
 
     public $search = '';
     public $hardSync = false;
-    
+    public string $filterConnection = 'ALL'; // 'ALL', 'CONNECTED', 'UNASSIGNED'
+
     // Excel Import status
     public $tempFilePath = '';
     public $totalRows = 0;
@@ -37,10 +41,17 @@ class MasterListManager extends Component
 
     protected $queryString = [
         'search' => ['except' => ''],
+        'filterConnection' => ['except' => 'ALL'],
     ];
 
     public function updatingSearch()
     {
+        $this->resetPage('itemsPage');
+    }
+
+    public function setConnectionFilter(string $filter): void
+    {
+        $this->filterConnection = $filter;
         $this->resetPage('itemsPage');
     }
 
@@ -63,7 +74,7 @@ class MasterListManager extends Component
     {
         $item = MasterListItem::findOrFail($this->editingItemId);
         $field = $this->editingField;
-        
+
         $rules = [
             'tipe_mesin' => 'nullable|string',
             'standart_packaging_list' => 'nullable|integer|min:0',
@@ -82,11 +93,18 @@ class MasterListManager extends Component
         ];
 
         $validated = $this->validate([
-            'editingValue' => $rules[$field] ?? 'nullable'
+            'editingValue' => $rules[$field] ?? 'nullable',
         ]);
 
         $oldValue = $item->$field;
         $newValue = $this->editingValue;
+
+        if ($field === 'customer_code') {
+            $newValue = trim((string) $newValue);
+            if ($newValue === '' || $newValue === '-' || $newValue === 'null') {
+                $newValue = '0';
+            }
+        }
 
         if ($oldValue != $newValue) {
             $item->$field = $newValue;
@@ -155,18 +173,12 @@ class MasterListManager extends Component
         ]);
 
         try {
-            $path = $this->file->store('temp');
-            $realPath = Storage::path($path);
+            $realPath = $this->file->getRealPath();
 
             // Load spreadsheet using PhpSpreadsheet
             $spreadsheet = IOFactory::load($realPath);
             $worksheet = $spreadsheet->getActiveSheet();
             $rows = $worksheet->toArray();
-
-            // Delete original uploaded file immediately to save disk space
-            if (file_exists($realPath)) {
-                unlink($realPath);
-            }
 
             // Skip header row if present
             if (!empty($rows) && (
@@ -223,7 +235,7 @@ class MasterListManager extends Component
             $this->importedRowsCount = 0;
 
         } catch (\Throwable $e) {
-            \Log::error('Upload error', ['error' => $e->getMessage()]);
+            Log::error('Upload error', ['error' => $e->getMessage()]);
             session()->flash('error', 'Error reading Excel/CSV file: ' . $e->getMessage());
         }
     }
@@ -381,20 +393,50 @@ class MasterListManager extends Component
 
     public function render()
     {
-        $items = MasterListItem::where(function ($query) {
-                $query->where('item_code', 'like', '%'.$this->search.'%')
-                    ->orWhere('item_name', 'like', '%'.$this->search.'%');
-            })
-            ->orderBy('id', 'desc')
-            ->paginate(15, ['*'], 'itemsPage');
+        $query = MasterListItem::with(['customer', 'businessPartner'])
+            ->where(function ($q) {
+                $q->where('item_code', 'like', '%'.$this->search.'%')
+                    ->orWhere('item_name', 'like', '%'.$this->search.'%')
+                    ->orWhere('customer_code', 'like', '%'.$this->search.'%');
+            });
+
+        if ($this->filterConnection === 'CONNECTED') {
+            $query->whereNotNull('customer_code')
+                ->whereNotIn('customer_code', ['', '0', '-']);
+        } elseif ($this->filterConnection === 'UNASSIGNED') {
+            $query->where(function ($q) {
+                $q->whereNull('customer_code')
+                    ->orWhereIn('customer_code', ['', '0', '-']);
+            });
+        }
+
+        $items = $query->orderBy('id', 'desc')->paginate(15, ['*'], 'itemsPage');
 
         $logs = MasterItemLog::with('user')
             ->orderBy('created_at', 'desc')
             ->paginate(10, ['*'], 'logsPage');
 
+        $counts = [
+            'ALL' => MasterListItem::count(),
+            'CONNECTED' => MasterListItem::whereNotNull('customer_code')->whereNotIn('customer_code', ['', '0', '-'])->count(),
+            'UNASSIGNED' => MasterListItem::where(function ($q) {
+                $q->whereNull('customer_code')->orWhereIn('customer_code', ['', '0', '-']);
+            })->count(),
+        ];
+
+        // Customers list for dropdown selector
+        $customers = MasterBusinessPartner::customers()
+            ->orderBy('bp_name')
+            ->get(['bp_code as customer_code', 'bp_name as customer_name', 'type']);
+        if ($customers->isEmpty()) {
+            $customers = MasterCustomerDelivery::orderBy('customer_name')->get();
+        }
+
         return view('livewire.admin.master-list-manager', [
             'items' => $items,
             'logs' => $logs,
+            'counts' => $counts,
+            'customers' => $customers,
         ]);
     }
 }
