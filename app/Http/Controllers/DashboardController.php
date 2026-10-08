@@ -969,6 +969,10 @@ class DashboardController extends Controller
                 ->get();
         }
 
+        $maintenanceOperators = OperatorUser::where('position', 'Maintenance')
+            ->orderBy('name', 'asc')
+            ->get();
+
         $allOperators = OperatorUser::orderBy('name', 'asc')->get();
 
         $assignedOperators = [];
@@ -1046,6 +1050,7 @@ class DashboardController extends Controller
             'defaultNextItemCode',
             'setupMolders',
             'adjusters',
+            'maintenanceOperators',
             'allOperators',
             'assignedOperators'
         ));
@@ -2088,10 +2093,55 @@ class DashboardController extends Controller
         $today = Carbon::now()->format('Y-m-d');
 
         $request->validate([
-            'pic_name' => 'required|string|max:255',
+            'pic_name'  => 'required|string|max:255',
+            'item_code' => 'nullable|string|max:255',
         ]);
 
+        $currentItemCode = MachineJob::where('user_id', $userId)->value('item_code');
         $operatorUser = OperatorUser::where('name', $request->pic_name)->first();
+
+        $nextItemCode = $request->item_code;
+
+        if (!$nextItemCode) {
+            if ($currentItemCode) {
+                $nextItemCode = $currentItemCode;
+            } else {
+                // Ambil daftar item hari ini
+                $dailyItems = DailyItemCode::where('user_id', $userId)
+                    ->whereDate('start_date', $today)
+                    ->orderBy('start_time', 'asc')
+                    ->pluck('item_code')
+                    ->toArray();
+
+                $currentIndex = array_search($currentItemCode, $dailyItems);
+
+                if ($currentIndex !== false && isset($dailyItems[$currentIndex + 1])) {
+                    $nextItemCode = $dailyItems[$currentIndex + 1];
+                } else {
+                    if ($currentIndex === false) {
+                        $nextItemCode = $dailyItems[0] ?? null;
+                    }
+
+                    if (!$nextItemCode) {
+                        $nextDay = Carbon::tomorrow()->format('Y-m-d');
+                        $nextDayItem = DailyItemCode::where('user_id', $userId)
+                            ->whereDate('start_date', $nextDay)
+                            ->orderBy('start_time', 'asc')
+                            ->value('item_code');
+                        $nextItemCode = $nextDayItem ?? null;
+                    }
+
+                    if (!$nextItemCode) {
+                        $undoneItem = DailyItemCode::where('user_id', $userId)
+                            ->whereNull('is_done')
+                            ->orderBy('start_time', 'asc')
+                            ->value('item_code');
+
+                        $nextItemCode = $undoneItem ?? null;
+                    }
+                }
+            }
+        }
 
         // Guard: cek apakah sudah ada repair machine aktif (belum selesai)
         $activeRepairMachine = RepairMachineLog::where('user_id', $userId)
@@ -2100,11 +2150,11 @@ class DashboardController extends Controller
 
         if ($activeRepairMachine) {
             return response()->json([
-                'message' => 'Repair machine sudah berjalan',
+                'message'   => 'Repair machine sudah berjalan',
                 'repair_id' => $activeRepairMachine->id,
-                'log_id' => $activeRepairMachine->id,
-                'operator' => [
-                    'name' => $operatorUser ? $operatorUser->name : $activeRepairMachine->pic,
+                'log_id'    => $activeRepairMachine->id,
+                'operator'  => [
+                    'name'         => $operatorUser ? $operatorUser->name : $activeRepairMachine->pic,
                     'profile_path' => $operatorUser && $operatorUser->profile_picture
                         ? asset('storage/' . $operatorUser->profile_picture)
                         : asset('images/default_profile.jpg'),
@@ -2113,21 +2163,29 @@ class DashboardController extends Controller
         }
 
         // Create a new repair machine log entry
-        $repairmachine = RepairMachineLog::create([
-            'user_id' => $userId,
-            'pic' => $request->pic_name,
+        $logData = [
+            'user_id'    => $userId,
+            'pic'        => $request->pic_name,
             'created_at' => Carbon::now(), // Start time
+        ];
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('repair_machine_logs', 'item_code')) {
+            $logData['item_code'] = $nextItemCode;
+        }
+
+        $repairmachine = RepairMachineLog::create($logData);
+
+        return response()->json([
+            'message'   => 'Repair Machine started',
+            'repair_id' => $repairmachine->id,
+            'log_id'    => $repairmachine->id,
+            'operator'  => [
+                'name'         => $operatorUser ? $operatorUser->name : $request->pic_name,
+                'profile_path' => $operatorUser && $operatorUser->profile_picture 
+                    ? asset('storage/' . $operatorUser->profile_picture)
+                    : asset('images/default_profile.jpg'),
+            ],
         ]);
-
-        // Set machine job user_id to NULL (machine is inactive)
-        MachineJob::where('user_id', $userId)->update(['item_code' => null, 'shift' => null, 'dic_id' => null]);
-
-        return response()->json(['message' => 'Repair Machine started', 'repair_id' => $repairmachine->id, 'log_id' => $repairmachine->id, 'operator' => [
-            'name' => $operatorUser ? $operatorUser->name : $request->pic_name,
-            'profile_path' => $operatorUser && $operatorUser->profile_picture 
-                ? asset('storage/' . $operatorUser->profile_picture)  // Convert to full URL
-                : asset('images/default_profile.jpg'),  // Default profile image
-        ],]);
     }
 
     public function endMouldChange(Request $request)
@@ -2216,9 +2274,6 @@ class DashboardController extends Controller
                 'problem' => $request->problem,
                 'remark' => $request->remarks,
             ]);
-
-            // Reset machine job langsung di sini
-            $this->resetUserJob($userId);
 
             return response()->json(['message' => 'Repair Machine completed']);
         }

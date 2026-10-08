@@ -50,12 +50,12 @@
                 <div>
                     <h1 class="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
                         <span>SPK BOM Changes</span>
-                        <span class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            Sinkronisasi &amp; Audit SAP
+                        <span class="text-xs px-2.5 py-0.5 rounded-full font-black bg-amber-100 text-amber-900 border border-amber-300">
+                            🟡 Khusus SPK Planned (P)
                         </span>
                     </h1>
                     <p class="text-xs text-gray-500 font-semibold mt-1">
-                        Daftar SPK Master aktif &amp; formula leaf BOM non-WIP. Dapat menambah, menghapus, atau mengubah material langsung ke SAP.
+                        Daftar SPK berstatus Planned (P) &amp; formula leaf BOM non-WIP. SPK yang sudah Released (R) dikunci dan tidak dapat diubah.
                     </p>
                 </div>
             </div>
@@ -82,36 +82,36 @@
 
     <!-- Summary Statistics Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div class="bg-white p-5 rounded-2xl shadow-2xs border border-gray-100 flex items-center gap-4">
-            <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xl">
-                📦
+        <div class="bg-white p-5 rounded-2xl shadow-2xs border border-amber-100 flex items-center gap-4">
+            <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-black text-xl">
+                🟡
             </div>
             <div>
-                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Total SPK</span>
-                <span class="text-2xl font-black text-gray-800">{{ number_format($totalSpk) }}</span>
-                <span class="text-[10px] text-gray-400 font-medium block">Tercatat di sistem</span>
+                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Total Planned (P)</span>
+                <span class="text-2xl font-black text-amber-700">{{ number_format($totalPlanned) }}</span>
+                <span class="text-[10px] text-gray-400 font-medium block">Dapat diubah resepnya</span>
             </div>
         </div>
 
         <div class="bg-white p-5 rounded-2xl shadow-2xs border border-emerald-100 flex items-center gap-4">
             <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black text-xl">
-                🟢
+                ✓
             </div>
             <div>
-                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Released (R)</span>
-                <span class="text-2xl font-black text-emerald-600">{{ number_format($totalReleased) }}</span>
-                <span class="text-[10px] text-emerald-600/80 font-medium block">Siap produksi</span>
+                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Planned Ada BOM</span>
+                <span class="text-2xl font-black text-emerald-600">{{ number_format($totalPlannedWithBom) }}</span>
+                <span class="text-[10px] text-emerald-600/80 font-medium block">Resep tersedia</span>
             </div>
         </div>
 
-        <div class="bg-white p-5 rounded-2xl shadow-2xs border border-amber-100 flex items-center gap-4">
-            <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-black text-xl">
-                🟡
+        <div class="bg-white p-5 rounded-2xl shadow-2xs border border-rose-100 flex items-center gap-4">
+            <div class="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-black text-xl">
+                ⚠️
             </div>
             <div>
-                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Planned (P)</span>
-                <span class="text-2xl font-black text-amber-600">{{ number_format($totalPlanned) }}</span>
-                <span class="text-[10px] text-amber-600/80 font-medium block">Dalam jadwal</span>
+                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Planned Tanpa BOM</span>
+                <span class="text-2xl font-black text-rose-600">{{ number_format($totalPlannedWithoutBom) }}</span>
+                <span class="text-[10px] text-rose-600/80 font-medium block">Belum ada formula</span>
             </div>
         </div>
 
@@ -154,13 +154,11 @@
                 @endif
             </div>
 
-            <!-- Status SPK Filter -->
-            <select wire:model.live="statusFilter" class="bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold px-3 py-2 text-gray-700 outline-none">
-                <option value="">Semua Status SPK</option>
-                @foreach($statusList as $st)
-                    <option value="{{ $st }}">Status {{ $st }}</option>
-                @endforeach
-            </select>
+            <!-- Status SPK Indicator (Fixed Planned Only) -->
+            <div class="px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs font-bold text-amber-800 flex items-center gap-1.5 shrink-0 shadow-2xs">
+                <span>🟡</span>
+                <span>Status: Planned (P) Saja</span>
+            </div>
 
             <!-- Ketersediaan BOM Filter -->
             <select wire:model.live="bomFilter" class="bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold px-3 py-2 text-gray-700 outline-none">
@@ -389,20 +387,31 @@
                                             </div>
 
                                             <div class="flex items-center gap-2 flex-wrap">
-                                                @if(!$isEditingThisSpk)
-                                                    <!-- Action: Masuk Mode Edit Resep -->
-                                                    <button type="button" wire:click="startEditMode('{{ $spk->spk_number }}')"
-                                                        class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer">
-                                                        <span>✏️</span>
-                                                        <span>Masuk Mode Edit Resep</span>
-                                                    </button>
+                                                @php
+                                                    $isSpkPlanned = in_array($spk->production_status, ['P', 'Planned', 'PLANNED'], true);
+                                                @endphp
+                                                @if($isSpkPlanned)
+                                                    @if(!$isEditingThisSpk)
+                                                        <!-- Action: Masuk Mode Edit Resep -->
+                                                        <button type="button" wire:click="startEditMode('{{ $spk->spk_number }}')"
+                                                            class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer">
+                                                            <span>✏️</span>
+                                                            <span>Masuk Mode Edit Resep</span>
+                                                        </button>
+                                                    @else
+                                                        <!-- Action: Tambah Material Baru ke SPK (HANYA MUNCUL DI DALAM MODE EDIT) -->
+                                                        <button type="button" wire:click="openAddMaterialModal('{{ $spk->spk_number }}', {{ $plannedQty }})"
+                                                            class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer">
+                                                            <span>+</span>
+                                                            <span>Tambah Material</span>
+                                                        </button>
+                                                    @endif
                                                 @else
-                                                    <!-- Action: Tambah Material Baru ke SPK (HANYA MUNCUL DI DALAM MODE EDIT) -->
-                                                    <button type="button" wire:click="openAddMaterialModal('{{ $spk->spk_number }}', {{ $plannedQty }})"
-                                                        class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer">
-                                                        <span>+</span>
-                                                        <span>Tambah Material</span>
-                                                    </button>
+                                                    <!-- SPK Bukan Planned (Terkunci) -->
+                                                    <span class="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-lg text-xs font-bold border border-gray-200 flex items-center gap-1 shadow-2xs cursor-not-allowed" title="SPK sudah Released/Closed dan tidak boleh diubah">
+                                                        <span>🔒</span>
+                                                        <span>Terkunci ({{ $spk->production_status }})</span>
+                                                    </span>
                                                 @endif
 
                                                 <!-- Action: Lihat Riwayat SPK ini -->

@@ -123,6 +123,18 @@ class ProductionDashboardOptimizationTest extends TestCase
             $table->timestamps();
             $table->softDeletes();
         });
+
+        Schema::create('repair_machine_logs', function ($table) {
+            $table->id();
+            $table->foreignId('user_id');
+            $table->string('item_code')->nullable();
+            $table->string('problem')->nullable();
+            $table->dateTime('finish_repair')->nullable();
+            $table->string('pic')->nullable();
+            $table->text('remark')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
     }
 
     public function test_production_dashboard_single_query_pipeline()
@@ -733,6 +745,57 @@ class ProductionDashboardOptimizationTest extends TestCase
             ->assertSee('Bintik hitam di sisi kanan')
             ->assertSee('PART-BETA')
             ->assertSee('Suhu nozzle tinggi');
+    }
+
+    public function test_repair_machine_logs_integration_in_shift_performance_analysis()
+    {
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::create([
+            'name'     => 'Admin Tester',
+            'email'    => 'admin_repair@example.com',
+            'role_id'  => $role->id,
+            'password' => bcrypt('password'),
+        ]);
+
+        $machine = User::create(['name' => 'K0450A', 'email' => 'k0450a_rep@example.com', 'password' => 'secret']);
+
+        // Repair log at 10:00 WIB (03:00 UTC) -> Shift 1, duration 45 minutes
+        \App\Models\RepairMachineLog::create([
+            'user_id'       => $machine->id,
+            'item_code'     => 'PART-REP-01',
+            'pic'           => 'Mamat Maintenance',
+            'problem'       => 'Pemanas heater mati',
+            'remark'        => 'Ganti thermocouple',
+            'created_at'    => Carbon::parse('2026-10-06 03:00:00', 'UTC'),
+            'finish_repair' => Carbon::parse('2026-10-06 03:45:00', 'UTC'),
+        ]);
+
+        $service = app(ProductionDashboardService::class);
+        $date = Carbon::parse('2026-10-06');
+        $data = $service->getAllDashboardData($date->copy()->startOfDay(), $date->copy()->endOfDay(), null, null, 'karawang');
+
+        $shiftAnalysis = $data['shift_personnel_analysis'];
+        $this->assertEquals(1, $shiftAnalysis['total_repair_count']);
+        $this->assertEquals(45.0, $shiftAnalysis['total_repair_time_minutes']);
+
+        // Shift 1 checks
+        $shift1 = $shiftAnalysis['shifts'][1];
+        $this->assertEquals(1, $shift1['repair_count']);
+        $this->assertEquals(45.0, $shift1['repair_duration_minutes']);
+        $this->assertEquals(['Mamat Maintenance'], $shift1['repairers']);
+        $this->assertEquals('Mamat Maintenance', $shift1['repairers_str']);
+
+        // Livewire view check
+        $this->actingAs($user);
+        Livewire::test(ProductionDashboard::class)
+            ->set('viewType', 'daily')
+            ->set('selectedDate', '2026-10-06')
+            ->set('plant', 'karawang')
+            ->assertSee('Shift Performance: Adjuster, Change Mould, Repair & NG Tracking')
+            ->assertSee('Total Repair:')
+            ->assertSee('Mamat Maintenance')
+            ->assertSee('Repair Machine')
+            ->assertSee('Pemanas heater mati');
     }
 }
 

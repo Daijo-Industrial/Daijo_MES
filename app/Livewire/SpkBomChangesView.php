@@ -191,8 +191,24 @@ class SpkBomChangesView extends Component
     // ==========================================
     // EDIT MODE MANAGEMENT (BATCH STAGING)
     // ==========================================
+    protected function isSpkPlanned(?string $spkNumber): bool
+    {
+        if (empty($spkNumber)) {
+            return false;
+        }
+        $status = SpkMaster::where('spk_number', $spkNumber)->value('production_status');
+        return in_array($status, ['P', 'Planned', 'PLANNED'], true);
+    }
+
     public function startEditMode(string $spkNumber): void
     {
+        if (!$this->isSpkPlanned($spkNumber)) {
+            $status = SpkMaster::where('spk_number', $spkNumber)->value('production_status');
+            $statusLabel = $status === 'R' ? 'Released (R)' : ($status ?: 'Non-Planned');
+            $this->flashError = "SPK {$spkNumber} sudah berstatus {$statusLabel} dan tidak boleh diubah resep materialnya. Hanya SPK berstatus Planned (P) yang dapat diubah.";
+            return;
+        }
+
         if (!empty($this->editingSpk) && $this->editingSpk !== $spkNumber && !empty($this->stagedLines)) {
             $this->flashError = "Anda masih memiliki perubahan belum disimpan pada SPK {$this->editingSpk}. Silakan kirim ke SAP atau batalkan terlebih dahulu.";
             return;
@@ -231,6 +247,13 @@ class SpkBomChangesView extends Component
     {
         if (empty($this->editingSpk)) {
             $this->flashError = 'Tidak ada SPK yang sedang dalam mode edit.';
+            return;
+        }
+
+        if (!$this->isSpkPlanned($this->editingSpk)) {
+            $this->flashError = "Gagal: SPK {$this->editingSpk} sudah berstatus Released atau bukan Planned, perubahan material tidak boleh dikirim ke SAP.";
+            $this->stagedLines = [];
+            $this->editingSpk = null;
             return;
         }
 
@@ -415,6 +438,11 @@ class SpkBomChangesView extends Component
     // ==========================================
     public function openEditQtyModal(string $spkNumber, string $itemCode, ?string $desc, float $planQty, ?float $baseQty = null, ?float $spkPlannedQty = null): void
     {
+        if (!$this->isSpkPlanned($spkNumber)) {
+            $this->flashError = "SPK {$spkNumber} sudah berstatus Released atau bukan Planned dan tidak boleh diubah.";
+            return;
+        }
+
         $this->closeAllModals();
         $this->editSpkNumber = $spkNumber;
         $this->editItemCode = $itemCode;
@@ -465,6 +493,12 @@ class SpkBomChangesView extends Component
 
     public function submitEditQty(): void
     {
+        if (!$this->isSpkPlanned($this->editSpkNumber)) {
+            $this->flashError = "SPK {$this->editSpkNumber} sudah berstatus Released atau bukan Planned dan tidak boleh diubah.";
+            $this->showEditModal = false;
+            return;
+        }
+
         if ($this->editBaseQty !== null && $this->editBaseQty !== '') {
             $this->editBaseQty = str_replace(',', '.', trim((string) $this->editBaseQty));
         }
@@ -539,6 +573,11 @@ class SpkBomChangesView extends Component
     // ==========================================
     public function openAddMaterialModal(string $spkNumber, ?float $plannedQty = null): void
     {
+        if (!$this->isSpkPlanned($spkNumber)) {
+            $this->flashError = "SPK {$spkNumber} sudah berstatus Released atau bukan Planned dan tidak boleh diubah.";
+            return;
+        }
+
         $this->closeAllModals();
         $this->addSpkNumber = $spkNumber;
         $this->addItemCode = '';
@@ -633,6 +672,12 @@ class SpkBomChangesView extends Component
 
     public function submitAddMaterial(): void
     {
+        if (!$this->isSpkPlanned($this->addSpkNumber)) {
+            $this->flashError = "SPK {$this->addSpkNumber} sudah berstatus Released atau bukan Planned dan tidak boleh diubah.";
+            $this->showAddModal = false;
+            return;
+        }
+
         if ($this->addBaseQty !== null) {
             $this->addBaseQty = str_replace(',', '.', trim((string) $this->addBaseQty));
         }
@@ -684,6 +729,11 @@ class SpkBomChangesView extends Component
     // ==========================================
     public function openDeleteModal(string $spkNumber, string $itemCode, ?string $desc): void
     {
+        if (!$this->isSpkPlanned($spkNumber)) {
+            $this->flashError = "SPK {$spkNumber} sudah berstatus Released atau bukan Planned dan materialnya tidak boleh dihapus.";
+            return;
+        }
+
         $this->closeAllModals();
         $this->deleteSpkNumber = $spkNumber;
         $this->deleteItemCode = $itemCode;
@@ -697,6 +747,12 @@ class SpkBomChangesView extends Component
             'deleteSpkNumber' => 'required',
             'deleteItemCode'  => 'required',
         ]);
+
+        if (!$this->isSpkPlanned($this->deleteSpkNumber)) {
+            $this->flashError = "SPK {$this->deleteSpkNumber} sudah berstatus Released atau bukan Planned dan materialnya tidak boleh dihapus.";
+            $this->showDeleteModal = false;
+            return;
+        }
 
         if (empty($this->editingSpk) || $this->editingSpk !== $this->deleteSpkNumber) {
             $this->startEditMode($this->deleteSpkNumber);
@@ -733,6 +789,11 @@ class SpkBomChangesView extends Component
     // ==========================================
     public function openReplaceModal(string $spkNumber, string $oldItemCode, ?string $desc, ?float $plannedQty = null): void
     {
+        if (!$this->isSpkPlanned($spkNumber)) {
+            $this->flashError = "SPK {$spkNumber} sudah berstatus Released atau bukan Planned dan materialnya tidak boleh diganti.";
+            return;
+        }
+
         $this->closeAllModals();
         $this->replaceSpkNumber = $spkNumber;
         $this->replaceOldItemCode = $oldItemCode;
@@ -829,6 +890,12 @@ class SpkBomChangesView extends Component
 
     public function submitReplaceMaterial(): void
     {
+        if (!$this->isSpkPlanned($this->replaceSpkNumber)) {
+            $this->flashError = "SPK {$this->replaceSpkNumber} sudah berstatus Released atau bukan Planned dan tidak boleh diubah.";
+            $this->showReplaceModal = false;
+            return;
+        }
+
         if ($this->replaceBaseQty !== null) {
             $this->replaceBaseQty = str_replace(',', '.', trim((string) $this->replaceBaseQty));
         }
@@ -923,34 +990,29 @@ class SpkBomChangesView extends Component
     {
         $query = SpkMaster::with(['masterItem', 'fgHeader'])->withCount('bomChangeLogs');
 
+        // KHUSUS SPK PLANNED (P): SPK yang sudah Released tidak boleh diubah dan tidak ditampilkan di sini
+        $query->whereIn('production_status', ['P', 'Planned', 'PLANNED']);
+
         // 1. Filter Pencarian
         if (!empty(trim($this->search))) {
             $term = trim($this->search);
             $query->where(function ($q) use ($term) {
                 $q->where('spk_number', 'like', "%{$term}%")
                   ->orWhere('item_code', 'like', "%{$term}%")
-                  ->orWhere('production_status', 'like', "%{$term}%")
                   ->orWhereHas('masterItem', function ($sub) use ($term) {
                       $sub->where('item_name', 'like', "%{$term}%");
                   });
             });
         }
 
-        // 2. Filter Status
-        if (!empty($this->statusFilter)) {
-            $query->where('production_status', $this->statusFilter);
-        }
+        // 2. Filter Ketersediaan BOM
+        $validFgCodes = MasterBomFgHeader::pluck('fg_item_code')->toArray();
+        $stagingParents = MasterBom::select('parent_item')->distinct()->pluck('parent_item')->toArray();
+        $allBomCodes = array_values(array_unique(array_merge($validFgCodes, $stagingParents)));
 
-        // 3. Filter Ketersediaan BOM
         if ($this->bomFilter === 'with_bom') {
-            $validFgCodes = MasterBomFgHeader::pluck('fg_item_code')->toArray();
-            $stagingParents = MasterBom::select('parent_item')->distinct()->pluck('parent_item')->toArray();
-            $allBomCodes = array_values(array_unique(array_merge($validFgCodes, $stagingParents)));
             $query->whereIn('item_code', $allBomCodes);
         } elseif ($this->bomFilter === 'without_bom') {
-            $validFgCodes = MasterBomFgHeader::pluck('fg_item_code')->toArray();
-            $stagingParents = MasterBom::select('parent_item')->distinct()->pluck('parent_item')->toArray();
-            $allBomCodes = array_values(array_unique(array_merge($validFgCodes, $stagingParents)));
             $query->whereNotIn('item_code', $allBomCodes);
         }
 
@@ -959,28 +1021,21 @@ class SpkBomChangesView extends Component
             ->orderBy('spk_number')
             ->paginate($this->perPage);
 
-        // Ringkasan Statistik Global
-        $totalSpk = SpkMaster::count();
-        $totalReleased = SpkMaster::where('production_status', 'R')->count();
-        $totalPlanned = SpkMaster::where('production_status', 'P')->count();
-        $totalPlannedPcs = SpkMaster::sum('planned_quantity');
+        // Ringkasan Statistik SPK Planned
+        $plannedQuery = SpkMaster::whereIn('production_status', ['P', 'Planned', 'PLANNED']);
+        $totalPlanned = (clone $plannedQuery)->count();
+        $totalPlannedPcs = (clone $plannedQuery)->sum('planned_quantity');
+        $totalPlannedWithBom = (clone $plannedQuery)->whereIn('item_code', $allBomCodes)->count();
+        $totalPlannedWithoutBom = (clone $plannedQuery)->whereNotIn('item_code', $allBomCodes)->count();
         $totalBomChanges = SpkBomChangeLog::count();
 
-        // Status List untuk filter dropdown
-        $statusList = SpkMaster::whereNotNull('production_status')
-            ->where('production_status', '!=', '')
-            ->distinct()
-            ->pluck('production_status')
-            ->toArray();
-
         return view('livewire.spk-bom-changes-view', [
-            'spks'             => $spks,
-            'totalSpk'         => $totalSpk,
-            'totalReleased'    => $totalReleased,
-            'totalPlanned'     => $totalPlanned,
-            'totalPlannedPcs'  => $totalPlannedPcs,
-            'totalBomChanges'  => $totalBomChanges,
-            'statusList'       => $statusList,
+            'spks'                   => $spks,
+            'totalPlanned'           => $totalPlanned,
+            'totalPlannedPcs'        => $totalPlannedPcs,
+            'totalPlannedWithBom'    => $totalPlannedWithBom,
+            'totalPlannedWithoutBom' => $totalPlannedWithoutBom,
+            'totalBomChanges'        => $totalBomChanges,
         ]);
     }
 }

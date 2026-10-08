@@ -13,18 +13,21 @@ class RepairMachineLog extends Model
 
     protected $fillable = [
         'user_id',
+        'item_code',
         'problem',
         'finish_repair',
         'pic',
         'remark',
     ];
 
-
-
-
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function masterListItem()
+    {
+        return $this->belongsTo(MasterListItem::class, 'item_code', 'item_code');
     }
 
 

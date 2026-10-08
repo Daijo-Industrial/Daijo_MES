@@ -296,7 +296,7 @@ class SpkBomChangesTest extends TestCase
             'item_code'         => 'PART-TEST-01',
             'planned_quantity'  => 1000,
             'completed_quantity'=> 250,
-            'production_status' => 'R',
+            'production_status' => 'P',
             'post_date'         => '2026-10-01',
         ]);
 
@@ -339,7 +339,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-ALPHA-01',
             'item_code'         => 'FG-ALPHA',
             'planned_quantity'  => 100,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         SpkMaster::create([
@@ -355,9 +355,9 @@ class SpkBomChangesTest extends TestCase
             ->assertSee('SPK-ALPHA-01')
             ->assertDontSee('SPK-BETA-02');
 
-        // Filter by Status
+        // Search by Item Code
         Livewire::test(SpkBomChangesView::class)
-            ->set('statusFilter', 'P')
+            ->set('search', 'FG-BETA')
             ->assertSee('SPK-BETA-02')
             ->assertDontSee('SPK-ALPHA-01');
     }
@@ -377,7 +377,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-MODAL-01',
             'item_code'         => 'FG-MODAL',
             'planned_quantity'  => 500,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         MasterBom::create([
@@ -390,7 +390,7 @@ class SpkBomChangesTest extends TestCase
 
         Livewire::test(SpkBomChangesView::class)
             ->assertSet('showModal', false)
-            ->call('openModal', 'SPK-MODAL-01', 'FG-MODAL', 500, 'TEST PART', 'R')
+            ->call('openModal', 'SPK-MODAL-01', 'FG-MODAL', 500, 'TEST PART', 'P')
             ->assertSet('showModal', true)
             ->assertSee('RAW-BOLT-1')
             ->assertSee('BOLT HEX M6')
@@ -505,7 +505,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-ACT-001',
             'item_code'         => 'FG-ACT-01',
             'planned_quantity'  => 500,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         MasterBom::create([
@@ -577,7 +577,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-ADD-999',
             'item_code'         => 'FG-ADD-999',
             'planned_quantity'  => 1000,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         Livewire::test(SpkBomChangesView::class)
@@ -652,7 +652,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-BATCH-777',
             'item_code'         => 'FG-BATCH-777',
             'planned_quantity'  => 100,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         MasterBom::create([
@@ -754,7 +754,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-CANCEL-001',
             'item_code'         => 'FG-CANCEL-01',
             'planned_quantity'  => 50,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         Livewire::test(SpkBomChangesView::class)
@@ -796,7 +796,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-DEC-001',
             'item_code'         => 'FG-DEC-01',
             'planned_quantity'  => 678,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         Livewire::test(SpkBomChangesView::class)
@@ -831,7 +831,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-BASE-001',
             'item_code'         => 'FG-BASE-01',
             'planned_quantity'  => 1000,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         Livewire::test(SpkBomChangesView::class)
@@ -869,7 +869,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-TOGGLE-001',
             'item_code'         => 'FG-TOGGLE-01',
             'planned_quantity'  => 100,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         $fg = MasterBomFgHeader::create([
@@ -987,7 +987,7 @@ class SpkBomChangesTest extends TestCase
             'spk_number'        => 'SPK-SUGGEST-001',
             'item_code'         => 'FG-SUGGEST-01',
             'planned_quantity'  => 500,
-            'production_status' => 'R',
+            'production_status' => 'P',
         ]);
 
         $component = Livewire::test(SpkBomChangesView::class)
@@ -1060,6 +1060,89 @@ class SpkBomChangesTest extends TestCase
         $response->assertSee('250099999');
         $response->assertSee('/api/sap_production_order/update');
         $response->assertSee('RM-STEEL-001');
+    }
+
+    public function test_released_spk_is_excluded_from_view_and_cannot_be_edited(): void
+    {
+        $role = Role::create(['name' => 'SUPERADMIN']);
+        $user = User::create([
+            'name'     => 'Andreas Guard',
+            'email'    => 'andreas_guard@daijo.co.id',
+            'password' => bcrypt('secret'),
+            'role_id'  => $role->id,
+        ]);
+        $this->actingAs($user);
+
+        // SPK Planned -> Harus terlihat di list
+        SpkMaster::create([
+            'spk_number'        => 'SPK-PLANNED-01',
+            'item_code'         => 'FG-PLANNED',
+            'planned_quantity'  => 100,
+            'production_status' => 'P',
+        ]);
+
+        // SPK Released -> TIDAK boleh terlihat di list
+        SpkMaster::create([
+            'spk_number'        => 'SPK-RELEASED-02',
+            'item_code'         => 'FG-RELEASED',
+            'planned_quantity'  => 200,
+            'production_status' => 'R',
+        ]);
+
+        // SPK Closed -> TIDAK boleh terlihat di list
+        SpkMaster::create([
+            'spk_number'        => 'SPK-CLOSED-03',
+            'item_code'         => 'FG-CLOSED',
+            'planned_quantity'  => 300,
+            'production_status' => 'C',
+        ]);
+
+        $test = Livewire::test(SpkBomChangesView::class)
+            ->assertSee('SPK-PLANNED-01')
+            ->assertDontSee('SPK-RELEASED-02')
+            ->assertDontSee('SPK-CLOSED-03');
+
+        // Mencoba masuk mode edit untuk SPK Released harus ditolak
+        $test->call('startEditMode', 'SPK-RELEASED-02')
+            ->assertSet('editingSpk', null)
+            ->assertSee('tidak boleh diubah resep materialnya');
+
+        // Mencoba buka modal edit/tambah/hapus/replace untuk SPK Released juga harus ditolak
+        $test->call('openEditQtyModal', 'SPK-RELEASED-02', 'RM-01', 'RM Test', 10, 1)
+            ->assertSet('showEditModal', false)
+            ->assertSee('tidak boleh diubah resep materialnya');
+
+        $test->call('openAddMaterialModal', 'SPK-RELEASED-02', 200)
+            ->assertSet('showAddModal', false)
+            ->assertSee('tidak boleh diubah resep materialnya');
+
+        $test->call('openDeleteModal', 'SPK-RELEASED-02', 'RM-01', 'RM Test')
+            ->assertSet('showDeleteModal', false)
+            ->assertSee('tidak boleh diubah resep materialnya');
+
+        $test->call('openReplaceModal', 'SPK-RELEASED-02', 'RM-01', 'RM Test', 200)
+            ->assertSet('showReplaceModal', false)
+            ->assertSee('tidak boleh diubah resep materialnya');
+
+        // Mencoba submit langsung tanpa modal juga harus ditolak
+        $test->set('editSpkNumber', 'SPK-RELEASED-02')
+            ->set('editItemCode', 'RM-01')
+            ->set('editBaseQty', 1)
+            ->call('submitEditQty')
+            ->assertSee('tidak boleh diubah');
+
+        $test->set('addSpkNumber', 'SPK-RELEASED-02')
+            ->set('addItemCode', 'RM-NEW')
+            ->set('addBaseQty', 1)
+            ->call('submitAddMaterial')
+            ->assertSee('tidak boleh diubah');
+
+        $test->set('replaceSpkNumber', 'SPK-RELEASED-02')
+            ->set('replaceOldItemCode', 'RM-01')
+            ->set('replaceNewItemCode', 'RM-NEW')
+            ->set('replaceBaseQty', 1)
+            ->call('submitReplaceMaterial')
+            ->assertSee('tidak boleh diubah');
     }
 }
 

@@ -259,6 +259,20 @@
                     </select>
                 </div>
 
+                <div id="maintenanceSelectContainer" class="mb-3 hidden">
+                    <label for="maintenance_select" class="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                        Pilih Operator Maintenance:
+                    </label>
+                    <select id="maintenance_select" class="border border-gray-300 rounded p-2 w-full text-xs shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="" data-password="">-- Pilih Nama --</option>
+                        @foreach($maintenanceOperators as $maint)
+                            <option value="{{ $maint->name }}" data-password="{{ $maint->password }}">
+                                {{ $maint->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <input type="text" id="nik" class="border p-2 w-full rounded" placeholder="Enter NIK...">
                 <input type="password" id="password" class="border p-2 w-full rounded mt-2" placeholder="Enter Password...">
                 
@@ -465,10 +479,14 @@
                                             <span class="font-semibold text-red-600">{{ $log->problem ?? '-' }}</span>
                                         </div>
                                         <div>
+                                            <span class="text-gray-400 block text-[9px] uppercase">Item Code</span>
+                                            <span class="font-bold text-indigo-600">{{ $log->item_code ?? '-' }}</span>
+                                        </div>
+                                        <div>
                                             <span class="text-gray-400 block text-[9px] uppercase">PIC</span>
                                             <span class="font-semibold text-gray-800">{{ $log->pic }}</span>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div>
                                             <span class="text-gray-400 block text-[9px] uppercase">Durasi Pengerjaan</span>
                                             <span class="font-bold text-emerald-600">{{ $log->total_pengerjaan ?? '-' }} menit</span>
                                         </div>
@@ -1881,10 +1899,12 @@
                 $('#next_item_code').val('{{ $defaultNextItemCode }}');
                 $('#setupMolderSelectContainer').removeClass('hidden');
                 $('#adjusterSelectContainer').addClass('hidden');
+                $('#maintenanceSelectContainer').addClass('hidden');
                 $('#nik').val('');
                 $('#password').val('');
                 $('#setup_molder_select').val('');
                 $('#adjuster_select').val('');
+                $('#maintenance_select').val('');
             });
 
             $(document).on('click', '#startAdjustMachine', function () {
@@ -1898,21 +1918,31 @@
                 @endif
                 $('#adjusterSelectContainer').removeClass('hidden');
                 $('#setupMolderSelectContainer').addClass('hidden');
+                $('#maintenanceSelectContainer').addClass('hidden');
                 $('#nik').val('');
                 $('#password').val('');
                 $('#setup_molder_select').val('');
                 $('#adjuster_select').val('');
+                $('#maintenance_select').val('');
             });
 
             $(document).on('click', '#startRepairMachine', function () {
                 $('#nikModal').removeClass('hidden').attr('data-action', 'repair');
-                $('#nextItemCodeContainer').addClass('hidden');
+                $('#nextItemCodeContainer').removeClass('hidden');
+                $('#nextItemCodeLabel').text('Pilih Item Code:');
+                @if($itemCode)
+                    $('#next_item_code').val('{{ $itemCode }}');
+                @else
+                    $('#next_item_code').val('{{ $defaultNextItemCode }}');
+                @endif
+                $('#maintenanceSelectContainer').removeClass('hidden');
                 $('#setupMolderSelectContainer').addClass('hidden');
                 $('#adjusterSelectContainer').addClass('hidden');
                 $('#nik').val('');
                 $('#password').val('');
                 $('#setup_molder_select').val('');
                 $('#adjuster_select').val('');
+                $('#maintenance_select').val('');
             });
 
             // Handle Setup Molder selection
@@ -1926,6 +1956,15 @@
 
             // Handle Adjuster selection
             $(document).on('change', '#adjuster_select', function () {
+                let selectedOption = $(this).find('option:selected');
+                let name = selectedOption.val();
+                let password = selectedOption.attr('data-password') || '';
+                $('#nik').val(name);
+                $('#password').val(password);
+            });
+
+            // Handle Maintenance selection
+            $(document).on('change', '#maintenance_select', function () {
                 let selectedOption = $(this).find('option:selected');
                 let name = selectedOption.val();
                 let password = selectedOption.attr('data-password') || '';
@@ -1950,8 +1989,8 @@
                     return;
                 }
 
-                if ((actionType === 'mould' || actionType === 'adjust') && !nextItemCode) {
-                    alert('Please select next item code.');
+                if ((actionType === 'mould' || actionType === 'adjust' || actionType === 'repair') && !nextItemCode) {
+                    alert('Please select item code.');
                     return;
                 }
 
@@ -1970,7 +2009,7 @@
                         } else if (actionType === 'adjust') {
                             startAdjustMachine(verifiedUser.name, nextItemCode);
                         } else if (actionType === 'repair') {
-                            startRepairMachine(verifiedUser.name);
+                            startRepairMachine(verifiedUser.name, nextItemCode);
                         }
                     },
                     error: function (xhr) {
@@ -2066,19 +2105,20 @@
             });
 
             // Start Repair Machine Process
-            function startRepairMachine(picName) {
+            function startRepairMachine(picName, nextItemCode) {
                 $.ajax({
                     url: "{{ route('repair.machine.start') }}",
                     type: "POST",
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    data: { pic_name: picName },
+                    data: { pic_name: picName, item_code: nextItemCode },
                     success: function (response) {
                         alert(response.message);
                         localStorage.setItem('repairMachineOperator', JSON.stringify(response.operator));
                         refreshStatusAndContainers();
                     },
                     error: function (xhr) {
-                        alert(xhr.responseJSON?.error || 'Gagal memulai perbaikan.');
+                        const msg = xhr.responseJSON?.message || xhr.responseJSON?.error || 'Gagal memulai perbaikan.';
+                        alert(msg);
                     }
                 });
             }
