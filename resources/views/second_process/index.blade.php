@@ -187,10 +187,10 @@
                                     
                                     <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                                         <a href="{{ route('second-process-reports.show', $report->id) }}" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
-                                        @if($report->status === 'draft' && (auth()->user()?->hasRole('SUPER-ADMIN') || auth()->user()?->hasRole('ADMIN') || empty($report->created_by_name) || $report->created_by_name === auth()->user()?->name || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'checker') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'leader')))
+                                        @can('update', $report)
                                             <a href="{{ route('second-process-reports.edit', $report->id) }}" class="text-yellow-600 hover:text-yellow-900 mr-3">Edit</a>
-                                        @endif
-                                        @if(auth()->user()?->hasRole('SUPER-ADMIN') || auth()->user()?->hasRole('ADMIN') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'acknowledged'))
+                                        @endcan
+                                        @can('delete', $report)
                                             <button onclick="document.getElementById('delete-dialog-{{ $report->id }}').showModal()" class="text-red-600 hover:text-red-900">
                                                 Delete
                                             </button>
@@ -212,7 +212,7 @@
                                                     </div>
                                                 </form>
                                             </dialog>
-                                        @endif
+                                        @endcan
                                     </td>
                                 </tr>
                             @empty

@@ -10,12 +10,12 @@
                     class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition">
                     Print Report
                 </button>
-                @if ($report->status === 'draft' && (auth()->user()?->hasRole('SUPER-ADMIN') || auth()->user()?->hasRole('ADMIN') || empty($report->created_by_name) || $report->created_by_name === auth()->user()?->name || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'checker') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'leader')))
+                @can('update', $report)
                     <a href="{{ route('second-process-reports.edit', $report->id) }}"
                         class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition">
                         Edit Report
                     </a>
-                @endif
+                @endcan
             </div>
         </div>
     </div>
@@ -73,7 +73,7 @@
 
             <div class="flex items-center space-x-2">
                 @if ($report->status === 'draft')
-                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'checker'))
+                    @can('sign', [$report, 'checker'])
                         <form action="{{ route('second-process-reports.sign', [$report->id, 'checker']) }}" method="POST">
                             @csrf
                             <button type="submit"
@@ -81,9 +81,9 @@
                                 Submit Report
                             </button>
                         </form>
-                    @endif
+                    @endcan
                 @elseif($report->status === 'submitted')
-                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'leader'))
+                    @can('sign', [$report, 'leader'])
                         <form action="{{ route('second-process-reports.sign', [$report->id, 'leader']) }}" method="POST"
                             class="inline">
                             @csrf
@@ -96,19 +96,21 @@
                             class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
                             Reject
                         </button>
-                    @endif
+                    @endcan
                 @elseif($report->status === 'leader_approved' || $report->status === 'pqc_approved')
-                    @if (!$report->pqc_signed_at && \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'pqc'))
-                        <form action="{{ route('second-process-reports.sign', [$report->id, 'pqc']) }}" method="POST"
-                            class="inline">
-                            @csrf
-                            <button type="submit"
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
-                                Sign as PQC (Optional)
-                            </button>
-                        </form>
+                    @if (!$report->pqc_signed_at)
+                        @can('sign', [$report, 'pqc'])
+                            <form action="{{ route('second-process-reports.sign', [$report->id, 'pqc']) }}" method="POST"
+                                class="inline">
+                                @csrf
+                                <button type="submit"
+                                    class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
+                                    Sign as PQC (Optional)
+                                </button>
+                            </form>
+                        @endcan
                     @endif
-                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'acknowledged'))
+                    @can('sign', [$report, 'acknowledged'])
                         <form action="{{ route('second-process-reports.sign', [$report->id, 'acknowledged']) }}"
                             method="POST" class="inline">
                             @csrf
@@ -117,15 +119,15 @@
                                 Acknowledge (Supervisor)
                             </button>
                         </form>
-                    @endif
-                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'leader') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'acknowledged') || \App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'pqc'))
+                    @endcan
+                    @can('reject', $report)
                         <button onclick="document.getElementById('reject-dialog').showModal()"
                             class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
                             Reject
                         </button>
-                    @endif
+                    @endcan
                 @elseif($report->status === 'acknowledged' && !$report->pqc_signed_at)
-                    @if (\App\Models\SecondProcessReport::isUserAuthorizedToSign(auth()->user(), 'pqc'))
+                    @can('sign', [$report, 'pqc'])
                         <form action="{{ route('second-process-reports.sign', [$report->id, 'pqc']) }}" method="POST"
                             class="inline">
                             @csrf
@@ -134,7 +136,7 @@
                                 Sign as PQC (Optional)
                             </button>
                         </form>
-                    @endif
+                    @endcan
                 @endif
             </div>
         </div>

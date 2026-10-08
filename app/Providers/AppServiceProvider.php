@@ -14,6 +14,10 @@ use App\Domain\Inventory\Contracts\RejectRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\EloquentFgInventoryRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentRejectRepository;
 
+use App\Models\SecondProcessReport;
+use App\Policies\SecondProcessReportPolicy;
+use Illuminate\Support\Facades\Gate;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -32,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Builder::useVite();
+
+        Gate::policy(SecondProcessReport::class, SecondProcessReportPolicy::class);
 
         RateLimiter::for('sap-api', function (Request $request) {
 

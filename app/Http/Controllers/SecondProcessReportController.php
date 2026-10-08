@@ -129,15 +129,7 @@ class SecondProcessReportController extends Controller
                 ->with('error', 'Only draft reports can be edited.');
         }
 
-        $user = auth()->user();
-        $canEdit = $user->hasRole('SUPER-ADMIN')
-            || $user->hasRole('ADMIN')
-            || empty($report->created_by_name)
-            || $report->created_by_name === $user->name
-            || SecondProcessReport::isUserAuthorizedToSign($user, 'checker')
-            || SecondProcessReport::isUserAuthorizedToSign($user, 'leader');
-
-        if (! $canEdit) {
+        if (auth()->user()->cannot('update', $report)) {
             return redirect()->route('second-process-reports.show', $id)
                 ->with('error', 'You do not have permission to edit this draft report.');
         }
@@ -154,15 +146,7 @@ class SecondProcessReportController extends Controller
                 ->with('error', 'Only draft reports can be updated.');
         }
 
-        $user = auth()->user();
-        $canEdit = $user->hasRole('SUPER-ADMIN')
-            || $user->hasRole('ADMIN')
-            || empty($report->created_by_name)
-            || $report->created_by_name === $user->name
-            || SecondProcessReport::isUserAuthorizedToSign($user, 'checker')
-            || SecondProcessReport::isUserAuthorizedToSign($user, 'leader');
-
-        if (! $canEdit) {
+        if (auth()->user()->cannot('update', $report)) {
             return redirect()->route('second-process-reports.show', $id)
                 ->with('error', 'You do not have permission to edit this draft report.');
         }
@@ -643,11 +627,7 @@ class SecondProcessReportController extends Controller
         $report = SecondProcessReport::findOrFail($id);
         $user = auth()->user();
 
-        $canDelete = $user->hasRole('SUPER-ADMIN')
-            || $user->hasRole('ADMIN')
-            || SecondProcessReport::isUserAuthorizedToSign($user, 'acknowledged');
-
-        if (! $canDelete) {
+        if ($user->cannot('delete', $report)) {
             return redirect()->back()->withErrors(['error' => 'You do not have permission to delete this report.']);
         }
 
@@ -744,7 +724,7 @@ class SecondProcessReportController extends Controller
         $report = SecondProcessReport::findOrFail($id);
         $user = auth()->user();
 
-        if (! SecondProcessReport::isUserAuthorizedToSign($user, $role)) {
+        if ($user->cannot('sign', [$report, $role])) {
             $userRoleName = $user->role ? $user->role->name : 'No Role';
             return redirect()->back()->withErrors([
                 'error' => "Role '{$userRoleName}' is not authorized to sign as " . ucfirst($role) . '.',
@@ -825,13 +805,7 @@ class SecondProcessReportController extends Controller
         $report = SecondProcessReport::findOrFail($id);
         $user = auth()->user();
 
-        $canReject = $user->hasRole('SUPER-ADMIN')
-            || $user->hasRole('ADMIN')
-            || SecondProcessReport::isUserAuthorizedToSign($user, 'leader')
-            || SecondProcessReport::isUserAuthorizedToSign($user, 'pqc')
-            || SecondProcessReport::isUserAuthorizedToSign($user, 'acknowledged');
-
-        if (! $canReject) {
+        if ($user->cannot('reject', $report)) {
             return redirect()->back()->withErrors(['error' => 'You are not authorized to reject reports.']);
         }
 
