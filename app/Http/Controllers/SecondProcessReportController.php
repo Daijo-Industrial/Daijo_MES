@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\FirstPieceInspection;
 use App\Models\IpqcInspection;
+use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterListItem;
 use App\Models\SecondProcessReport;
@@ -215,17 +216,29 @@ class SecondProcessReportController extends Controller
         if ($rawCustomer === '' || $rawCustomer === '0' || $rawCustomer === '-' || strcasecmp($rawCustomer, 'n/a') === 0) {
             $normalizedCustomer = 'N/A';
         } else {
-            // 1. Check if it matches an existing customer_name
-            $customerByName = MasterCustomerDelivery::where('customer_name', $rawCustomer)->first();
-            if ($customerByName) {
-                $normalizedCustomer = $customerByName->customer_name;
+            // 1. Check in MasterBusinessPartner (CUSTOMER) by bp_name, bp_code, or foreign_name (alias)
+            $bpCustomer = MasterBusinessPartner::customers()
+                ->where(function ($q) use ($rawCustomer) {
+                    $q->where('bp_name', $rawCustomer)
+                        ->orWhere('bp_code', $rawCustomer)
+                        ->orWhere('foreign_name', $rawCustomer);
+                })
+                ->first();
+
+            if ($bpCustomer) {
+                $normalizedCustomer = $bpCustomer->bp_name;
             } else {
-                // 2. Auto-convert if it matches a known customer_code
-                $customerByCode = MasterCustomerDelivery::where('customer_code', $rawCustomer)->first();
-                if ($customerByCode) {
-                    $normalizedCustomer = $customerByCode->customer_name;
+                // 2. Fallback to MasterCustomerDelivery by customer_name or customer_code
+                $customerByName = MasterCustomerDelivery::where('customer_name', $rawCustomer)->first();
+                if ($customerByName) {
+                    $normalizedCustomer = $customerByName->customer_name;
                 } else {
-                    $normalizedCustomer = $rawCustomer;
+                    $customerByCode = MasterCustomerDelivery::where('customer_code', $rawCustomer)->first();
+                    if ($customerByCode) {
+                        $normalizedCustomer = $customerByCode->customer_name;
+                    } else {
+                        $normalizedCustomer = $rawCustomer;
+                    }
                 }
             }
         }
@@ -281,7 +294,11 @@ class SecondProcessReportController extends Controller
                 'required',
                 'string',
                 function ($attribute, $value, $fail) {
-                    if ($value !== 'N/A' && !MasterCustomerDelivery::where('customer_name', $value)->exists()) {
+                    if (
+                        $value !== 'N/A' &&
+                        !MasterBusinessPartner::customers()->where('bp_name', $value)->exists() &&
+                        !MasterCustomerDelivery::where('customer_name', $value)->exists()
+                    ) {
                         $fail('Kolom Customer harus berupa Nama Customer resmi yang terdaftar atau N/A.');
                     }
                 },
@@ -678,6 +695,33 @@ class SecondProcessReportController extends Controller
             return response()->json([]);
         }
 
+        // 1. Search MasterBusinessPartner where category = CUSTOMER (bp_name, bp_code, foreign_name)
+        $bpResults = MasterBusinessPartner::customers()
+            ->where(function ($q) use ($query) {
+                $q->where('bp_name', 'LIKE', "%{$query}%")
+                    ->orWhere('bp_code', 'LIKE', "%{$query}%")
+                    ->orWhere('foreign_name', 'LIKE', "%{$query}%");
+            })
+            ->limit(20)
+            ->get();
+
+        if ($bpResults->isNotEmpty()) {
+            $customers = $bpResults->map(function ($bp) {
+                $details = array_filter([$bp->bp_code, $bp->foreign_name]);
+                $subtext = !empty($details) ? ' (' . implode(' - ', $details) . ')' : '';
+                return [
+                    'id' => $bp->id,
+                    'customer_code' => $bp->bp_code,
+                    'customer_name' => $bp->bp_name,
+                    'name' => $bp->bp_name,
+                    'display_label' => $bp->bp_name . $subtext,
+                ];
+            });
+
+            return response()->json($customers);
+        }
+
+        // 2. Fallback to MasterCustomerDelivery
         $customers = MasterCustomerDelivery::where('customer_name', 'LIKE', "%{$query}%")
             ->orWhere('customer_code', 'LIKE', "%{$query}%")
             ->limit(20)
@@ -688,6 +732,7 @@ class SecondProcessReportController extends Controller
                     'customer_code' => $cust->customer_code,
                     'customer_name' => $cust->customer_name,
                     'name' => $cust->customer_name,
+                    'display_label' => $cust->customer_name . ' (' . $cust->customer_code . ')',
                 ];
             });
 

@@ -897,6 +897,9 @@ Route::middleware('auth')->group(function (){
     Route::get('/master-list-logs', [MasterListItemController::class, 'logs'])->name('admin.master-list-logs');
     Route::get('/customer-delivery-manager', [MasterListItemController::class, 'customerDeliveryManage'])->name('admin.customer-delivery-manager');
     Route::get('/customer-delivery-logs', [MasterListItemController::class, 'customerDeliveryLogs'])->name('admin.customer-delivery-logs');
+    Route::get('/business-partner-manager', function () {
+        return view('master_business_partner.index');
+    })->name('admin.business-partner-manager');
 });
 
 

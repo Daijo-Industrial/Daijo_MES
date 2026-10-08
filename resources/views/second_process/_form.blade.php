@@ -1704,6 +1704,8 @@
                                 if (item.item_code) {
                                     div.innerHTML =
                                         `<span class="font-bold text-blue-700">${item.item_code}</span> - <span class="text-gray-500">${item.item_description || ''}</span>`;
+                                } else if (item.display_label) {
+                                    div.textContent = item.display_label;
                                 } else if (item.name) {
                                     div.textContent = item.name;
                                 }

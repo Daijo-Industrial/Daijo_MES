@@ -89,6 +89,7 @@ new class extends Component {
                 <livewire:parent-dropdown label="Master Data & Setting" :initiallyOpen="false" :childRoutes="[
                     ['name' => 'setting.holiday-schedule.index', 'label' => 'Holiday Schedule'],
                     ['name' => 'admin.master-list-manager', 'label' => 'Master List Manager'],
+                    ['name' => 'admin.business-partner-manager', 'label' => 'Master Business Partner'],
                     ['name' => 'admin.customer-delivery-manager', 'label' => 'Master Customer Delivery'],
                     ['name' => 'inventory.mtr', 'label' => 'Master MTR'],
                     ['name' => 'inventory.fg', 'label' => 'Master FG'],
