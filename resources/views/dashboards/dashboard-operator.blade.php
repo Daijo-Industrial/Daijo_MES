@@ -1283,7 +1283,7 @@
                             <dialog id="detailModal" class="rounded-md shadow-lg p-4 w-full max-w-3xl">
                                 <div class="flex justify-between items-center mb-4">
                                     <h3 class="text-lg font-bold">Detail Per Jam - {{ $activeDIC['item_code'] ?? '' }}</h3>
-                                    <button onclick="document.getElementById('addHourlyRemarksModal').showModal()" 
+                                    <button onclick="openAddHourlyRemarksModal()" 
                                             class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
                                         Add Hourly Remarks
                                     </button>
@@ -1293,7 +1293,15 @@
                                 <dialog id="addHourlyRemarksModal" class="rounded-md p-6 w-full max-w-md bg-white shadow">
                                     <form id="addHourlyRemarksForm" method="POST" action="{{ route('hourly-remarks.store') }}" x-data="{ nikInput: localStorage.getItem('nik') || '' }">
                                         @csrf
-                                        <h3 class="text-lg font-bold mb-4">Tambah Hourly Remarks</h3>
+                                        <h3 class="text-lg font-bold mb-3">Tambah Hourly Remarks</h3>
+
+                                        <!-- Operator Info Preview -->
+                                        <div id="hourlyRemarksOperatorPreview" class="mb-4 p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl text-xs space-y-1">
+                                            <span class="text-[10px] uppercase font-bold text-indigo-700 tracking-wider block">Operator Bertugas:</span>
+                                            <div id="hourlyRemarksOperatorList" class="flex flex-wrap gap-1.5 pt-0.5">
+                                                <span class="text-gray-400 italic text-xs">Memuat operator...</span>
+                                            </div>
+                                        </div>
 
                                         <label for="start_time" class="block text-sm font-semibold mb-1">Pilih Jam Mulai</label>
                                         <select name="start_time" id="start_time" required
@@ -1314,7 +1322,9 @@
                                         <input type="hidden" name="uniqueData" value='@json($itemCollections)' />
                                         <input type="hidden" name="datas" value='@json($datas)' />
                                         <input type="hidden" name="activedic" value='@json($activeDIC)' />
-                                        <input type="hidden" id="nik" name="nik" x-model="nikInput" />
+                                        <input type="hidden" id="hourly_nik" name="nik" x-model="nikInput" />
+                                        <input type="hidden" id="hourly_pic_2" name="pic_2" />
+                                        <input type="hidden" id="hourly_pic_3" name="pic_3" />
 
                                         <div class="flex justify-end gap-2 mt-4">
                                             <button type="button" onclick="document.getElementById('addHourlyRemarksModal').close()"
@@ -1337,6 +1347,7 @@
                                             <th class="py-2 px-4 border">Actual Production</th>
                                             <th class="py-2 px-4 border">NG</th>
                                             <th class="py-2 px-4 border">Status</th>
+                                            <th class="py-2 px-4 border">Operator (PIC)</th>
                                             <th class="py-2 px-4 border">Remark</th>
                                             <th class="py-2 px-4 border">Action</th>
                                         </tr>
@@ -1362,6 +1373,17 @@
                                                             <span class="px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">Tidak Tercapai</span>
                                                         @endif
                                                     </td>
+                                                    <td class="py-2 px-4 border">
+                                                        <div class="flex flex-col gap-0.5 text-xs text-center items-center">
+                                                            <span class="font-bold text-gray-800">{{ $slot->pic ?: '-' }}</span>
+                                                            @if(!empty($slot->pic_2))
+                                                                <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold">+ {{ $slot->pic_2 }}</span>
+                                                            @endif
+                                                            @if(!empty($slot->pic_3))
+                                                                <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold">+ {{ $slot->pic_3 }}</span>
+                                                            @endif
+                                                        </div>
+                                                    </td>
                                                     <td class="py-2 px-4 border">{{ $slot->remark ?? '-' }}</td>
                                                     <td class="py-2 px-4 border">
                                                         <button 
@@ -1386,13 +1408,12 @@
                                                             Add NG
                                                         </button>
                                                     </td>
-                                                    </td>
                                                 </tr>
 
                                             @endforeach
                                         @else
                                             <tr>
-                                                <td colspan="3" class="text-center py-2 text-gray-500">No hourly data available</td>
+                                                <td colspan="10" class="text-center py-2 text-gray-500">No hourly data available</td>
                                             </tr>
                                         @endif
                                     </tbody>
@@ -1743,12 +1764,22 @@
                                                 <span class="text-red-600 font-semibold">Tidak Tercapai</span>
                                             @endif
                                         </td>
-                                        <td class="py-2 px-4 border">{{ $remark->pic }}</td>
+                                        <td class="py-2 px-4 border">
+                                            <div class="flex flex-col gap-0.5 text-xs text-center items-center">
+                                                <span class="font-bold text-gray-800">{{ $remark->pic ?: '-' }}</span>
+                                                @if(!empty($remark->pic_2))
+                                                    <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold">+ {{ $remark->pic_2 }}</span>
+                                                @endif
+                                                @if(!empty($remark->pic_3))
+                                                    <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold">+ {{ $remark->pic_3 }}</span>
+                                                @endif
+                                            </div>
+                                        </td>
                                         <td class="py-2 px-4 border">{{ $remark->remark ?? '-' }}</td>
                                     </tr>
                                 @empty
                                     <tr>
-                                         <td colspan="7" class="text-center py-3 text-gray-500">Belum ada data summary</td>
+                                         <td colspan="9" class="text-center py-3 text-gray-500">Belum ada data summary</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -2450,7 +2481,16 @@
             $(document).on('submit', '#addHourlyRemarksForm', function(e) {
                 e.preventDefault();
                 const form = this;
+
+                // Pastikan nik, pic_2, dan pic_3 terisi dari localStorage
+                const op1 = localStorage.getItem('operator_name') || localStorage.getItem('nik') || '';
+                const op2 = localStorage.getItem('operator_name_2') || '';
+                const op3 = localStorage.getItem('operator_name_3') || '';
+
                 const formData = new FormData(form);
+                if (op1 && (!formData.get('nik') || formData.get('nik') === '')) formData.set('nik', op1);
+                if (op2) formData.set('pic_2', op2);
+                if (op3) formData.set('pic_3', op3);
                 
                 $.ajax({
                     url: form.action,
@@ -2460,7 +2500,8 @@
                     contentType: false,
                     success: function (data) {
                         alert(data.message || 'Hourly Remark added successfully!');
-                        // Modal remains open
+                        const modal = document.getElementById('addHourlyRemarksModal');
+                        if (modal) modal.close();
                         
                         // Update containers
                         $.get(window.location.href, function (html) {
@@ -2813,7 +2854,41 @@
 
                 $('#pic_2').val(op2);
                 $('#pic_3').val(op3);
+                updateHourlyRemarksOperatorInputs();
             }
+
+            function updateHourlyRemarksOperatorInputs() {
+                const op1 = localStorage.getItem('operator_name') || localStorage.getItem('nik') || '';
+                const op2 = localStorage.getItem('operator_name_2') || '';
+                const op3 = localStorage.getItem('operator_name_3') || '';
+
+                $('#hourly_nik').val(op1);
+                $('#hourly_pic_2').val(op2);
+                $('#hourly_pic_3').val(op3);
+
+                const list = $('#hourlyRemarksOperatorList');
+                if (list.length) {
+                    list.empty();
+                    if (op1) {
+                        list.append(`<span class="px-2 py-0.5 bg-white border border-indigo-200 text-gray-800 rounded-md font-semibold text-xs shadow-2xs">👤 ${op1} <span class="text-[9px] text-gray-400 font-normal">(Op 1)</span></span>`);
+                    }
+                    if (op2) {
+                        list.append(`<span class="px-2 py-0.5 bg-indigo-100 border border-indigo-200 text-indigo-800 rounded-md font-semibold text-xs shadow-2xs">👤 ${op2} <span class="text-[9px] text-indigo-500 font-normal">(Op 2)</span></span>`);
+                    }
+                    if (op3) {
+                        list.append(`<span class="px-2 py-0.5 bg-indigo-100 border border-indigo-200 text-indigo-800 rounded-md font-semibold text-xs shadow-2xs">👤 ${op3} <span class="text-[9px] text-indigo-500 font-normal">(Op 3)</span></span>`);
+                    }
+                    if (!op1 && !op2 && !op3) {
+                        list.append(`<span class="text-gray-400 italic text-xs">Belum ada operator terdaftar</span>`);
+                    }
+                }
+            }
+
+            window.openAddHourlyRemarksModal = function() {
+                updateHourlyRemarksOperatorInputs();
+                const modal = document.getElementById('addHourlyRemarksModal');
+                if (modal) modal.showModal();
+            };
 
             function syncOperatorsToDB() {
                 const op1 = localStorage.getItem('operator_name') || '';
@@ -2825,7 +2900,14 @@
                     url: "{{ route('updateEmployeeName') }}",
                     type: "POST",
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    data: { operators: operators }
+                    data: { operators: operators },
+                    success: function() {
+                        $.get(window.location.href, function (html) {
+                            const $html = $(html);
+                            $('#detailRemarkModalTbody').html($html.find('#detailRemarkModalTbody').html());
+                            $('#summaryTableContainer').html($html.find('#summaryTableContainer').html());
+                        });
+                    }
                 });
             }
 
