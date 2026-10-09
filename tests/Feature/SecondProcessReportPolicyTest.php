@@ -109,7 +109,7 @@ class SecondProcessReportPolicyTest extends TestCase
 
     public function test_policy_sign_ability(): void
     {
-        $report = SecondProcessReport::create([
+        $draftReport = SecondProcessReport::create([
             'date' => '2026-07-07',
             'unit_line' => 'Painting Line A',
             'shift' => '1',
@@ -121,17 +121,45 @@ class SecondProcessReportPolicyTest extends TestCase
             'customer' => 'Toyota Motor Corp',
         ]);
 
-        // Checker slot
-        $this->assertTrue($this->checkerUser->can('sign', [$report, 'checker']));
-        $this->assertTrue($this->adminUser->can('sign', [$report, 'checker']));
+        // Checker slot on draft
+        $this->assertTrue($this->checkerUser->can('sign', [$draftReport, 'checker']));
+        $this->assertTrue($this->adminUser->can('sign', [$draftReport, 'checker']));
+        // Leader and Supervisor cannot sign draft reports
+        $this->assertFalse($this->leaderUser->can('sign', [$draftReport, 'leader']));
+        $this->assertFalse($this->supervisorUser->can('sign', [$draftReport, 'acknowledged']));
 
-        // Leader slot
-        $this->assertTrue($this->leaderUser->can('sign', [$report, 'leader']));
-        $this->assertFalse($this->checkerUser->can('sign', [$report, 'leader']));
+        // Leader slot on submitted report
+        $submittedReport = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'PART-POL-04-SUB',
+            'part_name' => 'Door Trim',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+        $this->assertTrue($this->leaderUser->can('sign', [$submittedReport, 'leader']));
+        $this->assertTrue($this->adminUser->can('sign', [$submittedReport, 'leader']));
+        $this->assertFalse($this->checkerUser->can('sign', [$submittedReport, 'leader']));
+        $this->assertFalse($this->supervisorUser->can('sign', [$submittedReport, 'acknowledged']));
 
-        // Supervisor slot ('acknowledged')
-        $this->assertTrue($this->supervisorUser->can('sign', [$report, 'acknowledged']));
-        $this->assertFalse($this->leaderUser->can('sign', [$report, 'acknowledged']));
+        // Supervisor slot on leader_approved report
+        $leaderReport = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'leader_approved',
+            'part_number' => 'PART-POL-04-LEAD',
+            'part_name' => 'Door Trim',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+        $this->assertTrue($this->supervisorUser->can('sign', [$leaderReport, 'acknowledged']));
+        $this->assertTrue($this->adminUser->can('sign', [$leaderReport, 'acknowledged']));
+        $this->assertFalse($this->leaderUser->can('sign', [$leaderReport, 'acknowledged']));
     }
 
     public function test_policy_reject_ability(): void
@@ -148,7 +176,7 @@ class SecondProcessReportPolicyTest extends TestCase
             'customer' => 'Toyota Motor Corp',
         ]);
 
-        // Leader, Supervisor, Admin can reject
+        // Leader, Supervisor, Admin can reject submitted reports
         $this->assertTrue($this->leaderUser->can('reject', $report));
         $this->assertTrue($this->supervisorUser->can('reject', $report));
         $this->assertTrue($this->adminUser->can('reject', $report));
@@ -156,5 +184,20 @@ class SecondProcessReportPolicyTest extends TestCase
         // Checker and Operator cannot reject
         $this->assertFalse($this->checkerUser->can('reject', $report));
         $this->assertFalse($this->operatorUser->can('reject', $report));
+
+        // Draft report cannot be rejected
+        $draftReport = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-POL-05-DRAFT',
+            'part_name' => 'Door Trim',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+        $this->assertFalse($this->adminUser->can('reject', $draftReport));
+        $this->assertFalse($this->leaderUser->can('reject', $draftReport));
     }
 }

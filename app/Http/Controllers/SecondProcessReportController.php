@@ -11,6 +11,7 @@ use App\Models\MasterListItem;
 use App\Models\SecondProcessReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class SecondProcessReportController extends Controller
 {
@@ -124,14 +125,10 @@ class SecondProcessReportController extends Controller
             'troubles',
         ])->findOrFail($id);
 
-        if ($report->status !== 'draft') {
+        $gate = Gate::inspect('update', $report);
+        if ($gate->denied()) {
             return redirect()->route('second-process-reports.show', $id)
-                ->with('error', 'Only draft reports can be edited.');
-        }
-
-        if (auth()->user()->cannot('update', $report)) {
-            return redirect()->route('second-process-reports.show', $id)
-                ->with('error', 'You do not have permission to edit this draft report.');
+                ->with('error', $gate->message());
         }
 
         return view('second_process.edit', compact('report'));
@@ -141,14 +138,10 @@ class SecondProcessReportController extends Controller
     {
         $report = SecondProcessReport::findOrFail($id);
 
-        if ($report->status !== 'draft') {
+        $gate = Gate::inspect('update', $report);
+        if ($gate->denied()) {
             return redirect()->route('second-process-reports.show', $id)
-                ->with('error', 'Only draft reports can be updated.');
-        }
-
-        if (auth()->user()->cannot('update', $report)) {
-            return redirect()->route('second-process-reports.show', $id)
-                ->with('error', 'You do not have permission to edit this draft report.');
+                ->with('error', $gate->message());
         }
 
         $this->saveReport($request, $report);
@@ -625,10 +618,10 @@ class SecondProcessReportController extends Controller
     public function destroy($id)
     {
         $report = SecondProcessReport::findOrFail($id);
-        $user = auth()->user();
 
-        if ($user->cannot('delete', $report)) {
-            return redirect()->back()->withErrors(['error' => 'You do not have permission to delete this report.']);
+        $gate = Gate::inspect('delete', $report);
+        if ($gate->denied()) {
+            return redirect()->back()->withErrors(['error' => $gate->message()]);
         }
 
         $report->delete();
@@ -742,18 +735,13 @@ class SecondProcessReportController extends Controller
         $report = SecondProcessReport::findOrFail($id);
         $user = auth()->user();
 
-        if ($user->cannot('sign', [$report, $role])) {
-            $userRoleName = $user->role ? $user->role->name : 'No Role';
-            return redirect()->back()->withErrors([
-                'error' => "Role '{$userRoleName}' is not authorized to sign as " . ucfirst($role) . '.',
-            ]);
+        $gate = Gate::inspect('sign', [$report, $role]);
+        if ($gate->denied()) {
+            return redirect()->back()->withErrors(['error' => $gate->message()]);
         }
 
         switch ($role) {
             case 'checker':
-                if ($report->status !== 'draft') {
-                    return redirect()->back()->withErrors(['error' => 'Checker signature can only be applied to draft reports.']);
-                }
                 $report->update([
                     'created_by_name' => $user->name,
                     'created_by_signed_at' => now(),
@@ -762,22 +750,6 @@ class SecondProcessReportController extends Controller
                 break;
 
             case 'pqc':
-                if (! in_array($report->status, ['leader_approved', 'acknowledged', 'submitted'])) {
-                    return redirect()->back()->withErrors(['error' => 'PQC signature can only be applied after Leader approval.']);
-                }
-
-                // Check First Piece Approval Gate
-                $firstPiece = FirstPieceInspection::where('part_number', $report->part_number)
-                    ->whereDate('date', $report->date)
-                    ->orderBy('id', 'desc')
-                    ->first();
-
-                if (! $firstPiece || ! $firstPiece->isApproved()) {
-                    return redirect()->back()->withErrors([
-                        'error' => "Cannot sign PQC approval: First Piece Inspection for part '{$report->part_number}' on {$report->date} is not approved by QC.",
-                    ]);
-                }
-
                 $updateData = [
                     'pqc_name' => $user->name,
                     'pqc_signed_at' => now(),
@@ -789,9 +761,6 @@ class SecondProcessReportController extends Controller
                 break;
 
             case 'leader':
-                if (! in_array($report->status, ['submitted', 'pqc_approved'])) {
-                    return redirect()->back()->withErrors(['error' => 'Leader signature can only be applied to submitted reports.']);
-                }
                 $report->update([
                     'leader_name' => $user->name,
                     'leader_signed_at' => now(),
@@ -800,18 +769,12 @@ class SecondProcessReportController extends Controller
                 break;
 
             case 'acknowledged':
-                if (! in_array($report->status, ['leader_approved', 'pqc_approved'])) {
-                    return redirect()->back()->withErrors(['error' => 'Supervisor signature can only be applied after Leader approval.']);
-                }
                 $report->update([
                     'acknowledged_by_name' => $user->name,
                     'acknowledged_signed_at' => now(),
                     'status' => 'acknowledged',
                 ]);
                 break;
-
-            default:
-                return redirect()->back()->withErrors(['error' => 'Invalid approval role.']);
         }
 
         return redirect()->route('second-process-reports.show', $id)
@@ -823,8 +786,9 @@ class SecondProcessReportController extends Controller
         $report = SecondProcessReport::findOrFail($id);
         $user = auth()->user();
 
-        if ($user->cannot('reject', $report)) {
-            return redirect()->back()->withErrors(['error' => 'You are not authorized to reject reports.']);
+        $gate = Gate::inspect('reject', $report);
+        if ($gate->denied()) {
+            return redirect()->back()->withErrors(['error' => $gate->message()]);
         }
 
         $request->validate([

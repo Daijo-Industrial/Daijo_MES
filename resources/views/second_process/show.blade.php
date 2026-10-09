@@ -92,6 +92,8 @@
                                 Sign as Leader
                             </button>
                         </form>
+                    @endcan
+                    @can('reject', $report)
                         <button onclick="document.getElementById('reject-dialog').showModal()"
                             class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
                             Reject
