@@ -120,7 +120,7 @@
                 </div>
 
                 {{-- Row 2: Filter Form Inputs --}}
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
                     {{-- Date From --}}
                     <div>
                         <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">From Date</label>
@@ -160,6 +160,16 @@
                             <option value="">All Processes</option>
                             @foreach($processes as $p)
                                 <option value="{{ $p }}" {{ request('process_prod') == $p ? 'selected' : '' }}>{{ $p }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    {{-- Sektor / Industry --}}
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Sektor / Industri</label>
+                        <select name="industry" class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Semua Sektor</option>
+                            @foreach($industries as $key => $label)
+                                <option value="{{ $key }}" {{ ($selectedIndustry ?? request('industry')) == $key ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>

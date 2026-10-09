@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\MasterBusinessPartner;
 use App\Models\Role;
 use App\Models\SecondProcessNgRecord;
 use App\Models\SecondProcessReport;
@@ -689,5 +690,133 @@ class SecondProcessReportAnalyticsTest extends TestCase
         $this->assertEquals(['SCRATCH', 'BINTIK'], $prosesTopNg['labels']);
         $this->assertEquals([3, 2], $prosesTopNg['values']);
         $this->assertEquals([60.0, 100.0], $prosesTopNg['cumulative_pct']);
+    }
+
+    public function test_analytics_filters_by_customer_industry(): void
+    {
+        $today = now()->format('Y-m-d');
+
+        MasterBusinessPartner::create([
+            'bp_code' => 'D0000001',
+            'bp_name' => 'ASTRA HONDA MOTOR PT.',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
+        ]);
+
+        MasterBusinessPartner::create([
+            'bp_code' => 'CT000001',
+            'bp_name' => 'TOSHIBA',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_ELECTRONICS,
+        ]);
+
+        MasterBusinessPartner::create([
+            'bp_code' => 'M0000001',
+            'bp_name' => 'HONDA LOCK INDONESIA PT.',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'type' => 'MOULD',
+            'industry' => MasterBusinessPartner::INDUSTRY_MOULDING,
+        ]);
+
+        // Automotive report
+        SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 1',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'AUTO-01',
+            'part_name' => 'Fender',
+            'customer' => 'ASTRA HONDA MOTOR PT.',
+            'target_per_hour' => 100,
+            'jumlah_output' => 800,
+            'jumlah_ok' => 750,
+            'jumlah_ng' => 50,
+        ]);
+
+        // Electronics report
+        SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 2',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'ELEC-01',
+            'part_name' => 'TV Bezel',
+            'customer' => 'TOSHIBA',
+            'target_per_hour' => 50,
+            'jumlah_output' => 400,
+            'jumlah_ok' => 390,
+            'jumlah_ng' => 10,
+        ]);
+
+        // Moulding report
+        SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 1',
+            'shift' => 2,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'MOLD-01',
+            'part_name' => 'Lock Bezel',
+            'customer' => 'HONDA LOCK INDONESIA PT.',
+            'target_per_hour' => 60,
+            'jumlah_output' => 300,
+            'jumlah_ok' => 295,
+            'jumlah_ng' => 5,
+        ]);
+
+        // 1. Filter by Automotive
+        $autoResponse = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'date_from' => $today,
+            'date_to' => $today,
+            'industry' => 'AUTOMOTIVE',
+        ]));
+
+        $autoResponse->assertOk();
+        $this->assertEquals('AUTOMOTIVE', $autoResponse->viewData('selectedIndustry'));
+        $this->assertEquals(1, $autoResponse->viewData('summary')->total_reports);
+        $this->assertEquals(800, $autoResponse->viewData('summary')->total_output);
+        $this->assertEquals(750, $autoResponse->viewData('summary')->total_ok);
+
+        // 2. Filter by Electronics
+        $elecResponse = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'date_from' => $today,
+            'date_to' => $today,
+            'industry' => 'ELECTRONICS',
+        ]));
+
+        $elecResponse->assertOk();
+        $this->assertEquals('ELECTRONICS', $elecResponse->viewData('selectedIndustry'));
+        $this->assertEquals(1, $elecResponse->viewData('summary')->total_reports);
+        $this->assertEquals(400, $elecResponse->viewData('summary')->total_output);
+        $this->assertEquals(390, $elecResponse->viewData('summary')->total_ok);
+
+        // 3. Filter by Moulding
+        $mouldResponse = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'date_from' => $today,
+            'date_to' => $today,
+            'industry' => 'MOULDING',
+        ]));
+
+        $mouldResponse->assertOk();
+        $this->assertEquals('MOULDING', $mouldResponse->viewData('selectedIndustry'));
+        $this->assertEquals(1, $mouldResponse->viewData('summary')->total_reports);
+        $this->assertEquals(300, $mouldResponse->viewData('summary')->total_output);
+        $this->assertEquals(295, $mouldResponse->viewData('summary')->total_ok);
+
+        // 3. Export CSV with Industry filter
+        $csvResponse = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'date_from' => $today,
+            'date_to' => $today,
+            'industry' => 'AUTOMOTIVE',
+            'export' => 'csv',
+        ]));
+
+        $csvResponse->assertOk();
+        $csvContent = $csvResponse->streamedContent();
+        $this->assertStringContainsString('ASTRA HONDA MOTOR PT.', $csvContent);
+        $this->assertStringContainsString('AUTOMOTIVE', $csvContent);
+        $this->assertStringNotContainsString('TOSHIBA', $csvContent);
     }
 }

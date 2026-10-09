@@ -61,22 +61,49 @@
 
             <button wire:click="setGroupFilter('100')"
                 class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $groupFilter === '100' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' }}">
-                <span>🟢 Customer (Group 100)</span>
+                <span>Customer (Group 100)</span>
                 <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $groupFilter === '100' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-200 text-emerald-900' }}">{{ number_format($counts['100']) }}</span>
             </button>
 
             <button wire:click="setGroupFilter('101')"
                 class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $groupFilter === '101' ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-800 hover:bg-blue-100' }}">
-                <span>🔵 Vendor Lokal (Group 101)</span>
+                <span>Vendor Lokal (Group 101)</span>
                 <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $groupFilter === '101' ? 'bg-blue-700 text-blue-100' : 'bg-blue-200 text-blue-900' }}">{{ number_format($counts['101']) }}</span>
             </button>
 
             <button wire:click="setGroupFilter('102')"
                 class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $groupFilter === '102' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100' }}">
-                <span>🌐 Vendor Import (Group 102)</span>
+                <span>Vendor Import (Group 102)</span>
                 <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $groupFilter === '102' ? 'bg-indigo-700 text-indigo-100' : 'bg-indigo-200 text-indigo-900' }}">{{ number_format($counts['102']) }}</span>
             </button>
         </div>
+        <div class="flex flex-wrap items-center gap-2 border-t pt-4">
+            <span class="text-xs font-bold text-gray-500 uppercase mr-2">Sektor:</span>
+
+            <button wire:click="setIndustryFilter('ALL')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $industryFilter === 'ALL' ? 'bg-gray-800 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                <span>Semua Sektor</span>
+            </button>
+
+            <button wire:click="setIndustryFilter('AUTOMOTIVE')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $industryFilter === 'AUTOMOTIVE' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' }}">
+                <span>Automotive</span>
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $industryFilter === 'AUTOMOTIVE' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-200 text-emerald-900' }}">{{ number_format($counts['AUTOMOTIVE']) }}</span>
+            </button>
+
+            <button wire:click="setIndustryFilter('ELECTRONICS')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $industryFilter === 'ELECTRONICS' ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-800 hover:bg-blue-100' }}">
+                <span>Electronics</span>
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $industryFilter === 'ELECTRONICS' ? 'bg-blue-700 text-blue-100' : 'bg-blue-200 text-blue-900' }}">{{ number_format($counts['ELECTRONICS']) }}</span>
+            </button>
+
+            <button wire:click="setIndustryFilter('MOULDING')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $industryFilter === 'MOULDING' ? 'bg-amber-600 text-white shadow-sm' : 'bg-amber-50 text-amber-800 hover:bg-amber-100' }}">
+                <span>Moulding</span>
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $industryFilter === 'MOULDING' ? 'bg-amber-700 text-amber-100' : 'bg-amber-200 text-amber-900' }}">{{ number_format($counts['MOULDING']) }}</span>
+            </button>
+        </div>
+
     </div>
 
     <!-- Data Table Card -->
@@ -89,8 +116,10 @@
                         <th class="px-4 py-3">Nama Business Partner</th>
                         <th class="px-4 py-3 text-center">Group Code</th>
                         <th class="px-4 py-3">Kategori</th>
+                        <th class="px-4 py-3">Sektor / Industri</th>
                         <th class="px-4 py-3">Type Produksi</th>
                         <th class="px-4 py-3">Alias (Foreign Name)</th>
+                        <th class="px-4 py-3">Sales Employee</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 text-gray-800">
@@ -118,6 +147,16 @@
                                     </span>
                                 @endif
                             </td>
+                            <td class="px-4 py-2 whitespace-nowrap">
+                                <select wire:change="updateIndustry({{ $bp->id }}, $event.target.value)"
+                                    class="text-xs font-bold rounded-lg border py-1 pl-2 pr-6 focus:ring-blue-500 focus:border-blue-500 cursor-pointer transition
+                                        {{ $bp->industry === 'AUTOMOTIVE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : ($bp->industry === 'ELECTRONICS' ? 'bg-blue-50 text-blue-800 border-blue-300' : ($bp->industry === 'MOULDING' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-gray-50 text-gray-700 border-gray-300')) }}">
+                                    <option value="AUTOMOTIVE" {{ $bp->industry === 'AUTOMOTIVE' ? 'selected' : '' }}>Automotive</option>
+                                    <option value="ELECTRONICS" {{ $bp->industry === 'ELECTRONICS' ? 'selected' : '' }}>Electronics</option>
+                                    <option value="MOULDING" {{ $bp->industry === 'MOULDING' ? 'selected' : '' }}>Moulding</option>
+                                    <option value="GENERAL" {{ $bp->industry === 'GENERAL' ? 'selected' : '' }}>General</option>
+                                </select>
+                            </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 @if ($bp->type)
                                     <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
@@ -136,10 +175,19 @@
                                     <span class="text-gray-400">-</span>
                                 @endif
                             </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-gray-700">
+                                @if ($bp->sales_employee)
+                                    <span class="font-medium text-gray-800">
+                                        {{ $bp->sales_employee }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-400">-</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-12 text-center text-gray-500 font-semibold">
+                            <td colspan="8" class="px-4 py-12 text-center text-gray-500 font-semibold">
                                 Tidak ada data Business Partner yang sesuai filter.
                             </td>
                         </tr>
@@ -189,7 +237,7 @@
                         </label>
                         @if ($file)
                             <div class="mt-3 text-xs font-semibold text-emerald-700 bg-emerald-50 py-1.5 px-3 rounded-lg border border-emerald-200 inline-block">
-                                📄 {{ $file->getClientOriginalName() }}
+                                {{ $file->getClientOriginalName() }}
                             </div>
                         @endif
                     </div>
@@ -200,10 +248,10 @@
 
                     <!-- Upload State -->
                     <div wire:loading wire:target="file" class="text-xs text-blue-600 font-semibold">
-                        ⏳ Mengunggah file ke server...
+                        Mengunggah file ke server...
                     </div>
                     <div wire:loading wire:target="uploadFile" class="text-xs text-blue-600 font-semibold">
-                        ⚙️ Sedang memproses dan menyinkronkan database... Harap tunggu sebentar.
+                        Sedang memproses dan menyinkronkan database... Harap tunggu sebentar.
                     </div>
 
                     <div class="flex justify-end space-x-3 pt-3 border-t">

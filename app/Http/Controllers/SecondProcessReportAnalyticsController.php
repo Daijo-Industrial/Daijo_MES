@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MasterBusinessPartner;
 use App\Models\SecondProcessReport;
 use App\Models\SecondProcessMaterial;
 use App\Models\SecondProcessNgRecord;
@@ -36,6 +37,18 @@ class SecondProcessReportAnalyticsController extends Controller
         }
         if ($request->filled('status')) {
             $baseQuery->where('status', $request->status);
+        }
+
+        // Industry / Sector Filter (Automotive, Electronics, Moulding, General)
+        $selectedIndustry = $request->filled('industry') ? strtoupper(trim($request->input('industry'))) : null;
+        if ($selectedIndustry && in_array($selectedIndustry, [
+            MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
+            MasterBusinessPartner::INDUSTRY_ELECTRONICS,
+            MasterBusinessPartner::INDUSTRY_MOULDING,
+            MasterBusinessPartner::INDUSTRY_GENERAL
+        ], true)) {
+            $customerNames = MasterBusinessPartner::where('industry', $selectedIndustry)->pluck('bp_name')->all();
+            $baseQuery->whereIn('customer', $customerNames);
         }
 
         // CSV Export if requested
@@ -333,6 +346,12 @@ class SecondProcessReportAnalyticsController extends Controller
         // Dropdown selection lists
         $lines = array_values(config('mes.sp_lines', []));
         $processes = config('mes.sp_processes', ['Painting', 'Buffing', 'Amplas', 'Treatment', 'Packing', 'Rework', 'Repair', 'Assy']);
+        $industries = [
+            'AUTOMOTIVE' => 'Automotive',
+            'ELECTRONICS' => 'Electronics',
+            'MOULDING' => 'Moulding',
+            'GENERAL' => 'General',
+        ];
 
         return view('second_process.report_analytics', compact(
             'summary',
@@ -365,7 +384,9 @@ class SecondProcessReportAnalyticsController extends Controller
             'processes',
             'selectedNgCategory',
             'ngCategories',
-            'categoryBreakdown'
+            'categoryBreakdown',
+            'selectedIndustry',
+            'industries'
         ));
     }
 
@@ -382,6 +403,9 @@ class SecondProcessReportAnalyticsController extends Controller
             // UTF-8 BOM for Microsoft Excel compatibility
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
+            // Load Industry mapping for customers
+            $industryMap = MasterBusinessPartner::pluck('industry', 'bp_name')->all();
+
             // CSV Column Headers
             fputcsv($handle, [
                 'ID',
@@ -393,6 +417,7 @@ class SecondProcessReportAnalyticsController extends Controller
                 'Part Number',
                 'Part Name',
                 'Customer',
+                'Industry',
                 'Target / Hour',
                 'Shift Target',
                 'Input WIP',
@@ -409,7 +434,7 @@ class SecondProcessReportAnalyticsController extends Controller
 
             $query->orderBy('date', 'desc')
                 ->orderBy('unit_line', 'asc')
-                ->chunk(200, function ($reports) use ($handle) {
+                ->chunk(200, function ($reports) use ($handle, $industryMap) {
                     foreach ($reports as $r) {
                         $shiftTarget = ($r->target_per_hour ?? 0) * 8;
                         $totIn = (int) ($r->jml_input_wip + $r->repairan);
@@ -429,6 +454,7 @@ class SecondProcessReportAnalyticsController extends Controller
                             $this->sanitizeCsvCell($r->part_number),
                             $this->sanitizeCsvCell($r->part_name),
                             $this->sanitizeCsvCell($r->customer),
+                            $this->sanitizeCsvCell($industryMap[$r->customer] ?? 'GENERAL'),
                             $r->target_per_hour,
                             $shiftTarget,
                             $r->jml_input_wip,
