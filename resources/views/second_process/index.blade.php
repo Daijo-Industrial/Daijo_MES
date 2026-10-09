@@ -1,8 +1,8 @@
 <x-app-layout>
-    <div class="py-12">
+    <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
-            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+            <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h2 class="text-2xl font-bold">Second Process Daily Production Reports</h2>
                 <div class="flex items-center space-x-2">
                     <a href="{{ route('second-process.report-analytics') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow transition text-sm flex items-center gap-1.5">
@@ -16,26 +16,26 @@
             </div>
 
             @if(session('success'))
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative text-sm mb-6" role="alert">
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative text-sm mb-4" role="alert">
                     <span class="block sm:inline">{{ session('success') }}</span>
                 </div>
             @endif
 
             {{-- Summary Cards --}}
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="bg-white border border-gray-200 rounded-lg p-3.5 shadow-sm">
                     <div class="text-xs font-bold text-gray-500 uppercase">Total Reports</div>
                     <div class="text-2xl font-black text-gray-900 mt-1">{{ number_format($summary->total_reports) }}</div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div class="bg-white border border-gray-200 rounded-lg p-3.5 shadow-sm">
                     <div class="text-xs font-bold text-gray-500 uppercase">Total Output</div>
                     <div class="text-2xl font-black text-blue-700 mt-1">{{ number_format($summary->total_output) }}</div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div class="bg-white border border-gray-200 rounded-lg p-3.5 shadow-sm">
                     <div class="text-xs font-bold text-gray-500 uppercase">Total OK</div>
                     <div class="text-2xl font-black text-green-700 mt-1">{{ number_format($summary->total_ok) }}</div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div class="bg-white border border-gray-200 rounded-lg p-3.5 shadow-sm">
                     <div class="text-xs font-bold text-gray-500 uppercase">Total NG</div>
                     <div class="text-2xl font-black text-red-700 mt-1 flex items-end gap-2">
                         {{ number_format($summary->total_ng) }}
@@ -49,8 +49,8 @@
             </div>
 
             {{-- Filter Bar --}}
-            <form method="GET" action="{{ route('second-process-reports.index') }}" class="mb-6">
-                <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-5">
+            <form method="GET" action="{{ route('second-process-reports.index') }}" class="mb-4">
+                <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-4">
                     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
                         {{-- Date From --}}
                         <div>
@@ -121,49 +121,51 @@
             </form>
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-200">
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto overflow-y-hidden">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Line/Shift</th>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Process</th>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Model / Part</th>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Output</th>
-                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">OK</th>
-                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">NG %</th>
-                                <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Line/Shift</th>
+                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Process</th>
+                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Model / Part</th>
+                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Output</th>
+                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">OK</th>
+                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">NG %</th>
+                                <th class="px-3 py-2.5 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($reports as $report)
                                 <tr class="hover:bg-gray-50 transition">
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm">{{ \Carbon\Carbon::parse($report->date)->format('d M Y') }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm">{{ \Carbon\Carbon::parse($report->date)->format('d M Y') }}</td>
+                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm">
                                         <div class="font-semibold">{{ $report->unit_line }}</div>
                                         <div class="text-gray-500 text-xs">Shift {{ $report->shift }}</div>
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm">{{ $report->process_prod }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                        <div class="font-semibold">{{ $report->model }}</div>
-                                        <div class="text-gray-500 text-xs">{{ $report->part_number }}</div>
+                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm">{{ $report->process_prod }}</td>
+                                    <td class="px-3 py-2.5 text-sm max-w-[140px] lg:max-w-[170px]">
+                                        <div class="font-semibold truncate" title="{{ $report->model }}">{{ $report->model }}</div>
+                                        <div class="text-gray-500 text-xs truncate" title="{{ $report->part_number }}">{{ $report->part_number }}</div>
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm">{{ $report->customer }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">{{ number_format($report->jumlah_output) }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-green-600">{{ number_format($report->jumlah_ok) }}</td>
+                                    <td class="px-3 py-2.5 text-sm max-w-[150px] lg:max-w-[180px]">
+                                        <div class="truncate font-medium text-gray-800" title="{{ $report->customer }}">{{ $report->customer }}</div>
+                                    </td>
+                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm text-right font-medium">{{ number_format($report->jumlah_output) }}</td>
+                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm text-right font-medium text-green-600">{{ number_format($report->jumlah_ok) }}</td>
                                     
                                     @php
                                         $ngClass = 'text-green-600';
                                         if ($report->ng_prosentase >= 3) $ngClass = 'text-red-600 font-bold';
                                         elseif ($report->ng_prosentase >= 1) $ngClass = 'text-yellow-600 font-semibold';
                                     @endphp
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-right {{ $ngClass }}">
+                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm text-right {{ $ngClass }}">
                                         {{ $report->ng_prosentase }}%
                                     </td>
                                     
-                                    <td class="px-4 py-3 whitespace-nowrap text-center">
+                                    <td class="px-3 py-2.5 whitespace-nowrap text-center">
                                         @switch($report->status)
                                             @case('draft')
                                                 <span class="px-2 py-1 text-[10px] font-bold rounded bg-gray-100 text-gray-700 uppercase tracking-wide">Draft</span>
@@ -185,7 +187,7 @@
                                         @endswitch
                                     </td>
                                     
-                                    <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                    <td class="px-3 py-2.5 whitespace-nowrap text-right text-sm font-medium">
                                         <a href="{{ route('second-process-reports.show', $report->id) }}" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
                                         @can('update', $report)
                                             <a href="{{ route('second-process-reports.edit', $report->id) }}" class="text-yellow-600 hover:text-yellow-900 mr-3">Edit</a>
