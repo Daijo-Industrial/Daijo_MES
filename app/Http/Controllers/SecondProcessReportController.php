@@ -17,6 +17,56 @@ class SecondProcessReportController extends Controller
 {
     public function index(Request $request)
     {
+        $today = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+        $thisWeekStart = now()->startOfWeek()->toDateString();
+        $thisMonthStart = now()->startOfMonth()->toDateString();
+
+        $preset = $request->input('preset');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+
+        if ($preset && ! $request->filled('date_from') && ! $request->filled('date_to')) {
+            switch ($preset) {
+                case 'today':
+                    $dateFrom = $today;
+                    $dateTo = $today;
+                    break;
+                case 'yesterday':
+                    $dateFrom = $yesterday;
+                    $dateTo = $yesterday;
+                    break;
+                case 'this_week':
+                    $dateFrom = $thisWeekStart;
+                    $dateTo = $today;
+                    break;
+                case 'this_month':
+                    $dateFrom = $thisMonthStart;
+                    $dateTo = $today;
+                    break;
+            }
+
+            if ($dateFrom !== null && $dateTo !== null) {
+                $request->merge([
+                    'date_from' => $dateFrom,
+                    'date_to' => $dateTo,
+                ]);
+            }
+        }
+
+        $activePreset = null;
+        if (! empty($dateFrom) && ! empty($dateTo)) {
+            if ($dateFrom === $today && $dateTo === $today) {
+                $activePreset = 'today';
+            } elseif ($dateFrom === $yesterday && $dateTo === $yesterday) {
+                $activePreset = 'yesterday';
+            } elseif ($dateFrom === $thisWeekStart && $dateTo === $today) {
+                $activePreset = 'this_week';
+            } elseif ($dateFrom === $thisMonthStart && $dateTo === $today) {
+                $activePreset = 'this_month';
+            }
+        }
+
         $query = SecondProcessReport::query();
 
         // Date range filter
@@ -62,7 +112,15 @@ class SecondProcessReportController extends Controller
 
         $reports = $query->orderBy('date', 'desc')->paginate(25)->withQueryString();
 
-        return view('second_process.index', compact('reports', 'summary'));
+        return view('second_process.index', compact(
+            'reports',
+            'summary',
+            'activePreset',
+            'today',
+            'yesterday',
+            'thisWeekStart',
+            'thisMonthStart'
+        ));
     }
 
     public function create(Request $request)

@@ -47,6 +47,81 @@ class SecondProcessReportTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('second-process-reports.index'));
         $response->assertOk();
+        $response->assertSee('Quick Presets:');
+        $response->assertSee('Today');
+        $response->assertSee('Yesterday');
+        $response->assertSee('This Week');
+        $response->assertSee('This Month');
+    }
+
+    /**
+     * Test quick filter date presets (today, yesterday, this_month).
+     */
+    public function test_index_page_filters_by_quick_date_presets(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        $todayDate = now()->toDateString();
+        $yesterdayDate = now()->subDay()->toDateString();
+        $olderDate = now()->subDays(40)->toDateString();
+
+        $todayReport = SecondProcessReport::create([
+            'date' => $todayDate,
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-PRESET-TODAY',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        $yesterdayReport = SecondProcessReport::create([
+            'date' => $yesterdayDate,
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-PRESET-YEST',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        $olderReport = SecondProcessReport::create([
+            'date' => $olderDate,
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-PRESET-OLDER',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        // 1. Preset Today
+        $resToday = $this->get(route('second-process-reports.index', ['preset' => 'today']));
+        $resToday->assertOk();
+        $resToday->assertSee('PART-PRESET-TODAY');
+        $resToday->assertDontSee('PART-PRESET-YEST');
+        $resToday->assertDontSee('PART-PRESET-OLDER');
+
+        // 2. Preset Yesterday
+        $resYest = $this->get(route('second-process-reports.index', ['preset' => 'yesterday']));
+        $resYest->assertOk();
+        $resYest->assertSee('PART-PRESET-YEST');
+        $resYest->assertDontSee('PART-PRESET-TODAY');
+        $resYest->assertDontSee('PART-PRESET-OLDER');
+
+        // 3. Preset This Month
+        $resMonth = $this->get(route('second-process-reports.index', ['preset' => 'this_month']));
+        $resMonth->assertOk();
+        $resMonth->assertSee('PART-PRESET-TODAY');
+        $resMonth->assertDontSee('PART-PRESET-OLDER');
+
+        // 4. Custom date_from and date_to takes precedence over preset
+        $resCustom = $this->get(route('second-process-reports.index', [
+            'preset' => 'today',
+            'date_from' => $olderDate,
+            'date_to' => $olderDate,
+        ]));
+        $resCustom->assertOk();
+        $resCustom->assertSee('PART-PRESET-OLDER');
+        $resCustom->assertDontSee('PART-PRESET-TODAY');
     }
 
     /**

@@ -10,18 +10,6 @@ use Illuminate\Auth\Access\Response;
 class SecondProcessReportPolicy
 {
     /**
-     * Universal Super-Admin / Admin bypass.
-     * Note: 'update' is handled conditionally inside update() to respect draft status.
-     */
-    public function before(User $user, string $ability): ?bool
-    {
-        if ($ability !== 'update' && ($user->hasRole('SUPER-ADMIN') || $user->hasRole('ADMIN'))) {
-            return true;
-        }
-
-        return null;
-    }
-    /**
      * Determine whether the user can view any reports.
      */
     public function viewAny(User $user): bool

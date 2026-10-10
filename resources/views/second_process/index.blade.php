@@ -49,19 +49,53 @@
             </div>
 
             {{-- Filter Bar --}}
-            <form method="GET" action="{{ route('second-process-reports.index') }}" class="mb-4">
+            <form id="report-filter-form" method="GET" action="{{ route('second-process-reports.index') }}" class="mb-4">
+                <input type="hidden" name="preset" id="filter-preset-input" value="{{ request('preset') }}">
                 <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-4">
+                    {{-- Quick Date Presets Row --}}
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-100">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 mr-1">
+                                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                Quick Presets:
+                            </span>
+                            <button type="button" onclick="setDatePreset('today')"
+                                class="px-2.5 py-1 text-xs rounded-md font-semibold transition border {{ ($activePreset ?? '') === 'today' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:text-gray-900' }}">
+                                Today
+                            </button>
+                            <button type="button" onclick="setDatePreset('yesterday')"
+                                class="px-2.5 py-1 text-xs rounded-md font-semibold transition border {{ ($activePreset ?? '') === 'yesterday' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:text-gray-900' }}">
+                                Yesterday
+                            </button>
+                            <button type="button" onclick="setDatePreset('this_week')"
+                                class="px-2.5 py-1 text-xs rounded-md font-semibold transition border {{ ($activePreset ?? '') === 'this_week' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:text-gray-900' }}">
+                                This Week
+                            </button>
+                            <button type="button" onclick="setDatePreset('this_month')"
+                                class="px-2.5 py-1 text-xs rounded-md font-semibold transition border {{ ($activePreset ?? '') === 'this_month' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:text-gray-900' }}">
+                                This Month
+                            </button>
+                            @if(request()->filled('date_from') || request()->filled('date_to') || request()->filled('preset'))
+                                <button type="button" onclick="clearDatePreset()"
+                                    class="px-2.5 py-1 text-xs rounded-md font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 border border-dashed border-gray-300 transition"
+                                    title="Clear date filters">
+                                    ✕ All Dates
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
                         {{-- Date From --}}
                         <div>
                             <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">From Date</label>
-                            <input type="date" name="date_from" value="{{ request('date_from') }}"
+                            <input type="date" name="date_from" value="{{ request('date_from') }}" onchange="document.getElementById('filter-preset-input').value = ''"
                                 class="w-full border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         {{-- Date To --}}
                         <div>
                             <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">To Date</label>
-                            <input type="date" name="date_to" value="{{ request('date_to') }}"
+                            <input type="date" name="date_to" value="{{ request('date_to') }}" onchange="document.getElementById('filter-preset-input').value = ''"
                                 class="w-full border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         {{-- Unit / Line --}}
@@ -239,4 +273,54 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function setDatePreset(preset) {
+            const presets = {
+                today: {
+                    from: '{{ $today }}',
+                    to: '{{ $today }}'
+                },
+                yesterday: {
+                    from: '{{ $yesterday }}',
+                    to: '{{ $yesterday }}'
+                },
+                this_week: {
+                    from: '{{ $thisWeekStart }}',
+                    to: '{{ $today }}'
+                },
+                this_month: {
+                    from: '{{ $thisMonthStart }}',
+                    to: '{{ $today }}'
+                }
+            };
+
+            if (presets[preset]) {
+                const form = document.getElementById('report-filter-form');
+                if (form) {
+                    const fromInput = form.querySelector('input[name="date_from"]');
+                    const toInput = form.querySelector('input[name="date_to"]');
+                    const presetInput = document.getElementById('filter-preset-input');
+                    
+                    if (fromInput) fromInput.value = presets[preset].from;
+                    if (toInput) toInput.value = presets[preset].to;
+                    if (presetInput) presetInput.value = preset;
+                    form.submit();
+                }
+            }
+        }
+
+        function clearDatePreset() {
+            const form = document.getElementById('report-filter-form');
+            if (form) {
+                const fromInput = form.querySelector('input[name="date_from"]');
+                const toInput = form.querySelector('input[name="date_to"]');
+                const presetInput = document.getElementById('filter-preset-input');
+                if (fromInput) fromInput.value = '';
+                if (toInput) toInput.value = '';
+                if (presetInput) presetInput.value = '';
+                form.submit();
+            }
+        }
+    </script>
 </x-app-layout>
