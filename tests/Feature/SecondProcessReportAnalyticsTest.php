@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\MasterBusinessPartner;
 use App\Models\Role;
+use App\Models\SecondProcessHourlyProduction;
 use App\Models\SecondProcessNgRecord;
 use App\Models\SecondProcessReport;
 use App\Models\SecondProcessTrouble;
@@ -305,7 +306,7 @@ class SecondProcessReportAnalyticsTest extends TestCase
         // Input: 800 WIP + 50 Repairan = 850 total fed
         // Output: 720 (700 OK + 20 NG), Scrap: 10
         // Variance: 850 - (720 + 10) = 120 units
-        SecondProcessReport::create([
+        $report = SecondProcessReport::create([
             'date' => $today,
             'unit_line' => 'Line 1',
             'shift' => 1,
@@ -322,6 +323,15 @@ class SecondProcessReportAnalyticsTest extends TestCase
             'jumlah_ng' => 20,
             'jml_ng_lebur' => 10,
         ]);
+
+        for ($h = 1; $h <= 8; $h++) {
+            SecondProcessHourlyProduction::create([
+                'report_id' => $report->id,
+                'hour_ke' => $h,
+                'ok_qty' => 90,
+                'acumulasi_qty' => $h * 90,
+            ]);
+        }
 
         $response = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
             'date_from' => $today,
@@ -349,7 +359,7 @@ class SecondProcessReportAnalyticsTest extends TestCase
     {
         $today = now()->format('Y-m-d');
 
-        SecondProcessReport::create([
+        $report = SecondProcessReport::create([
             'date' => $today,
             'unit_line' => 'Line 1',
             'shift' => 1,
@@ -366,6 +376,15 @@ class SecondProcessReportAnalyticsTest extends TestCase
             'jumlah_ng' => 10,
             'jml_ng_lebur' => 5,
         ]);
+
+        for ($h = 1; $h <= 8; $h++) {
+            SecondProcessHourlyProduction::create([
+                'report_id' => $report->id,
+                'hour_ke' => $h,
+                'ok_qty' => 45,
+                'acumulasi_qty' => $h * 45,
+            ]);
+        }
 
         $response = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
             'date_from' => $today,
@@ -818,5 +837,99 @@ class SecondProcessReportAnalyticsTest extends TestCase
         $this->assertStringContainsString('ASTRA HONDA MOTOR PT.', $csvContent);
         $this->assertStringContainsString('AUTOMOTIVE', $csvContent);
         $this->assertStringNotContainsString('TOSHIBA', $csvContent);
+    }
+
+    public function test_analytics_calculates_target_based_on_production_logs_hours(): void
+    {
+        $today = now()->format('Y-m-d');
+
+        // Report 1: 5 hours of logs (half day), target_per_hour = 120 => target = 600
+        $report1 = SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 1',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'PART-5H',
+            'part_name' => 'Half Day Part',
+            'customer' => 'Customer A',
+            'target_per_hour' => 120,
+            'jumlah_output' => 540,
+            'jumlah_ok' => 520,
+            'jumlah_ng' => 20,
+        ]);
+        for ($h = 1; $h <= 5; $h++) {
+            SecondProcessHourlyProduction::create([
+                'report_id' => $report1->id,
+                'hour_ke' => $h,
+                'ok_qty' => 104,
+                'acumulasi_qty' => $h * 104,
+            ]);
+        }
+        // Additional unused slots with ok_qty = 0 (stored by default 8-row form)
+        for ($h = 6; $h <= 8; $h++) {
+            SecondProcessHourlyProduction::create([
+                'report_id' => $report1->id,
+                'hour_ke' => $h,
+                'ok_qty' => 0,
+                'acumulasi_qty' => 520,
+            ]);
+        }
+
+        // Report 2: 10 hours of active logs (overtime), target_per_hour = 80 => target = 800
+        $report2 = SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 2',
+            'shift' => 2,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'PART-10H',
+            'part_name' => 'Overtime Part',
+            'customer' => 'Customer B',
+            'target_per_hour' => 80,
+            'jumlah_output' => 760,
+            'jumlah_ok' => 750,
+            'jumlah_ng' => 10,
+        ]);
+        for ($h = 1; $h <= 10; $h++) {
+            SecondProcessHourlyProduction::create([
+                'report_id' => $report2->id,
+                'hour_ke' => $h,
+                'ok_qty' => 75,
+                'acumulasi_qty' => $h * 75,
+            ]);
+        }
+        // Additional unused slot with ok_qty = 0
+        SecondProcessHourlyProduction::create([
+            'report_id' => $report2->id,
+            'hour_ke' => 11,
+            'ok_qty' => 0,
+            'acumulasi_qty' => 750,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'date_from' => $today,
+            'date_to' => $today,
+        ]));
+
+        $response->assertOk();
+        $summary = $response->viewData('summary');
+        // Total target: (120 * 5) + (80 * 10) = 600 + 800 = 1400
+        $this->assertEquals(1400, $summary->total_target);
+        // Total output: 540 + 760 = 1300
+        $this->assertEquals(1300, $summary->total_output);
+        // Achievement: 1300 / 1400 = 92.9%
+        $this->assertEquals(92.9, $response->viewData('targetAchievementRate'));
+
+        // Verify CSV export outputs dynamic Shift Target (600 and 800)
+        $csvResponse = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'date_from' => $today,
+            'date_to' => $today,
+            'export' => 'csv',
+        ]));
+        $csvResponse->assertOk();
+        $csvContent = $csvResponse->streamedContent();
+        $this->assertStringContainsString('600', $csvContent);
+        $this->assertStringContainsString('800', $csvContent);
     }
 }

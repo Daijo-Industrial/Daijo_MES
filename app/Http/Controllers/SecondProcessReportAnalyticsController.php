@@ -63,7 +63,11 @@ class SecondProcessReportAnalyticsController extends Controller
         // 1. Summary KPIs
         $summary = (clone $baseQuery)->selectRaw('
             COUNT(*) as total_reports,
-            COALESCE(SUM(target_per_hour * 8), 0) as total_target,
+            COALESCE(SUM(COALESCE(target_per_hour, 0) * (
+                SELECT COUNT(*) FROM second_process_hourly_productions
+                WHERE second_process_hourly_productions.report_id = second_process_reports.id
+                AND second_process_hourly_productions.ok_qty > 0
+            )), 0) as total_target,
             COALESCE(SUM(jumlah_output), 0) as total_output,
             COALESCE(SUM(jumlah_ok), 0) as total_ok,
             COALESCE(SUM(jumlah_ng), 0) as total_ng,
@@ -432,11 +436,14 @@ class SecondProcessReportAnalyticsController extends Controller
                 'WIP Variance',
             ]);
 
-            $query->orderBy('date', 'desc')
+            (clone $query)->withCount(['hourlyProductions' => function ($q) {
+                    $q->where('ok_qty', '>', 0);
+                }])
+                ->orderBy('date', 'desc')
                 ->orderBy('unit_line', 'asc')
                 ->chunk(200, function ($reports) use ($handle, $industryMap) {
                     foreach ($reports as $r) {
-                        $shiftTarget = ($r->target_per_hour ?? 0) * 8;
+                        $shiftTarget = ($r->target_per_hour ?? 0) * (int) ($r->hourly_productions_count ?? 0);
                         $totIn = (int) ($r->jml_input_wip + $r->repairan);
                         $totOut = (int) $r->jumlah_output;
                         $totScrap = (int) $r->jml_ng_lebur;

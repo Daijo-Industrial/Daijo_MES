@@ -40,6 +40,7 @@
 
             {{-- Filter Bar --}}
             <form id="analytics-filter-form" method="GET" action="{{ route('second-process.report-analytics') }}" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 no-print space-y-4">
+                <input type="hidden" name="ng_category" value="{{ $selectedNgCategory ?? request('ng_category') }}">
                 {{-- Row 1: Quick Range Presets & Action Buttons --}}
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
                     <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -120,7 +121,7 @@
                 </div>
 
                 {{-- Row 2: Filter Form Inputs --}}
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
                     {{-- Date From --}}
                     <div>
                         <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">From Date</label>
@@ -180,16 +181,6 @@
                             <option value="">All Statuses</option>
                             @foreach(['draft', 'submitted', 'pqc_approved', 'leader_approved', 'acknowledged'] as $s)
                                 <option value="{{ $s }}" {{ request('status') == $s ? 'selected' : '' }}>{{ ucwords(str_replace('_', ' ', $s)) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    {{-- NG Remark Category --}}
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">NG Category</label>
-                        <select name="ng_category" onchange="filterByNgCategory(this.value)" class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">All Categories</option>
-                            @foreach($ngCategories as $cat)
-                                <option value="{{ $cat }}" {{ ($selectedNgCategory ?? request('ng_category')) == $cat ? 'selected' : '' }}>{{ $cat }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -429,7 +420,7 @@
                         </div>
                         {{-- Category Filter Select on Card --}}
                         <div class="flex items-center gap-1.5 no-print">
-                            <label for="pareto-ng-category" class="text-xs font-semibold text-gray-500 whitespace-nowrap">Filter:</label>
+                            <label for="pareto-ng-category" class="text-xs font-semibold text-gray-500 whitespace-nowrap">NG Category:</label>
                             <select id="pareto-ng-category" class="text-xs border-gray-300 rounded-lg py-1 px-2 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm"
                                 onchange="filterByNgCategory(this.value)">
                                 <option value="">All Categories</option>
@@ -852,9 +843,18 @@
             }
         }
         function filterByNgCategory(val) {
-            const mainSelect = document.querySelector('select[name="ng_category"]');
-            if (mainSelect) {
-                mainSelect.value = val;
+            let catInput = document.querySelector('input[name="ng_category"]');
+            if (!catInput) {
+                const form = document.getElementById('analytics-filter-form');
+                if (form) {
+                    catInput = document.createElement('input');
+                    catInput.type = 'hidden';
+                    catInput.name = 'ng_category';
+                    form.appendChild(catInput);
+                }
+            }
+            if (catInput) {
+                catInput.value = val;
             }
             const form = document.getElementById('analytics-filter-form');
             if (form) {

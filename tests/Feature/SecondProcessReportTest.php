@@ -133,6 +133,9 @@ class SecondProcessReportTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('second-process-reports.create'));
         $response->assertOk();
+        $response->assertSee('1 (07:30-08:30)');
+        $response->assertSee('8 (14:30-15:30)');
+        $response->assertDontSee('HOUR 1');
     }
 
     /**
