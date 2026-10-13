@@ -166,6 +166,7 @@ new class extends Component {
                     <livewire:parent-dropdown label="Material Warehouse" :initiallyOpen="false" :childRoutes="[
                         ['name' => 'mwh.master-list.index', 'label' => 'Master List Material'],
                         ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping'],
+                        ['name' => 'mwh.daily-audit', 'label' => 'Audit Harian Material'],
                         ['name' => 'mwh.incoming.create', 'label' => 'Penerimaan Material (Incoming)'],
                         ['name' => 'mwh.outgoing.create', 'label' => 'Pengambilan Material (Outgoing)'],
                         ['name' => 'mwh.outgoing.history', 'label' => 'Riwayat Outgoing Material'],
@@ -382,6 +383,7 @@ new class extends Component {
                     <livewire:parent-dropdown label="Gudang Material (MWH)" :initiallyOpen="false" :childRoutes="[
                         ['name' => 'mwh.master-list.index', 'label' => 'Master List Material'],
                         ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping'],
+                        ['name' => 'mwh.daily-audit', 'label' => 'Audit Harian Material'],
                         ['name' => 'mwh.incoming.create', 'label' => 'Penerimaan Material (Incoming)'],
                         ['name' => 'mwh.outgoing.create', 'label' => 'Pengambilan Material (Outgoing)'],
                         ['name' => 'mwh.outgoing.history', 'label' => 'Riwayat Outgoing Material'],

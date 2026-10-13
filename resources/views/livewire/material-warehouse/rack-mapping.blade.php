@@ -133,6 +133,12 @@
                     @endif
                 </div>
 
+                <!-- Audit Harian Button -->
+                <a href="{{ route('mwh.daily-audit') }}" style="background-color: #047857 !important; color: #ffffff !important;" class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95" title="Buka Form Audit Harian Material">
+                    <span>📋</span>
+                    <span>AUDIT HARIAN</span>
+                </a>
+
                 <!-- FIFO Summary Button (In Main Header) -->
                 @if (!$isViewOnly)
                     <button wire:click="$set('showFifoSummaryModal', true)" style="background-color: #0f766e !important; color: #ffffff !important;" class="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95">
