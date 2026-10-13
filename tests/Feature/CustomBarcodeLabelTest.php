@@ -50,6 +50,8 @@ class CustomBarcodeLabelTest extends TestCase
             $table->string('item_name')->nullable();
             $table->string('description_in_foreign_lang')->nullable();
             $table->string('family')->nullable();
+            $table->decimal('part_weight', 10, 3)->nullable()->default(0);
+            $table->integer('standart_packaging_list')->nullable()->default(0);
             $table->string('color')->nullable();
             $table->string('position')->nullable();
             $table->string('half_code_1')->nullable();
@@ -239,5 +241,130 @@ class CustomBarcodeLabelTest extends TestCase
         // Verify that half_code_1 has font-size 11pt and half_code_2 has font-size 16pt
         $content = $response->getContent();
         $this->assertStringContainsString('font-size: 11pt; font-weight: 900;">TSPT10</span><span style="font-size: 16pt; font-weight: 900;">188XA</span>', $content);
+    }
+
+    public function test_vinfast_label_generation_with_item_details()
+    {
+        $user = User::create([
+            'name'     => 'VinFast User',
+            'email'    => 'vinfast@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        MasterListItem::create([
+            'item_code'               => 'BIN37024015AA',
+            'item_name'               => 'UPPER RH C PILLAR ASSEMBLY',
+            'family'                  => 'VF5',
+            'part_weight'             => 5.5,
+            'standart_packaging_list' => 6,
+        ]);
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('barcode.custom.print'), [
+            'item_code'    => 'BIN37024015AA',
+            'spk_number'   => 'SPK-VF-9988',
+            'quantity'     => 6,
+            'warehouse'    => 'FFI',
+            'start_label'  => 1,
+            'end_label'    => 2,
+            'shift'        => 'I',
+            'prod_date'    => '2026-10-07',
+            'barcode_type' => 'vinfast',
+        ]);
+
+        $response->assertOk();
+        $response->assertViewHas('labels', function ($labels) {
+            return count($labels) === 2
+                && $labels[0]['item_code'] === 'BIN37024015AA'
+                && $labels[0]['item_name'] === 'UPPER RH C PILLAR ASSEMBLY'
+                && $labels[0]['model'] === 'VF5'
+                && (float)$labels[0]['part_weight'] === 5.5
+                && (int)$labels[0]['std_pack'] === 6
+                && $labels[0]['made_in'] === 'Indonesia'
+                && $labels[0]['prod_date_formatted'] === '7 OCT 2026';
+        });
+
+        $content = $response->getContent();
+        $this->assertStringContainsString('VINFAST TRADING AND PRODUCTION JSC', $content);
+        $this->assertStringContainsString('PT. CHANGMING AUTO INDONESIA', $content);
+        $this->assertStringContainsString('BIN37024015AA', $content);
+        $this->assertStringContainsString('UPPER RH C PILLAR ASSEMBLY', $content);
+        $this->assertStringContainsString('VF5', $content);
+        $this->assertStringContainsString('5.5', $content);
+        $this->assertStringContainsString('7 OCT 2026', $content);
+        $this->assertStringContainsString('INDIVIDUAL', $content);
+        $this->assertStringContainsString('SPK-VF-9988', $content);
+    }
+
+    public function test_vinfast_label_generation_without_spk_number_succeeds()
+    {
+        $user = User::create([
+            'name'     => 'VinFast User No SPK',
+            'email'    => 'vinfast_no_spk@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        MasterListItem::create([
+            'item_code'               => 'BIN37024015AA',
+            'item_name'               => 'UPPER RH C PILLAR ASSEMBLY',
+            'family'                  => 'VF5',
+            'part_weight'             => 5.5,
+            'standart_packaging_list' => 6,
+        ]);
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('barcode.custom.print'), [
+            'item_code'    => 'BIN37024015AA',
+            'spk_number'   => '', // empty SPK for VinFast
+            'quantity'     => 6,
+            'warehouse'    => 'FFI',
+            'start_label'  => 1,
+            'end_label'    => 1,
+            'shift'        => 'I',
+            'prod_date'    => '2026-10-07',
+            'barcode_type' => 'vinfast',
+        ]);
+
+        $response->assertOk();
+        $response->assertViewHas('labels', function ($labels) {
+            return count($labels) === 1
+                && $labels[0]['item_code'] === 'BIN37024015AA'
+                && $labels[0]['spk_number'] === '-';
+        });
+
+        $log = CustomBarcodeLog::where('item_code', 'BIN37024015AA')->latest('id')->first();
+        $this->assertNotNull($log);
+        $this->assertEquals('-', $log->spk_number);
+    }
+
+    public function test_default_barcode_generation_without_spk_number_fails_validation()
+    {
+        $user = User::create([
+            'name'     => 'Standard User',
+            'email'    => 'standard_user@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        MasterListItem::create([
+            'item_code' => 'ITEM-DEFAULT',
+            'item_name' => 'DEFAULT ITEM',
+        ]);
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('barcode.custom.print'), [
+            'item_code'    => 'ITEM-DEFAULT',
+            'spk_number'   => '',
+            'quantity'     => 10,
+            'warehouse'    => 'WFI',
+            'start_label'  => 1,
+            'end_label'    => 1,
+            'shift'        => 'I',
+            'barcode_type' => 'default',
+        ]);
+
+        $response->assertSessionHasErrors('spk_number');
     }
 }

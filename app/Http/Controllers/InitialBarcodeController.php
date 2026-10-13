@@ -169,7 +169,7 @@ class InitialBarcodeController extends Controller
     {
         $request->validate([
             'item_code' => 'required|string',
-            'spk_number' => 'required|string',
+            'spk_number' => 'required_unless:barcode_type,vinfast|nullable|string',
             'quantity' => 'required|integer|min:1',
             'warehouse' => 'required|string',
             'start_label' => 'required|integer|min:1',
@@ -178,18 +178,23 @@ class InitialBarcodeController extends Controller
             'prod_date' => 'nullable|date',
             'operator' => 'nullable|string',
             'customer' => 'nullable|string',
-            'barcode_type' => 'nullable|string|in:default,sharp,yanfeng,itsp',
+            'barcode_type' => 'nullable|string|in:default,sharp,yanfeng,itsp,vinfast',
             'qad' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:255',
             'position' => 'nullable|string|max:255',
+            'part_weight' => 'nullable|numeric|min:0',
+            'std_pack' => 'nullable|integer|min:0',
+            'made_in' => 'nullable|string|max:255',
+            'expiry_date' => 'nullable|string|max:255',
+            'shipment_date' => 'nullable|string|max:255',
             'is_sp' => 'nullable|boolean',
             'is_trial' => 'nullable|boolean',
             'remark' => 'nullable|string|max:1000',
         ]);
 
         $itemCode = $request->input('item_code');
-        $spkNumber = $request->input('spk_number');
+        $spkNumber = $request->input('spk_number') ?: '-';
         $quantity = (int) $request->input('quantity');
         $warehouse = $request->input('warehouse');
         $startLabel = (int) $request->input('start_label');
@@ -245,12 +250,18 @@ class InitialBarcodeController extends Controller
             $request->input('qad'),
             $request->input('model'),
             $request->input('color'),
-            $request->input('position')
+            $request->input('position'),
+            $request->input('part_weight'),
+            $request->input('std_pack'),
+            $request->input('made_in'),
+            $request->input('expiry_date'),
+            $request->input('shipment_date')
         );
 
         $logoBase64 = $this->getLogoBase64();
+        $vinfastLogoBase64 = $this->getVinfastLogoBase64();
 
-        return view('barcode.custom_generate_print', compact('labels', 'barcodeType', 'logoBase64'));
+        return view('barcode.custom_generate_print', compact('labels', 'barcodeType', 'logoBase64', 'vinfastLogoBase64'));
     }
 
     public function customGenerateReprint($id)
@@ -258,7 +269,7 @@ class InitialBarcodeController extends Controller
         $log = CustomBarcodeLog::findOrFail($id);
 
         $itemCode = $log->item_code;
-        $spkNumber = $log->spk_number;
+        $spkNumber = $log->spk_number ?: '-';
         $quantity = (int) $log->quantity;
         $warehouse = $log->warehouse;
         $startLabel = (int) $log->start_label;
@@ -288,13 +299,14 @@ class InitialBarcodeController extends Controller
         );
 
         $logoBase64 = $this->getLogoBase64();
+        $vinfastLogoBase64 = $this->getVinfastLogoBase64();
 
-        return view('barcode.custom_generate_print', compact('labels', 'barcodeType', 'logoBase64'));
+        return view('barcode.custom_generate_print', compact('labels', 'barcodeType', 'logoBase64', 'vinfastLogoBase64'));
     }
 
     protected function buildLabelsData(
         string $itemCode,
-        string $spkNumber,
+        ?string $spkNumber,
         int $quantity,
         string $warehouse,
         int $startLabel,
@@ -309,13 +321,24 @@ class InitialBarcodeController extends Controller
         ?string $customQad = null,
         ?string $customModel = null,
         ?string $customColor = null,
-        ?string $customPosition = null
+        ?string $customPosition = null,
+        ?string $customPartWeight = null,
+        ?int $customStdPack = null,
+        ?string $customMadeIn = null,
+        ?string $customExpiryDate = null,
+        ?string $customShipmentDate = null
     ): array {
+        $spkNumber = $spkNumber ?: '-';
         $item = MasterListItem::where('item_code', $itemCode)->first();
         $itemName = $item?->item_name ?? $itemCode;
         $qad = $customQad ?: (($item?->description_in_foreign_lang && $item->description_in_foreign_lang !== '0') ? $item->description_in_foreign_lang : '');
         $model = $customModel ?: (($item?->family && $item->family !== '0') ? $item->family : '');
         $color = $customColor ?: (($item?->color && $item->color !== '0') ? $item->color : '');
+        $partWeight = ($customPartWeight !== null && $customPartWeight !== '') ? $customPartWeight : ($item?->part_weight ?? 0);
+        $stdPack = $customStdPack ?: ($item?->standart_packaging_list ?: $quantity);
+        $madeIn = $customMadeIn ?: 'Indonesia';
+        $expiryDate = $customExpiryDate ?: '';
+        $shipmentDate = $customShipmentDate ?: '';
         
         // Position format: 'right' -> 'RH', 'left' -> 'LH'
         $positionInput = $customPosition ?: (($item?->position && $item->position !== '0') ? $item->position : '');
@@ -336,19 +359,23 @@ class InitialBarcodeController extends Controller
         $h2 = strtoupper(trim((string) ($item?->half_code_2 && $item->half_code_2 !== '0' ? $item->half_code_2 : '')));
         $itspCode = ($h1 !== '' || $h2 !== '') ? "{$h1}{$h2}" : $itemCode;
 
-        // Year and month codes for SHARP format
+        // Year and month codes for SHARP format & VinFast formatted date
         if ($prodDate) {
             $year = date('Y', strtotime($prodDate));
             $month = date('n', strtotime($prodDate));
             $yearCode = $this->getSharpYearCode($year);
             $monthName = $this->getIndonesianMonthName($month);
-            $prodDateFormatted = "{$monthName} {$year}";
+            if ($barcodeType === 'vinfast') {
+                $prodDateFormatted = strtoupper(date('j M Y', strtotime($prodDate)));
+            } else {
+                $prodDateFormatted = "{$monthName} {$year}";
+            }
         } else {
             $year = '';
             $month = '';
             $yearCode = '';
             $monthName = '';
-            $prodDateFormatted = '';
+            $prodDateFormatted = ($barcodeType === 'vinfast') ? strtoupper(date('j M Y')) : '';
         }
 
         $labels = [];
@@ -383,6 +410,11 @@ class InitialBarcodeController extends Controller
                 'half_code_2' => $h2,
                 'itsp_code' => $itspCode,
                 'enlarged_half_code' => $enlargedHalfCode,
+                'part_weight' => $partWeight,
+                'std_pack' => $stdPack,
+                'made_in' => $madeIn,
+                'expiry_date' => $expiryDate,
+                'shipment_date' => $shipmentDate,
                 'is_sp' => $isSp,
                 'spk_number' => $spkNumber,
                 'warehouse' => $warehouse,
@@ -408,6 +440,18 @@ class InitialBarcodeController extends Controller
         $logoPath = public_path('picture/logo-dj.png');
         if (!file_exists($logoPath)) {
             $logoPath = storage_path('app/public/picture/logo-dj.png');
+        }
+        return file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+    }
+
+    protected function getVinfastLogoBase64(): ?string
+    {
+        $logoPath = public_path('picture/vinfast-logo.png');
+        if (!file_exists($logoPath)) {
+            $logoPath = public_path('images/vinfast-logo.png');
+        }
+        if (!file_exists($logoPath)) {
+            $logoPath = storage_path('app/public/picture/vinfast-logo.png');
         }
         return file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
     }

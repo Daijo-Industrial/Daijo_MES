@@ -171,12 +171,12 @@
             <!-- Main Mapping View (2D Layout or Card Grid) -->
             <div class="flex-grow min-w-0">
                 @if($viewMode === 'layout')
-                    @if(str_contains(strtoupper($warehouse->whse_code ?? ''), 'GUA'))
-                        @include('livewire.wms.partials.gua-layout')
-                    @elseif(str_contains(strtoupper($warehouse->whse_code ?? ''), '06') || str_contains(strtoupper($warehouse->whse_code ?? ''), 'J06'))
-                        @include('livewire.wms.partials.j06-layout')
-                    @else
+                    @if(str_contains(strtoupper($warehouse->whse_code ?? ''), 'GUB') || str_contains(strtoupper($warehouse->whse_name ?? ''), 'UTAMA B'))
                         @include('livewire.wms.partials.gub-layout')
+                    @elseif(str_contains(strtoupper($warehouse->whse_code ?? ''), 'GUA') || str_contains(strtoupper($warehouse->whse_name ?? ''), 'UTAMA A'))
+                        @include('livewire.wms.partials.gua-layout')
+                    @else
+                        @include('livewire.wms.partials.j06-layout')
                     @endif
                 @else
                     <!-- Grid Container -->
@@ -643,44 +643,90 @@
             <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100">
                 <div class="bg-blue-600 p-6 text-white text-center">
                     <h3 class="text-xl font-black italic uppercase tracking-tighter">Edit Rak & Atur Dimensi</h3>
-                    <p class="text-xs text-blue-100 mt-1">Ubah nama rak, tambah / kurangi level dan slot per rak</p>
+                    <p class="text-xs text-blue-100 mt-1">Ubah orientasi, zona, nama rak, tingkat, dan slot per rak</p>
                 </div>
                 
-                <div class="p-6 space-y-5">
+                <div class="p-6 space-y-4">
                     <div>
                         <label class="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Nama / Kode Rak</label>
                         <input type="text" wire:model.defer="editRackCode" placeholder="Ex: A1" 
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 outline-none font-black text-xl text-center uppercase tracking-widest transition-all">
+                            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 outline-none font-black text-xl text-center uppercase tracking-widest transition-all">
                         @error('editRackCode') <span class="text-[10px] text-red-500 font-bold uppercase mt-1">{{ $message }}</span> @enderror
-                        <p class="text-[10px] text-gray-400 mt-1 italic">* Mengubah nama rak otomatis memperbarui seluruh kode slot (misal: A1-L01-S01 -> B1-L01-S01).</p>
+                    </div>
+
+                    <!-- Orientation & Zone Selection -->
+                    <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 tracking-wider mb-1">Orientasi Rak</label>
+                            <select wire:model.defer="editRackOrientation" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl font-black text-xs uppercase cursor-pointer">
+                                <option value="VERTICAL">↕️ VERTICAL (Tegak)</option>
+                                <option value="HORIZONTAL">↔️ HORIZONTAL (Mendatar)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 tracking-wider mb-1">Zona / Kategori</label>
+                            <select wire:model.defer="editRackZone" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl font-black text-xs uppercase cursor-pointer">
+                                <option value="LOGISTIC">🟢 LOGISTIC (Hijau)</option>
+                                <option value="STORE">🔵 STORE (Biru)</option>
+                                <option value="WIP">🟠 WIP (Kuning/Amber)</option>
+                                <option value="FG">🟣 FG (Ungu)</option>
+                                <option value="DEFAULT">⚪ DEFAULT (Netral)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-blue-50/60 p-4 rounded-2xl border border-blue-100 space-y-2">
+                        <div class="bg-blue-50/60 p-3 rounded-2xl border border-blue-100 space-y-1.5">
                             <label class="block text-[10px] font-black uppercase text-blue-900 tracking-widest">Jumlah Level (Tingkat)</label>
                             <div class="flex items-center gap-2">
                                 <button type="button" wire:click="$set('editRackLevels', Math.max(1, {{ $editRackLevels }} - 1))" class="w-8 h-8 rounded-lg bg-white border border-blue-200 font-black text-blue-700 hover:bg-blue-100 transition">-</button>
                                 <input type="number" min="1" max="20" wire:model.defer="editRackLevels" 
-                                    class="w-full py-2 bg-white border border-blue-200 rounded-lg outline-none font-black text-center text-lg text-blue-900">
+                                    class="w-full py-1.5 bg-white border border-blue-200 rounded-lg outline-none font-black text-center text-lg text-blue-900">
                                 <button type="button" wire:click="$set('editRackLevels', {{ $editRackLevels }} + 1)" class="w-8 h-8 rounded-lg bg-white border border-blue-200 font-black text-blue-700 hover:bg-blue-100 transition">+</button>
                             </div>
                         </div>
 
-                        <div class="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-100 space-y-2">
+                        <div class="bg-indigo-50/60 p-3 rounded-2xl border border-indigo-100 space-y-1.5">
                             <label class="block text-[10px] font-black uppercase text-indigo-900 tracking-widest">Slot per Level</label>
                             <div class="flex items-center gap-2">
                                 <button type="button" wire:click="$set('editRackSlotsPerLevel', Math.max(1, {{ $editRackSlotsPerLevel }} - 1))" class="w-8 h-8 rounded-lg bg-white border border-indigo-200 font-black text-indigo-700 hover:bg-indigo-100 transition">-</button>
                                 <input type="number" min="1" max="50" wire:model.defer="editRackSlotsPerLevel" 
-                                    class="w-full py-2 bg-white border border-indigo-200 rounded-lg outline-none font-black text-center text-lg text-indigo-900">
+                                    class="w-full py-1.5 bg-white border border-indigo-200 rounded-lg outline-none font-black text-center text-lg text-indigo-900">
                                 <button type="button" wire:click="$set('editRackSlotsPerLevel', {{ $editRackSlotsPerLevel }} + 1)" class="w-8 h-8 rounded-lg bg-white border border-indigo-200 font-black text-indigo-700 hover:bg-indigo-100 transition">+</button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <!-- Row / Block Selection Presets & Coordinates -->
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+                        <label class="block text-[10px] font-black uppercase text-slate-700 tracking-wider">Penempatan Baris / Blok Denah</label>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <button type="button" wire:click="$set('editRackYPos', 300)" class="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-200 transition cursor-pointer">
+                                ⬆️ Baris Atas (Y: 300)
+                            </button>
+                            <button type="button" wire:click="$set('editRackYPos', 560)" class="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-200 transition cursor-pointer">
+                                ⬇️ Baris Bawah (Y: 560)
+                            </button>
+                            <button type="button" wire:click="$set('editRackYPos', 90); $set('editRackOrientation', 'HORIZONTAL')" class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-200 transition cursor-pointer">
+                                ↔️ Horizontal Atas (Y: 90)
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <div>
+                                <label class="block text-[8px] font-bold text-gray-500 uppercase">Koordinat X (px)</label>
+                                <input type="number" wire:model.defer="editRackXPos" class="w-full px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs font-mono font-bold text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[8px] font-bold text-gray-500 uppercase">Koordinat Y (px)</label>
+                                <input type="number" wire:model.defer="editRackYPos" class="w-full px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs font-mono font-bold text-center">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Customer Default (Slot Baru)</label>
-                            <select wire:model.defer="editRackCustomer" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 outline-none font-bold text-xs uppercase transition-all">
+                            <label class="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Customer Default</label>
+                            <select wire:model.defer="editRackCustomer" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 outline-none font-bold text-xs uppercase transition-all">
                                 <option value="">-- NONE --</option>
                                 @foreach($customers as $c)
                                     <option value="{{ $c->customer_code }}">{{ $c->customer_code }} - {{ $c->customer_name }}</option>
@@ -688,19 +734,19 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Max Kapasitas Slot Baru</label>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Max Kapasitas/Slot</label>
                             <input type="number" min="1" wire:model.defer="editRackMaxCapacity" 
-                                class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-center text-sm">
+                                class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-center text-sm">
                         </div>
                     </div>
 
-                    <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800">
-                        Total Slot Baru: <strong>{{ (int)$editRackLevels * (int)$editRackSlotsPerLevel }} Slot</strong> ({{ $editRackLevels }} Level &times; {{ $editRackSlotsPerLevel }} Slot). Slot yang dikurangi hanya dapat dihapus jika statusnya kosong (tidak ada pallet).
+                    <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-800">
+                        Total Slot: <strong>{{ (int)$editRackLevels * (int)$editRackSlotsPerLevel }} Slot</strong> ({{ $editRackLevels }} Level &times; {{ $editRackSlotsPerLevel }} Slot). Slot yang berisi pallet aktif terlindungi dari penghapusan.
                     </div>
 
-                    <div class="flex gap-3 pt-2">
-                        <button wire:click="$set('showEditRackModal', false)" class="flex-1 py-3.5 bg-gray-50 hover:bg-gray-100 text-gray-500 font-black rounded-xl uppercase text-[10px] tracking-widest transition-all">Batal</button>
-                        <button wire:click="saveRackChanges" class="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl uppercase text-[10px] tracking-widest transition-all shadow-md">Simpan Perubahan</button>
+                    <div class="flex gap-3 pt-1">
+                        <button wire:click="$set('showEditRackModal', false)" class="flex-1 py-3 bg-gray-50 hover:bg-gray-100 text-gray-500 font-black rounded-xl uppercase text-[10px] tracking-widest transition-all cursor-pointer">Batal</button>
+                        <button wire:click="saveRackChanges" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl uppercase text-[10px] tracking-widest transition-all shadow-md cursor-pointer">Simpan Perubahan</button>
                     </div>
                 </div>
             </div>
@@ -710,55 +756,91 @@
     <!-- Add Rack Modal -->
     @if($showAddRackModal)
         <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100">
-                <div class="bg-blue-600 p-8 text-white text-center">
+            <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100">
+                <div class="bg-blue-600 p-6 text-white text-center">
                     <span class="px-2.5 py-0.5 bg-white/20 text-white rounded-full text-[10px] font-black uppercase tracking-wider mb-2 inline-block">
                         Gudang: {{ $whseCode }} ({{ $whseName }})
                     </span>
-                    <h3 class="text-xl font-black italic uppercase tracking-tighter">Add New Rack</h3>
-                    <div class="w-10 h-1 bg-white/20 mx-auto mt-2 rounded"></div>
+                    <h3 class="text-xl font-black italic uppercase tracking-tighter">Tambah Rak Baru</h3>
+                    <p class="text-xs text-blue-100 mt-1">Tentukan kode rak, orientasi, zona, serta jumlah level dan slot</p>
                 </div>
                 
-                <div class="p-8 space-y-6">
-                    <div class="space-y-4 text-gray-600">
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Kode / Nama Rak</label>
+                        <input type="text" wire:model.defer="newRackCode" placeholder="Ex: F42, W11, R06" 
+                            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 outline-none font-black text-xl text-center uppercase tracking-widest transition-all">
+                        @error('newRackCode') <span class="text-[9px] text-red-500 font-bold uppercase mt-1">{{ $message }}</span> @enderror
+                    </div>
+
+                    <!-- Orientation & Zone Inputs -->
+                    <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                         <div>
-                            <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1 italic">Rack Identifier</label>
-                            <input type="text" wire:model.defer="newRackCode" placeholder="Ex: R06" 
-                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 outline-none font-black text-xl text-center uppercase tracking-widest transition-all">
-                            @error('newRackCode') <span class="text-[9px] text-red-500 font-bold uppercase mt-1">{{ $message }}</span> @enderror
-                        </div>
-                        <div>
-                            <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1 italic">Pre-Assign Customer ID (Optional)</label>
-                            <select wire:model.defer="newRackCustomer" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 outline-none font-black text-xs uppercase tracking-widest transition-all">
-                                <option value="">-- NONE --</option>
-                                @foreach($customers as $c)
-                                    <option value="{{ $c->customer_code }}">{{ $c->customer_code }} - {{ $c->customer_name }}</option>
-                                @endforeach
+                            <label class="block text-[9px] font-black uppercase text-slate-700 tracking-wider mb-1">Orientasi Rak</label>
+                            <select wire:model.defer="newOrientation" class="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-xl font-black text-xs uppercase cursor-pointer">
+                                <option value="VERTICAL">↕️ VERTICAL (Tegak)</option>
+                                <option value="HORIZONTAL">↔️ HORIZONTAL (Mendatar)</option>
                             </select>
                         </div>
-
-                        <div class="grid grid-cols-3 gap-3">
-                            <div>
-                                <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1 italic">Levels</label>
-                                <input type="number" wire:model.defer="newLevels" 
-                                    class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-center text-lg">
-                            </div>
-                            <div>
-                                <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1 italic">Slots/LVL</label>
-                                <input type="number" wire:model.defer="newSlotsPerLevel" 
-                                    class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-center text-lg">
-                            </div>
-                            <div>
-                                <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1 italic">Max/Slot</label>
-                                <input type="number" wire:model.defer="newMaxCapacity" 
-                                    class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-center text-lg">
-                            </div>
+                        <div>
+                            <label class="block text-[9px] font-black uppercase text-slate-700 tracking-wider mb-1">Zona / Kategori</label>
+                            <select wire:model.defer="newZone" class="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-xl font-black text-xs uppercase cursor-pointer">
+                                <option value="LOGISTIC">🟢 LOGISTIC (Hijau)</option>
+                                <option value="STORE">🔵 STORE (Biru)</option>
+                                <option value="WIP">🟠 WIP (Kuning/Amber)</option>
+                                <option value="FG">🟣 FG (Ungu)</option>
+                                <option value="DEFAULT">⚪ DEFAULT (Netral)</option>
+                            </select>
                         </div>
                     </div>
 
-                    <div class="flex gap-3">
-                        <button wire:click="$set('showAddRackModal', false)" class="flex-1 py-4 bg-gray-50 hover:bg-gray-100 text-gray-400 font-black rounded-xl uppercase text-[9px] tracking-widest transition-all italic">Close</button>
-                        <button wire:click="createNewRack" class="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl uppercase text-[9px] tracking-widest transition-all shadow-lg shadow-blue-100">CREATE</button>
+                    <!-- Row / Block Selection Presets -->
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+                        <label class="block text-[8px] font-black uppercase text-slate-700 tracking-wider">Pilih Baris Penempatan</label>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <button type="button" wire:click="$set('newYPos', 300); $set('newOrientation', 'VERTICAL')" class="px-2 py-0.5 bg-white hover:bg-blue-50 text-blue-700 rounded text-[11px] font-bold border border-blue-200 transition cursor-pointer">
+                                ⬆️ Baris Atas
+                            </button>
+                            <button type="button" wire:click="$set('newYPos', 560); $set('newOrientation', 'VERTICAL')" class="px-2 py-0.5 bg-white hover:bg-blue-50 text-blue-700 rounded text-[11px] font-bold border border-blue-200 transition cursor-pointer">
+                                ⬇️ Baris Bawah
+                            </button>
+                            <button type="button" wire:click="$set('newYPos', 90); $set('newOrientation', 'HORIZONTAL')" class="px-2 py-0.5 bg-white hover:bg-emerald-50 text-emerald-700 rounded text-[11px] font-bold border border-emerald-200 transition cursor-pointer">
+                                ↔️ Horizontal Atas
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Customer Default (Opsional)</label>
+                        <select wire:model.defer="newRackCustomer" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 outline-none font-bold text-xs uppercase tracking-widest transition-all">
+                            <option value="">-- NONE --</option>
+                            @foreach($customers as $c)
+                                <option value="{{ $c->customer_code }}">{{ $c->customer_code }} - {{ $c->customer_name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-200 text-center">
+                            <label class="block text-[8px] font-black uppercase text-gray-400 tracking-widest mb-1">Levels</label>
+                            <input type="number" min="1" max="20" wire:model.defer="newLevels" 
+                                class="w-full py-1 bg-white border border-gray-200 rounded-lg outline-none font-black text-center text-base">
+                        </div>
+                        <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-200 text-center">
+                            <label class="block text-[8px] font-black uppercase text-gray-400 tracking-widest mb-1">Slot/LVL</label>
+                            <input type="number" min="1" max="50" wire:model.defer="newSlotsPerLevel" 
+                                class="w-full py-1 bg-white border border-gray-200 rounded-lg outline-none font-black text-center text-base">
+                        </div>
+                        <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-200 text-center">
+                            <label class="block text-[8px] font-black uppercase text-gray-400 tracking-widest mb-1">Max Kapasitas</label>
+                            <input type="number" min="1" wire:model.defer="newMaxCapacity" 
+                                class="w-full py-1 bg-white border border-gray-200 rounded-lg outline-none font-black text-center text-base">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <button wire:click="$set('showAddRackModal', false)" class="flex-1 py-3 bg-gray-50 hover:bg-gray-100 text-gray-400 font-black rounded-xl uppercase text-[10px] tracking-widest transition-all cursor-pointer">Batal</button>
+                        <button wire:click="createNewRack" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl uppercase text-[10px] tracking-widest transition-all shadow-md cursor-pointer">BUAT RAK</button>
                     </div>
                 </div>
             </div>

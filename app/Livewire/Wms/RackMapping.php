@@ -35,6 +35,10 @@ class RackMapping extends Component
     public $newSlotsPerLevel = 4;
     public $newRackCustomer;
     public $newMaxCapacity = 1;
+    public $newOrientation = 'VERTICAL'; // 'VERTICAL' or 'HORIZONTAL'
+    public $newZone = 'DEFAULT';         // 'LOGISTIC', 'STORE', 'WIP', 'FG', 'DEFAULT'
+    public $newXPos = 0;
+    public $newYPos = 0;
     public $showAddRackModal = false;
 
     // Warehouse State
@@ -58,7 +62,14 @@ class RackMapping extends Component
     public $editRackSlotsPerLevel = 1;
     public $editRackCustomer = '';
     public $editRackMaxCapacity = 1;
+    public $editRackOrientation = 'VERTICAL';
+    public $editRackZone = 'DEFAULT';
+    public $editRackXPos = 0;
+    public $editRackYPos = 0;
     public $showEditRackModal = false;
+
+    // Interactive Layout Settings Mode
+    public $isLayoutEditMode = false;
 
     public function selectPosition($id)
     {
@@ -272,14 +283,27 @@ class RackMapping extends Component
             'newSlotsPerLevel' => 'required|integer|min:1',
             'newRackCustomer' => 'nullable|string',
             'newMaxCapacity' => 'required|integer|min:1',
+            'newOrientation' => 'required|in:HORIZONTAL,VERTICAL',
+            'newZone' => 'nullable|string|max:50',
+            'newXPos' => 'nullable|integer',
+            'newYPos' => 'nullable|integer',
         ]);
 
         try {
             DB::beginTransaction();
 
+            $orientation = in_array($this->newOrientation, ['HORIZONTAL', 'VERTICAL']) ? $this->newOrientation : 'VERTICAL';
+            $zone = strtoupper(trim($this->newZone ?: 'DEFAULT'));
+
             $rack = WmsRack::create([
                 'whse_id' => $this->whseId,
-                'rack_code' => strtoupper($this->newRackCode),
+                'rack_code' => strtoupper(trim($this->newRackCode)),
+                'orientation' => $orientation,
+                'zone' => $zone,
+                'x_pos' => $this->newXPos ?: 0,
+                'y_pos' => $this->newYPos ?: 0,
+                'width' => $orientation === 'HORIZONTAL' ? 200 : 100,
+                'height' => $orientation === 'HORIZONTAL' ? 100 : 200,
             ]);
 
             $cust = !empty($this->newRackCustomer) ? strtoupper($this->newRackCustomer) : null;
@@ -293,9 +317,9 @@ class RackMapping extends Component
             }
 
             DB::commit();
-            session()->flash('success', 'Rak ' . $rack->rack_code . ' berhasil dibuat (Kapasitas: ' . $this->newMaxCapacity . ').');
+            session()->flash('success', "Rak {$rack->rack_code} berhasil dibuat ({$orientation}, Kapasitas: {$this->newMaxCapacity}).");
             
-            $this->reset(['newRackCode', 'newRackCustomer', 'newMaxCapacity', 'showAddRackModal']);
+            $this->reset(['newRackCode', 'newRackCustomer', 'newMaxCapacity', 'newOrientation', 'newZone', 'newXPos', 'newYPos', 'showAddRackModal']);
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal membuat rak: ' . $e->getMessage());
@@ -514,6 +538,10 @@ class RackMapping extends Component
 
         $this->editingRackId = $rack->id;
         $this->editRackCode = $rack->rack_code;
+        $this->editRackOrientation = $rack->orientation ?: 'VERTICAL';
+        $this->editRackZone = $rack->zone ?: $rack->effective_zone;
+        $this->editRackXPos = $rack->x_pos ?? 0;
+        $this->editRackYPos = $rack->y_pos ?? 0;
 
         $maxLevel = $rack->positions->max('level_no') ?? 1;
         $maxSlots = $rack->positions->max('slot_no') ?? 1;
@@ -540,6 +568,10 @@ class RackMapping extends Component
             'editRackSlotsPerLevel' => 'required|integer|min:1|max:50',
             'editRackCustomer' => 'nullable|string',
             'editRackMaxCapacity' => 'required|integer|min:1',
+            'editRackOrientation' => 'required|in:HORIZONTAL,VERTICAL',
+            'editRackZone' => 'nullable|string|max:50',
+            'editRackXPos' => 'nullable|integer',
+            'editRackYPos' => 'nullable|integer',
         ]);
 
         try {
@@ -547,7 +579,16 @@ class RackMapping extends Component
 
             $rack = WmsRack::with('positions')->findOrFail($this->editingRackId);
             $newRackCode = strtoupper(trim($this->editRackCode));
-            $rack->update(['rack_code' => $newRackCode]);
+            $orientation = in_array($this->editRackOrientation, ['HORIZONTAL', 'VERTICAL']) ? $this->editRackOrientation : 'VERTICAL';
+            $zone = strtoupper(trim($this->editRackZone ?: 'DEFAULT'));
+
+            $rack->update([
+                'rack_code' => $newRackCode,
+                'orientation' => $orientation,
+                'zone' => $zone,
+                'x_pos' => (int) $this->editRackXPos,
+                'y_pos' => (int) $this->editRackYPos,
+            ]);
 
             $existingPositions = WmsPosition::where('rack_id', $rack->id)->get();
             $existingMap = $existingPositions->keyBy(fn($p) => "{$p->level_no}-{$p->slot_no}");
@@ -599,7 +640,7 @@ class RackMapping extends Component
             }
 
             DB::commit();
-            session()->flash('success', "Rak {$newRackCode} dan seluruh slotnya berhasil diperbarui.");
+            session()->flash('success', "Rak {$newRackCode} dan seluruh konfigurasinya ({$orientation}, Zona: {$zone}) berhasil diperbarui.");
             $this->showEditRackModal = false;
 
             if ($this->selectedPositionId) {
@@ -609,6 +650,236 @@ class RackMapping extends Component
             DB::rollBack();
             session()->flash('error', "Gagal menyimpan perubahan rak: " . $e->getMessage());
         }
+    }
+
+    public function toggleLayoutEditMode()
+    {
+        $this->isLayoutEditMode = !$this->isLayoutEditMode;
+    }
+
+    public function toggleRackOrientation($rackId)
+    {
+        $rack = WmsRack::find($rackId);
+        if (!$rack) {
+            session()->flash('error', 'Rak tidak ditemukan.');
+            return;
+        }
+
+        $current = $rack->orientation ?: 'VERTICAL';
+        $newOrientation = ($current === 'VERTICAL') ? 'HORIZONTAL' : 'VERTICAL';
+
+        $rack->update([
+            'orientation' => $newOrientation,
+            'width' => $newOrientation === 'HORIZONTAL' ? 200 : 100,
+            'height' => $newOrientation === 'HORIZONTAL' ? 100 : 200,
+        ]);
+
+        session()->flash('success', "Orientasi Rak {$rack->rack_code} diubah menjadi {$newOrientation}.");
+    }
+
+    public function updateRackZone($rackId, $zone)
+    {
+        $rack = WmsRack::find($rackId);
+        if (!$rack) return;
+
+        $zone = strtoupper(trim($zone));
+        $rack->update(['zone' => $zone]);
+        session()->flash('success', "Zona Rak {$rack->rack_code} berhasil diubah menjadi {$zone}.");
+    }
+
+    public function moveRack($rackId, $direction)
+    {
+        $rack = WmsRack::find($rackId);
+        if (!$rack) return;
+
+        $step = 40;
+        $x = $rack->x_pos ?? 0;
+        $y = $rack->y_pos ?? 0;
+        $sort = $rack->sort_order ?? 0;
+
+        switch ($direction) {
+            case 'left':
+                $x = max(0, $x - $step);
+                $sort = max(0, $sort - 1);
+                break;
+            case 'right':
+                $x += $step;
+                $sort += 1;
+                break;
+            case 'up':
+                $y = max(0, $y - $step);
+                break;
+            case 'down':
+                $y += $step;
+                break;
+        }
+
+        $rack->update(['x_pos' => $x, 'y_pos' => $y, 'sort_order' => $sort]);
+    }
+
+    public function updateRackCoordinates($rackId, $x, $y)
+    {
+        $rack = WmsRack::find($rackId);
+        if ($rack) {
+            $rack->update([
+                'x_pos' => max(0, (int) $x),
+                'y_pos' => max(0, (int) $y),
+            ]);
+            session()->flash('success', "Posisi Rak {$rack->rack_code} diperbarui ke (X: {$x}, Y: {$y}).");
+        }
+    }
+
+    public function moveRackToBlock($rackId, $targetY)
+    {
+        $rack = WmsRack::find($rackId);
+        if ($rack) {
+            $rack->update([
+                'y_pos' => (int) $targetY,
+            ]);
+            session()->flash('success', "Rak {$rack->rack_code} dipindahkan ke baris Y: {$targetY}.");
+        }
+    }
+
+    public function moveRackToWing($rackId, $targetX)
+    {
+        $rack = WmsRack::find($rackId);
+        if ($rack) {
+            $rack->update([
+                'x_pos' => (int) $targetX,
+            ]);
+            session()->flash('success', "Rak {$rack->rack_code} dipindahkan ke X: {$targetX}.");
+        }
+    }
+
+    public function applyLayoutPreset($presetType)
+    {
+        $racks = WmsRack::where('whse_id', $this->whseId)->orderBy('rack_code')->get();
+        if ($racks->isEmpty()) {
+            session()->flash('error', 'Belum ada rak di gudang ini.');
+            return;
+        }
+
+        switch ($presetType) {
+            case 'horizontal_dual_wing': // GUB style (Sayap Kiri & Kanan)
+                $half = ceil($racks->count() / 2);
+                foreach ($racks as $idx => $rack) {
+                    $isLeft = $idx < $half;
+                    $rowInWing = $isLeft ? $idx : ($idx - $half);
+                    $pairIndex = intdiv($rowInWing, 2);
+                    $pairSide = $rowInWing % 2;
+
+                    $x = $isLeft ? 80 : 510;
+                    $y = 90 + ($pairIndex * 150) + ($pairSide * 40);
+
+                    $rack->update([
+                        'orientation' => 'HORIZONTAL',
+                        'x_pos' => $x,
+                        'y_pos' => $y,
+                        'width' => 360,
+                        'height' => 36,
+                        'sort_order' => $idx,
+                    ]);
+                }
+                session()->flash('success', 'Preset Denah Horizontal 2-Sayap (GUB) berhasil diterapkan.');
+                break;
+
+            case 'vertical_dual_row': // GUA style (Baris Atas & Bawah)
+                $half = ceil($racks->count() / 2);
+                foreach ($racks as $idx => $rack) {
+                    $isUpper = $idx >= $half;
+                    $colInRow = $isUpper ? ($idx - $half) : $idx;
+                    $pairIndex = intdiv($colInRow, 2);
+                    $pairSide = $colInRow % 2;
+
+                    $x = 240 + ($pairIndex * 100) + ($pairSide * 36);
+                    $y = $isUpper ? 300 : 560;
+
+                    $rack->update([
+                        'orientation' => 'VERTICAL',
+                        'x_pos' => $x,
+                        'y_pos' => $y,
+                        'width' => 36,
+                        'height' => 180,
+                        'sort_order' => $idx,
+                    ]);
+                }
+                session()->flash('success', 'Preset Denah Vertikal 2-Baris (GUA) berhasil diterapkan.');
+                break;
+
+            case 'combination_j06': // J06 style (Horizontal Atas + Vertikal Berjejer)
+                $horizCount = 0;
+                $vertCount = 0;
+                foreach ($racks as $idx => $rack) {
+                    $isHoriz = str_starts_with($rack->rack_code, 'F4') || str_starts_with($rack->rack_code, 'W1') || $idx < 2;
+                    if ($isHoriz) {
+                        $x = 380 + ($horizCount * 140);
+                        $y = 90;
+                        $rack->update([
+                            'orientation' => 'HORIZONTAL',
+                            'x_pos' => $x,
+                            'y_pos' => $y,
+                            'width' => 120,
+                            'height' => 36,
+                            'sort_order' => $horizCount,
+                        ]);
+                        $horizCount++;
+                    } else {
+                        $pairIndex = intdiv($vertCount, 2);
+                        $pairSide = $vertCount % 2;
+                        $x = 170 + ($pairIndex * 90) + ($pairSide * 36);
+                        $y = 420;
+                        $rack->update([
+                            'orientation' => 'VERTICAL',
+                            'x_pos' => $x,
+                            'y_pos' => $y,
+                            'width' => 36,
+                            'height' => 200,
+                            'sort_order' => $vertCount,
+                        ]);
+                        $vertCount++;
+                    }
+                }
+                session()->flash('success', 'Preset Denah Kombinasi (J06) berhasil diterapkan.');
+                break;
+        }
+    }
+
+    public function autoArrangeRacks()
+    {
+        $racks = WmsRack::where('whse_id', $this->whseId)->orderBy('rack_code')->get();
+        if ($racks->isEmpty()) {
+            session()->flash('error', 'Belum ada rak untuk diatur.');
+            return;
+        }
+
+        $horizIndex = 0;
+        $vertIndex = 0;
+
+        foreach ($racks as $rack) {
+            if ($rack->orientation === 'HORIZONTAL') {
+                $x = 100 + ($horizIndex % 4) * 220;
+                $y = 80 + intdiv($horizIndex, 4) * 110;
+                $rack->update([
+                    'x_pos' => $x,
+                    'y_pos' => $y,
+                    'sort_order' => $horizIndex,
+                ]);
+                $horizIndex++;
+            } else {
+                $col = intdiv($vertIndex, 2);
+                $pairSide = $vertIndex % 2;
+                $x = 120 + $col * 80 + $pairSide * 36;
+                $y = 350;
+                $rack->update([
+                    'x_pos' => $x,
+                    'y_pos' => $y,
+                    'sort_order' => $vertIndex,
+                ]);
+                $vertIndex++;
+            }
+        }
+
+        session()->flash('success', 'Layout rak gudang berhasil diatur dan dirapikan secara otomatis.');
     }
 
     public function addLevelToRack($rackId)
@@ -891,18 +1162,221 @@ class RackMapping extends Component
             $rackRanks[$r->rack_code] = $idx + 1;
         }
 
+        // Dynamic rack segregation for 2D layout
+        $horizontalRacks = $racks->filter(fn($r) => $r->orientation === 'HORIZONTAL')
+            ->sortBy(fn($r) => ($r->y_pos * 1000) + ($r->sort_order ?: 0))
+            ->values();
+
+        $verticalRacks = $racks->filter(fn($r) => $r->orientation !== 'HORIZONTAL')
+            ->sortBy(fn($r) => ($r->y_pos * 100000) + ($r->x_pos * 1000) + ($r->sort_order ?: 0))
+            ->values();
+
+        // Horizontal Wings & Pairs Clustering (Dual Wing layout like GUB)
+        $horizontalWings = [];
+        if ($horizontalRacks->isNotEmpty()) {
+            $hasWings = $horizontalRacks->contains(fn($r) => $r->x_pos >= 450) && $horizontalRacks->contains(fn($r) => $r->x_pos < 450);
+
+            if ($hasWings) {
+                $leftRacks = $horizontalRacks->filter(fn($r) => $r->x_pos < 450)->sortBy('y_pos')->values();
+                $rightRacks = $horizontalRacks->filter(fn($r) => $r->x_pos >= 450)->sortBy('y_pos')->values();
+
+                $horizontalWings = [
+                    'left' => [
+                        'label' => 'Sayap Kiri (Left Wing)',
+                        'pairs' => $this->clusterHorizontalPairs($leftRacks),
+                    ],
+                    'right' => [
+                        'label' => 'Sayap Kanan (Right Wing)',
+                        'pairs' => $this->clusterHorizontalPairs($rightRacks),
+                    ],
+                ];
+            } else {
+                $horizontalWings = [
+                    'main' => [
+                        'label' => 'Deretan Rak Horizontal',
+                        'pairs' => $this->clusterHorizontalPairs($horizontalRacks),
+                    ],
+                ];
+            }
+        }
+
+        // Multi-Row Blocks & Pairs Clustering for Vertical Racks
+        $distinctYPositions = $verticalRacks->pluck('y_pos')->unique()->sort()->values();
+        $clusteredRows = [];
+
+        if ($distinctYPositions->isEmpty()) {
+            $rowBlocks = [];
+        } else {
+            foreach ($distinctYPositions as $y) {
+                $found = false;
+                foreach ($clusteredRows as &$cluster) {
+                    if (abs($cluster['center_y'] - $y) < 140) {
+                        $cluster['y_values'][] = $y;
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $clusteredRows[] = [
+                        'center_y' => $y,
+                        'y_values' => [$y],
+                    ];
+                }
+            }
+
+            $rowBlocks = [];
+            foreach ($clusteredRows as $idx => $cluster) {
+                $matchingRacks = $verticalRacks->filter(fn($r) => in_array($r->y_pos, $cluster['y_values']))->sortBy('x_pos')->values();
+                
+                $rowLabel = count($clusteredRows) === 2 
+                    ? ($idx === 0 ? 'Blok Baris Atas (Upper Aisle)' : 'Blok Baris Bawah (Lower Aisle)')
+                    : 'Blok Baris ' . ($idx + 1);
+
+                // Inside this row block, group into pairs or singles based on x_pos adjacency
+                $pairs = [];
+                $usedIds = [];
+
+                for ($i = 0; $i < $matchingRacks->count(); $i++) {
+                    $r1 = $matchingRacks[$i];
+                    if (in_array($r1->id, $usedIds)) continue;
+
+                    $r2 = null;
+                    if ($i + 1 < $matchingRacks->count()) {
+                        $candidate = $matchingRacks[$i + 1];
+                        if (!in_array($candidate->id, $usedIds) && abs($candidate->x_pos - $r1->x_pos) <= 60) {
+                            $r2 = $candidate;
+                        }
+                    }
+
+                    if ($r2) {
+                        $pairs[] = [
+                            'type' => 'pair',
+                            'rack1' => $r1,
+                            'rack2' => $r2,
+                            'col_label' => 'Kolom ' . (count($pairs) + 1),
+                        ];
+                        $usedIds[] = $r1->id;
+                        $usedIds[] = $r2->id;
+                    } else {
+                        $pairs[] = [
+                            'type' => 'single',
+                            'rack1' => $r1,
+                            'rack2' => null,
+                            'col_label' => 'Kolom ' . (count($pairs) + 1),
+                        ];
+                        $usedIds[] = $r1->id;
+                    }
+                }
+
+                $rowBlocks[] = [
+                    'label'    => $rowLabel,
+                    'y_pos'    => $cluster['center_y'],
+                    'racks'    => $matchingRacks,
+                    'pairs'    => $pairs,
+                ];
+            }
+        }
+
+        // Calculate dynamic summary per zone (like the summary table in the diagram)
+        $zoneSummaries = [];
+        $groupedByZone = $racks->groupBy(fn($r) => $r->effective_zone);
+
+        foreach ($groupedByZone as $zoneName => $zoneRacks) {
+            $rackCodes = $zoneRacks->pluck('rack_code')->sort()->values();
+            $firstCode = $rackCodes->first() ?? '-';
+            $lastCode = $rackCodes->last() ?? '-';
+            $codeRange = $rackCodes->count() > 1 ? "{$firstCode} - {$lastCode}" : $firstCode;
+
+            $totalSlots = 0;
+            $totalCapacity = 0;
+            $maxLevels = 0;
+            $maxSlotsPerLevel = 0;
+
+            foreach ($zoneRacks as $r) {
+                $positions = $r->positions;
+                $totalSlots += $positions->count();
+                $totalCapacity += $positions->sum('max_capacity');
+                $maxLevels = max($maxLevels, $positions->max('level_no') ?? 0);
+                $maxSlotsPerLevel = max($maxSlotsPerLevel, $positions->max('slot_no') ?? 0);
+            }
+
+            $colorMeta = match ($zoneName) {
+                'LOGISTIC' => ['border' => 'border-emerald-500', 'badge' => 'bg-emerald-600 text-white', 'bg' => 'bg-emerald-50', 'text' => 'text-emerald-800'],
+                'STORE'    => ['border' => 'border-blue-500',    'badge' => 'bg-blue-600 text-white',    'bg' => 'bg-blue-50',    'text' => 'text-blue-800'],
+                'WIP'      => ['border' => 'border-amber-500',   'badge' => 'bg-amber-600 text-white',   'bg' => 'bg-amber-50',   'text' => 'text-amber-800'],
+                'FG'       => ['border' => 'border-purple-500',  'badge' => 'bg-purple-600 text-white',  'bg' => 'bg-purple-50',  'text' => 'text-purple-800'],
+                default    => ['border' => 'border-slate-500',   'badge' => 'bg-slate-700 text-white',   'bg' => 'bg-slate-50',   'text' => 'text-slate-800'],
+            };
+
+            $zoneSummaries[] = [
+                'zone_name'      => $zoneName,
+                'code_range'     => $codeRange,
+                'rack_count'     => $zoneRacks->count(),
+                'level_count'    => $maxLevels,
+                'slot_count'     => $maxSlotsPerLevel,
+                'total_slots'    => $totalSlots,
+                'total_capacity' => $totalCapacity,
+                'color'          => $colorMeta,
+            ];
+        }
+
         return view('livewire.wms.rack-mapping', [
             'warehouse'           => $warehouse,
             'warehouses'          => $warehouses,
             'racks'               => $racks,
             'racksByCode'         => $racksByCode,
             'rackRanks'           => $rackRanks,
+            'horizontalRacks'     => $horizontalRacks,
+            'horizontalWings'     => $horizontalWings,
+            'verticalRacks'       => $verticalRacks,
+            'rowBlocks'           => $rowBlocks,
+            'zoneSummaries'       => $zoneSummaries,
             'selectedPosData'     => $selectedPosData,
             'customers'           => $customers,
             'unassignedPallets'   => $unassignedPallets,
             'matchingPositionIds' => $matchingPositionIds,
             'searchSuggestions'   => $searchSuggestions,
         ]);
+    }
+
+    protected function clusterHorizontalPairs($racks)
+    {
+        $pairs = [];
+        $usedIds = [];
+
+        for ($i = 0; $i < $racks->count(); $i++) {
+            $r1 = $racks[$i];
+            if (in_array($r1->id, $usedIds)) continue;
+
+            $r2 = null;
+            if ($i + 1 < $racks->count()) {
+                $candidate = $racks[$i + 1];
+                if (!in_array($candidate->id, $usedIds) && abs($candidate->y_pos - $r1->y_pos) <= 65) {
+                    $r2 = $candidate;
+                }
+            }
+
+            if ($r2) {
+                $pairs[] = [
+                    'type' => 'pair',
+                    'rack1' => $r1,
+                    'rack2' => $r2,
+                    'label' => "Pasangan {$r1->rack_code} & {$r2->rack_code}",
+                ];
+                $usedIds[] = $r1->id;
+                $usedIds[] = $r2->id;
+            } else {
+                $pairs[] = [
+                    'type' => 'single',
+                    'rack1' => $r1,
+                    'rack2' => null,
+                    'label' => "Rak {$r1->rack_code}",
+                ];
+                $usedIds[] = $r1->id;
+            }
+        }
+
+        return $pairs;
     }
 
     public function selectSearchSuggestion($itemCode)

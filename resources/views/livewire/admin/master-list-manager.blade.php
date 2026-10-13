@@ -109,6 +109,7 @@
                             <th class="px-3 py-2 text-center">Cycle Time (s)</th>
                             <th class="px-3 py-2 text-center">Cust Code</th>
                             <th class="px-3 py-2 text-center">Family</th>
+                            <th class="px-3 py-2 text-center">Part Weight (KG)</th>
                             <th class="px-3 py-2 text-center">Foreign Desc</th>
                             <th class="px-3 py-2 text-center">Color</th>
                             <th class="px-3 py-2 text-center">Half Code 1</th>
@@ -129,6 +130,7 @@
                                 <td class="px-3 py-2 text-center">{{ $row['cycle_time'] ?? '0' }}</td>
                                 <td class="px-3 py-2 text-center">{{ $row['customer_code'] ?? '-' }}</td>
                                 <td class="px-3 py-2 text-center">{{ $row['family'] ?? '-' }}</td>
+                                <td class="px-3 py-2 text-center font-mono">{{ isset($row['part_weight']) ? number_format((float)$row['part_weight'], 3) : '0.000' }}</td>
                                 <td class="px-3 py-2 text-center">{{ $row['description_in_foreign_lang'] ?? '-' }}</td>
                                 <td class="px-3 py-2 text-center">{{ $row['color'] ?? '-' }}</td>
                                 <td class="px-3 py-2 text-center">{{ $row['half_code_1'] ?? '-' }}</td>
@@ -191,6 +193,7 @@
                         <th class="px-3 py-3 text-center">Cycle Time (s)</th>
                         <th class="px-3 py-3 text-center">Cust Code</th>
                         <th class="px-3 py-3 text-center">Family</th>
+                        <th class="px-3 py-3 text-center">Part Weight (KG)</th>
                         <th class="px-3 py-3 text-center">Foreign Desc</th>
                         <th class="px-3 py-3 text-center">Color</th>
                         <th class="px-3 py-3 text-center">Half Code 1</th>
@@ -341,6 +344,20 @@
                                 @endif
                             </td>
 
+                            <!-- Part Weight (KG) -->
+                            <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'part_weight')">
+                                @if($editingItemId === $item->id && $editingField === 'part_weight')
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <input type="number" step="0.001" min="0" wire:model.defer="editingValue" wire:keydown.enter="saveEdit" wire:keydown.escape="cancelEdit" 
+                                               class="w-24 text-center rounded border-gray-300 p-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono" autofocus>
+                                    </div>
+                                @else
+                                    <span class="cursor-pointer border-b border-dashed border-gray-400 hover:text-blue-600 font-mono" title="Double click to edit">
+                                        {{ $item->part_weight !== null ? number_format((float)$item->part_weight, 3) : '0.000' }}
+                                    </span>
+                                @endif
+                            </td>
+
                             <!-- Foreign Description -->
                             <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'description_in_foreign_lang')">
                                 @if($editingItemId === $item->id && $editingField === 'description_in_foreign_lang')
@@ -413,7 +430,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="15" class="text-center py-6 text-gray-500 font-semibold">No master items found.</td>
+                            <td colspan="16" class="text-center py-6 text-gray-500 font-semibold">No master items found.</td>
                         </tr>
                     @endforelse
                 </tbody>

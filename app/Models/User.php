@@ -76,6 +76,11 @@ class User extends Authenticatable
         return $this->hasOne(MachineJob::class, 'user_id');
     }
 
+    public function machineJob()
+    {
+        return $this->hasOne(MachineJob::class, 'user_id');
+    }
+
     public function specification()
     {
         return $this->belongsTo(Specification::class);

@@ -333,7 +333,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                         </span>
-                        <h2 class="text-xl font-bold text-gray-800">Shift Performance: Adjuster, Change Mould, Repair & NG Tracking</h2>
+                        <h2 class="text-xl font-bold text-gray-800">Shift Performance: Adjuster, Change Mould, Repair &amp; NG Tracking</h2>
                     </div>
                     <p class="text-xs text-gray-500 mt-1">Performa output, NG produk, serta penanggung jawab Adjuster, Change Mould, dan Repair Machine per shift</p>
                 </div>

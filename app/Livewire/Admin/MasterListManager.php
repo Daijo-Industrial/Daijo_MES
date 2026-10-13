@@ -85,6 +85,7 @@ class MasterListManager extends Component
             'customer_code' => 'nullable|string|max:255',
             'project_code' => 'nullable|string|max:255',
             'family' => 'nullable|string|max:255',
+            'part_weight' => 'nullable|numeric|min:0',
             'description_in_foreign_lang' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:255',
             'half_code_1' => 'nullable|string|max:255',
@@ -157,6 +158,27 @@ class MasterListManager extends Component
         return is_numeric($str) ? (int) round((float) $str) : $default;
     }
 
+    private function parseDecimal($val, $default = 0.0)
+    {
+        if ($val === null || $val === '') {
+            return $default;
+        }
+        if (is_numeric($val)) {
+            return (float) $val;
+        }
+        $str = trim((string) $val);
+        if ($str === '' || $str === '-') {
+            return $default;
+        }
+        // Handle comma vs dot
+        if (str_contains($str, ',') && !str_contains($str, '.')) {
+            $str = str_replace(',', '.', $str);
+        } elseif (str_contains($str, ',') && str_contains($str, '.')) {
+            $str = str_replace(',', '', $str);
+        }
+        return is_numeric($str) ? (float) $str : $default;
+    }
+
     private function parseString($val, $default = '0')
     {
         if ($val === null) {
@@ -180,42 +202,145 @@ class MasterListManager extends Component
             $worksheet = $spreadsheet->getActiveSheet();
             $rows = $worksheet->toArray();
 
+            $headerRow = null;
             // Skip header row if present
             if (!empty($rows) && (
                 strpos(strtolower($rows[0][1] ?? ''), 'item') !== false || 
                 strpos(strtolower($rows[0][0] ?? ''), '#') !== false
             )) {
-                array_shift($rows);
+                $headerRow = array_shift($rows);
+            }
+
+            // Default column index mapping based on standard SAP Excel layout:
+            // A(0): # | B(1): Item No. | C(2): Item Description | D(3): Tipe Mesin | E(4): Packaging
+            // F(5): Setup Time | G(6): Pair | H(7): KVT (Cavity) | I(8): Customer | J(9): Standard Time
+            // K(10): Family | L(11): Gross | M(12): Description in Foreign Lang | N(13): Color
+            // O(14): Half Code 1 | P(15): Half Code 2 | Q(16): Position
+            $colMap = [
+                'item_code' => 1,
+                'item_name' => 2,
+                'tipe_mesin' => 3,
+                'standart_packaging_list' => 4,
+                'setup_time_minute' => 5,
+                'pair' => 6,
+                'cavity' => 7,
+                'customer_code' => 8,
+                'cycle_time' => 9,
+                'family' => 10,
+                'part_weight' => 11,
+                'description_in_foreign_lang' => 12,
+                'color' => 13,
+                'half_code_1' => 14,
+                'half_code_2' => 15,
+                'position' => 16,
+            ];
+
+            if ($headerRow) {
+                $halfCodeIndices = [];
+                $hasExplicitGrossOrWeight = false;
+
+                foreach ($headerRow as $idx => $headerVal) {
+                    $norm = strtolower(trim((string)$headerVal));
+                    if ($norm === '') continue;
+
+                    if (str_contains($norm, 'item no') || $norm === 'item_code' || $norm === 'item code') {
+                        $colMap['item_code'] = $idx;
+                    } elseif (str_contains($norm, 'item desc') || str_contains($norm, 'item name') || $norm === 'nama barang') {
+                        $colMap['item_name'] = $idx;
+                    } elseif (str_contains($norm, 'tipe mes') || str_contains($norm, 'mesin')) {
+                        $colMap['tipe_mesin'] = $idx;
+                    } elseif (str_contains($norm, 'pack')) {
+                        $colMap['standart_packaging_list'] = $idx;
+                    } elseif (str_contains($norm, 'setup')) {
+                        $colMap['setup_time_minute'] = $idx;
+                    } elseif ($norm === 'pair' || str_contains($norm, 'pair')) {
+                        $colMap['pair'] = $idx;
+                    } elseif (str_contains($norm, 'kvt') || str_contains($norm, 'cavity')) {
+                        $colMap['cavity'] = $idx;
+                    } elseif (str_contains($norm, 'customer') || str_contains($norm, 'cust')) {
+                        $colMap['customer_code'] = $idx;
+                    } elseif (str_contains($norm, 'standard') || str_contains($norm, 'cycle')) {
+                        $colMap['cycle_time'] = $idx;
+                    } elseif (str_contains($norm, 'family')) {
+                        $colMap['family'] = $idx;
+                    } elseif (str_contains($norm, 'gross') || str_contains($norm, 'weight') || str_contains($norm, 'berat')) {
+                        $colMap['part_weight'] = $idx;
+                        $hasExplicitGrossOrWeight = true;
+                    } elseif (str_contains($norm, 'foreign') || (str_contains($norm, 'descripti') && !str_contains($norm, 'item'))) {
+                        $colMap['description_in_foreign_lang'] = $idx;
+                    } elseif (str_contains($norm, 'color') || str_contains($norm, 'warna')) {
+                        $colMap['color'] = $idx;
+                    } elseif (str_contains($norm, 'half code') || str_contains($norm, 'half_code')) {
+                        $halfCodeIndices[] = $idx;
+                    } elseif (str_contains($norm, 'position') || str_contains($norm, 'posisi')) {
+                        $colMap['position'] = $idx;
+                    }
+                }
+
+                if (isset($halfCodeIndices[0])) {
+                    $colMap['half_code_1'] = $halfCodeIndices[0];
+                }
+                if (isset($halfCodeIndices[1])) {
+                    $colMap['half_code_2'] = $halfCodeIndices[1];
+                }
+
+                // If no gross/weight column found in header AND header has fewer than 17 columns,
+                // fall back to legacy 16-column layout (index 11=foreign, 12=color, 13=hc1, 14=hc2, 15=position)
+                if (!$hasExplicitGrossOrWeight && count($headerRow) <= 16) {
+                    $colMap['part_weight'] = null;
+                    if (!isset($colMap['description_in_foreign_lang']) || $colMap['description_in_foreign_lang'] === 12) {
+                        $colMap['description_in_foreign_lang'] = 11;
+                    }
+                    if (!isset($colMap['color']) || $colMap['color'] === 13) {
+                        $colMap['color'] = 12;
+                    }
+                    if (!isset($halfCodeIndices[0])) {
+                        $colMap['half_code_1'] = 13;
+                    }
+                    if (!isset($halfCodeIndices[1])) {
+                        $colMap['half_code_2'] = 14;
+                    }
+                    if (!isset($colMap['position']) || $colMap['position'] === 16) {
+                        $colMap['position'] = 15;
+                    }
+                }
             }
 
             $mappedRows = [];
             foreach ($rows as $row) {
-                // Ensure item_code is present (column index 1)
-                $itemCode = isset($row[1]) ? trim((string) $row[1]) : '';
+                // Ensure item_code is present
+                $itemCodeCol = $colMap['item_code'] ?? 1;
+                $itemCode = isset($row[$itemCodeCol]) ? trim((string) $row[$itemCodeCol]) : '';
                 if (empty($itemCode)) {
                     continue;
                 }
 
-                // Cycle time calculation: Column 9 (Standard Time) * 60, rounded down
-                $cycleTimeRaw = isset($row[9]) ? $row[9] : 0;
+                // Cycle time calculation: Standard Time * 60, rounded down
+                $cycleTimeCol = $colMap['cycle_time'] ?? 9;
+                $cycleTimeRaw = $row[$cycleTimeCol] ?? 0;
                 $cycleTime = (int) floor(floatval(str_replace(',', '.', (string) $cycleTimeRaw)) * 60);
+
+                $partWeight = (isset($colMap['part_weight']) && $colMap['part_weight'] !== null)
+                    ? $this->parseDecimal($row[$colMap['part_weight']] ?? 0, 0.0)
+                    : 0.0;
 
                 $mappedRows[] = [
                     'item_code' => $itemCode,
-                    'item_name' => $this->parseString($row[2] ?? '', ''),
-                    'tipe_mesin' => $this->parseString($row[3] ?? '', '0'),
-                    'standart_packaging_list' => $this->parseNumeric($row[4] ?? 0, 0),
-                    'setup_time_minute' => $this->parseNumeric($row[5] ?? 0, 0),
-                    'pair' => $this->parseNumeric($row[6] ?? 0, 0),
-                    'cavity' => $this->parseNumeric($row[7] ?? 0, 0),
-                    'customer_code' => $this->parseString($row[8] ?? '', '0'),
+                    'item_name' => $this->parseString($row[$colMap['item_name'] ?? 2] ?? '', ''),
+                    'tipe_mesin' => $this->parseString($row[$colMap['tipe_mesin'] ?? 3] ?? '', '0'),
+                    'standart_packaging_list' => $this->parseNumeric($row[$colMap['standart_packaging_list'] ?? 4] ?? 0, 0),
+                    'setup_time_minute' => $this->parseNumeric($row[$colMap['setup_time_minute'] ?? 5] ?? 0, 0),
+                    'pair' => $this->parseNumeric($row[$colMap['pair'] ?? 6] ?? 0, 0),
+                    'cavity' => $this->parseNumeric($row[$colMap['cavity'] ?? 7] ?? 0, 0),
+                    'customer_code' => $this->parseString($row[$colMap['customer_code'] ?? 8] ?? '', '0'),
                     'cycle_time' => $cycleTime,
-                    'family' => $this->parseString($row[10] ?? '', '0'),
-                    'description_in_foreign_lang' => $this->parseString($row[11] ?? '', '0'),
-                    'color' => $this->parseString($row[12] ?? '', '0'),
-                    'half_code_1' => $this->parseString($row[13] ?? '', '0'),
-                    'half_code_2' => $this->parseString($row[14] ?? '', '0'),
-                    'position' => $this->parseString($row[15] ?? '', '0'),
+                    'family' => $this->parseString($row[$colMap['family'] ?? 10] ?? '', '0'),
+                    'part_weight' => $partWeight,
+                    'description_in_foreign_lang' => $this->parseString($row[$colMap['description_in_foreign_lang'] ?? 12] ?? '', '0'),
+                    'color' => $this->parseString($row[$colMap['color'] ?? 13] ?? '', '0'),
+                    'half_code_1' => $this->parseString($row[$colMap['half_code_1'] ?? 14] ?? '', '0'),
+                    'half_code_2' => $this->parseString($row[$colMap['half_code_2'] ?? 15] ?? '', '0'),
+                    'position' => $this->parseString($row[$colMap['position'] ?? 16] ?? '', '0'),
                 ];
             }
 
@@ -267,7 +392,7 @@ class MasterListManager extends Component
         $fieldsToTrack = [
             'item_name', 'tipe_mesin', 'standart_packaging_list', 'setup_time_minute',
             'pair', 'cavity', 'customer_code', 'cycle_time',
-            'family', 'description_in_foreign_lang', 'color', 'half_code_1', 'half_code_2', 'position'
+            'family', 'part_weight', 'description_in_foreign_lang', 'color', 'half_code_1', 'half_code_2', 'position'
         ];
 
         DB::transaction(function () use ($chunk, &$processed, $fieldsToTrack) {
@@ -287,6 +412,9 @@ class MasterListManager extends Component
                     $item->item_name = $data['item_name'] ?? $item->item_name;
                     $item->customer_code = $data['customer_code'] ?? $item->customer_code;
                     $item->family = $data['family'] ?? $item->family;
+                    if (isset($data['part_weight']) && $data['part_weight'] !== '') {
+                        $item->part_weight = (float)$data['part_weight'];
+                    }
                     $item->description_in_foreign_lang = $data['description_in_foreign_lang'] ?? $item->description_in_foreign_lang;
                     $item->color = $data['color'] ?? $item->color;
                     $item->half_code_1 = $data['half_code_1'] ?? $item->half_code_1;
@@ -341,6 +469,7 @@ class MasterListManager extends Component
                     $item->cycle_time = (int)($data['cycle_time'] ?? 0);
                     $item->project_code = '0';
                     $item->family = $data['family'] ?? '0';
+                    $item->part_weight = (float)($data['part_weight'] ?? 0);
                     $item->description_in_foreign_lang = $data['description_in_foreign_lang'] ?? '0';
                     $item->color = $data['color'] ?? '0';
                     $item->half_code_1 = $data['half_code_1'] ?? '0';
