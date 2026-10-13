@@ -210,21 +210,26 @@ class SecondProcessReportController extends Controller
 
     private function saveReport(Request $request, SecondProcessReport $report)
     {
-        // Pre-sanitize materials: discard completely empty dynamic rows
+        // Pre-sanitize materials: discard completely empty dynamic rows or untouched preset rows
         if ($request->has('materials') && is_array($request->materials)) {
             $cleanedMaterials = array_values(array_filter($request->materials, function ($mat) {
                 if (!is_array($mat)) {
                     return false;
                 }
-                $hasName = !empty(trim((string) ($mat['item_name'] ?? '')));
                 $hasLot = !empty(trim((string) ($mat['lot_number'] ?? '')));
                 $hasVisco = !empty(trim((string) ($mat['visco'] ?? '')));
                 $hasRatio = !empty(trim((string) ($mat['mixing_ratio'] ?? '')));
                 $hasQty = isset($mat['qty']) && $mat['qty'] !== '' && (float) $mat['qty'] > 0;
-                $hasUom = !empty(trim((string) ($mat['uom'] ?? '')));
                 $hasSubType = !empty(trim((string) ($mat['sub_type'] ?? '')));
 
-                return $hasName || $hasLot || $hasVisco || $hasRatio || $hasQty || $hasUom || $hasSubType;
+                $hasData = $hasLot || $hasVisco || $hasRatio || $hasQty || $hasSubType;
+
+                // Skip row if user didn't fill in or change anything (lot, visco, ratio, qty are all empty)
+                if (! $hasData) {
+                    return false;
+                }
+
+                return true;
             }));
             $request->merge(['materials' => $cleanedMaterials]);
         }
@@ -406,9 +411,46 @@ class SecondProcessReportController extends Controller
             'troubles.*.loss_time_minutes' => 'nullable|integer|min:0|max:1440',
         ], $customMessages, $customAttributes);
 
-        // Enforce defect remarks for submitted reports when Total NG > 0
         $effectiveStatus = $validated['status'] ?? ($report->exists ? $report->status : 'draft');
-        if ($effectiveStatus === 'submitted' && !empty($validated['ngs']) && is_array($validated['ngs'])) {
+
+        // Enforce target_per_hour for painting processes on submission
+        $paintingProcesses = ['Painting', 'Painting Basecoat', 'Painting Topcoat'];
+        if ($effectiveStatus === 'submitted' && in_array($validated['process_prod'] ?? '', $paintingProcesses, true)) {
+            $targetPerHour = (int) ($validated['target_per_hour'] ?? 0);
+            if ($targetPerHour <= 0) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'target_per_hour' => 'Target per jam wajib diisi (lebih dari 0) untuk proses ' . $validated['process_prod'] . '.',
+                ]);
+            }
+        }
+
+        // Enforce material restrictions (Paint: Paint, Hardener, Thinner; Part: WIP, Repairan)
+        if (!empty($validated['materials']) && is_array($validated['materials'])) {
+            $materialErrors = [];
+            foreach ($validated['materials'] as $idx => $mat) {
+                $matType = $mat['type'] ?? '';
+                $itemName = trim((string) ($mat['item_name'] ?? ''));
+                if ($itemName === '') {
+                    continue;
+                }
+
+                if ($matType === 'paint') {
+                    if (!preg_match('/^(paint|hardener|thinner)/i', $itemName)) {
+                        $materialErrors["materials.{$idx}.item_name"] = "Item cat hanya boleh Paint, Hardener, atau Thinner.";
+                    }
+                } elseif ($matType === 'part') {
+                    if (!preg_match('/^(wip|repair)/i', $itemName)) {
+                        $materialErrors["materials.{$idx}.item_name"] = "Item part hanya boleh WIP atau Repairan (contoh: WIP #1, Repairan #1).";
+                    }
+                }
+            }
+            if (!empty($materialErrors)) {
+                throw \Illuminate\Validation\ValidationException::withMessages($materialErrors);
+            }
+        }
+
+        // Enforce defect remarks / categories for submitted reports when Total NG > 0
+        if (!empty($validated['ngs']) && is_array($validated['ngs'])) {
             $ngErrors = [];
             foreach ($validated['ngs'] as $idx => $ng) {
                 $ngName = $ng['ng_name'] ?? ('Defect #' . ($idx + 1));
@@ -419,15 +461,31 @@ class SecondProcessReportController extends Controller
                     }
                 }
 
-                if ($colTotal > 0) {
-                    $rawItem = $ng['ng_input_item'] ?? null;
-                    $normalized = $this->normalizeNgRemarkItem($rawItem);
+                $hasCategory = !empty($ng['ng_category']);
+                $category = $hasCategory ? strtoupper(trim((string) $ng['ng_category'])) : null;
+                if ($category && !in_array($category, ['NG-PROCESS', 'NG-PROSES', 'NG-INPUT'], true)) {
+                    $category = 'NG-PROCESS';
+                }
+                $validated['ngs'][$idx]['ng_category'] = $category;
 
-                    if (empty($normalized['normalized_item'])) {
+                // Auto-fill ng_input_item and ng_input_qty ONLY if ng_category is provided and ng_input_item is not provided
+                if ($hasCategory && empty($ng['ng_input_item']) && $colTotal > 0) {
+                    $validated['ngs'][$idx]['ng_input_item'] = "[{$colTotal}] {$category}";
+                    $validated['ngs'][$idx]['ng_input_qty'] = $colTotal;
+                }
+
+                // If explicit ng_input_item is given (or legacy submission without category), validate
+                if ($effectiveStatus === 'submitted' && $colTotal > 0) {
+                    if (!$hasCategory && empty($ng['ng_input_item'])) {
                         $ngErrors["ngs.{$idx}.ng_input_item"] = "Remark detail wajib diisi untuk defect {$ngName} karena terdapat {$colTotal} defect tercatat.";
-                    } elseif (($normalized['total_qty'] ?? 0) !== $colTotal) {
-                        $remQty = $normalized['total_qty'] ?? 0;
-                        $ngErrors["ngs.{$idx}.ng_input_qty"] = "Total kuantitas remark untuk defect {$ngName} ({$remQty} pcs) harus sama dengan total defect tercatat ({$colTotal} pcs).";
+                    } elseif (!empty($ng['ng_input_item'])) {
+                        $normalized = $this->normalizeNgRemarkItem($ng['ng_input_item']);
+                        if (empty($normalized['normalized_item'])) {
+                            $ngErrors["ngs.{$idx}.ng_input_item"] = "Remark detail wajib diisi untuk defect {$ngName} karena terdapat {$colTotal} defect tercatat.";
+                        } elseif (($normalized['total_qty'] ?? 0) !== $colTotal) {
+                            $remQty = $normalized['total_qty'] ?? 0;
+                            $ngErrors["ngs.{$idx}.ng_input_qty"] = "Total kuantitas remark untuk defect {$ngName} ({$remQty} pcs) harus sama dengan total defect tercatat ({$colTotal} pcs).";
+                        }
                     }
                 }
             }
@@ -868,6 +926,8 @@ class SecondProcessReportController extends Controller
         return redirect()->route('second-process-reports.show', $id)
             ->with('success', 'Report was successfully rejected and returned to Draft.');
     }
+
+
 
     /**
      * Normalize NG remark item string to canonical UPPERCASE hyphenated categories

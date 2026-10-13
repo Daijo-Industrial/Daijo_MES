@@ -77,10 +77,28 @@ class SecondProcessReportPolicyTest extends TestCase
         ]);
         $this->assertFalse($otherOperator->can('update', $draftReport));
 
-        // When submitted: NO ONE can update (must be rejected to draft first)
-        $this->assertFalse($this->adminUser->can('update', $submittedReport));
+        // When submitted: Admin and Leader can update using edit form, Operator/Checker cannot
+        $this->assertTrue($this->adminUser->can('update', $submittedReport));
+        $this->assertTrue($this->leaderUser->can('update', $submittedReport));
         $this->assertFalse($this->operatorUser->can('update', $submittedReport));
-        $this->assertFalse($this->leaderUser->can('update', $submittedReport));
+        $this->assertFalse($this->checkerUser->can('update', $submittedReport));
+
+        // When acknowledged: only Admin can update; Leader and Operator cannot
+        $acknowledgedReport = SecondProcessReport::create([
+            'date' => '2026-07-07',
+            'unit_line' => 'Painting Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'acknowledged',
+            'part_number' => 'PART-POL-02-ACK',
+            'part_name' => 'Door Trim',
+            'model' => 'Sedan 2026',
+            'customer' => 'Toyota Motor Corp',
+            'created_by_name' => 'Operator Charlie',
+        ]);
+        $this->assertTrue($this->adminUser->can('update', $acknowledgedReport));
+        $this->assertFalse($this->leaderUser->can('update', $acknowledgedReport));
+        $this->assertFalse($this->operatorUser->can('update', $acknowledgedReport));
     }
 
     public function test_policy_delete_ability(): void

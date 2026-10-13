@@ -510,9 +510,19 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 @php
                     $materialGlobalIndex = 0;
-                    $paintMaterials = $report->materials ?: collect();
-                    if ($paintMaterials->isEmpty() && !$report->exists) {
-                        $defaultPaints = config('mes.sp_default_paint_materials');
+                    $paintMaterials = collect();
+                    if (old('materials')) {
+                        foreach (old('materials') as $m) {
+                            if (($m['type'] ?? '') === 'paint') {
+                                $paintMaterials->push((object)$m);
+                            }
+                        }
+                    } elseif ($report->materials && $report->materials->where('type', 'paint')->isNotEmpty()) {
+                        $paintMaterials = $report->materials->where('type', 'paint')->values();
+                    }
+
+                    if ($paintMaterials->isEmpty()) {
+                        $defaultPaints = config('mes.sp_default_paint_materials', ['Paint', 'Hardener', 'Thinner']);
                         foreach ($defaultPaints as $pName) {
                             $paintMaterials->push((object)[
                                 'item_name' => $pName,
@@ -520,6 +530,7 @@
                                 'visco' => '',
                                 'mixing_ratio' => '',
                                 'qty' => '',
+                                'uom' => '',
                             ]);
                         }
                     }
@@ -545,13 +556,20 @@
                             <span>Item Paint dinonaktifkan karena Proses Prod bukan <strong>Painting</strong> atau <strong>Repair</strong>.</span>
                             <button type="button" onclick="switchTab('setup')" class="text-blue-700 underline font-bold ml-2">Ubah di Tab 1 &rarr;</button>
                         </div>
+                        <div id="mixing-ratio-suggestion" class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs flex flex-wrap justify-between items-center gap-2 {{ !$isPaintApplicable ? 'hidden' : '' }}">
+                            <div class="text-gray-700">
+                                <span class="font-semibold text-gray-600">Formula Rasio:</span>
+                                <span id="mixing-ratio-live-formula" class="font-mono font-bold text-gray-900 ml-1">-</span>
+                            </div>
+                            <span class="text-[11px] text-gray-500">Isi angka rasio untuk masing-masing item (misal: Paint 4, Hardener 1, Thinner 2)</span>
+                        </div>
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-3 py-2 text-left font-bold text-gray-600">Item Paint</th>
                                     <th class="px-2 py-2 text-left font-bold text-gray-600 w-1/5">Lot Number</th>
                                     <th class="px-2 py-2 text-left font-bold text-gray-600 w-16">Visco</th>
-                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-20">Mixing Ratio</th>
+                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-24">Mixing Ratio</th>
                                     <th class="px-2 py-2 text-left font-bold text-gray-600 w-20">Qty</th>
                                     <th class="px-2 py-2 text-left font-bold text-gray-600 w-20">UOM</th>
                                     <th class="px-1 py-2 text-center font-bold text-gray-600 w-8"></th>
@@ -566,11 +584,12 @@
                                             <input type="text" name="materials[{{ $currIdx }}][item_name]"
                                                 value="{{ old('materials.' . $currIdx . '.item_name', $mat->item_name ?? '') }}"
                                                 placeholder="Paint Item Name"
-                                                class="w-full text-xs rounded border-gray-300 py-1 font-semibold {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }} {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800 {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
+                                                readonly
                                                 {{ !$isPaintApplicable ? 'disabled' : '' }}>
                                             @if ($errors->has('materials.' . $currIdx . '.item_name'))
                                                 <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('materials.' . $currIdx . '.item_name') }}</p>
-                                            @endif
+                                             @endif
                                         </td>
                                         <td class="px-2 py-2">
                                             <input type="text" name="materials[{{ $currIdx }}][lot_number]"
@@ -587,10 +606,15 @@
                                                 {{ !$isPaintApplicable ? 'disabled' : '' }}>
                                         </td>
                                         <td class="px-2 py-2">
-                                            <input type="text" name="materials[{{ $currIdx }}][mixing_ratio]"
+                                            @php
+                                                $matLower = strtolower($mat->item_name ?? '');
+                                                $ratioPlaceholder = str_contains($matLower, 'hardener') ? 'Misal 1' : (str_contains($matLower, 'thinner') ? 'Misal 2' : 'Misal 4');
+                                            @endphp
+                                            <input type="text" inputmode="decimal" name="materials[{{ $currIdx }}][mixing_ratio]"
                                                 value="{{ old('materials.' . $currIdx . '.mixing_ratio', $mat->mixing_ratio ?? '') }}"
-                                                placeholder="Ratio (e.g. 1:1.5)"
-                                                class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                placeholder="{{ $ratioPlaceholder }}"
+                                                oninput="updateMixingRatioSuggestion()"
+                                                class="mixing-ratio-val w-full text-xs rounded border-gray-300 py-1 font-mono font-semibold {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
                                                 {{ !$isPaintApplicable ? 'disabled' : '' }}>
                                         </td>
                                         <td class="px-2 py-2">
@@ -608,7 +632,7 @@
                                                 {{ !$isPaintApplicable ? 'disabled' : '' }}>
                                         </td>
                                         <td class="px-1 py-2 text-center">
-                                            <button type="button" onclick="removeMaterialRow(this)"
+                                            <button type="button" onclick="removePaintMaterialRow(this)"
                                                 class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition {{ !$isPaintApplicable ? 'cursor-not-allowed opacity-50' : '' }}"
                                                 title="Remove Row" {{ !$isPaintApplicable ? 'disabled' : '' }}>&times;</button>
                                         </td>
@@ -629,15 +653,10 @@
                 @php
                     $partMaterials = $report->materials ? $report->materials->where('type', 'part')->values() : collect();
                     if ($partMaterials->isEmpty() && !$report->exists) {
-                        $defaultParts = config('mes.sp_default_part_materials');
-                        foreach ($defaultParts as $pName) {
-                            $partMaterials->push((object)[
-                                'item_name' => $pName,
-                                'lot_number' => '',
-                                'qty' => '',
-                                'uom' => '',
-                            ]);
-                        }
+                        $partMaterials = collect([
+                            (object)['item_name' => 'WIP #1', 'lot_number' => '', 'qty' => '', 'uom' => 'PCS'],
+                            (object)['item_name' => 'Repairan #1', 'lot_number' => '', 'qty' => '', 'uom' => 'PCS'],
+                        ]);
                     }
                 @endphp
 
@@ -667,7 +686,8 @@
                                             <input type="text" name="materials[{{ $currIdx }}][item_name]"
                                                 value="{{ old('materials.' . $currIdx . '.item_name', $mat->item_name ?? '') }}"
                                                 placeholder="Part / WIP Item Name"
-                                                class="w-full text-xs rounded border-gray-300 py-1 font-semibold {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }}">
+                                                class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800 {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
+                                                readonly>
                                             @if ($errors->has('materials.' . $currIdx . '.item_name'))
                                                 <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('materials.' . $currIdx . '.item_name') }}</p>
                                             @endif
@@ -691,7 +711,7 @@
                                                 class="w-full text-xs rounded border-gray-300 py-1">
                                         </td>
                                         <td class="px-1 py-2 text-center">
-                                            <button type="button" onclick="removeMaterialRow(this)"
+                                            <button type="button" onclick="removePartMaterialRow(this)"
                                                 class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition"
                                                 title="Remove Row">&times;</button>
                                         </td>
@@ -711,10 +731,16 @@
                             <span class="text-slate-800 border-l border-gray-300 pl-4">Total: <span id="summary-total-input-qty">0</span> Pcs</span>
                         </div>
                     </div>
-                    <div class="p-3 bg-gray-50 border-t border-gray-200">
-                        <button type="button" onclick="addPartMaterialRow()"
-                            class="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 py-1 px-2 rounded hover:bg-blue-50 transition">
-                            + Add Part / WIP Item
+                    <div class="p-3 bg-gray-50 border-t border-gray-200 flex items-center gap-3">
+                        <button type="button" onclick="addPartBatch('WIP')"
+                            class="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold flex items-center gap-1.5 py-1.5 px-3 rounded border border-blue-300 shadow-sm transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Batch WIP
+                        </button>
+                        <button type="button" onclick="addPartBatch('Repairan')"
+                            class="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold flex items-center gap-1.5 py-1.5 px-3 rounded border border-amber-300 shadow-sm transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Batch Repairan
                         </button>
                     </div>
                 </div>
@@ -981,63 +1007,31 @@
                                     @foreach ($defaultNgs as $index => $ng)
                                         @php
                                             $ngRecord = $report->ngRecords->where('ng_name', $ng)->first();
-                                            $rawItem = old("ngs.{$index}.ng_input_item", $ngRecord ? $ngRecord->ng_input_item : '');
-                                            $rawQty = old("ngs.{$index}.ng_input_qty", $ngRecord ? $ngRecord->ng_input_qty : '');
                                             $colTotalNg = (int) old("ngs.{$index}.total_ng", $ngRecord ? $ngRecord->total_ng : 0);
-                                            $hasRemark = !empty($rawItem) || ($rawQty !== null && $rawQty !== '');
-                                            $remQty = ($rawQty !== null && $rawQty !== '') ? (int) $rawQty : 0;
-
-                                            if ($colTotalNg === 0) {
-                                                $btnClass = 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-700 font-semibold';
-                                                $labelText = 'Add Remark';
-                                            } elseif (!$hasRemark || $remQty === 0) {
-                                                $btnClass = 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100 font-bold animate-pulse';
-                                                $labelText = "Remark Needed (0/{$colTotalNg})";
-                                            } elseif ($remQty !== $colTotalNg) {
-                                                $btnClass = 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 font-bold';
-                                                $labelText = "Needs Update ({$remQty}/{$colTotalNg})";
-                                            } else {
-                                                $btnClass = 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 font-bold';
-                                                $prettified = preg_replace(
-                                                    '/\[(\d+)\]\s*([^\|]+)/',
-                                                    '$1x $2',
-                                                    $rawItem,
-                                                );
-                                                $prettified = str_replace(' | ', ', ', $prettified);
-                                                $labelText = "{$prettified} ({$remQty})";
+                                            $currentCategory = old("ngs.{$index}.ng_category", $ngRecord ? $ngRecord->ng_category : 'NG-PROCESS');
+                                            if (empty($currentCategory)) {
+                                                $currentCategory = 'NG-PROCESS';
                                             }
                                         @endphp
-                                        <th class="group px-3 py-2 w-32 text-center ng-type-header relative select-none border-b border-gray-200"
+                                        <th class="group px-3 py-2 w-36 text-center ng-type-header relative select-none border-b border-gray-200"
                                             data-ng="{{ $ng }}">
-                                            <div class="flex flex-col space-y-1">
+                                            <div class="flex flex-col space-y-1.5">
                                                 <div class="flex items-center justify-center space-x-1">
                                                     <span
-                                                        class="font-bold text-xs uppercase">{{ $ng }}</span>
+                                                        class="font-bold text-xs uppercase text-gray-800">{{ $ng }}</span>
                                                     <button type="button"
                                                         class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity delete-ng-col-btn text-[10px] font-bold"
                                                         data-ng="{{ $ng }}"
                                                         title="Delete {{ $ng }}">&times;</button>
                                                 </div>
-                                                <button type="button"
-                                                    class="ng-remark-btn mt-1 flex items-center justify-between w-full px-2 py-1.5 text-[10px] rounded border transition-all select-none {{ $btnClass }}"
-                                                    data-ng-name="{{ $ng }}"
-                                                    data-ng-index="{{ $index }}">
-                                                    <span
-                                                        class="truncate remark-preview-label">{{ $labelText }}</span>
-                                                    <svg class="w-3 h-3 ml-1 text-gray-400 flex-shrink-0"
-                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                                                        </path>
-                                                    </svg>
-                                                </button>
-                                                <input type="hidden" name="ngs[{{ $index }}][ng_input_item]"
-                                                    value="{{ $rawItem }}"
-                                                    class="ng-input-item-hidden">
-                                                <input type="hidden" name="ngs[{{ $index }}][ng_input_qty]"
-                                                    value="{{ $rawQty }}"
-                                                    class="ng-input-qty-hidden">
+                                                <div class="relative">
+                                                    <select name="ngs[{{ $index }}][ng_category]"
+                                                        class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select {{ $currentCategory === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300' }}"
+                                                        onchange="updateNgCategoryStyle(this)">
+                                                        <option value="NG-PROCESS" {{ $currentCategory === 'NG-PROCESS' ? 'selected' : '' }}>NG-PROCESS</option>
+                                                        <option value="NG-INPUT" {{ $currentCategory === 'NG-INPUT' ? 'selected' : '' }}>NG-INPUT</option>
+                                                    </select>
+                                                </div>
                                                 <input type="hidden" name="ngs[{{ $index }}][ng_name]"
                                                     value="{{ $ng }}">
                                                 <input type="hidden" name="ngs[{{ $index }}][total_ng]"
@@ -1368,54 +1362,6 @@
 
 </div>
 
-<!-- Defect Remark Drilldown Dialog -->
-<dialog id="ng-remark-modal"
-    class="rounded-xl shadow-2xl w-full max-w-md p-0 overflow-hidden backdrop:bg-black/50 backdrop:backdrop-blur-sm">
-    <div class="flex flex-col bg-white">
-        <div
-            class="bg-gradient-to-r from-blue-700 to-indigo-800 px-6 py-4 text-white flex justify-between items-center">
-            <h3 class="font-bold text-lg" id="modal-ng-title">Defect Detail</h3>
-            <button type="button"
-                class="text-white hover:text-gray-200 text-xl font-bold close-modal-btn">&times;</button>
-        </div>
-        <div class="p-6 space-y-4">
-            <!-- Balance Tracker Banner -->
-            <div id="modal-balance-banner" class="p-3 rounded-lg border bg-gray-50 border-gray-200 text-xs flex items-center justify-between transition-colors">
-                <div>
-                    <span class="text-gray-500 font-semibold">Target Defect:</span>
-                    <span id="modal-target-ng" class="font-bold text-gray-900 ml-1">0</span> <span class="text-[10px] text-gray-400">pcs</span>
-                    <span class="mx-2 text-gray-300">|</span>
-                    <span class="text-gray-500 font-semibold">Allocated:</span>
-                    <span id="modal-allocated-ng" class="font-bold text-gray-900 ml-1">0</span> <span class="text-[10px] text-gray-400">pcs</span>
-                </div>
-                <div id="modal-balance-badge" class="px-2 py-0.5 rounded font-extrabold text-[11px] bg-gray-200 text-gray-700">
-                    Remaining: 0
-                </div>
-            </div>
-
-            <div id="modal-rows-container" class="space-y-3 max-h-60 overflow-y-auto">
-                <!-- Dynamic rows injected here -->
-            </div>
-            <button type="button" id="add-modal-row-btn"
-                class="w-full py-1.5 border border-dashed border-blue-400 hover:border-blue-600 text-blue-600 hover:text-blue-800 text-xs font-bold rounded flex items-center justify-center transition select-none">
-                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg> Add Detail Row
-            </button>
-            <div id="modal-validation-hint" class="text-[11px] text-amber-700 font-semibold hidden text-center bg-amber-50 p-2 rounded border border-amber-200">
-                Total kuantitas alokasi harus sama persis dengan target defect.
-            </div>
-        </div>
-        <div class="bg-gray-50 px-6 py-3 flex justify-end space-x-2 border-t border-gray-100">
-            <button type="button"
-                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-semibold rounded transition close-modal-btn">Cancel</button>
-            <button type="button" id="save-modal-remark-btn"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded shadow transition">Save
-                Details</button>
-        </div>
-    </div>
-</dialog>
-
 <!-- Script calculations & interactions -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1588,51 +1534,25 @@
                 return;
             }
 
-            // 2. Strict check on Defect (NG) Remarks when Total NG > 0
-            const missingRemarkNgs = [];
-            activeNgs.forEach((ng, index) => {
-                const hiddenTotal = document.getElementById(`ng-total-hidden-${index}`);
-                const colTotal = hiddenTotal ? (parseInt(hiddenTotal.value) || 0) : 0;
-
-                if (colTotal > 0) {
-                    const th = document.querySelector(`th.ng-type-header[data-ng="${ng}"]`) || (hiddenTotal ? hiddenTotal.closest('th') : null);
-                    const itemHidden = th ? th.querySelector('.ng-input-item-hidden') : null;
-                    const qtyHidden = th ? th.querySelector('.ng-input-qty-hidden') : null;
-
-                    const itemVal = itemHidden ? itemHidden.value.trim() : '';
-                    const qtyVal = qtyHidden && qtyHidden.value !== '' ? parseInt(qtyHidden.value) : 0;
-
-                    if (!itemVal || qtyVal !== colTotal) {
-                        missingRemarkNgs.push({
-                            name: ng,
-                            total: colTotal,
-                            allocated: qtyVal,
-                            th: th
-                        });
-                    }
-                }
-            });
-
-            if (missingRemarkNgs.length > 0) {
-                switchTab('production');
-
-                missingRemarkNgs.forEach(item => {
-                    if (item.th) {
-                        item.th.classList.add('ring-2', 'ring-red-500', 'bg-red-50');
+            // 2. Target per hour validation for painting processes
+            const processSelect = document.getElementById('process_prod');
+            const processVal = processSelect ? processSelect.value : '';
+            const paintingProcesses = ['Painting', 'Painting Basecoat', 'Painting Topcoat'];
+            if (paintingProcesses.includes(processVal)) {
+                const targetPerHourInput = document.getElementById('target_per_hour');
+                const targetVal = targetPerHourInput ? parseInt(targetPerHourInput.value) || 0 : 0;
+                if (targetVal <= 0) {
+                    switchTab('production');
+                    if (targetPerHourInput) {
+                        targetPerHourInput.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        targetPerHourInput.focus();
                         setTimeout(() => {
-                            item.th.classList.remove('ring-2', 'ring-red-500', 'bg-red-50');
-                        }, 6000);
+                            targetPerHourInput.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
+                        }, 4000);
                     }
-                });
-
-                const tableEl = document.getElementById('unified-production-table');
-                if (tableEl) {
-                    tableEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    alert(`Target per jam wajib diisi (lebih dari 0) untuk proses ${processVal}.`);
+                    return;
                 }
-
-                const ngNamesList = missingRemarkNgs.map(item => `• ${item.name}: dialokasikan ${item.allocated} dari ${item.total} pcs`).join('\n');
-                alert(`Pengiriman laporan belum dapat diproses!\n\nTerdapat defect dengan nilai NG > 0 yang belum memiliki remark lengkap atau kuantitas alokasi belum sesuai:\n\n${ngNamesList}\n\nHarap klik tombol 'Add Remark' pada kolom header terkait dan sesuaikan detail defect.`);
-                return;
             }
 
             // 3. Strict Material Input vs Production Output Reconciliation (Output = OK + NG + Scrap)
@@ -1929,26 +1849,21 @@
             const headerRow = document.getElementById('production-header-row');
             const th = document.createElement('th');
             th.className =
-                'group px-3 py-2 w-32 text-center ng-type-header relative select-none border-b border-gray-200';
+                'group px-3 py-2 w-36 text-center ng-type-header relative select-none border-b border-gray-200';
             th.dataset.ng = uppercaseName;
             th.innerHTML = `
-                <div class="flex flex-col space-y-1">
+                <div class="flex flex-col space-y-1.5">
                     <div class="flex items-center justify-center space-x-1">
-                        <span class="font-bold text-xs uppercase">${uppercaseName}</span>
-                        <button type="button" class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity delete-ng-col-btn text-[10px] font-bold" data-ng="${uppercaseName}" title="Delete ${uppercaseName}">&times;</button>
+                        <span class="font-bold text-xs uppercase text-gray-800">${escapeHtml(uppercaseName)}</span>
+                        <button type="button" class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity delete-ng-col-btn text-[10px] font-bold" data-ng="${escapeHtml(uppercaseName)}" title="Delete ${escapeHtml(uppercaseName)}">&times;</button>
                     </div>
-                    <button type="button" 
-                        class="ng-remark-btn mt-1 flex items-center justify-between w-full px-2 py-1.5 text-[10px] font-semibold bg-gray-50 border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded transition-all select-none"
-                        data-ng-name="${uppercaseName}"
-                        data-ng-index="${newNgIndex}">
-                        <span class="truncate remark-preview-label">Add Remark</span>
-                        <svg class="w-3 h-3 ml-1 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                    </button>
-                    <input type="hidden" name="ngs[${newNgIndex}][ng_input_item]" value="" class="ng-input-item-hidden">
-                    <input type="hidden" name="ngs[${newNgIndex}][ng_input_qty]" value="" class="ng-input-qty-hidden">
-                    <input type="hidden" name="ngs[${newNgIndex}][ng_name]" value="${uppercaseName}">
+                    <div class="relative">
+                        <select name="ngs[${newNgIndex}][ng_category]" class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select bg-blue-50 text-blue-800 border-blue-300" onchange="updateNgCategoryStyle(this)">
+                            <option value="NG-PROCESS" selected>NG-PROCESS</option>
+                            <option value="NG-INPUT">NG-INPUT</option>
+                        </select>
+                    </div>
+                    <input type="hidden" name="ngs[${newNgIndex}][ng_name]" value="${escapeHtml(uppercaseName)}">
                     <input type="hidden" name="ngs[${newNgIndex}][total_ng]" id="ng-total-hidden-${newNgIndex}" value="0">
                 </div>
             `;
@@ -2029,14 +1944,8 @@
                         totalHidden.id = `ng-total-hidden-${newIndex}`;
                     }
 
-                    const itemInput = th.querySelector('input[name$="[ng_input_item]"]');
-                    if (itemInput) itemInput.name = `ngs[${newIndex}][ng_input_item]`;
-
-                    const qtyInput = th.querySelector('input[name$="[ng_input_qty]"]');
-                    if (qtyInput) qtyInput.name = `ngs[${newIndex}][ng_input_qty]`;
-
-                    const remarkBtn = th.querySelector('.ng-remark-btn');
-                    if (remarkBtn) remarkBtn.setAttribute('data-ng-index', newIndex);
+                    const catSelect = th.querySelector('select[name$="[ng_category]"]');
+                    if (catSelect) catSelect.name = `ngs[${newIndex}][ng_category]`;
                 }
             });
         }
@@ -2082,7 +1991,7 @@
                 overallNg += rowTotal;
             });
 
-            // Sum by column (NG type total) to update hidden fields & remark button state
+            // Sum by column (NG type total) to update hidden fields
             activeNgs.forEach((ng, index) => {
                 const colInputs = document.querySelectorAll(
                     `.ng-hourly-input[data-ng-index="${index}"]`);
@@ -2093,10 +2002,6 @@
                 const hiddenTotal = document.getElementById(`ng-total-hidden-${index}`);
                 if (hiddenTotal) {
                     hiddenTotal.value = colTotal;
-                }
-                const th = document.querySelector(`th.ng-type-header[data-ng="${ng}"]`) || (hiddenTotal ? hiddenTotal.closest('th') : null);
-                if (th && typeof updateNgRemarkButtonState === 'function') {
-                    updateNgRemarkButtonState(th, colTotal);
                 }
             });
 
@@ -2389,335 +2294,19 @@
             });
         }
 
-        // Defect Remark Preset Categories & State Handling
-        const ngPresetCategories = {!! json_encode(config('mes.sp_ng_remark_categories')) !!};
-        const remarkModal = document.getElementById('ng-remark-modal');
-        const modalTitle = document.getElementById('modal-ng-title');
-        const saveModalBtn = document.getElementById('save-modal-remark-btn');
-        let activeRemarkButton = null;
-
-        // Centralized Remark Button UI State Handler
-        function updateNgRemarkButtonState(th, colTotal) {
-            if (!th) return;
-            const btn = th.querySelector('.ng-remark-btn');
-            if (!btn) return;
-            const previewLabel = btn.querySelector('.remark-preview-label');
-            const itemHidden = th.querySelector('.ng-input-item-hidden');
-            const qtyHidden = th.querySelector('.ng-input-qty-hidden');
-
-            const itemVal = itemHidden ? itemHidden.value.trim() : '';
-            const qtyVal = qtyHidden && qtyHidden.value !== '' ? parseInt(qtyHidden.value) : 0;
-
-            // Reset dynamic classes
-            btn.classList.remove(
-                'bg-gray-50', 'border-gray-200', 'text-gray-500', 'hover:bg-blue-50', 'hover:text-blue-700', 'font-semibold',
-                'bg-blue-50', 'border-blue-200', 'text-blue-700', 'hover:bg-blue-100', 'font-bold',
-                'bg-red-50', 'border-red-300', 'text-red-700', 'hover:bg-red-100', 'animate-pulse',
-                'bg-amber-50', 'border-amber-300', 'text-amber-800', 'hover:bg-amber-100'
+        // Defect NG Category Dynamic Color Handling
+        window.updateNgCategoryStyle = function(selectEl) {
+            if (!selectEl) return;
+            selectEl.classList.remove(
+                'bg-blue-50', 'text-blue-800', 'border-blue-300',
+                'bg-amber-50', 'text-amber-800', 'border-amber-300'
             );
-
-            if (colTotal === 0) {
-                btn.classList.add('bg-gray-50', 'border-gray-200', 'text-gray-500', 'hover:bg-blue-50', 'hover:text-blue-700', 'font-semibold');
-                if (previewLabel) previewLabel.textContent = 'Add Remark';
-            } else if (!itemVal || qtyVal === 0) {
-                // Total NG > 0, but no remark allocated
-                btn.classList.add('bg-red-50', 'border-red-300', 'text-red-700', 'hover:bg-red-100', 'font-bold', 'animate-pulse');
-                if (previewLabel) previewLabel.textContent = `Remark Needed (0/${colTotal})`;
-            } else if (qtyVal !== colTotal) {
-                // Total NG > 0, but remark qty mismatch
-                btn.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-800', 'hover:bg-amber-100', 'font-bold');
-                if (previewLabel) previewLabel.textContent = `Needs Update (${qtyVal}/${colTotal})`;
+            if (selectEl.value === 'NG-INPUT') {
+                selectEl.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-300');
             } else {
-                // Total NG > 0 and perfectly matched!
-                btn.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700', 'hover:bg-blue-100', 'font-bold');
-                let pretty = itemVal
-                    .replace(/\[(\d+)\]\s*([^\|]+)/g, '$1x $2')
-                    .replace(/\s*\|\s*/g, ', ');
-                if (previewLabel) previewLabel.textContent = `${pretty} (${qtyVal})`;
+                selectEl.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-300');
             }
-        }
-
-        // Live Balance Tracker inside Modal
-        function updateModalBalance() {
-            if (!activeRemarkButton) return;
-            const colIndex = activeRemarkButton.getAttribute('data-ng-index');
-            const hiddenTotal = document.getElementById(`ng-total-hidden-${colIndex}`);
-            const targetNg = hiddenTotal ? (parseInt(hiddenTotal.value) || 0) : 0;
-
-            const rows = document.querySelectorAll('.modal-row');
-            let allocated = 0;
-
-            rows.forEach(row => {
-                const qtyInput = row.querySelector('.modal-row-qty');
-                const qtyVal = qtyInput && qtyInput.value !== '' ? (parseInt(qtyInput.value) || 0) : 0;
-                allocated += qtyVal;
-            });
-
-            const targetEl = document.getElementById('modal-target-ng');
-            const allocatedEl = document.getElementById('modal-allocated-ng');
-            const badgeEl = document.getElementById('modal-balance-badge');
-            const bannerEl = document.getElementById('modal-balance-banner');
-            const hintEl = document.getElementById('modal-validation-hint');
-
-            if (targetEl) targetEl.textContent = targetNg;
-            if (allocatedEl) allocatedEl.textContent = allocated;
-
-            const remaining = targetNg - allocated;
-
-            if (targetNg === 0) {
-                if (badgeEl) {
-                    badgeEl.className = 'px-2 py-0.5 rounded font-extrabold text-[11px] bg-gray-100 text-gray-700';
-                    badgeEl.textContent = 'No Defect (0)';
-                }
-                if (bannerEl) bannerEl.className = 'p-3 rounded-lg border bg-gray-50 border-gray-200 text-xs flex items-center justify-between transition-colors';
-                saveModalBtn.disabled = false;
-                saveModalBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                if (hintEl) hintEl.classList.add('hidden');
-            } else if (remaining === 0 && allocated > 0) {
-                if (badgeEl) {
-                    badgeEl.className = 'px-2.5 py-0.5 rounded-full font-extrabold text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300';
-                    badgeEl.textContent = 'Matched (0 remaining)';
-                }
-                if (bannerEl) bannerEl.className = 'p-3 rounded-lg border bg-emerald-50/50 border-emerald-200 text-xs flex items-center justify-between transition-colors';
-                saveModalBtn.disabled = false;
-                saveModalBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                if (hintEl) hintEl.classList.add('hidden');
-            } else if (remaining > 0) {
-                if (badgeEl) {
-                    badgeEl.className = 'px-2.5 py-0.5 rounded-full font-extrabold text-[11px] bg-amber-100 text-amber-800 border border-amber-300';
-                    badgeEl.textContent = `Remaining: ${remaining} pcs`;
-                }
-                if (bannerEl) bannerEl.className = 'p-3 rounded-lg border bg-amber-50/50 border-amber-200 text-xs flex items-center justify-between transition-colors';
-                saveModalBtn.disabled = true;
-                saveModalBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                if (hintEl) {
-                    hintEl.textContent = `Harap alokasikan sisa ${remaining} pcs defect agar total sesuai target (${targetNg} pcs).`;
-                    hintEl.classList.remove('hidden');
-                }
-            } else {
-                const over = Math.abs(remaining);
-                if (badgeEl) {
-                    badgeEl.className = 'px-2.5 py-0.5 rounded-full font-extrabold text-[11px] bg-red-100 text-red-800 border border-red-300';
-                    badgeEl.textContent = `Exceeds Target: +${over} pcs`;
-                }
-                if (bannerEl) bannerEl.className = 'p-3 rounded-lg border bg-red-50/50 border-red-200 text-xs flex items-center justify-between transition-colors';
-                saveModalBtn.disabled = true;
-                saveModalBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                if (hintEl) {
-                    hintEl.textContent = `Kuantitas melebihi target defect sebesar ${over} pcs. Harap kurangi alokasi.`;
-                    hintEl.classList.remove('hidden');
-                }
-            }
-        }
-
-        // Add row to Defect Detail modal
-        function addModalRow(item = '', qty = '') {
-            const container = document.getElementById('modal-rows-container');
-            const div = document.createElement('div');
-            div.className = 'flex items-center space-x-2 modal-row';
-
-            const trimmedItem = (item || '').trim();
-            const normalizedUpper = trimmedItem.replace(/[\s_]+/g, '-').toUpperCase();
-
-            let isPreset = false;
-            let selectedType = '__custom__';
-            let customVal = trimmedItem;
-
-            if (normalizedUpper === 'NG-INPUT' || normalizedUpper === 'INPUT') {
-                selectedType = 'NG-INPUT';
-                isPreset = true;
-                customVal = '';
-            } else if (normalizedUpper === 'NG-PROSES' || normalizedUpper === 'PROSES') {
-                selectedType = 'NG-PROSES';
-                isPreset = true;
-                customVal = '';
-            }
-
-            let optionsHtml = '';
-            for (const [key, label] of Object.entries(ngPresetCategories)) {
-                const sel = selectedType === key ? 'selected' : '';
-                optionsHtml += `<option value="${key}" ${sel}>${label}</option>`;
-            }
-            optionsHtml += `<option value="__custom__" ${!isPreset ? 'selected' : ''}>Custom...</option>`;
-
-            div.innerHTML = `
-                <select class="w-36 rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-xs py-1.5 px-2 modal-row-type">
-                    ${optionsHtml}
-                </select>
-                <input type="text" class="flex-1 rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-xs py-1.5 px-2 modal-row-item-custom ${isPreset ? 'hidden' : ''}" placeholder="Kategori custom..." value="${escapeHtml(customVal)}">
-                <input type="number" min="1" class="w-20 rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-xs py-1.5 px-2 modal-row-qty text-center font-bold" placeholder="Qty" value="${qty}">
-                <button type="button" class="text-red-500 hover:text-red-700 font-bold delete-row-btn text-base px-1" title="Delete row">&times;</button>
-            `;
-            container.appendChild(div);
-
-            const select = div.querySelector('.modal-row-type');
-            const customInput = div.querySelector('.modal-row-item-custom');
-            const qtyInput = div.querySelector('.modal-row-qty');
-
-            select.addEventListener('change', function() {
-                if (this.value === '__custom__') {
-                    customInput.classList.remove('hidden');
-                    customInput.focus();
-                } else {
-                    customInput.classList.add('hidden');
-                    customInput.value = '';
-                }
-                updateModalBalance();
-            });
-
-            customInput.addEventListener('input', updateModalBalance);
-            qtyInput.addEventListener('input', updateModalBalance);
-
-            updateModalBalance();
-        }
-
-        // Helper to escape HTML tags in strings
-        function escapeHtml(str) {
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        // Manage row removal using event delegation
-        document.getElementById('modal-rows-container').addEventListener('click', function(e) {
-            const deleteBtn = e.target.closest('.delete-row-btn');
-            if (deleteBtn) {
-                const row = deleteBtn.closest('.modal-row');
-                const allRows = document.querySelectorAll('.modal-row');
-                if (allRows.length > 1) {
-                    row.remove();
-                } else {
-                    const sel = row.querySelector('.modal-row-type');
-                    const custom = row.querySelector('.modal-row-item-custom');
-                    const qty = row.querySelector('.modal-row-qty');
-                    if (sel) sel.value = 'NG-INPUT';
-                    if (custom) { custom.value = ''; custom.classList.add('hidden'); }
-                    if (qty) qty.value = '';
-                }
-                updateModalBalance();
-            }
-        });
-
-        // Add row button listener
-        document.getElementById('add-modal-row-btn').addEventListener('click', function() {
-            addModalRow('', '');
-        });
-
-        // Click event using event delegation for dynamic headers
-        document.getElementById('production-header-row').addEventListener('click', function(e) {
-            const btn = e.target.closest('.ng-remark-btn');
-            if (!btn) return;
-
-            activeRemarkButton = btn;
-            const ngName = btn.getAttribute('data-ng-name');
-            const th = btn.closest('th');
-
-            const itemHidden = th.querySelector('.ng-input-item-hidden');
-            const qtyHidden = th.querySelector('.ng-input-qty-hidden');
-
-            modalTitle.textContent = `Defect Detail: ${ngName}`;
-
-            // Clear existing rows
-            document.getElementById('modal-rows-container').innerHTML = '';
-
-            const rawItem = itemHidden.value.trim();
-            const rawQty = qtyHidden.value.trim();
-
-            if (rawItem) {
-                // Parse structured items like [8] X | [3] Y
-                const parts = rawItem.split(' | ');
-                let parsedAny = false;
-
-                parts.forEach(part => {
-                    const match = part.match(/^\[(\d+)\]\s*(.*)$/);
-                    if (match) {
-                        addModalRow(match[2], match[1]);
-                        parsedAny = true;
-                    }
-                });
-
-                if (!parsedAny) {
-                    addModalRow(rawItem, rawQty);
-                }
-            } else {
-                // Default to one empty row
-                addModalRow('', '');
-            }
-
-            updateModalBalance();
-            remarkModal.showModal();
-        });
-
-        // Close handlers
-        const closeModal = () => {
-            remarkModal.close();
-            activeRemarkButton = null;
         };
-
-        remarkModal.querySelectorAll('.close-modal-btn').forEach(btn => {
-            btn.addEventListener('click', closeModal);
-        });
-
-        remarkModal.addEventListener('click', function(e) {
-            if (e.target === remarkModal) {
-                closeModal();
-            }
-        });
-
-        // Save details with Uppercase Normalization & Consolidation
-        saveModalBtn.addEventListener('click', function() {
-            if (!activeRemarkButton) return;
-
-            const th = activeRemarkButton.closest('th');
-            const itemHidden = th.querySelector('.ng-input-item-hidden');
-            const qtyHidden = th.querySelector('.ng-input-qty-hidden');
-
-            const rows = document.querySelectorAll('.modal-row');
-            const categoryMap = {}; // Normalized UPPERCASE category -> total qty
-
-            rows.forEach(row => {
-                const typeVal = row.querySelector('.modal-row-type').value;
-                const customVal = row.querySelector('.modal-row-item-custom').value.trim();
-                const qtyVal = parseInt(row.querySelector('.modal-row-qty').value) || 0;
-
-                let categoryName = '';
-                if (typeVal === '__custom__') {
-                    categoryName = customVal.replace(/[\s_]+/g, '-').toUpperCase();
-                } else {
-                    categoryName = typeVal.replace(/[\s_]+/g, '-').toUpperCase();
-                }
-
-                if (categoryName && qtyVal > 0) {
-                    if (!categoryMap[categoryName]) {
-                        categoryMap[categoryName] = 0;
-                    }
-                    categoryMap[categoryName] += qtyVal;
-                }
-            });
-
-            let serializedParts = [];
-            let totalQty = 0;
-            for (const [catName, catQty] of Object.entries(categoryMap)) {
-                totalQty += catQty;
-                serializedParts.push(`[${catQty}] ${catName}`);
-            }
-
-            const finalItemVal = serializedParts.join(' | ');
-
-            // Save values back to hidden inputs
-            itemHidden.value = finalItemVal;
-            qtyHidden.value = totalQty > 0 ? totalQty : '';
-
-            // Update button UI state
-            const hiddenTotal = document.getElementById(`ng-total-hidden-${activeRemarkButton.getAttribute('data-ng-index')}`);
-            const colTotal = hiddenTotal ? (parseInt(hiddenTotal.value) || 0) : 0;
-            updateNgRemarkButtonState(th, colTotal);
-
-            closeModal();
-        });
 
         // Initial Calculations
         calculateHourlyAccumulation();
@@ -2884,6 +2473,11 @@
 
     // Initial check on load
     setTimeout(checkFirstPieceGate, 300);
+    setTimeout(function() {
+        if (typeof updateMixingRatioSuggestion === 'function') {
+            updateMixingRatioSuggestion();
+        }
+    }, 350);
 
     // Tab 2 Materials Dynamic Rows Logic
     let materialRowIndex = {{ $materialGlobalIndex ?? 100 }};
@@ -2895,11 +2489,26 @@
         }
         const tbody = document.getElementById('paint-materials-tbody');
         if (!tbody) return;
+
+        const existingNames = [];
+        tbody.querySelectorAll('input[name*="[item_name]"]').forEach(input => {
+            const val = input.value.trim();
+            if (val) existingNames.push(val);
+        });
+
+        const missing = ['Paint', 'Hardener', 'Thinner'].filter(item => !existingNames.includes(item));
+        if (missing.length === 0) {
+            alert('Semua komponen cat (Paint, Hardener, Thinner) sudah ditambahkan.');
+            return;
+        }
+
+        const nextItem = missing[0];
+        const ratioPlaceholder = nextItem === 'Paint' ? 'Misal 4' : (nextItem === 'Hardener' ? 'Misal 1' : 'Misal 2');
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="px-3 py-2">
                 <input type="hidden" name="materials[${materialRowIndex}][type]" value="paint">
-                <input type="text" name="materials[${materialRowIndex}][item_name]" value="" placeholder="Paint Item Name" class="w-full text-xs rounded border-gray-300 py-1 font-semibold">
+                <input type="text" name="materials[${materialRowIndex}][item_name]" value="${nextItem}" placeholder="Paint Item Name" class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800" readonly>
             </td>
             <td class="px-2 py-2">
                 <input type="text" name="materials[${materialRowIndex}][lot_number]" value="" placeholder="Lot" class="w-full text-xs rounded border-gray-300 py-1">
@@ -2908,21 +2517,74 @@
                 <input type="text" name="materials[${materialRowIndex}][visco]" value="" placeholder="Visco" class="w-full text-xs rounded border-gray-300 py-1">
             </td>
             <td class="px-2 py-2">
-                <input type="text" name="materials[${materialRowIndex}][mixing_ratio]" value="" placeholder="Ratio (e.g. 1:1.5)" class="w-full text-xs rounded border-gray-300 py-1">
+                <input type="text" inputmode="decimal" name="materials[${materialRowIndex}][mixing_ratio]" value="" placeholder="${ratioPlaceholder}" oninput="updateMixingRatioSuggestion()" class="mixing-ratio-val w-full text-xs rounded border-gray-300 py-1 font-mono font-semibold">
             </td>
             <td class="px-2 py-2">
                 <input type="number" step="any" name="materials[${materialRowIndex}][qty]" value="" placeholder="Qty" class="w-full text-xs rounded border-gray-300 py-1">
             </td>
             <td class="px-2 py-2">
-                <input type="text" name="materials[${materialRowIndex}][uom]" value="" placeholder="UOM" class="w-full text-xs rounded border-gray-300 py-1">
+                <input type="text" name="materials[${materialRowIndex}][uom]" value="KG" placeholder="UOM" class="w-full text-xs rounded border-gray-300 py-1">
             </td>
             <td class="px-1 py-2 text-center">
-                <button type="button" onclick="removeMaterialRow(this)" class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition" title="Remove Row">&times;</button>
+                <button type="button" onclick="removePaintMaterialRow(this)" class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition" title="Remove Row">&times;</button>
             </td>
         `;
         tbody.appendChild(tr);
         materialRowIndex++;
+        updateMixingRatioSuggestion();
     };
+
+    window.removePaintMaterialRow = function(btn) {
+        const tr = btn.closest('tr');
+        if (tr) {
+            tr.remove();
+            updateMixingRatioSuggestion();
+        }
+    };
+
+    function updateMixingRatioSuggestion() {
+        const tbody = document.getElementById('paint-materials-tbody');
+        if (!tbody) return;
+        const rows = tbody.querySelectorAll('tr');
+        const items = [];
+        rows.forEach(tr => {
+            const nameInput = tr.querySelector('input[name*="[item_name]"]');
+            const ratioInput = tr.querySelector('input[name*="[mixing_ratio]"]');
+            if (nameInput) {
+                const name = nameInput.value.trim();
+                const ratio = ratioInput ? ratioInput.value.trim() : '';
+                if (name) {
+                    items.push({ name, ratio });
+                }
+            }
+        });
+
+        const formulaEl = document.getElementById('mixing-ratio-live-formula');
+        if (formulaEl) {
+            if (items.length > 0) {
+                const formulaValues = items.map(it => it.ratio ? it.ratio : '-').join(' : ');
+                formulaEl.textContent = formulaValues;
+            } else {
+                formulaEl.textContent = '-';
+            }
+        }
+
+        const addBtn = document.getElementById('add-paint-item-btn');
+        if (addBtn) {
+            const names = items.map(it => it.name);
+            const missing = ['Paint', 'Hardener', 'Thinner'].filter(item => !names.includes(item));
+            if (missing.length === 0) {
+                addBtn.disabled = true;
+                addBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                addBtn.innerHTML = 'Komponen Cat Lengkap (Paint, Hardener, Thinner)';
+            } else {
+                addBtn.disabled = false;
+                addBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                addBtn.innerHTML = `+ Tambah Item Cat (${missing.join(', ')})`;
+            }
+        }
+    }
+    window.updateMixingRatioSuggestion = updateMixingRatioSuggestion;
 
     function togglePaintMaterialsByProcess() {
         const processSelect = document.getElementById('process_prod');
@@ -2950,6 +2612,7 @@
                     el.classList.remove('bg-gray-100', 'cursor-not-allowed');
                 });
             }
+            updateMixingRatioSuggestion();
         } else {
             paintCard.classList.add('opacity-60', 'bg-gray-50');
             if (paintBadge) paintBadge.classList.remove('hidden');
@@ -2968,26 +2631,35 @@
     }
     window.togglePaintMaterialsByProcess = togglePaintMaterialsByProcess;
 
-    window.addPartMaterialRow = function() {
+    window.addPartBatch = function(type) {
         const tbody = document.getElementById('part-materials-tbody');
         if (!tbody) return;
+
+        let count = 0;
+        tbody.querySelectorAll('input[name*="[item_name]"]').forEach(input => {
+            if (input.value.trim().toLowerCase().startsWith(type.toLowerCase())) {
+                count++;
+            }
+        });
+
+        const nextBatchName = `${type} #${count + 1}`;
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="px-3 py-2">
                 <input type="hidden" name="materials[${materialRowIndex}][type]" value="part">
-                <input type="text" name="materials[${materialRowIndex}][item_name]" value="" placeholder="Part / WIP Item Name" class="w-full text-xs rounded border-gray-300 py-1 font-semibold">
+                <input type="text" name="materials[${materialRowIndex}][item_name]" value="${nextBatchName}" placeholder="Part / WIP Item Name" class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800" readonly>
             </td>
             <td class="px-2 py-2">
                 <input type="text" name="materials[${materialRowIndex}][lot_number]" value="" placeholder="Lot" class="w-full text-xs rounded border-gray-300 py-1">
             </td>
             <td class="px-2 py-2">
-                <input type="number" step="any" name="materials[${materialRowIndex}][qty]" value="" placeholder="Qty" class="w-full text-xs rounded border-gray-300 py-1">
+                <input type="number" step="any" name="materials[${materialRowIndex}][qty]" value="" placeholder="Qty" class="w-full text-xs rounded border-gray-300 py-1" oninput="updatePartMaterialsBreakdown()">
             </td>
             <td class="px-2 py-2">
-                <input type="text" name="materials[${materialRowIndex}][uom]" value="" placeholder="UOM" class="w-full text-xs rounded border-gray-300 py-1">
+                <input type="text" name="materials[${materialRowIndex}][uom]" value="PCS" placeholder="UOM" class="w-full text-xs rounded border-gray-300 py-1">
             </td>
             <td class="px-1 py-2 text-center">
-                <button type="button" onclick="removeMaterialRow(this)" class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition" title="Remove Row">&times;</button>
+                <button type="button" onclick="removePartMaterialRow(this)" class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition" title="Remove Row">&times;</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -2995,12 +2667,28 @@
         updatePartMaterialsBreakdown();
     };
 
-    window.removeMaterialRow = function(btn) {
+    window.removePartMaterialRow = function(btn) {
         const tr = btn.closest('tr');
         if (tr) {
             tr.remove();
+            reindexPartBatches();
             updatePartMaterialsBreakdown();
         }
+    };
+
+    window.reindexPartBatches = function() {
+        const tbody = document.getElementById('part-materials-tbody');
+        if (!tbody) return;
+        let wipIdx = 1;
+        let repairanIdx = 1;
+        tbody.querySelectorAll('input[name*="[item_name]"]').forEach(input => {
+            const val = input.value.trim().toLowerCase();
+            if (val.startsWith('repair')) {
+                input.value = `Repairan #${repairanIdx++}`;
+            } else if (val.startsWith('wip')) {
+                input.value = `WIP #${wipIdx++}`;
+            }
+        });
     };
 
     function updatePartMaterialsBreakdown() {

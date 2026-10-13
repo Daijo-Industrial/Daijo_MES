@@ -549,7 +549,7 @@ class SecondProcessReportTest extends TestCase
             'materials' => [
                 [
                     'type' => 'paint',
-                    'item_name' => 'Custom Epoxy Primer Black',
+                    'item_name' => 'Paint Primer Black',
                     'lot_number' => 'LOT-EP-001',
                     'visco' => '16s',
                     'mixing_ratio' => '2:1',
@@ -557,7 +557,7 @@ class SecondProcessReportTest extends TestCase
                 ],
                 [
                     'type' => 'part',
-                    'item_name' => 'Custom WIP Sub-assembly',
+                    'item_name' => 'WIP #1 Sub-assembly',
                     'lot_number' => 'WIP-LOT-99',
                     'qty' => 50,
                 ],
@@ -577,7 +577,7 @@ class SecondProcessReportTest extends TestCase
         $response->assertRedirect(route('second-process-reports.index'));
         $this->assertDatabaseHas('second_process_materials', [
             'type' => 'paint',
-            'item_name' => 'Custom Epoxy Primer Black',
+            'item_name' => 'Paint Primer Black',
             'lot_number' => 'LOT-EP-001',
             'visco' => '16s',
             'mixing_ratio' => '2:1',
@@ -585,7 +585,7 @@ class SecondProcessReportTest extends TestCase
         ]);
         $this->assertDatabaseHas('second_process_materials', [
             'type' => 'part',
-            'item_name' => 'Custom WIP Sub-assembly',
+            'item_name' => 'WIP #1 Sub-assembly',
             'lot_number' => 'WIP-LOT-99',
             'qty' => 50,
         ]);
@@ -1213,6 +1213,7 @@ class SecondProcessReportTest extends TestCase
             'shift' => '1',
             'process_prod' => 'Painting',
             'part_number' => 'PART-NG-TEST-01',
+            'target_per_hour' => 100,
             'status' => 'submitted',
             'ngs' => [
                 [
@@ -1241,6 +1242,7 @@ class SecondProcessReportTest extends TestCase
             'shift' => '1',
             'process_prod' => 'Painting',
             'part_number' => 'PART-NG-TEST-02',
+            'target_per_hour' => 100,
             'status' => 'submitted',
             'ngs' => [
                 [
@@ -1269,6 +1271,7 @@ class SecondProcessReportTest extends TestCase
             'shift' => '1',
             'process_prod' => 'Painting',
             'part_number' => 'PART-NG-TEST-03',
+            'target_per_hour' => 100,
             'jml_input_wip' => 5,
             'status' => 'submitted',
             'ngs' => [
@@ -1453,6 +1456,7 @@ class SecondProcessReportTest extends TestCase
             'process_prod' => 'Painting',
             'part_number' => 'PART-INPUT-DEFICIT',
             'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 100,
             'status' => 'submitted',
             'jml_input_wip' => 50,
             'repairan' => 0,
@@ -1479,6 +1483,7 @@ class SecondProcessReportTest extends TestCase
             'process_prod' => 'Painting',
             'part_number' => 'PART-REMAINING-NO-REMARK',
             'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 100,
             'status' => 'submitted',
             'jml_input_wip' => 100,
             'repairan' => 0,
@@ -1506,6 +1511,7 @@ class SecondProcessReportTest extends TestCase
             'process_prod' => 'Painting',
             'part_number' => 'PART-REMAINING-WITH-REMARK',
             'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 100,
             'status' => 'submitted',
             'jml_input_wip' => 100,
             'repairan' => 0,
@@ -1537,6 +1543,7 @@ class SecondProcessReportTest extends TestCase
             'process_prod' => 'Painting',
             'part_number' => 'PART-INPUT-EQUALS-OUTPUT',
             'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 100,
             'status' => 'submitted',
             'jml_input_wip' => 100,
             'repairan' => 0,
@@ -1597,6 +1604,7 @@ class SecondProcessReportTest extends TestCase
             'process_prod' => 'Painting',
             'part_number' => 'PART-SCRAP-ACCUMULATION',
             'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 100,
             'status' => 'submitted',
             'jml_input_wip' => 100,
             'repairan' => 0,
@@ -1816,6 +1824,348 @@ class SecondProcessReportTest extends TestCase
         $response->assertSee('part-name-dropdown');
         $response->assertSee('name="part_number"', false);
         $response->assertSee('name="part_name"', false);
+    }
+
+    /**
+     * Test submitting painting process reports fails when target_per_hour is missing or zero.
+     */
+    public function test_submitting_painting_process_report_fails_when_target_per_hour_is_missing_or_zero(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        foreach (['Painting', 'Painting Basecoat', 'Painting Topcoat'] as $process) {
+            $payload = [
+                'date' => now()->format('Y-m-d'),
+                'unit_line' => 'Line 1',
+                'shift' => '1',
+                'process_prod' => $process,
+                'part_number' => 'PART-PAINT-REQ-01',
+                'customer' => 'Toyota Motor Corp',
+                'target_per_hour' => 0,
+                'status' => 'submitted',
+            ];
+
+            $response = $this->post(route('second-process-reports.store'), $payload);
+            $response->assertSessionHasErrors(['target_per_hour']);
+        }
+    }
+
+    /**
+     * Test saving draft allows painting process report with zero or missing target_per_hour.
+     */
+    public function test_saving_draft_allows_painting_process_without_target_per_hour(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        $payload = [
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-DRAFT-PAINT',
+            'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 0,
+            'status' => 'draft',
+        ];
+
+        $response = $this->post(route('second-process-reports.store'), $payload);
+        $response->assertRedirect();
+        $this->assertDatabaseHas('second_process_reports', [
+            'part_number' => 'PART-DRAFT-PAINT',
+            'status' => 'draft',
+            'target_per_hour' => 0,
+        ]);
+    }
+
+    /**
+     * Test paint materials are strictly restricted to Paint, Hardener, and Thinner.
+     */
+    public function test_paint_materials_restricted_to_paint_hardener_and_thinner(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        // Invalid item name for paint
+        $payloadInvalid = [
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-PAINT-VALIDATE',
+            'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 100,
+            'status' => 'draft',
+            'materials' => [
+                [
+                    'type' => 'paint',
+                    'item_name' => 'Custom Solvent',
+                    'qty' => 5,
+                ],
+            ],
+        ];
+
+        $responseInvalid = $this->post(route('second-process-reports.store'), $payloadInvalid);
+        $responseInvalid->assertSessionHasErrors(['materials.0.item_name']);
+
+        // Valid item names (Paint, Hardener, Thinner)
+        $payloadValid = [
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-PAINT-VALIDATE-OK',
+            'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 100,
+            'status' => 'draft',
+            'materials' => [
+                ['type' => 'paint', 'item_name' => 'Paint', 'qty' => 10],
+                ['type' => 'paint', 'item_name' => 'Hardener', 'qty' => 2],
+                ['type' => 'paint', 'item_name' => 'Thinner', 'qty' => 5],
+            ],
+        ];
+
+        $responseValid = $this->post(route('second-process-reports.store'), $payloadValid);
+        $responseValid->assertRedirect();
+        $this->assertDatabaseHas('second_process_materials', [
+            'item_name' => 'Paint',
+            'type' => 'paint',
+        ]);
+        $this->assertDatabaseHas('second_process_materials', [
+            'item_name' => 'Hardener',
+            'type' => 'paint',
+        ]);
+        $this->assertDatabaseHas('second_process_materials', [
+            'item_name' => 'Thinner',
+            'type' => 'paint',
+        ]);
+    }
+
+    /**
+     * Test part materials are restricted to WIP and Repairan batches.
+     */
+    public function test_part_materials_restricted_to_wip_and_repairan_batches(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        // Invalid part name
+        $payloadInvalid = [
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-PART-RESTRICT',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'materials' => [
+                [
+                    'type' => 'part',
+                    'item_name' => 'Unapproved Part',
+                    'qty' => 20,
+                ],
+            ],
+        ];
+
+        $responseInvalid = $this->post(route('second-process-reports.store'), $payloadInvalid);
+        $responseInvalid->assertSessionHasErrors(['materials.0.item_name']);
+
+        // Valid part batches (WIP #1, WIP #2, Repairan #1)
+        $payloadValid = [
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-PART-RESTRICT-OK',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'materials' => [
+                ['type' => 'part', 'item_name' => 'WIP #1', 'qty' => 50],
+                ['type' => 'part', 'item_name' => 'WIP #2', 'qty' => 30],
+                ['type' => 'part', 'item_name' => 'Repairan #1', 'qty' => 10],
+            ],
+        ];
+
+        $responseValid = $this->post(route('second-process-reports.store'), $payloadValid);
+        $responseValid->assertRedirect();
+        $this->assertDatabaseHas('second_process_materials', [
+            'item_name' => 'WIP #1',
+            'type' => 'part',
+        ]);
+        $this->assertDatabaseHas('second_process_materials', [
+            'item_name' => 'Repairan #1',
+            'type' => 'part',
+        ]);
+    }
+
+    /**
+     * Test submitting report succeeds with NG category assignment without manual remark modal.
+     */
+    public function test_submitting_report_succeeds_with_ng_category_assignment_without_manual_remark(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        $payload = [
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-NG-CATEGORY-OK',
+            'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 120,
+            'jml_input_wip' => 15,
+            'status' => 'submitted',
+            'hourly' => [
+                ['hour_ke' => 1, 'ok_qty' => 10, 'ng_qty' => 5],
+            ],
+            'ngs' => [
+                [
+                    'ng_name' => 'SCRATCH',
+                    'ng_category' => 'NG-PROCESS',
+                    'hours' => [1 => 5],
+                ],
+            ],
+        ];
+
+        $response = $this->post(route('second-process-reports.store'), $payload);
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('second_process_ng_records', [
+            'ng_name' => 'SCRATCH',
+            'ng_category' => 'NG-PROCESS',
+            'total_ng' => 5,
+            'ng_input_item' => '[5] NG-PROCESS',
+            'ng_input_qty' => 5,
+        ]);
+    }
+
+    /**
+     * Test Leader can access edit form and update submitted reports.
+     */
+    public function test_leader_can_edit_and_update_submitted_report_via_edit_form(): void
+    {
+        $leaderRole = Role::firstOrCreate(['name' => 'LEADER']);
+        $leaderRole->givePermission('second-process-reports');
+
+        $operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $operatorRole->givePermission('second-process-reports');
+
+        $leaderUser = User::factory()->create(['role_id' => $leaderRole->id, 'name' => 'Leader Budi']);
+        $operatorUser = User::factory()->create(['role_id' => $operatorRole->id, 'name' => 'Operator Joko']);
+
+        $report = SecondProcessReport::create([
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Painting Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'PART-SUBMITTED-EDIT',
+            'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 100,
+            'jml_input_wip' => 50,
+            'created_by_name' => 'Operator Joko',
+            'created_by_signed_at' => now(),
+        ]);
+
+        // Operator cannot edit submitted report
+        $opResponse = $this->actingAs($operatorUser)->get(route('second-process-reports.edit', $report->id));
+        $opResponse->assertRedirect(route('second-process-reports.show', $report->id));
+        $opResponse->assertSessionHas('error');
+
+        // Leader can access edit form on submitted report
+        $leaderResponse = $this->actingAs($leaderUser)->get(route('second-process-reports.edit', $report->id));
+        $leaderResponse->assertOk();
+
+        // Leader can update submitted report
+        $updatePayload = [
+            'date' => $report->date,
+            'unit_line' => 'Painting Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'PART-SUBMITTED-EDIT',
+            'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 150,
+            'jml_input_wip' => 50,
+            'sisa_input_remark' => 'Sisa 10 pcs disimpan di WIP staging',
+            'hourly' => [
+                ['hour_ke' => 1, 'ok_qty' => 40, 'ng_qty' => 0],
+            ],
+        ];
+
+        $updateResponse = $this->actingAs($leaderUser)->put(route('second-process-reports.update', $report->id), $updatePayload);
+        $updateResponse->assertRedirect(route('second-process-reports.index'));
+
+        $this->assertDatabaseHas('second_process_reports', [
+            'id' => $report->id,
+            'target_per_hour' => 150,
+            'jumlah_ok' => 40,
+            'status' => 'submitted',
+        ]);
+    }
+
+    /**
+     * Test untouched paint presets (Paint, Hardener, Thinner) are skipped on save.
+     */
+    public function test_untouched_paint_material_presets_are_skipped_on_save(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+
+        $payload = [
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Painting Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-UNTOUCHED-PAINT',
+            'customer' => 'Toyota Motor Corp',
+            'materials' => [
+                ['type' => 'paint', 'item_name' => 'Paint', 'lot_number' => '', 'visco' => '', 'mixing_ratio' => '', 'qty' => '', 'uom' => ''],
+                ['type' => 'paint', 'item_name' => 'Hardener', 'lot_number' => '', 'visco' => '', 'mixing_ratio' => '', 'qty' => '', 'uom' => ''],
+                ['type' => 'paint', 'item_name' => 'Thinner', 'lot_number' => '', 'visco' => '', 'mixing_ratio' => '', 'qty' => '', 'uom' => ''],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->post(route('second-process-reports.store'), $payload);
+        $response->assertRedirect(route('second-process-reports.index'));
+
+        $report = SecondProcessReport::where('part_number', 'PART-UNTOUCHED-PAINT')->first();
+        $this->assertNotNull($report);
+        $this->assertCount(0, $report->materials);
+    }
+
+    /**
+     * Test partially filled paint presets only save the filled items and skip untouched ones.
+     */
+    public function test_partially_filled_paint_presets_only_save_filled_items(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+
+        $payload = [
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Painting Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-PARTIAL-PAINT',
+            'customer' => 'Toyota Motor Corp',
+            'materials' => [
+                ['type' => 'paint', 'item_name' => 'Paint', 'lot_number' => 'LOT-P-01', 'visco' => '12s', 'mixing_ratio' => '4', 'qty' => 15, 'uom' => 'KG'],
+                ['type' => 'paint', 'item_name' => 'Hardener', 'lot_number' => '', 'visco' => '', 'mixing_ratio' => '', 'qty' => '', 'uom' => ''],
+                ['type' => 'paint', 'item_name' => 'Thinner', 'lot_number' => '', 'visco' => '', 'mixing_ratio' => '', 'qty' => '', 'uom' => ''],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->post(route('second-process-reports.store'), $payload);
+        $response->assertRedirect(route('second-process-reports.index'));
+
+        $report = SecondProcessReport::where('part_number', 'PART-PARTIAL-PAINT')->first();
+        $this->assertNotNull($report);
+        $this->assertCount(1, $report->materials);
+        $this->assertEquals('Paint', $report->materials->first()->item_name);
+        $this->assertEquals(15, $report->materials->first()->qty);
     }
 }
 

@@ -34,24 +34,35 @@ class SecondProcessReportPolicy
     }
 
     /**
-     * Determine whether the user can update the draft report.
-     * Only draft reports can be updated.
-     * Authorized: Super-Admin, Admin, creator, authorized checker, or authorized leader.
+     * Determine whether the user can update the report.
+     * - Super-Admin & Admin: Can edit reports in any status.
+     * - Leader: Can edit reports prior to final Supervisor acknowledgment (draft, submitted, leader_approved, pqc_approved).
+     * - Creator / Checker: Can edit only draft reports.
+     * - Acknowledged reports: Locked and cannot be edited by Leader or Checker/Operator.
      */
     public function update(User $user, SecondProcessReport $report): Response
     {
-        if ($report->status !== 'draft') {
-            return Response::deny('Only draft reports can be edited.');
+        $isAdmin = $user->hasRole('SUPER-ADMIN') || $user->hasRole('ADMIN');
+        if ($isAdmin) {
+            return Response::allow();
         }
 
-        if ($user->hasRole('SUPER-ADMIN') || $user->hasRole('ADMIN')) {
+        if ($report->status === 'acknowledged') {
+            return Response::deny('Laporan yang telah di-Acknowledge tidak dapat diubah.');
+        }
+
+        $isLeader = $user->canSign('second_process', 'leader') || $user->hasRole('LEADER');
+        if ($isLeader) {
             return Response::allow();
+        }
+
+        if ($report->status !== 'draft') {
+            return Response::deny('Laporan yang sudah disubmit hanya dapat diedit oleh Leader atau Admin.');
         }
 
         $isAuthorized = empty($report->created_by_name)
             || $report->created_by_name === $user->name
-            || $user->canSign('second_process', 'checker')
-            || $user->canSign('second_process', 'leader');
+            || $user->canSign('second_process', 'checker');
 
         return $isAuthorized
             ? Response::allow()
@@ -147,3 +158,4 @@ class SecondProcessReportPolicy
             : Response::deny('You are not authorized to reject reports.');
     }
 }
+
