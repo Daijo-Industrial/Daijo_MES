@@ -68,12 +68,12 @@ class MaterialDailyAuditTest extends TestCase
 
         MasterListMaterial::firstOrCreate(
             ['item_code' => 'MAT-RESIN-01'],
-            ['description' => 'Resin ABS Natural', 'uom' => 'KG']
+            ['item_description' => 'Resin ABS Natural', 'purchasing_uom' => 'KG']
         );
 
         MasterListMaterial::firstOrCreate(
             ['item_code' => 'MAT-RESIN-02'],
-            ['description' => 'Resin PP Black', 'uom' => 'KG']
+            ['item_description' => 'Resin PP Black', 'purchasing_uom' => 'KG']
         );
 
         $this->pallet1 = MwhPallet::create([
@@ -111,6 +111,8 @@ class MaterialDailyAuditTest extends TestCase
         $response->assertSee('A-01-02');
         $response->assertSee('MAT-RESIN-01');
         $response->assertSee('MAT-RESIN-02');
+        $response->assertSee('Resin ABS Natural');
+        $response->assertSee('Resin PP Black');
     }
 
     public function test_rack_mapping_and_pallet_index_contain_audit_harian_button(): void

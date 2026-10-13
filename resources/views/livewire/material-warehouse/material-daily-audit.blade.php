@@ -316,11 +316,15 @@
 
                                 <!-- Detail Data Sistem -->
                                 <td class="py-3 px-3">
-                                    <div class="font-mono font-black text-slate-800 text-xs flex items-center gap-1.5">
+                                    <div class="font-mono font-black text-slate-900 text-xs flex items-center gap-1.5">
                                         <span>{{ $item['system_item_code'] }}</span>
                                     </div>
-                                    <div class="text-[11px] text-slate-600 line-clamp-1 mt-0.5 font-normal">
-                                        {{ $item['system_item_name'] ?? '-' }}
+                                    @php
+                                        $dispItemName = $item['system_item_name'] ?? '';
+                                        $hasName = !empty($dispItemName) && $dispItemName !== '-' && $dispItemName !== $item['system_item_code'];
+                                    @endphp
+                                    <div class="text-[11px] {{ $hasName ? 'text-slate-700 font-semibold' : 'text-slate-400 italic' }} line-clamp-1 mt-0.5" title="{{ $dispItemName }}">
+                                        {{ $hasName ? $dispItemName : '(Nama barang belum terdaftar)' }}
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-slate-400">
                                         @if(!empty($item['pallet_id']))

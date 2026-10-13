@@ -30,6 +30,16 @@ class MasterListItem extends Model
         'half_code_2',
         'position',
     ];
+
+    public function getItemDescriptionAttribute(): ?string
+    {
+        return $this->item_name;
+    }
+
+    public function getDescriptionAttribute(): ?string
+    {
+        return $this->item_name;
+    }
     
 
     public function files()

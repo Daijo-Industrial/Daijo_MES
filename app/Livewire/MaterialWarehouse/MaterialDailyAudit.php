@@ -2,6 +2,7 @@
 
 namespace App\Livewire\MaterialWarehouse;
 
+use App\Models\MasterListItem;
 use App\Models\MasterListMaterial;
 use App\Models\MwhDailyAudit;
 use App\Models\MwhDailyAuditItem;
@@ -10,6 +11,7 @@ use App\Models\MwhPosition;
 use App\Models\MwhWarehouse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 class MaterialDailyAudit extends Component
@@ -94,17 +96,33 @@ class MaterialDailyAudit extends Component
             $this->notes           = $existingAudit->notes ?? '';
             $this->isSaved         = true;
 
+            $itemCodes = $existingAudit->items->pluck('system_item_code')->toArray();
+            $itemNamesMap = $this->resolveItemNamesMap($itemCodes);
+
             $itemsData = [];
             foreach ($existingAudit->items as $auditItem) {
                 $key = $auditItem->pallet_id ?: ('pos_' . $auditItem->position_id);
+                $sysCode = $auditItem->system_item_code;
+                $resolvedName = $itemNamesMap[$sysCode] ?? null;
+
+                // If previously saved name is empty, null, or identically equals the code, use the resolved name
+                $savedName = (!empty($auditItem->system_item_name) && $auditItem->system_item_name !== $sysCode)
+                    ? $auditItem->system_item_name
+                    : ($resolvedName ?: '-');
+
+                // Self-heal row in DB if it was saved with raw code
+                if ($auditItem->system_item_name === $sysCode && $resolvedName && $resolvedName !== $sysCode) {
+                    $auditItem->update(['system_item_name' => $resolvedName]);
+                }
+
                 $itemsData[$key] = [
                     'id'                 => $auditItem->id,
                     'pallet_id'          => $auditItem->pallet_id,
                     'position_id'        => $auditItem->position_id,
                     'position_code'      => $auditItem->position_code,
                     'rack_code'          => $auditItem->rack_code,
-                    'system_item_code'   => $auditItem->system_item_code,
-                    'system_item_name'   => $auditItem->system_item_name,
+                    'system_item_code'   => $sysCode,
+                    'system_item_name'   => $savedName,
                     'system_lot_no'      => $auditItem->system_lot_no,
                     'system_qty'         => (float) $auditItem->system_qty,
                     'uom'                => $auditItem->uom,
@@ -135,10 +153,18 @@ class MaterialDailyAudit extends Component
                 return $p->position->position_code ?? $p->pallet_id;
             });
 
+            $itemCodes = $pallets->pluck('item_code')->toArray();
+            $itemNamesMap = $this->resolveItemNamesMap($itemCodes);
+
             $itemsData = [];
             foreach ($pallets as $p) {
                 $pos = $p->position;
                 $key = $p->pallet_id;
+                $itemName = $itemNamesMap[$p->item_code]
+                    ?? $p->material?->item_description
+                    ?? $p->material?->item_name
+                    ?? '-';
+
                 $itemsData[$key] = [
                     'id'                 => null,
                     'pallet_id'          => $p->pallet_id,
@@ -146,7 +172,7 @@ class MaterialDailyAudit extends Component
                     'position_code'      => $pos ? $pos->position_code : 'N/A',
                     'rack_code'          => $pos && $pos->rack ? $pos->rack->rack_code : '',
                     'system_item_code'   => $p->item_code,
-                    'system_item_name'   => $p->material->description ?? $p->item_code,
+                    'system_item_name'   => $itemName,
                     'system_lot_no'      => $p->lot_no,
                     'system_qty'         => (float) $p->current_qty,
                     'uom'                => $p->uom ?: 'KG',
@@ -167,6 +193,60 @@ class MaterialDailyAudit extends Component
             ->sort()
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Resolves human-readable item descriptions across MasterListMaterial, MasterListItem, and SAP tables.
+     */
+    private function resolveItemNamesMap(array $itemCodes): array
+    {
+        $uniqueCodes = array_values(array_unique(array_filter($itemCodes)));
+        if (empty($uniqueCodes)) {
+            return [];
+        }
+
+        $map = [];
+
+        // 1. MasterListMaterial (item_description)
+        $materials = MasterListMaterial::whereIn('item_code', $uniqueCodes)
+            ->pluck('item_description', 'item_code')
+            ->filter()
+            ->toArray();
+        $map = array_merge($map, $materials);
+
+        // 2. MasterListItem (item_name) for any missing
+        $missing = array_diff($uniqueCodes, array_keys($map));
+        if (!empty($missing)) {
+            $masterItems = MasterListItem::whereIn('item_code', $missing)
+                ->pluck('item_name', 'item_code')
+                ->filter()
+                ->toArray();
+            $map = array_merge($map, $masterItems);
+        }
+
+        // 3. sap_inventory_mtr (material_name) for any still missing
+        $stillMissing = array_diff($uniqueCodes, array_keys($map));
+        if (!empty($stillMissing) && Schema::hasTable('sap_inventory_mtr')) {
+            $sapItems = DB::table('sap_inventory_mtr')
+                ->whereIn('material_code', $stillMissing)
+                ->pluck('material_name', 'material_code')
+                ->filter()
+                ->toArray();
+            $map = array_merge($map, $sapItems);
+        }
+
+        // 4. master_bom_components (component_description)
+        $stillMissing2 = array_diff($uniqueCodes, array_keys($map));
+        if (!empty($stillMissing2) && Schema::hasTable('master_bom_components')) {
+            $bomItems = DB::table('master_bom_components')
+                ->whereIn('component_item', $stillMissing2)
+                ->pluck('component_description', 'component_item')
+                ->filter()
+                ->toArray();
+            $map = array_merge($map, $bomItems);
+        }
+
+        return $map;
     }
 
     /**
