@@ -35,6 +35,10 @@ class ProductionDashboardController extends Controller
         $machineName = $request->input('machine_name', '');
         $machineId = User::where('name', $machineName)->pluck('id')->first();
 
+        if ($machineId) {
+            MachineJob::firstOrCreate(['user_id' => $machineId]);
+        }
+
         // Calculate shift range: from 07:30 Jakarta time of selectedDate to 07:30 Jakarta time of next day
         $startDateStr = Carbon::parse($selectedDate . ' 07:30:00', 'Asia/Jakarta')->setTimezone('UTC');
         $endDateStr = Carbon::parse($selectedDate . ' 07:30:00', 'Asia/Jakarta')->addDay()->setTimezone('UTC');

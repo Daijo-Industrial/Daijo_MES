@@ -44,4 +44,30 @@ class ProductionDayDashboardMachineListTest extends TestCase
             $response->assertSee('<option value="' . $name . '"', false);
         }
     }
+
+    public function test_production_day_dashboard_renders_machine_card_even_if_machine_job_was_missing(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $admin = User::factory()->create([
+            'role_id' => $role->id,
+        ]);
+
+        $machineUser = User::firstOrCreate(
+            ['name' => '0300A'],
+            [
+                'email' => '0300a@daijo.co.id',
+                'password' => bcrypt('password'),
+                'role_id' => 4,
+            ]
+        );
+
+        $response = $this->actingAs($admin)->get(route('djoni.dashboard', [
+            'machine_name' => '0300A',
+            'date' => '2026-10-12',
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertSee('Machine: 0300A');
+        $this->assertDatabaseHas('machine_jobs', ['user_id' => $machineUser->id]);
+    }
 }
