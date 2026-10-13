@@ -113,6 +113,13 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('master_customer_delivery', function (Blueprint $table) {
+            $table->id();
+            $table->string('customer_code')->nullable();
+            $table->string('customer_name')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('spk_item_histories', function (Blueprint $table) {
             $table->id();
             $table->string('spk_number');
@@ -790,4 +797,74 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
         $this->assertEquals($firstPalletId, $parallelComponent->get('lastGeneratedPalletId'));
         $parallelComponent->assertSet('showSuccessModal', true);
     }
+
+    public function test_quick_scan_pallet_verifies_details_and_assigns_slot_to_rack(): void
+    {
+        $pallet = WmsPalletForm::create([
+            'pallet_id'        => 'PLT-STORE-SCAN-01',
+            'position_id'      => null,
+            'part_no'          => '27120M650A',
+            'model_name'       => 'FRONT COVER TEST',
+            'prod_date'        => '2026-10-09',
+            'delivery_name'    => 'Driver Store Test',
+            'delivery_shift'   => '2',
+            'box_qty'          => 2,
+            'total_pallet_qty' => 100,
+            'status'           => 'STORED',
+        ]);
+
+        WmsPalletFormDetail::create([
+            'pallet_form_id' => 'PLT-STORE-SCAN-01',
+            'part_no'        => '27120M650A',
+            'model_name'     => 'FRONT COVER TEST',
+            'spk_no'         => 'SPK-SCAN-001',
+            'qty'            => 50,
+            'label'          => 'LBL-SCAN-01',
+            'warehouse'      => 'FG',
+        ]);
+
+        WmsPalletFormDetail::create([
+            'pallet_form_id' => 'PLT-STORE-SCAN-01',
+            'part_no'        => '27120M650A',
+            'model_name'     => 'FRONT COVER TEST',
+            'spk_no'         => 'SPK-SCAN-002',
+            'qty'            => 50,
+            'label'          => 'LBL-SCAN-02',
+            'warehouse'      => 'FG',
+        ]);
+
+        $this->actingAs($this->adminUser);
+
+        // 1. Test scanning non-existent pallet
+        Livewire::test(\App\Livewire\Wms\PalletFormIndex::class)
+            ->set('scanPalletId', 'PLT-NON-EXISTENT')
+            ->call('scanPallet')
+            ->assertSet('scannedPallet', null)
+            ->assertDispatched('scan-error');
+
+        // 2. Test scanning valid pallet -> loads verification data and recommendation
+        $testComp = Livewire::test(\App\Livewire\Wms\PalletFormIndex::class)
+            ->set('scanPalletId', 'PLT-STORE-SCAN-01')
+            ->call('scanPallet')
+            ->assertSet('scannedPallet.pallet_id', 'PLT-STORE-SCAN-01')
+            ->assertSet('scannedPallet.part_no', '27120M650A')
+            ->assertDispatched('scan-success');
+
+        // 3. Test scanning rack barcode
+        $testComp->set('scanRackCode', $this->position->position_code)
+            ->call('scanRackPosition')
+            ->assertSet('selectedPositionId', $this->position->id);
+
+        // 4. Test save assign slot
+        $testComp->call('saveAssignSlot')
+            ->assertSet('scannedPallet', null)
+            ->assertSet('scanPalletId', '')
+            ->assertDispatched('focus-scan-input');
+
+        $pallet->refresh();
+        $this->assertEquals($this->position->id, $pallet->position_id);
+        $this->assertNotNull($pallet->assigned_at);
+        $this->assertEquals('PARTIAL', $this->position->fresh()->status);
+    }
 }
+

@@ -3,6 +3,8 @@
 namespace App\Livewire\Wms;
 
 use App\Models\WmsPalletForm;
+use App\Models\WmsPosition;
+use App\Models\WmsWarehouse;
 use App\Services\WmsService;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -15,7 +17,16 @@ class PalletFormIndex extends Component
     public $search = '';
     public $filterSlot = 'ALL'; // ALL, UNASSIGNED, ASSIGNED
 
-    // Assign Slot Modal State (Store)
+    // Quick Barcode Scanner & Verification State (Store Putaway)
+    public string $scanPalletId = '';
+    public ?WmsPalletForm $scannedPallet = null;
+    public ?int $selectedPositionId = null;
+    public ?string $scanRackCode = '';
+    public ?int $recommendedPositionId = null;
+    public string $filterWarehouseId = '';
+    public bool $showBoxDetails = false;
+
+    // Assign Slot Modal State (Store - Backward Compatible)
     public bool $showAssignModal = false;
     public ?string $assignPalletId = null;
     public ?int $assignPositionId = null;
@@ -32,38 +43,158 @@ class PalletFormIndex extends Component
         $this->resetPage();
     }
 
-    public function openAssignModal($palletId)
+    /**
+     * Auto-trigger scan when barcode is entered/scanned without needing Enter key
+     */
+    public function updatedScanPalletId($value)
     {
-        $pallet = WmsPalletForm::where('pallet_id', $palletId)->firstOrFail();
-
-        if ($pallet->total_pallet_qty <= 0) {
-            session()->flash('error', "Pallet {$pallet->pallet_id} sudah habis (quantity 0) dan tidak perlu di-assign ke slot rak.");
+        $this->scanPalletId = trim($value ?? '');
+        if (empty($this->scanPalletId)) {
+            $this->scannedPallet = null;
             return;
         }
 
-        $this->assignPalletId   = $pallet->pallet_id;
-        $this->assignPositionId = $pallet->position_id;
-        $this->showAssignModal  = true;
+        // Automatically scan if barcode has reasonable length (>= 4 chars)
+        if (strlen($this->scanPalletId) >= 4) {
+            $this->scanPallet();
+        }
     }
 
+    /**
+     * Auto-trigger rack position lookup when rack barcode is scanned
+     */
+    public function updatedScanRackCode($value)
+    {
+        $this->scanRackCode = trim($value ?? '');
+        if (!empty($this->scanRackCode) && strlen($this->scanRackCode) >= 3) {
+            $this->scanRackPosition();
+        }
+    }
+
+    /**
+     * Scan / Look up Pallet barcode for verification and rack assignment
+     */
+    public function scanPallet(?WmsService $wmsService = null)
+    {
+        $this->scanPalletId = trim($this->scanPalletId);
+        if (empty($this->scanPalletId)) {
+            $this->scannedPallet = null;
+            return;
+        }
+
+        $wmsService = $wmsService ?? app(WmsService::class);
+
+        $pallet = WmsPalletForm::with([
+            'position.rack.warehouse',
+            'details.item.customer',
+        ])->where('pallet_id', $this->scanPalletId)->first();
+
+        if (!$pallet) {
+            session()->flash('error', "Pallet ID \"{$this->scanPalletId}\" tidak ditemukan di sistem.");
+            $this->scannedPallet = null;
+            $this->dispatch('scan-error');
+            return;
+        }
+
+        if ($pallet->total_pallet_qty <= 0 || $pallet->status === 'OUT') {
+            session()->flash('error', "Pallet {$pallet->pallet_id} sudah OUT / stok habis (0 pcs) dan tidak dapat di-assign ke rak.");
+            $this->scannedPallet = null;
+            $this->dispatch('scan-error');
+            return;
+        }
+
+        $this->scannedPallet          = $pallet;
+        $this->assignPalletId         = $pallet->pallet_id;
+        $this->selectedPositionId     = $pallet->position_id;
+        $this->assignPositionId       = $pallet->position_id;
+        $this->showBoxDetails         = false;
+
+        // Smart Recommendation calculation
+        $customerCodes = $pallet->details->map(fn($d) => $d->item?->customer?->customer_code)
+            ->filter()->unique()->toArray();
+        $rec = $wmsService->recommendPosition($customerCodes, (string) $pallet->part_no);
+        $this->recommendedPositionId = $rec?->id;
+
+        $this->dispatch('scan-success');
+    }
+
+    /**
+     * Quick Barcode Scanner for Rack / Slot Position
+     */
+    public function scanRackPosition()
+    {
+        $code = trim($this->scanRackCode ?? '');
+        if (empty($code)) {
+            return;
+        }
+
+        $pos = WmsPosition::where('position_code', $code)
+            ->orWhere('position_code', 'like', "%{$code}%")
+            ->first();
+
+        if ($pos) {
+            $this->selectedPositionId = $pos->id;
+            $this->assignPositionId   = $pos->id;
+            $this->scanRackCode       = '';
+            $this->dispatch('scan-success');
+            session()->flash('info', "Slot rak terpilih: {$pos->position_code}");
+        } else {
+            session()->flash('error', "Slot rak \"{$code}\" tidak ditemukan.");
+            $this->dispatch('scan-error');
+        }
+    }
+
+    /**
+     * Apply system smart recommendation
+     */
+    public function applyRecommendation()
+    {
+        if ($this->recommendedPositionId) {
+            $this->selectedPositionId = $this->recommendedPositionId;
+            $this->assignPositionId   = $this->recommendedPositionId;
+            $this->dispatch('scan-success');
+        }
+    }
+
+    /**
+     * Open assign modal / load verification view from table row
+     */
+    public function openAssignModal($palletId, ?WmsService $wmsService = null)
+    {
+        $this->scanPalletId = $palletId;
+        $this->scanPallet($wmsService);
+
+        if ($this->scannedPallet) {
+            $this->showAssignModal = true;
+        }
+    }
+
+    /**
+     * Save Pallet Assignment to Rack (Store)
+     */
     public function saveAssignSlot(?WmsService $wmsService = null)
     {
         $wmsService = $wmsService ?? app(WmsService::class);
-        $this->validate([
-            'assignPositionId' => 'nullable|exists:wms_positions,id',
-        ]);
+        $palletId = $this->scannedPallet?->pallet_id ?? $this->assignPalletId;
+
+        if (!$palletId) {
+            session()->flash('error', "Silakan scan atau pilih pallet terlebih dahulu.");
+            return;
+        }
+
+        $targetPosId = $this->selectedPositionId ?? $this->assignPositionId;
 
         try {
-            $pallet = WmsPalletForm::where('pallet_id', $this->assignPalletId)->firstOrFail();
+            $pallet = WmsPalletForm::where('pallet_id', $palletId)->firstOrFail();
 
-            if ($pallet->total_pallet_qty <= 0) {
-                session()->flash('error', "Pallet {$pallet->pallet_id} sudah habis (quantity 0) dan tidak perlu di-assign ke slot rak.");
-                $this->showAssignModal = false;
+            if ($pallet->total_pallet_qty <= 0 || $pallet->status === 'OUT') {
+                session()->flash('error', "Pallet {$pallet->pallet_id} sudah habis / OUT dan tidak perlu di-assign.");
+                $this->clearScannedPallet();
                 return;
             }
 
             $oldPositionId = $pallet->position_id;
-            $newPositionId = !empty($this->assignPositionId) ? (int) $this->assignPositionId : null;
+            $newPositionId = !empty($targetPosId) ? (int) $targetPosId : null;
 
             $pallet->update([
                 'position_id' => $newPositionId,
@@ -80,20 +211,49 @@ class PalletFormIndex extends Component
 
             // Log Store transaction
             $action = $newPositionId ? 'ASSIGN_SLOT' : 'UNASSIGN_SLOT';
-            $notes  = $newPositionId ? "Assigned by Store to slot" : "Set to TEMPORARY (Belum ada tempat) by Store";
+            $notes  = $newPositionId ? "Assigned by Store via Quick Scan" : "Set to TEMPORARY (Belum ada tempat) by Store";
             $wmsService->logTransaction($pallet->pallet_id, $action, $newPositionId, $notes);
 
             if ($newPositionId) {
-                $newPos = \App\Models\WmsPosition::find($newPositionId);
-                session()->flash('success', "Pallet {$pallet->pallet_id} berhasil di-assign ke slot rak {$newPos->position_code} oleh Store.");
+                $newPos = WmsPosition::find($newPositionId);
+                session()->flash('success', "✓ Pallet {$pallet->pallet_id} ({$pallet->part_no}) berhasil di-assign ke slot rak {$newPos->position_code} oleh Store.");
             } else {
-                session()->flash('success', "Pallet {$pallet->pallet_id} berhasil di-set ke TEMPORARY (Belum ada tempat).");
+                session()->flash('success', "✓ Pallet {$pallet->pallet_id} berhasil di-set ke TEMPORARY (Belum ada tempat).");
             }
 
-            $this->showAssignModal = false;
+            $this->clearScannedPallet();
+            $this->dispatch('scan-success');
+            $this->dispatch('focus-scan-input');
         } catch (\Exception $e) {
             session()->flash('error', "Gagal meng-assign slot rak: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Unassign / Set Pallet to Temporary
+     */
+    public function unassignScannedPallet(?WmsService $wmsService = null)
+    {
+        $this->selectedPositionId = null;
+        $this->assignPositionId   = null;
+        $this->saveAssignSlot($wmsService);
+    }
+
+    /**
+     * Clear active scanned pallet and reset inputs
+     */
+    public function clearScannedPallet()
+    {
+        $this->scannedPallet          = null;
+        $this->scanPalletId           = '';
+        $this->selectedPositionId     = null;
+        $this->scanRackCode           = '';
+        $this->recommendedPositionId = null;
+        $this->assignPalletId         = null;
+        $this->assignPositionId       = null;
+        $this->showAssignModal        = false;
+        $this->showBoxDetails         = false;
+        $this->dispatch('focus-scan-input');
     }
 
     public function deletePallet($palletId, ?WmsService $wmsService = null)
@@ -164,7 +324,7 @@ class PalletFormIndex extends Component
             }
         }
 
-        $palletForms = WmsPalletForm::with(['position.rack', 'details.item.customer'])
+        $palletForms = WmsPalletForm::with(['position.rack.warehouse', 'details.item.customer'])
             ->where(function($query) {
                 $query->where('pallet_id', 'like', '%' . $this->search . '%')
                       ->orWhere('part_no', 'like', '%' . $this->search . '%')
@@ -185,13 +345,28 @@ class PalletFormIndex extends Component
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
-        $availablePositions = \App\Models\WmsPosition::with('rack')
-            ->orderBy('position_code', 'asc')
-            ->get();
+        $warehouses = WmsWarehouse::orderBy('whse_code', 'asc')->get();
+
+        $availablePositionsQuery = WmsPosition::with(['rack.warehouse', 'customer'])
+            ->when(!empty($this->filterWarehouseId), function($q) {
+                $q->whereHas('rack', function($rq) {
+                    $rq->where('whse_id', $this->filterWarehouseId);
+                });
+            })
+            ->orderBy('position_code', 'asc');
+
+        $availablePositions = $availablePositionsQuery->get();
+
+        $recommendedPosition = $this->recommendedPositionId 
+            ? WmsPosition::with(['rack.warehouse', 'customer'])->find($this->recommendedPositionId)
+            : null;
 
         return view('livewire.wms.pallet-form-index', [
-            'palletForms'        => $palletForms,
-            'availablePositions' => $availablePositions,
+            'palletForms'          => $palletForms,
+            'availablePositions'   => $availablePositions,
+            'warehouses'           => $warehouses,
+            'recommendedPosition'  => $recommendedPosition,
         ]);
     }
 }
+

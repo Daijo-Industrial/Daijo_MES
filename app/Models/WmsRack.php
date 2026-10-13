@@ -10,7 +10,7 @@ class WmsRack extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['whse_id', 'rack_code', 'x_pos', 'y_pos', 'width', 'height', 'orientation'];
+    protected $fillable = ['whse_id', 'rack_code', 'x_pos', 'y_pos', 'width', 'height', 'orientation', 'zone', 'sort_order'];
 
     public function warehouse()
     {
@@ -20,6 +20,74 @@ class WmsRack extends Model
     public function positions()
     {
         return $this->hasMany(WmsPosition::class, 'rack_id');
+    }
+
+    public function getEffectiveZoneAttribute(): string
+    {
+        $rawZone = strtoupper(trim($this->attributes['zone'] ?? ''));
+        if (!empty($rawZone) && $rawZone !== 'DEFAULT') {
+            return $rawZone;
+        }
+
+        // Automatic inference if zone not explicitly set
+        $code = strtoupper(trim($this->rack_code));
+        if (str_starts_with($code, 'F')) {
+            return 'LOGISTIC';
+        }
+        if (str_starts_with($code, 'W')) {
+            return 'STORE';
+        }
+        if (str_starts_with($code, 'R')) {
+            return 'WIP';
+        }
+
+        return 'DEFAULT';
+    }
+
+    public function getZoneColorClassesAttribute(): array
+    {
+        return match ($this->effective_zone) {
+            'LOGISTIC' => [
+                'bg' => 'bg-emerald-50/80',
+                'border' => 'border-emerald-300',
+                'badge' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                'text' => 'text-emerald-800',
+                'header_bg' => 'bg-emerald-600 text-white',
+                'label' => '🟢 LOGISTIC',
+            ],
+            'STORE' => [
+                'bg' => 'bg-blue-50/80',
+                'border' => 'border-blue-300',
+                'badge' => 'bg-blue-100 text-blue-800 border-blue-300',
+                'text' => 'text-blue-800',
+                'header_bg' => 'bg-blue-600 text-white',
+                'label' => '🔵 STORE',
+            ],
+            'WIP' => [
+                'bg' => 'bg-amber-50/80',
+                'border' => 'border-amber-300',
+                'badge' => 'bg-amber-100 text-amber-800 border-amber-300',
+                'text' => 'text-amber-800',
+                'header_bg' => 'bg-amber-600 text-white',
+                'label' => '🟠 WIP',
+            ],
+            'FG' => [
+                'bg' => 'bg-purple-50/80',
+                'border' => 'border-purple-300',
+                'badge' => 'bg-purple-100 text-purple-800 border-purple-300',
+                'text' => 'text-purple-800',
+                'header_bg' => 'bg-purple-600 text-white',
+                'label' => '🟣 FG',
+            ],
+            default => [
+                'bg' => 'bg-slate-50/80',
+                'border' => 'border-slate-300',
+                'badge' => 'bg-slate-100 text-slate-800 border-slate-300',
+                'text' => 'text-slate-800',
+                'header_bg' => 'bg-slate-700 text-white',
+                'label' => '⚪ DEFAULT',
+            ],
+        };
     }
 
     public function getDistanceScoreAttribute(): int

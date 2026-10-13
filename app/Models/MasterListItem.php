@@ -23,6 +23,7 @@ class MasterListItem extends Model
         'cycle_time',
         'project_code',
         'family',
+        'part_weight',
         'description_in_foreign_lang',
         'color',
         'half_code_1',

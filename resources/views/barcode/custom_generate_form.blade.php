@@ -41,7 +41,7 @@
                         <!-- Barcode Template / Type Selection -->
                         <div class="md:col-span-2">
                             <label class="block text-sm font-bold text-slate-800 mb-2">Tipe / Format Label Barcode <span class="text-red-500">*</span></label>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                                 <label class="relative flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition focus:outline-none border-indigo-600 bg-indigo-50/40 text-indigo-900" id="card_type_default">
                                     <input type="radio" name="barcode_type" value="default" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
                                     <div class="ml-3">
@@ -82,6 +82,17 @@
                                         <span class="block text-xs text-slate-500 mt-0.5">Part Tag (8 label/sheet): Model, Part Code, Color, Position (RH/LH), Half Code & SP</span>
                                     </div>
                                 </label>
+
+                                <label class="relative flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition focus:outline-none border-slate-200 hover:border-slate-300 bg-white text-slate-800" id="card_type_vinfast">
+                                    <input type="radio" name="barcode_type" value="vinfast" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
+                                    <div class="ml-3">
+                                        <span class="block text-sm font-bold flex items-center gap-1.5">
+                                            Customer VINFAST
+                                            <span class="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-2 py-0.5 rounded">VINFAST</span>
+                                        </span>
+                                        <span class="block text-xs text-slate-500 mt-0.5">Format label VinFast (3 label/sheet: 1 baris 1 label, Part No, Std Pack, Gross Weight, Made in, Batch#)</span>
+                                    </div>
+                                </label>
                             </div>
                         </div>
 
@@ -94,6 +105,8 @@
                                 'model'=> ($it->family && $it->family !== '0') ? $it->family : '',
                                 'color'=> ($it->color && $it->color !== '0') ? $it->color : '',
                                 'position' => ($it->position && $it->position !== '0') ? $it->position : '',
+                                'std_pack' => (int) ($it->standart_packaging_list ?? 0),
+                                'part_weight' => $it->part_weight ? (float) $it->part_weight : 0,
                                 'is_kr' => str_starts_with($it->item_code, 'K-')
                             ])) !!}
                         </script>
@@ -182,9 +195,33 @@
                         <!-- Model (Family) -->
                         <div>
                             <label for="model" class="block text-sm font-semibold text-slate-700 mb-2">
-                                Model <span class="text-xs font-normal text-slate-500">(Khusus ITSP / Family)</span>
+                                Model <span class="text-xs font-normal text-slate-500">(Family / VinFast Type of Part)</span>
                             </label>
                             <input type="text" id="model" name="model" placeholder="Otomatis terisi dari Family" class="block w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <!-- Gross Weight (part_weight) -->
+                        <div>
+                            <label for="part_weight" class="block text-sm font-semibold text-slate-700 mb-2">
+                                Gross Weight (KG) <span class="text-xs font-normal text-slate-500">(Khusus VinFast / Part Weight)</span>
+                            </label>
+                            <input type="number" step="0.001" min="0" id="part_weight" name="part_weight" placeholder="Otomatis terisi dari part_weight master item" class="block w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <!-- Std Pack (PCS) -->
+                        <div>
+                            <label for="std_pack" class="block text-sm font-semibold text-slate-700 mb-2">
+                                Std Pack (PCS) <span class="text-xs font-normal text-slate-500">(Standart Packaging List)</span>
+                            </label>
+                            <input type="number" min="0" id="std_pack" name="std_pack" placeholder="Otomatis terisi dari standard pack master item" class="block w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <!-- Made In -->
+                        <div>
+                            <label for="made_in" class="block text-sm font-semibold text-slate-700 mb-2">
+                                Made In <span class="text-xs font-normal text-slate-500">(Khusus VinFast)</span>
+                            </label>
+                            <input type="text" id="made_in" name="made_in" value="Indonesia" class="block w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
 
                         <!-- Color -->
@@ -206,7 +243,10 @@
                         <!-- SPK Number Selection -->
                         <div>
                             <div class="flex justify-between items-center mb-2">
-                                <label for="spk_select" class="block text-sm font-semibold text-slate-700">SPK Number <span class="text-red-500">*</span></label>
+                                <label for="spk_select" class="block text-sm font-semibold text-slate-700">
+                                    SPK Number <span id="spk_required_star" class="text-red-500">*</span>
+                                    <span id="spk_optional_badge" class="hidden text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">(Opsional untuk VinFast)</span>
+                                </label>
                                 <div class="flex items-center space-x-2">
                                     <input type="checkbox" id="manual_spk_toggle" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
                                     <label for="manual_spk_toggle" class="text-xs text-slate-600 cursor-pointer select-none">Input Manual</label>
@@ -423,6 +463,10 @@
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                                                     ITSP
                                                 </span>
+                                            @elseif(($log->barcode_type ?? 'default') === 'vinfast')
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                                    VINFAST
+                                                </span>
                                             @else
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                                                     Standard
@@ -500,18 +544,25 @@
             const modelInput = document.getElementById('model');
             const colorInput = document.getElementById('color');
             const positionInput = document.getElementById('position');
+            const partWeightInput = document.getElementById('part_weight');
+            const stdPackInput = document.getElementById('std_pack');
+            const madeInInput = document.getElementById('made_in');
             const spkSelect = document.getElementById('spk_select');
             const manualSpkToggle = document.getElementById('manual_spk_toggle');
             const spkSelectContainer = document.getElementById('spk_select_container');
             const spkInputContainer = document.getElementById('spk_input_container');
             const spkInput = document.getElementById('spk_input');
+            const spkRequiredStar = document.getElementById('spk_required_star');
+            const spkOptionalBadge = document.getElementById('spk_optional_badge');
             const customerInput = document.getElementById('customer');
             const warehouseInput = document.getElementById('warehouse');
+            const quantityInput = document.getElementById('quantity');
             const barcodeTypeRadios = document.querySelectorAll('input[name="barcode_type"]');
             const cardDefault = document.getElementById('card_type_default');
             const cardSharp = document.getElementById('card_type_sharp');
             const cardYanfeng = document.getElementById('card_type_yanfeng');
             const cardItsp = document.getElementById('card_type_itsp');
+            const cardVinfast = document.getElementById('card_type_vinfast');
 
             // Current State
             const urlParams = new URLSearchParams(window.location.search);
@@ -536,6 +587,32 @@
                     btnBranchKbn.className = 'px-2.5 py-0.5 rounded transition font-bold bg-purple-600 text-white shadow-xs';
                 } else if (btnBranchAll) {
                     btnBranchAll.className = 'px-2.5 py-0.5 rounded transition font-bold bg-indigo-600 text-white shadow-xs';
+                }
+            }
+
+            function updateSpkRequirementUI() {
+                const isVinfast = document.querySelector('input[name="barcode_type"]:checked')?.value === 'vinfast';
+                if (isVinfast) {
+                    if (spkRequiredStar) spkRequiredStar.classList.add('hidden');
+                    if (spkOptionalBadge) spkOptionalBadge.classList.remove('hidden');
+                    if (spkSelect) spkSelect.removeAttribute('required');
+                    if (spkInput) {
+                        spkInput.removeAttribute('required');
+                        spkInput.placeholder = 'Type SPK Number manually (Opsional untuk VinFast)';
+                    }
+                } else {
+                    if (spkRequiredStar) spkRequiredStar.classList.remove('hidden');
+                    if (spkOptionalBadge) spkOptionalBadge.classList.add('hidden');
+                    if (manualSpkToggle && manualSpkToggle.checked) {
+                        if (spkInput) {
+                            spkInput.setAttribute('required', 'required');
+                            spkInput.placeholder = 'Type SPK Number manually';
+                        }
+                        if (spkSelect) spkSelect.removeAttribute('required');
+                    } else {
+                        if (spkSelect) spkSelect.setAttribute('required', 'required');
+                        if (spkInput) spkInput.removeAttribute('required');
+                    }
                 }
             }
 
@@ -636,6 +713,8 @@
                 hiddenItemCode.setAttribute('data-model', item.model || '');
                 hiddenItemCode.setAttribute('data-color', item.color || '');
                 hiddenItemCode.setAttribute('data-position', item.position || '');
+                hiddenItemCode.setAttribute('data-std-pack', item.std_pack || '0');
+                hiddenItemCode.setAttribute('data-part-weight', item.part_weight || '0');
                 hiddenItemCode.dispatchEvent(new Event('change', { bubbles: true }));
 
                 searchInput.value = item.code;
@@ -671,6 +750,8 @@
                 hiddenItemCode.removeAttribute('data-model');
                 hiddenItemCode.removeAttribute('data-color');
                 hiddenItemCode.removeAttribute('data-position');
+                hiddenItemCode.removeAttribute('data-std-pack');
+                hiddenItemCode.removeAttribute('data-part-weight');
                 hiddenItemCode.dispatchEvent(new Event('change', { bubbles: true }));
 
                 searchInput.value = '';
@@ -774,12 +855,13 @@
             barcodeTypeRadios.forEach(radio => {
                 radio.addEventListener('change', function () {
                     // Reset all cards
-                    [cardDefault, cardSharp, cardYanfeng, cardItsp].forEach(card => {
+                    [cardDefault, cardSharp, cardYanfeng, cardItsp, cardVinfast].forEach(card => {
                         if (card) {
                             card.classList.remove(
                                 'border-indigo-600', 'bg-indigo-50/40', 'text-indigo-900',
                                 'border-emerald-600', 'bg-emerald-50/40', 'text-emerald-900',
-                                'border-amber-600', 'bg-amber-50/40', 'text-amber-900'
+                                'border-amber-600', 'bg-amber-50/40', 'text-amber-900',
+                                'border-blue-600', 'bg-blue-50/40', 'text-blue-900'
                             );
                             card.classList.add('border-slate-200', 'bg-white', 'text-slate-800');
                         }
@@ -809,21 +891,36 @@
                         if (warehouseInput.value === 'WFI') {
                             warehouseInput.value = 'FFI';
                         }
+                    } else if (this.value === 'vinfast') {
+                        if (cardVinfast) {
+                            cardVinfast.classList.add('border-blue-600', 'bg-blue-50/40', 'text-blue-900');
+                            cardVinfast.classList.remove('border-slate-200', 'bg-white', 'text-slate-800');
+                        }
+
+                        customerInput.value = 'VINFAST TRADING AND PRODUCTION JSC';
+                        if (warehouseInput.value === 'WFI') {
+                            warehouseInput.value = 'FFI';
+                        }
+                        if (stdPackInput && stdPackInput.value && parseInt(stdPackInput.value) > 0) {
+                            if (quantityInput) quantityInput.value = stdPackInput.value;
+                        }
                     } else {
                         cardDefault.classList.add('border-indigo-600', 'bg-indigo-50/40', 'text-indigo-900');
                         cardDefault.classList.remove('border-slate-200', 'bg-white', 'text-slate-800');
 
-                        if (customerInput.value === 'SHARP' || customerInput.value === 'YANFENG' || customerInput.value === 'PT. ITSP') {
+                        if (customerInput.value === 'SHARP' || customerInput.value === 'YANFENG' || customerInput.value === 'PT. ITSP' || customerInput.value.includes('VINFAST')) {
                             customerInput.value = '';
                         }
                         if (warehouseInput.value === 'FFI') {
                             warehouseInput.value = 'WFI';
                         }
                     }
+
+                    updateSpkRequirementUI();
                 });
             });
 
-            // Handle Item Code Change (Auto fill Name, QAD, Model, Color, Position & fetch SPKs via AJAX)
+            // Handle Item Code Change (Auto fill Name, QAD, Model, Color, Position, Weight, StdPack & fetch SPKs via AJAX)
             if (hiddenItemCode) {
                 hiddenItemCode.addEventListener('change', function () {
                     const itemName = this.getAttribute('data-name');
@@ -831,6 +928,8 @@
                     const itemModel = this.getAttribute('data-model');
                     const itemColor = this.getAttribute('data-color');
                     const itemPosition = this.getAttribute('data-position');
+                    const itemStdPack = this.getAttribute('data-std-pack');
+                    const itemPartWeight = this.getAttribute('data-part-weight');
                     const itemCode = this.value;
 
                     if (itemNameInput) itemNameInput.value = itemName || '';
@@ -838,6 +937,15 @@
                     if (modelInput) modelInput.value = itemModel || '';
                     if (colorInput) colorInput.value = itemColor || '';
                     if (positionInput) positionInput.value = itemPosition || '';
+                    if (stdPackInput) stdPackInput.value = (itemStdPack && itemStdPack !== '0') ? itemStdPack : '';
+                    if (partWeightInput) partWeightInput.value = (itemPartWeight && itemPartWeight !== '0') ? itemPartWeight : '';
+
+                    const selectedType = document.querySelector('input[name="barcode_type"]:checked')?.value;
+                    if (selectedType === 'vinfast' && itemStdPack && parseInt(itemStdPack) > 0) {
+                        if (quantityInput && (!quantityInput.value || quantityInput.value === '1')) {
+                            quantityInput.value = itemStdPack;
+                        }
+                    }
 
                     if (!itemCode) {
                         spkSelect.innerHTML = '<option value="">-- Select Item Code First --</option>';
@@ -850,12 +958,19 @@
                         .then(response => response.json())
                         .then(spks => {
                             spkSelect.innerHTML = '';
+                            const isVinfast = document.querySelector('input[name="barcode_type"]:checked')?.value === 'vinfast';
                             if (spks.length === 0) {
-                                spkSelect.innerHTML = '<option value="">No SPK found in history</option>';
-                                manualSpkToggle.checked = true;
-                                triggerManualToggle(true);
+                                if (isVinfast) {
+                                    spkSelect.innerHTML = '<option value="">-- Tanpa SPK (Opsional) --</option>';
+                                } else {
+                                    spkSelect.innerHTML = '<option value="">No SPK found in history</option>';
+                                    manualSpkToggle.checked = true;
+                                    triggerManualToggle(true);
+                                }
                             } else {
-                                spkSelect.innerHTML = '<option value="">-- Select SPK Number --</option>';
+                                spkSelect.innerHTML = isVinfast
+                                    ? '<option value="">-- Tanpa SPK / Pilih SPK (Opsional) --</option>'
+                                    : '<option value="">-- Select SPK Number --</option>';
                                 spks.forEach(spk => {
                                     const option = document.createElement('option');
                                     option.value = spk;
@@ -863,6 +978,7 @@
                                     spkSelect.appendChild(option);
                                 });
                             }
+                            updateSpkRequirementUI();
                         })
                         .catch(err => {
                             console.error('Error fetching SPKs:', err);
@@ -879,6 +995,7 @@
             }
 
             function triggerManualToggle(isManual) {
+                const isVinfast = document.querySelector('input[name="barcode_type"]:checked')?.value === 'vinfast';
                 if (isManual) {
                     spkSelectContainer.classList.add('hidden');
                     spkSelect.removeAttribute('name');
@@ -886,7 +1003,11 @@
 
                     spkInputContainer.classList.remove('hidden');
                     spkInput.setAttribute('name', 'spk_number');
-                    spkInput.setAttribute('required', 'required');
+                    if (!isVinfast) {
+                        spkInput.setAttribute('required', 'required');
+                    } else {
+                        spkInput.removeAttribute('required');
+                    }
                 } else {
                     spkInputContainer.classList.add('hidden');
                     spkInput.removeAttribute('name');
@@ -894,12 +1015,17 @@
 
                     spkSelectContainer.classList.remove('hidden');
                     spkSelect.setAttribute('name', 'spk_number');
-                    spkSelect.setAttribute('required', 'required');
+                    if (!isVinfast) {
+                        spkSelect.setAttribute('required', 'required');
+                    } else {
+                        spkSelect.removeAttribute('required');
+                    }
                 }
             }
 
             // Init UI
             updateBranchButtonsUI();
+            updateSpkRequirementUI();
 
             // Check if initial value exists
             const initCode = hiddenItemCode.value;

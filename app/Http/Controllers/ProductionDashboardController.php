@@ -569,7 +569,12 @@ class ProductionDashboardController extends Controller
         
 
         $machineNames = [
+            '0150E',
+            '0300A',
             '0350F',
+            '0360A',
+            '0360D',
+            '0450B',
             '0450F',
             '0450G',
             '0450H',
@@ -579,27 +584,23 @@ class ProductionDashboardController extends Controller
             '0650D',
             '0650E',
             '0850D',
-            '0150E',
-            '0360A',
-            '0360D',
-            '0450B',
-            'K2800A',
-            'K2100A',
-            'K1400A',
-            'K1400B',
-            'K1400C',
-            'K0900A',
-            'K0900B',
+            'K0450A',
             'K0650A',
             'K0650B',
             'K0750A',
             'K0750B',
-            'K0450A',
+            'K0900A',
+            'K0900B',
+            'K1400A',
+            'K1400B',
+            'K1400C',
+            'K2100A',
+            'K2800A',
         ];
         
         $machines = User::distinct()
-            // ->whereIn('id', MachineJob::pluck('user_id'))
             ->whereIn('name', $machineNames)
+            ->orderBy('name')
             ->pluck('name', 'id');
         
         // Fetch all mould changes on the selected date to find the ones > 20 minutes

@@ -508,6 +508,300 @@
             flex-shrink: 0;
         }
 
+        /* VinFast Specific Layout (3 labels per sheet: 1 col x 3 rows) */
+        .a4-sheet.vinfast-sheet {
+            width: 200mm;
+            height: 278mm;
+            grid-template-columns: 200mm;
+            grid-template-rows: repeat(3, 89mm);
+            gap: 3.5mm 0;
+            padding: 2mm 0;
+            box-sizing: border-box;
+        }
+
+        .sticker-label.sticker-label-vinfast {
+            width: 200mm;
+            height: 89mm;
+            box-sizing: border-box;
+            border: 1.5px solid #000000;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            font-family: Arial, Helvetica, sans-serif;
+            overflow: hidden;
+        }
+
+        .vf-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        /* Row 1: Header */
+        .vf-row-header {
+            height: 20mm;
+            border-bottom: 1.5px solid #000000;
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .vf-col-logo {
+            width: 26mm;
+            border-right: 1.2px solid #000000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5mm;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .vf-logo-img {
+            max-height: 18mm;
+            max-width: 24mm;
+            object-fit: contain;
+            display: block;
+        }
+
+        .vf-col-from {
+            width: 60mm;
+            border-right: 1.2px solid #000000;
+            padding: 1mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            font-size: 6pt;
+            line-height: 1.25;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .vf-col-to {
+            flex: 1;
+            border-right: 1.2px solid #000000;
+            padding: 1mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            font-size: 6pt;
+            line-height: 1.25;
+            box-sizing: border-box;
+        }
+
+        .vf-col-individual {
+            width: 38mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13pt;
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        /* Row 2: Specs */
+        .vf-row-specs {
+            height: 15mm;
+            border-bottom: 1.5px solid #000000;
+            display: grid;
+            grid-template-columns: 42mm 50mm 60mm 1fr;
+            box-sizing: border-box;
+        }
+
+        .vf-spec-col {
+            border-right: 1.2px solid #000000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.8mm 1mm;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .vf-spec-col:last-child {
+            border-right: none;
+        }
+
+        .vf-spec-label {
+            font-size: 6.5pt;
+            font-weight: 900;
+            line-height: 1;
+            text-align: center;
+            width: 100%;
+        }
+
+        .vf-spec-val-lg {
+            font-size: 20pt;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .vf-spec-val-md {
+            font-size: 14pt;
+            font-weight: 900;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        /* Row 3: Part Number */
+        .vf-row-partno {
+            height: 15mm;
+            border-bottom: 1.5px solid #000000;
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .vf-partno-label {
+            width: 32mm;
+            border-right: 1.2px solid #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 7.5pt;
+            font-weight: 900;
+            line-height: 1.15;
+            padding: 0.5mm;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .vf-partno-val {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28pt;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            font-family: 'Arial Black', Arial, sans-serif;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 1mm;
+            box-sizing: border-box;
+        }
+
+        /* Row 4: Description & Dates */
+        .vf-row-desc {
+            height: 23mm;
+            border-bottom: 1.5px solid #000000;
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .vf-desc-left {
+            width: 102mm;
+            border-right: 1.2px solid #000000;
+            padding: 1mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .vf-desc-title {
+            font-size: 6.5pt;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 0.5mm;
+        }
+
+        .vf-desc-name {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 13pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            line-height: 1.25;
+            word-break: break-word;
+            padding: 0 1mm;
+        }
+
+        .vf-desc-mid {
+            width: 48mm;
+            border-right: 1.2px solid #000000;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .vf-desc-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        .vf-subrow-top {
+            height: 50%;
+            border-bottom: 1.2px solid #000000;
+            padding: 0.8mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .vf-subrow-bot {
+            height: 50%;
+            padding: 0.8mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .vf-sub-lbl {
+            font-size: 6pt;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .vf-sub-val {
+            font-size: 11pt;
+            font-weight: 900;
+            text-align: center;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Row 5: Footer blank inspection boxes */
+        .vf-row-footer {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            box-sizing: border-box;
+        }
+
+        .vf-foot-col {
+            border-right: 1.2px solid #000000;
+            box-sizing: border-box;
+        }
+
+        .vf-foot-col:last-child {
+            border-right: none;
+        }
+
         /* Print media styles */
         @media print {
             @page {
@@ -559,6 +853,16 @@
                 height: 297mm;
                 box-sizing: border-box;
             }
+
+            .a4-sheet.vinfast-sheet {
+                padding: 6mm 5mm;
+                grid-template-columns: 200mm;
+                grid-template-rows: repeat(3, 89mm);
+                gap: 4mm 0;
+                width: 210mm;
+                height: 297mm;
+                box-sizing: border-box;
+            }
         }
     </style>
 </head>
@@ -576,6 +880,8 @@
                 Format: Customer YANFENG (QR Code & QAD / Foreign Name)
             @elseif(($barcodeType ?? 'default') === 'itsp')
                 Format: Customer PT. ITSP (Part Tag: 8 label/sheet, Model, Color, Position, SP)
+            @elseif(($barcodeType ?? 'default') === 'vinfast')
+                Format: Customer VINFAST (3 label/sheet: 1 baris 1 label, Part No, Std Pack, Gross Weight, Made in, Batch#)
             @else
                 Format: Standard Default (QR Code)
             @endif
@@ -588,14 +894,105 @@
     <!-- Sticker Labels Grid container -->
     <div class="a4-sheet-container">
         @php
-            $chunkSize = ($barcodeType === 'itsp') ? 8 : 12;
+            $chunkSize = ($barcodeType === 'vinfast') ? 3 : (($barcodeType === 'itsp') ? 8 : 12);
             $chunks = array_chunk($labels, $chunkSize);
         @endphp
 
         @foreach($chunks as $chunk)
-            <div class="a4-sheet {{ ($barcodeType === 'itsp') ? 'itsp-sheet' : '' }}">
+            <div class="a4-sheet {{ ($barcodeType === 'itsp') ? 'itsp-sheet' : (($barcodeType === 'vinfast') ? 'vinfast-sheet' : '') }}">
                 @foreach($chunk as $label)
-                    @if(($label['barcode_type'] ?? 'default') === 'itsp')
+                    @if(($label['barcode_type'] ?? 'default') === 'vinfast')
+                        <div class="sticker-label sticker-label-vinfast">
+                            <div class="vf-container">
+                                <!-- Row 1: Header -->
+                                <div class="vf-row-header">
+                                    <div class="vf-col-logo">
+                                        @if(!empty($vinfastLogoBase64))
+                                            <img src="data:image/png;base64,{{ $vinfastLogoBase64 }}" alt="VinFast" class="vf-logo-img">
+                                        @else
+                                            <img src="{{ asset('picture/vinfast-logo.png') }}" alt="VinFast" class="vf-logo-img" onerror="this.src='{{ asset('images/vinfast-logo.png') }}'">
+                                        @endif
+                                    </div>
+                                    <div class="vf-col-from">
+                                        <div style="font-weight: bold; font-size: 6pt;">FROM:</div>
+                                        <div style="font-weight: 900; font-size: 7.5pt; margin: 0.5mm 0;">PT. CHANGMING AUTO INDONESIA</div>
+                                        <div style="font-size: 6pt; color: #111;">Kawasan Industri MM2100<br>Jl. Sulawesi Blok I No. 2-5 Cibitung</div>
+                                    </div>
+                                    <div class="vf-col-to">
+                                        <div style="display: flex; gap: 3px;">
+                                            <span style="font-weight: bold; font-size: 6pt;">TO:</span>
+                                            <span style="font-weight: 900; font-size: 7.2pt;">VINFAST TRADING AND PRODUCTION JSC</span>
+                                        </div>
+                                        <div style="font-size: 5.8pt; color: #111; margin-top: 0.5mm;">Dinh Vu – Cat Hai Economic Zone, Cat Hai Island, Cat Hai Special Zone, Hai Phong City, Viet Nam.</div>
+                                    </div>
+                                    <div class="vf-col-individual">
+                                        INDIVIDUAL
+                                    </div>
+                                </div>
+
+                                <!-- Row 2: Specs Strip -->
+                                <div class="vf-row-specs">
+                                    <div class="vf-spec-col">
+                                        <div class="vf-spec-label">STD PACK (PCS):</div>
+                                        <div class="vf-spec-val-lg">{{ $label['std_pack'] ?? $label['quantity'] }}</div>
+                                    </div>
+                                    <div class="vf-spec-col">
+                                        <div class="vf-spec-label">MADE IN:</div>
+                                        <div class="vf-spec-val-md">{{ $label['made_in'] ?: 'Indonesia' }}</div>
+                                    </div>
+                                    <div class="vf-spec-col">
+                                        <div class="vf-spec-label">TYPE (MODEL) OF PART:</div>
+                                        <div class="vf-spec-val-md">{{ $label['model'] ?: '-' }}</div>
+                                    </div>
+                                    <div class="vf-spec-col">
+                                        <div class="vf-spec-label">GROSS WEIGHT (KG)</div>
+                                        <div class="vf-spec-val-lg">{{ $label['part_weight'] ? rtrim(rtrim(number_format((float)$label['part_weight'], 3, '.', ''), '0'), '.') : '-' }}</div>
+                                    </div>
+                                </div>
+
+                                <!-- Row 3: Part Number -->
+                                <div class="vf-row-partno">
+                                    <div class="vf-partno-label">PART<br>NUMBER:</div>
+                                    <div class="vf-partno-val">{{ $label['item_code'] }}</div>
+                                </div>
+
+                                <!-- Row 4: Description & Dates -->
+                                <div class="vf-row-desc">
+                                    <div class="vf-desc-left">
+                                        <div class="vf-desc-title">PART DESCRIPTION:</div>
+                                        <div class="vf-desc-name">{{ $label['item_name'] }}</div>
+                                    </div>
+                                    <div class="vf-desc-mid">
+                                        <div class="vf-subrow-top">
+                                            <div class="vf-sub-lbl">PRODUCE DATE:</div>
+                                            <div class="vf-sub-val">{{ $label['prod_date_formatted'] ?: ($label['prod_date'] ?: '-') }}</div>
+                                        </div>
+                                        <div class="vf-subrow-bot">
+                                            <div class="vf-sub-lbl">EXPIRY DATE:</div>
+                                            <div class="vf-sub-val">{{ $label['expiry_date'] ?: '' }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="vf-desc-right">
+                                        <div class="vf-subrow-top">
+                                            <div class="vf-sub-lbl">BATCH#:</div>
+                                            <div class="vf-sub-val">{{ ($label['spk_number'] && $label['spk_number'] !== '-') ? $label['spk_number'] : '-' }}</div>
+                                        </div>
+                                        <div class="vf-subrow-bot">
+                                            <div class="vf-sub-lbl">SHIPMENT DATE:</div>
+                                            <div class="vf-sub-val">{{ $label['shipment_date'] ?: '' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Row 5: Footer Empty Inspection Boxes (Blank) -->
+                                <div class="vf-row-footer">
+                                    <div class="vf-foot-col"></div>
+                                    <div class="vf-foot-col"></div>
+                                    <div class="vf-foot-col"></div>
+                                </div>
+                            </div>
+                        </div>
+                    @elseif(($label['barcode_type'] ?? 'default') === 'itsp')
                         <div class="sticker-label sticker-label-itsp">
                             <div class="itsp-container">
                                 <!-- Top Header -->
@@ -840,7 +1237,7 @@
                 <!-- If current page chunk has less than $chunkSize items, fill with invisible/empty slots to preserve grid placement -->
                 @if(count($chunk) < $chunkSize)
                     @for($i = 0; $i < ($chunkSize - count($chunk)); $i++)
-                        <div class="sticker-label {{ ($barcodeType === 'itsp') ? 'sticker-label-itsp' : '' }}" style="visibility: hidden;"></div>
+                        <div class="sticker-label {{ ($barcodeType === 'itsp') ? 'sticker-label-itsp' : (($barcodeType === 'vinfast') ? 'sticker-label-vinfast' : '') }}" style="visibility: hidden;"></div>
                     @endfor
                 @endif
             </div>

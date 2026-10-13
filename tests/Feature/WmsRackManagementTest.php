@@ -56,4 +56,46 @@ class WmsRackManagementTest extends TestCase
         $this->assertDatabaseHas('wms_positions', ['position_code' => 'J06-HM-004-L1S2']);
         $this->assertDatabaseHas('wms_positions', ['position_code' => 'J06-HM-004-L2S1']);
     }
+
+    public function test_dynamic_rack_orientation_and_zone_customization()
+    {
+        $this->actingAs($this->user);
+
+        // 1. Create a dynamic rack with horizontal orientation & logistic zone
+        Livewire::test(RackMapping::class, ['whseId' => $this->warehouse->id])
+            ->set('newRackCode', 'F41')
+            ->set('newOrientation', 'HORIZONTAL')
+            ->set('newZone', 'LOGISTIC')
+            ->set('newLevels', 3)
+            ->set('newSlotsPerLevel', 6)
+            ->set('newMaxCapacity', 2)
+            ->call('createNewRack')
+            ->assertHasNoErrors();
+
+        $rack = WmsRack::where('rack_code', 'F41')->firstOrFail();
+        $this->assertEquals('HORIZONTAL', $rack->orientation);
+        $this->assertEquals('LOGISTIC', $rack->effective_zone);
+        $this->assertCount(18, $rack->positions);
+
+        // 2. Toggle orientation to VERTICAL dynamically
+        Livewire::test(RackMapping::class, ['whseId' => $this->warehouse->id])
+            ->call('toggleRackOrientation', $rack->id)
+            ->assertHasNoErrors();
+
+        $rack->refresh();
+        $this->assertEquals('VERTICAL', $rack->orientation);
+
+        // 3. Update zone to STORE dynamically
+        Livewire::test(RackMapping::class, ['whseId' => $this->warehouse->id])
+            ->call('updateRackZone', $rack->id, 'STORE')
+            ->assertHasNoErrors();
+
+        $rack->refresh();
+        $this->assertEquals('STORE', $rack->effective_zone);
+
+        // 4. Test Auto-Arrange Racks
+        Livewire::test(RackMapping::class, ['whseId' => $this->warehouse->id])
+            ->call('autoArrangeRacks')
+            ->assertHasNoErrors();
+    }
 }

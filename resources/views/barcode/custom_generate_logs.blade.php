@@ -186,6 +186,10 @@
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                                                     ITSP
                                                 </span>
+                                            @elseif(($log->barcode_type ?? 'default') === 'vinfast')
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                                    VINFAST
+                                                </span>
                                             @else
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                                                     Standard

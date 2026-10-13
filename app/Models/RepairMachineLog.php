@@ -18,6 +18,7 @@ class RepairMachineLog extends Model
         'finish_repair',
         'pic',
         'remark',
+        'created_at',
     ];
 
     public function user()
