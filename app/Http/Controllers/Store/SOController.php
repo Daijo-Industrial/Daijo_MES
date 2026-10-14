@@ -10,6 +10,7 @@ use App\Models\BarcodePackagingMaster;
 use App\Models\BarcodePackagingDetail;
 use App\Models\UpdateLog;
 use App\Models\SpkItemHistory;
+use App\Models\SpkMaster;
 use App\Models\MasterItemPhoto;
 use App\Models\ApiLog;
 use Illuminate\Http\Request;
@@ -148,7 +149,7 @@ class SOController extends Controller
     {
         $request->validate([
             'spk_code' => 'required|string',
-            'quantity' => 'required|integer',
+            'quantity' => 'required|integer|min:1',
             'warehouse' => 'required|string',
             'label' => 'required_without:labels_bulk|nullable|string',
             'labels_bulk' => 'nullable|string',
@@ -158,9 +159,9 @@ class SOController extends Controller
         ]);
 
         $doc_num = $request->input('so_number');
-        $spk_code = $request->input('spk_code');
-        $quantity = $request->input('quantity');
-        $warehouse = $request->input('warehouse');
+        $spk_code = trim($request->input('spk_code'));
+        $quantity = (int) $request->input('quantity');
+        $warehouse = trim($request->input('warehouse'));
 
         // Parse labels (either single or bulk)
         $labels = [];
@@ -174,7 +175,10 @@ class SOController extends Controller
             }
             $labels = array_unique($labels);
         } else {
-            $labels[] = $request->input('label');
+            $lbl = trim($request->input('label') ?? '');
+            if ($lbl !== '') {
+                $labels[] = $lbl;
+            }
         }
 
         if (empty($labels)) {
@@ -186,7 +190,18 @@ class SOController extends Controller
         }
 
         $item_code = SpkItemHistory::where('spk_number', $spk_code)
-            ->value('item_code');
+            ->value('item_code')
+            ?? SpkMaster::where('spk_number', $spk_code)->value('item_code');
+
+        if (! $item_code) {
+            // Fallback: check if the user entered item_code directly that exists in SoData for this doc_num
+            $existsInSo = SoData::where('item_code', $spk_code)
+                ->where('doc_num', $doc_num)
+                ->exists();
+            if ($existsInSo) {
+                $item_code = $spk_code;
+            }
+        }
 
         // Fetch the item data (only required fields)
         $item = SoData::where('item_code', $item_code)

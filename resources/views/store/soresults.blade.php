@@ -280,18 +280,39 @@
 
 
                 {{-- Mode Toggles --}}
-                <div class="mt-8 flex justify-end space-x-6">
+                <div class="mt-8 flex flex-wrap justify-end gap-4 sm:gap-6 items-center">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="manualScanToggle" class="sr-only peer" onchange="toggleManualScanMode()">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        <span class="ml-2.5 text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="manualModeIndicator" style="display: none;"></span>
+                            <span>✍️ Mode Scan Manual</span>
+                        </span>
+                    </label>
+
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="bulkScanToggle" class="sr-only peer" onchange="toggleBulkScanMode()">
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                        <span class="ml-3 text-sm font-medium text-gray-700">Bulk Scan Mode</span>
+                        <span class="ml-2.5 text-sm font-medium text-gray-700">Bulk Scan Mode</span>
                     </label>
 
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="packagingToggle" class="sr-only peer" onchange="togglePackagingMode()">
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        <span class="ml-3 text-sm font-medium text-gray-700">Scan Packaging Barcode</span>
+                        <span class="ml-2.5 text-sm font-medium text-gray-700">Scan Packaging Barcode</span>
                     </label>
+                </div>
+
+                {{-- Banner Mode Scan Manual --}}
+                <div id="manual_scan_banner" class="hidden mt-4 p-3.5 bg-emerald-50 border border-emerald-300 rounded-lg text-emerald-800 text-xs sm:text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm transition-all">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">✍️</span>
+                        <div>
+                            <span class="font-bold">Mode Scan Manual Aktif:</span>
+                            <span>Silakan ketik data SPK, Quantity, Warehouse, dan Label. Tekan <b>Enter</b> pada Label atau klik tombol Simpan.</span>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-0.5 text-xs font-semibold bg-emerald-200 text-emerald-900 rounded-full shrink-0">Manual Mode</span>
                 </div>
 
                 {{-- Form Scan Barcode --}}
@@ -300,7 +321,7 @@
                         id="barcode-form"
                         method="POST"
                         action="{{ route('so.scanBarcode') }}"
-                        class="mt-8 space-y-4"
+                        class="mt-6 space-y-4"
                     >
                         @csrf
                         <input type="hidden" name="so_number" value="{{ $docNum }}" />
@@ -316,6 +337,7 @@
                                     id="spk_code"
                                     name="spk_code"
                                     required
+                                    placeholder="Contoh: 26021085..."
                                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                 />
                             </div>
@@ -329,6 +351,8 @@
                                     id="quantity"
                                     name="quantity"
                                     required
+                                    min="1"
+                                    placeholder="Contoh: 10, 50..."
                                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                 />
                             </div>
@@ -342,7 +366,8 @@
                                     id="warehouse"
                                     name="warehouse"
                                     required
-                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    placeholder="Contoh: GUA, GUB, FG..."
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm uppercase"
                                 />
                             </div>
 
@@ -355,6 +380,7 @@
                                     id="label"
                                     name="label"
                                     required
+                                    placeholder="Contoh: BOX-001..."
                                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                 />
                             </div>
@@ -392,12 +418,25 @@
                             </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            class="mt-4 w-full sm:w-auto px-6 py-2 bg-indigo-600 text-white text-sm sm:text-base font-semibold rounded-md shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                            Scan Barcode
-                        </button>
+                        <div class="mt-4 flex flex-wrap items-center gap-3">
+                            <button
+                                type="submit"
+                                id="submit-scan-btn"
+                                class="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white text-sm sm:text-base font-semibold rounded-md shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <span id="submit-btn-icon">⚡</span>
+                                <span id="submit-btn-text">Scan Barcode</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                id="reset-form-btn"
+                                class="hidden w-full sm:w-auto px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-sm font-medium rounded-md shadow-sm focus:outline-none transition-colors flex items-center justify-center gap-1.5"
+                            >
+                                <span>🔄</span>
+                                <span>Reset Form</span>
+                            </button>
+                        </div>
                     </form>
                 @else
                     <h1 class="mt-8 text-center text-lg font-semibold text-green-600">
@@ -725,6 +764,57 @@
 
     // --- MAIN EVENT LISTENERS ---
     
+    // --- MODE SCAN MANUAL FUNCTIONS ---
+    function toggleManualScanMode() {
+        const toggle = document.getElementById('manualScanToggle');
+        const banner = document.getElementById('manual_scan_banner');
+        const indicator = document.getElementById('manualModeIndicator');
+        const submitBtn = document.getElementById('submit-scan-btn');
+        const submitBtnText = document.getElementById('submit-btn-text');
+        const submitBtnIcon = document.getElementById('submit-btn-icon');
+        const resetBtn = document.getElementById('reset-form-btn');
+        const bulkToggle = document.getElementById('bulkScanToggle');
+
+        if (!toggle) return;
+
+        if (toggle.checked) {
+            localStorage.setItem('so_manual_scan_mode', 'ON');
+            if (banner) banner.classList.remove('hidden');
+            if (indicator) indicator.style.display = 'inline-block';
+            if (resetBtn) resetBtn.classList.remove('hidden');
+
+            if (submitBtn) {
+                submitBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500', 'focus:ring-indigo-500');
+                submitBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500', 'focus:ring-emerald-500');
+            }
+            if (submitBtnText) submitBtnText.innerText = 'Simpan Scan Manual';
+            if (submitBtnIcon) submitBtnIcon.innerText = '💾';
+
+            // Nonaktifkan Bulk Scan Mode jika sedang aktif
+            if (bulkToggle && bulkToggle.checked) {
+                bulkToggle.checked = false;
+                toggleBulkScanMode();
+            }
+
+            const spkInput = document.getElementById('spk_code');
+            if (spkInput && !spkInput.value.trim()) {
+                setTimeout(() => spkInput.focus(), 100);
+            }
+        } else {
+            localStorage.setItem('so_manual_scan_mode', 'OFF');
+            if (banner) banner.classList.add('hidden');
+            if (indicator) indicator.style.display = 'none';
+            if (resetBtn) resetBtn.classList.add('hidden');
+
+            if (submitBtn) {
+                submitBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500', 'focus:ring-emerald-500');
+                submitBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500', 'focus:ring-indigo-500');
+            }
+            if (submitBtnText) submitBtnText.innerText = 'Scan Barcode';
+            if (submitBtnIcon) submitBtnIcon.innerText = '⚡';
+        }
+    }
+
     // --- ADDITIVE PACKAGING FUNCTIONS ---
     function togglePackagingMode() {
         const toggle = document.getElementById('packagingToggle');
@@ -756,6 +846,7 @@
         const labelInput = document.getElementById('label');
         const labelsBulkInput = document.getElementById('labels_bulk');
         const packagingToggle = document.getElementById('packagingToggle');
+        const manualToggle = document.getElementById('manualScanToggle');
 
         if (toggle.checked) {
             bulkContainer.classList.remove('hidden');
@@ -764,6 +855,12 @@
             labelInput.removeAttribute('required');
             labelsBulkInput.setAttribute('required', 'required');
             
+            // Turn off manual scan mode if active
+            if (manualToggle && manualToggle.checked) {
+                manualToggle.checked = false;
+                toggleManualScanMode();
+            }
+
             if (packagingToggle && packagingToggle.checked) {
                 packagingToggle.checked = false;
                 togglePackagingMode();
@@ -795,12 +892,25 @@
         const barcodeForm = document.getElementById('barcode-form');
         const toggle = document.getElementById('packagingToggle');
         const modeInput = document.getElementById('scan_mode_input');
+        const manualToggle = document.getElementById('manualScanToggle');
+        const resetBtn = document.getElementById('reset-form-btn');
 
-        // Restore preference
+        // Restore preferences
         if (localStorage.getItem('packaging_mode') === 'ON') {
             toggle.checked = true;
             if (modeInput) modeInput.value = 'ON';
             togglePackagingMode();
+        }
+
+        if (manualToggle && localStorage.getItem('so_manual_scan_mode') === 'ON') {
+            manualToggle.checked = true;
+            toggleManualScanMode();
+        }
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+                resetScanForm(true);
+            });
         }
 
         // --- ADDITIVE FOCUS & PARSING LOGIC ---
@@ -825,6 +935,14 @@
                         submitScanForm(barcodeForm);
                         return;
                     }
+
+                    const isManual = manualToggle && manualToggle.checked;
+                    if (isManual) {
+                        e.preventDefault();
+                        if (quantityInput) quantityInput.focus();
+                        return;
+                    }
+
                     const bulkToggle = document.getElementById('bulkScanToggle');
                     if (bulkToggle && bulkToggle.checked) {
                         e.preventDefault();
@@ -847,6 +965,13 @@
         if (quantityInput) {
             quantityInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
+                    const isManual = manualToggle && manualToggle.checked;
+                    if (isManual) {
+                        e.preventDefault();
+                        if (warehouseInput) warehouseInput.focus();
+                        return;
+                    }
+
                     const bulkToggle = document.getElementById('bulkScanToggle');
                     if (bulkToggle && bulkToggle.checked) {
                         e.preventDefault();
@@ -859,6 +984,13 @@
         if (warehouseInput) {
             warehouseInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
+                    const isManual = manualToggle && manualToggle.checked;
+                    if (isManual) {
+                        e.preventDefault();
+                        if (labelInput) labelInput.focus();
+                        return;
+                    }
+
                     const bulkToggle = document.getElementById('bulkScanToggle');
                     if (bulkToggle && bulkToggle.checked) {
                         e.preventDefault();
@@ -928,7 +1060,18 @@
             checkBtn.addEventListener('click', () => location.reload());
         }
 
-        function resetScanForm() {
+        function resetScanForm(forceAll = false) {
+            const isManual = manualToggle && manualToggle.checked;
+
+            if (isManual && !forceAll) {
+                // Dalam Mode Scan Manual, pertahankan SPK, Quantity, dan Warehouse agar operator tidak lelah
+                if (labelInput) {
+                    labelInput.value = '';
+                    labelInput.focus();
+                }
+                return;
+            }
+
             if (spkInput) spkInput.value = '';
             if (quantityInput) quantityInput.value = '';
             if (warehouseInput) warehouseInput.value = '';
@@ -946,12 +1089,41 @@
         // --- AJAX SUBMIT FUNCTION (Reliable) ---
         function submitScanForm(form) {
             clearTimeout(autoSubmitTimer);
+            const isManual = manualToggle && manualToggle.checked;
+
+            // Validasi client-side di mode manual agar feedback instan
+            if (isManual) {
+                if (!spkInput || !spkInput.value.trim()) {
+                    showAlert("SPK Code wajib diisi!", "error");
+                    if (spkInput) spkInput.focus();
+                    return;
+                }
+                if (!quantityInput || !quantityInput.value.trim() || parseInt(quantityInput.value) <= 0) {
+                    showAlert("Quantity harus diisi angka lebih dari 0!", "error");
+                    if (quantityInput) quantityInput.focus();
+                    return;
+                }
+                if (!warehouseInput || !warehouseInput.value.trim()) {
+                    showAlert("Warehouse wajib diisi!", "error");
+                    if (warehouseInput) warehouseInput.focus();
+                    return;
+                }
+                if (!labelInput || !labelInput.value.trim()) {
+                    showAlert("Label wajib diisi!", "error");
+                    if (labelInput) labelInput.focus();
+                    return;
+                }
+            }
+
             const formData = new FormData(form);
-            const submitBtn = form.querySelector('button[type="submit"]');
+            const submitBtn = document.getElementById('submit-scan-btn') || form.querySelector('button[type="submit"]');
+            const submitBtnText = document.getElementById('submit-btn-text');
 
             if (submitBtn) {
                 submitBtn.disabled = true;
-                submitBtn.innerText = 'Scanning...';
+                if (submitBtnText) {
+                    submitBtnText.innerText = isManual ? 'Menyimpan...' : 'Scanning...';
+                }
             }
 
             fetch(form.action, {
@@ -966,7 +1138,9 @@
             .then(data => {
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.innerText = 'Scan Barcode';
+                    if (submitBtnText) {
+                        submitBtnText.innerText = isManual ? 'Simpan Scan Manual' : 'Scan Barcode';
+                    }
                 }
 
                 if (data.success) {
@@ -977,22 +1151,33 @@
                         // TAHAP 1: SPK Sukses, Pindah ke Packaging
                         if (pkgNameInput) pkgNameInput.focus();
                     } else {
-                        // TAHAP 2/ORIGINAL: Reset seluruh field agar kosong semua untuk scan berikutnya
-                        resetScanForm();
+                        // Di Mode Manual: pertahankan SPK, Qty, Whse, kosongkan label dan fokus ke label
+                        resetScanForm(false);
                     }
                 } else {
                     showAlert(data.message || "Unknown error", "error");
-                    resetScanForm();
+                    if (!isManual) {
+                        resetScanForm(true);
+                    } else {
+                        if (labelInput) {
+                            labelInput.focus();
+                            labelInput.select();
+                        }
+                    }
                 }
             })
             .catch(error => {
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.innerText = 'Scan Barcode';
+                    if (submitBtnText) {
+                        submitBtnText.innerText = isManual ? 'Simpan Scan Manual' : 'Scan Barcode';
+                    }
                 }
                 console.error('Error:', error);
                 showAlert("Terjadi kesalahan koneksi ke server.", "error");
-                resetScanForm();
+                if (!isManual) {
+                    resetScanForm(true);
+                }
             });
         }
 
@@ -1001,6 +1186,12 @@
             // Fast auto-submit timer untuk single scan jika scanner tidak mengirim Enter (150ms)
             if (labelInput) {
                 labelInput.addEventListener('input', () => {
+                    const isManual = manualToggle && manualToggle.checked;
+                    if (isManual) {
+                        clearTimeout(autoSubmitTimer);
+                        return; // Nonaktifkan auto-submit saat mengetik manual!
+                    }
+
                     const mode = document.getElementById('scan_mode_input').value;
                     if (mode === 'OFF' || (mode === 'ON' && pkgNameInput.value.trim() === '')) {
                         clearTimeout(autoSubmitTimer);

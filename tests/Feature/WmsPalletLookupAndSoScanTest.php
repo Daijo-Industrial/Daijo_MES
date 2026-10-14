@@ -162,4 +162,106 @@ class WmsPalletLookupAndSoScanTest extends TestCase
         $this->assertEquals(12, $pallet->fresh()->total_pallet_qty);
         $this->assertEquals('STORED', $pallet->fresh()->status);
     }
+
+    public function test_manual_scan_processes_spk_quantity_warehouse_and_label_with_trimmed_inputs()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        \App\Models\SoData::create([
+            'doc_num' => 'SO-MANUAL-01',
+            'customer' => 'CUSTOMER MANUAL',
+            'item_code' => 'ITEM-MNL-001',
+            'item_name' => 'MANUAL TEST ITEM',
+            'quantity' => 50,
+            'sales_uom' => 'PCS',
+            'sales_pack' => 'BOX',
+            'packaging_quantity' => 10,
+            'posting_date' => '2026-10-14',
+            'create_date' => '2026-10-14',
+            'update_date' => '2026-10-14',
+            'update_fulltime' => 20261014120000,
+        ]);
+
+        \App\Models\SpkItemHistory::create([
+            'spk_number' => 'SPK-MNL-101',
+            'item_code' => 'ITEM-MNL-001',
+        ]);
+
+        $response = $this->postJson(route('so.scanBarcode'), [
+            'so_number' => 'SO-MANUAL-01',
+            'spk_code' => '  SPK-MNL-101  ',
+            'quantity' => 10,
+            'warehouse' => '  GUA  ',
+            'label' => '  BOX-001  ',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        $this->assertDatabaseHas('scanned_data', [
+            'doc_num' => 'SO-MANUAL-01',
+            'item_code' => 'ITEM-MNL-001',
+            'spk_code' => 'SPK-MNL-101',
+            'quantity' => 10,
+            'warehouse' => 'GUA',
+            'label' => 'BOX-001',
+        ]);
+    }
+
+    public function test_manual_scan_resolves_spk_from_spk_master()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        \App\Models\SoData::create([
+            'doc_num' => 'SO-MANUAL-02',
+            'customer' => 'CUSTOMER MANUAL 2',
+            'item_code' => 'ITEM-MNL-002',
+            'item_name' => 'MANUAL TEST ITEM 2',
+            'quantity' => 100,
+            'sales_uom' => 'PCS',
+            'sales_pack' => 'BOX',
+            'packaging_quantity' => 20,
+            'posting_date' => '2026-10-14',
+            'create_date' => '2026-10-14',
+            'update_date' => '2026-10-14',
+            'update_fulltime' => 20261014120000,
+        ]);
+
+        \App\Models\SpkMaster::create([
+            'spk_number' => 'SPK-FROM-MASTER',
+            'post_date' => '2026-10-14',
+            'due_date' => '2026-10-14',
+            'production_status' => 'Released',
+            'item_code' => 'ITEM-MNL-002',
+            'planned_quantity' => 100,
+            'completed_quantity' => 100,
+            'warehouse' => 'GUB',
+        ]);
+
+        $response = $this->postJson(route('so.scanBarcode'), [
+            'so_number' => 'SO-MANUAL-02',
+            'spk_code' => 'SPK-FROM-MASTER',
+            'quantity' => 20,
+            'warehouse' => 'GUB',
+            'label' => 'BOX-MST-01',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        $this->assertDatabaseHas('scanned_data', [
+            'doc_num' => 'SO-MANUAL-02',
+            'item_code' => 'ITEM-MNL-002',
+            'spk_code' => 'SPK-FROM-MASTER',
+            'quantity' => 20,
+            'warehouse' => 'GUB',
+            'label' => 'BOX-MST-01',
+        ]);
+    }
 }
