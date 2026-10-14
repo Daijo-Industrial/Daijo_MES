@@ -450,6 +450,7 @@ Route::middleware('auth')->group(function (){
         Route::get('/master-list', \App\Livewire\MaterialWarehouse\MasterListMaterialIndex::class)->name('master-list.index');
         Route::get('/incoming/create', \App\Livewire\MaterialWarehouse\MaterialIncomingCreator::class)->name('incoming.create');
         Route::get('/pallets', \App\Livewire\MaterialWarehouse\MaterialPalletIndex::class)->name('pallets.index');
+        Route::get('/daily-audit', \App\Livewire\MaterialWarehouse\MaterialDailyAudit::class)->name('daily-audit');
         Route::get('/outgoing/create', \App\Livewire\MaterialWarehouse\MaterialOutgoingCreator::class)->name('outgoing.create');
         Route::get('/outgoing/history', \App\Livewire\MaterialWarehouse\MaterialOutgoingHistory::class)->name('outgoing.history');
         Route::get('/stock-card', \App\Livewire\MaterialWarehouse\MaterialStockCard::class)->name('stock-card.index');

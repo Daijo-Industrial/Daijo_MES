@@ -23,6 +23,10 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
+                <a href="{{ route('mwh.daily-audit') }}" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs shadow-md shadow-slate-200 transition flex items-center space-x-2">
+                    <span>📋</span>
+                    <span>Audit Harian</span>
+                </a>
                 <a href="{{ route('mwh.incoming.create') }}" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-200 transition flex items-center space-x-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>Input Kedatangan Baru</span>

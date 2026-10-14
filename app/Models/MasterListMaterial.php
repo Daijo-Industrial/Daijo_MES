@@ -18,4 +18,14 @@ class MasterListMaterial extends Model
         'preferred_supplier',
         'purchasing_uom',
     ];
+
+    public function getDescriptionAttribute(): ?string
+    {
+        return $this->item_description;
+    }
+
+    public function getItemNameAttribute(): ?string
+    {
+        return $this->item_description;
+    }
 }
