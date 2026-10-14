@@ -922,15 +922,6 @@
                 $defaultNgs = $report->ngRecords->isNotEmpty()
                     ? $report->ngRecords->pluck('ng_name')->unique()->toArray()
                     : config('mes.sp_default_ng_types');
-
-                $shiftStarts = array_map(fn($s) => $s['start'], config('mes.shifts', []));
-                $selectedShift = (int) old('shift', $report->shift ?? 1);
-                $getHourTimeRange = function($hourIndex, $shiftNum) use ($shiftStarts) {
-                    $base = $shiftStarts[(int)$shiftNum] ?? '07:30';
-                    $start = \Carbon\Carbon::createFromFormat('H:i', $base)->addHours($hourIndex - 1);
-                    $end = (clone $start)->addHour();
-                    return $start->format('H:i') . '-' . $end->format('H:i');
-                };
             @endphp
             <!-- Unified Production & NG Log Grid -->
             <div class="space-y-6">
@@ -987,7 +978,7 @@
                             <thead class="bg-gray-50 text-gray-500 font-semibold text-xs tracking-wider uppercase">
                                 <tr id="production-header-row">
                                     <th
-                                        class="px-3 py-3 w-48 min-w-[190px] text-center sticky left-0 bg-gray-50 z-20 shadow-[1px_0_0_0_#e5e7eb] uppercase tracking-wider text-xs">
+                                        class="px-3 py-3 w-20 text-center sticky left-0 bg-gray-50 z-20 shadow-[1px_0_0_0_#e5e7eb] uppercase tracking-wider text-xs">
                                         Hour</th>
                                     <th
                                         class="px-3 py-2.5 w-28 text-center bg-green-50 text-green-800 font-bold border-l border-green-100">
@@ -1053,7 +1044,7 @@
                                         <td
                                             class="px-3 py-2 text-center font-bold text-gray-700 bg-gray-50 sticky left-0 z-10 shadow-[1px_0_0_0_#e5e7eb] whitespace-nowrap hour-cell text-xs"
                                             data-hour="{{ $hour }}">
-                                            {{ $hour }} ({{ $getHourTimeRange($hour, $selectedShift) }})</td>
+                                            {{ $hour }}</td>
 
                                         <!-- OK Qty -->
                                         <td class="px-2 py-1.5 bg-green-50/30 border-l border-green-100">
@@ -1750,30 +1741,6 @@
         // ponytail: active NG types list stored in state
         let activeNgs = {!! json_encode($defaultNgs) !!};
 
-        const shiftStartsConfig = @json(array_map(fn($s) => $s['start'], config('mes.shifts', [])));
-
-        function getHourTimeRange(hourIndex, shiftNum) {
-            const timeStr = shiftStartsConfig[parseInt(shiftNum)] || shiftStartsConfig[1] || '07:30';
-            const [startH, startM] = timeStr.split(':').map(Number);
-            const dStart = new Date(2000, 0, 1, startH + (hourIndex - 1), startM);
-            const dEnd = new Date(2000, 0, 1, startH + hourIndex, startM);
-            const pad = n => String(n).padStart(2, '0');
-            return `${pad(dStart.getHours())}:${pad(dStart.getMinutes())}-${pad(dEnd.getHours())}:${pad(dEnd.getMinutes())}`;
-        }
-
-        const shiftSelect = document.querySelector('select[name="shift"]');
-        if (shiftSelect) {
-            shiftSelect.addEventListener('change', function() {
-                const currentShift = this.value;
-                document.querySelectorAll('.hour-cell').forEach(cell => {
-                    const h = parseInt(cell.getAttribute('data-hour'));
-                    if (h) {
-                        cell.textContent = `${h} (${getHourTimeRange(h, currentShift)})`;
-                    }
-                });
-            });
-        }
-
         addHourBtn.addEventListener('click', function() {
             const currentHours = document.querySelectorAll('.production-row').length;
             if (currentHours >= 8) {
@@ -1784,8 +1751,6 @@
             }
 
             const newHour = currentHours + 1;
-            const currentShift = document.querySelector('select[name="shift"]')?.value || '1';
-            const timeRangeStr = getHourTimeRange(newHour, currentShift);
 
             // ponytail: dynamically render cells based on current activeNgs state
             let ngCells = '';
@@ -1799,7 +1764,7 @@
 
             const newRow = `
     <tr class="production-row hover:bg-blue-50/50 transition-colors duration-100" data-hour="${newHour}">
-        <td class="px-3 py-2 text-center font-bold text-gray-700 bg-gray-50 sticky left-0 z-10 shadow-[1px_0_0_0_#e5e7eb] whitespace-nowrap hour-cell text-xs" data-hour="${newHour}">${newHour} (${timeRangeStr})</td>
+        <td class="px-3 py-2 text-center font-bold text-gray-700 bg-gray-50 sticky left-0 z-10 shadow-[1px_0_0_0_#e5e7eb] whitespace-nowrap hour-cell text-xs" data-hour="${newHour}">${newHour}</td>
         <td class="px-2 py-1.5 bg-green-50/30 border-l border-green-100">
             <input type="number" name="hourly[${newHour}][hour_ke]" value="${newHour}" class="hidden">
             <input type="number" inputmode="numeric" name="hourly[${newHour}][ok_qty]" placeholder="-" class="w-full text-center text-sm font-bold text-green-800 rounded-md border-gray-200 focus:border-green-500 focus:ring-green-500 py-2 hourly-ok-input shadow-inner bg-white">

@@ -217,15 +217,6 @@
     @php
         $maxHour = max(1, $report->hourlyProductions->max('hour_ke'));
         $hours = range(1, $maxHour);
-
-        $shiftStarts = array_map(fn($s) => $s['start'], config('mes.shifts', []));
-        $selectedShift = (int) ($report->shift ?? 1);
-        $getHourTimeRange = function($hourIndex, $shiftNum) use ($shiftStarts) {
-            $base = $shiftStarts[(int)$shiftNum] ?? '07:30';
-            $start = \Carbon\Carbon::createFromFormat('H:i', $base)->addHours($hourIndex - 1);
-            $end = (clone $start)->addHour();
-            return $start->format('H:i') . '-' . $end->format('H:i');
-        };
     @endphp
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 pb-12 print-area">
         <div class="bg-white shadow-xl rounded-lg overflow-hidden border border-gray-200 p-6 space-y-6">
@@ -425,7 +416,7 @@
                                 @endphp
                                 <tr>
                                     <td class="border border-black p-1 font-bold whitespace-nowrap text-xs">
-                                        {{ $hour }} ({{ $getHourTimeRange($hour, $selectedShift) }})</td>
+                                        {{ $hour }}</td>
                                     <td class="border border-black p-1">
                                         {{ $hData && $hData->ok_qty !== null ? $hData->ok_qty : '-' }}</td>
                                     <td class="border border-black p-1 font-semibold">

@@ -52,6 +52,32 @@ class SecondProcessReportTest extends TestCase
         $response->assertSee('Yesterday');
         $response->assertSee('This Week');
         $response->assertSee('This Month');
+        $response->assertSee('Part Name');
+    }
+
+    /**
+     * Test index page displays part name in the table.
+     */
+    public function test_index_page_displays_part_name(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+
+        SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PN-INDEX-TEST',
+            'part_name' => 'Custom Front Bumper Part Name',
+            'model' => 'Model X',
+            'customer' => 'Toyota Motor Corp',
+            'target_per_hour' => 100,
+            'status' => 'submitted',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('second-process-reports.index'));
+        $response->assertOk();
+        $response->assertSee('Custom Front Bumper Part Name');
     }
 
     /**
@@ -133,9 +159,8 @@ class SecondProcessReportTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('second-process-reports.create'));
         $response->assertOk();
-        $response->assertSee('1 (07:30-08:30)');
-        $response->assertSee('8 (14:30-15:30)');
-        $response->assertDontSee('HOUR 1');
+        $response->assertDontSee('1 (07:30-08:30)');
+        $response->assertDontSee('8 (14:30-15:30)');
     }
 
     /**

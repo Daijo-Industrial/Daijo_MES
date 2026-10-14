@@ -159,72 +159,77 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Line/Shift</th>
-                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Process</th>
-                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Model / Part</th>
-                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Output</th>
-                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">OK</th>
-                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">NG %</th>
-                                <th class="px-3 py-2.5 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-2.5 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-2.5 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Line/Shift</th>
+                                <th class="px-2.5 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Process</th>
+                                <th class="px-2.5 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Part Name / Model</th>
+                                <th class="px-2.5 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                                <th class="px-2 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Output</th>
+                                <th class="px-2 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">OK</th>
+                                <th class="px-2 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">NG %</th>
+                                <th class="px-2 py-2.5 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-2.5 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($reports as $report)
                                 <tr class="hover:bg-gray-50 transition">
-                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm">{{ \Carbon\Carbon::parse($report->date)->format('d M Y') }}</td>
-                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm">
-                                        <div class="font-semibold">{{ $report->unit_line }}</div>
-                                        <div class="text-gray-500 text-xs">Shift {{ $report->shift }}</div>
+                                    <td class="px-2.5 py-2 whitespace-nowrap text-xs text-gray-700 font-medium">{{ \Carbon\Carbon::parse($report->date)->format('d M Y') }}</td>
+                                    <td class="px-2.5 py-2 whitespace-nowrap text-xs">
+                                        <div class="font-semibold text-gray-900">{{ $report->unit_line }}</div>
+                                        <div class="text-gray-500 text-[11px]">Shift {{ $report->shift }}</div>
                                     </td>
-                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm">{{ $report->process_prod }}</td>
-                                    <td class="px-3 py-2.5 text-sm max-w-[140px] lg:max-w-[170px]">
-                                        <div class="font-semibold truncate" title="{{ $report->model }}">{{ $report->model }}</div>
-                                        <div class="text-gray-500 text-xs truncate" title="{{ $report->part_number }}">{{ $report->part_number }}</div>
+                                    <td class="px-2.5 py-2 whitespace-nowrap text-xs font-medium text-gray-800">{{ $report->process_prod }}</td>
+                                    <td class="px-2.5 py-2 text-xs">
+                                        <div class="font-bold text-gray-900 truncate max-w-[150px] lg:max-w-[210px]" title="{{ $report->part_name }}">{{ $report->part_name ?: '-' }}</div>
+                                        <div class="text-gray-500 text-[11px] truncate max-w-[150px] lg:max-w-[210px]" title="{{ $report->part_number }} {{ $report->model ? '('.$report->model.')' : '' }}">
+                                            <span class="font-medium text-gray-700">{{ $report->part_number }}</span>
+                                            @if($report->model)
+                                                <span class="text-gray-400">({{ $report->model }})</span>
+                                            @endif
+                                        </div>
                                     </td>
-                                    <td class="px-3 py-2.5 text-sm max-w-[150px] lg:max-w-[180px]">
+                                    <td class="px-2.5 py-2 text-xs max-w-[120px] lg:max-w-[150px]">
                                         <div class="truncate font-medium text-gray-800" title="{{ $report->customer }}">{{ $report->customer }}</div>
                                     </td>
-                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm text-right font-medium">{{ number_format($report->jumlah_output) }}</td>
-                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm text-right font-medium text-green-600">{{ number_format($report->jumlah_ok) }}</td>
+                                    <td class="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-gray-900">{{ number_format($report->jumlah_output) }}</td>
+                                    <td class="px-2 py-2 whitespace-nowrap text-xs text-right font-bold text-green-600">{{ number_format($report->jumlah_ok) }}</td>
                                     
                                     @php
                                         $ngClass = 'text-green-600';
                                         if ($report->ng_prosentase >= 3) $ngClass = 'text-red-600 font-bold';
                                         elseif ($report->ng_prosentase >= 1) $ngClass = 'text-yellow-600 font-semibold';
                                     @endphp
-                                    <td class="px-3 py-2.5 whitespace-nowrap text-sm text-right {{ $ngClass }}">
+                                    <td class="px-2 py-2 whitespace-nowrap text-xs text-right {{ $ngClass }}">
                                         {{ $report->ng_prosentase }}%
                                     </td>
                                     
-                                    <td class="px-3 py-2.5 whitespace-nowrap text-center">
+                                    <td class="px-2 py-2 whitespace-nowrap text-center">
                                         @switch($report->status)
                                             @case('draft')
-                                                <span class="px-2 py-1 text-[10px] font-bold rounded bg-gray-100 text-gray-700 uppercase tracking-wide">Draft</span>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-gray-100 text-gray-700 uppercase tracking-wide">Draft</span>
                                                 @break
                                             @case('submitted')
-                                                <span class="px-2 py-1 text-[10px] font-bold rounded bg-blue-100 text-blue-700 uppercase tracking-wide">Submitted</span>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-100 text-blue-700 uppercase tracking-wide">Submitted</span>
                                                 @break
                                             @case('pqc_approved')
-                                                <span class="px-2 py-1 text-[10px] font-bold rounded bg-yellow-100 text-yellow-800 uppercase tracking-wide">PQC</span>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-yellow-100 text-yellow-800 uppercase tracking-wide">PQC</span>
                                                 @break
                                             @case('leader_approved')
-                                                <span class="px-2 py-1 text-[10px] font-bold rounded bg-orange-100 text-orange-800 uppercase tracking-wide">Leader</span>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-orange-100 text-orange-800 uppercase tracking-wide">Leader</span>
                                                 @break
                                             @case('acknowledged')
-                                                <span class="px-2 py-1 text-[10px] font-bold rounded bg-green-100 text-green-800 uppercase tracking-wide">Done</span>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-800 uppercase tracking-wide">Done</span>
                                                 @break
                                             @default
-                                                <span class="px-2 py-1 text-[10px] font-bold rounded bg-gray-100 text-gray-700 uppercase tracking-wide">{{ $report->status }}</span>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-gray-100 text-gray-700 uppercase tracking-wide">{{ $report->status }}</span>
                                         @endswitch
                                     </td>
                                     
-                                    <td class="px-3 py-2.5 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="{{ route('second-process-reports.show', $report->id) }}" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
+                                    <td class="px-2.5 py-2 whitespace-nowrap text-right text-xs font-semibold">
+                                        <a href="{{ route('second-process-reports.show', $report->id) }}" class="text-blue-600 hover:text-blue-900 mr-2">View</a>
                                         @can('update', $report)
-                                            <a href="{{ route('second-process-reports.edit', $report->id) }}" class="text-yellow-600 hover:text-yellow-900 mr-3">Edit</a>
+                                            <a href="{{ route('second-process-reports.edit', $report->id) }}" class="text-yellow-600 hover:text-yellow-900 mr-2">Edit</a>
                                         @endcan
                                         @can('delete', $report)
                                             <button onclick="document.getElementById('delete-dialog-{{ $report->id }}').showModal()" class="text-red-600 hover:text-red-900">
