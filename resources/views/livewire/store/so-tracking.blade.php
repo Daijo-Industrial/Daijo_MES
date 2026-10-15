@@ -233,12 +233,49 @@
                     @endforeach
                 </div>
 
-                @if ($stats->unique_do_count > $matchingDos->count())
-                    <div class="p-3 bg-white/80 rounded-2xl border border-emerald-200/60 text-xs text-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <span>ℹ️ Menampilkan <strong>{{ $matchingDos->count() }}</strong> dari total <strong>{{ $stats->unique_do_count }}</strong> Dokumen DO terkait.</span>
-                        <span class="text-slate-500 font-medium">Rincian stiker/label setiap box lengkap dapat dilihat pada tabel di bawah.</span>
+                @php
+                    $isPaginated = method_exists($matchingDos, 'hasPages');
+                    $doTotal = $isPaginated ? $matchingDos->total() : $matchingDos->count();
+                    $firstItem = $isPaginated ? $matchingDos->firstItem() : 1;
+                    $lastItem = $isPaginated ? $matchingDos->lastItem() : $matchingDos->count();
+                @endphp
+
+                <div class="pt-3 border-t border-emerald-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <div class="text-emerald-800 font-semibold flex items-center space-x-1.5 flex-wrap">
+                        <span>📄 Menampilkan</span>
+                        <strong class="font-bold text-emerald-950">{{ $firstItem }} - {{ $lastItem }}</strong>
+                        <span>dari total</span>
+                        <strong class="font-bold text-emerald-950">{{ $doTotal }} Dokumen DO</strong>
+                        <span>terkait</span>
                     </div>
-                @endif
+
+                    @if ($isPaginated && $matchingDos->hasPages())
+                        <div class="flex items-center space-x-2">
+                            <!-- Tombol Sebelumnya -->
+                            <button type="button" 
+                                    wire:click="previousPage('doPage')" 
+                                    @if ($matchingDos->onFirstPage()) disabled @endif
+                                    class="px-3 py-1.5 rounded-xl font-bold transition flex items-center space-x-1 {{ $matchingDos->onFirstPage() ? 'bg-emerald-100/60 text-emerald-400 cursor-not-allowed' : 'bg-white hover:bg-emerald-600 hover:text-white text-emerald-800 border border-emerald-300 shadow-2xs active:scale-95 cursor-pointer' }}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                <span>Sebelumnya</span>
+                            </button>
+
+                            <!-- Indicator Halaman -->
+                            <span class="px-3 py-1.5 bg-white/90 border border-emerald-300/80 rounded-xl font-black font-mono text-emerald-900 shadow-2xs">
+                                {{ $matchingDos->currentPage() }} / {{ $matchingDos->lastPage() }}
+                            </span>
+
+                            <!-- Tombol Selanjutnya -->
+                            <button type="button" 
+                                    wire:click="nextPage('doPage')" 
+                                    @if (!$matchingDos->hasMorePages()) disabled @endif
+                                    class="px-3 py-1.5 rounded-xl font-bold transition flex items-center space-x-1 {{ !$matchingDos->hasMorePages() ? 'bg-emerald-100/60 text-emerald-400 cursor-not-allowed' : 'bg-white hover:bg-emerald-600 hover:text-white text-emerald-800 border border-emerald-300 shadow-2xs active:scale-95 cursor-pointer' }}">
+                                <span>Selanjutnya</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                        </div>
+                    @endif
+                </div>
             </div>
         @else
             <div class="bg-amber-50 border-2 border-amber-300 p-5 rounded-3xl flex items-center justify-between gap-4 animate-in fade-in">

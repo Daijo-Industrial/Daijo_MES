@@ -310,6 +310,52 @@ class SoTrackingTest extends TestCase
             ->assertViewHas('hasActiveSearch', false)
             ->assertViewHas('records', null);
     }
+
+    public function test_matching_dos_supports_pagination_when_spk_spans_multiple_dos(): void
+    {
+        // Setup 8 distinct DO documents for the same SPK
+        for ($i = 1; $i <= 8; $i++) {
+            $doc = "DO-MULTI-00{$i}";
+            SoData::create([
+                'doc_num'      => $doc,
+                'customer'     => 'PT MULTI CUSTOMER',
+                'posting_date' => '2026-10-15',
+                'item_code'    => 'MULTI-PART-01',
+                'item_name'    => 'PART MULTI',
+                'quantity'     => 10,
+                'is_done'      => 1,
+            ]);
+
+            ScannedData::create([
+                'doc_num'    => $doc,
+                'item_code'  => 'MULTI-PART-01',
+                'spk_code'   => 'SPK-MULTI-999',
+                'label'      => "LBL-00{$i}",
+                'quantity'   => 10,
+                'warehouse'  => 'FG',
+                'created_at' => Carbon::parse("2026-10-15 08:0{$i}:00"),
+            ]);
+        }
+
+        Livewire::test(SoTracking::class)
+            ->set('spkSearch', 'SPK-MULTI-999')
+            ->call('searchBySpkAndLabel')
+            ->assertViewHas('matchingDos', function ($dos) {
+                return $dos->total() === 8 
+                    && $dos->count() === 6
+                    && $dos->currentPage() === 1
+                    && $dos->pluck('doc_num')->contains('DO-MULTI-008')
+                    && !$dos->pluck('doc_num')->contains('DO-MULTI-001');
+            })
+            ->call('nextPage', 'doPage')
+            ->assertViewHas('matchingDos', function ($dos) {
+                return $dos->total() === 8 
+                    && $dos->count() === 2
+                    && $dos->currentPage() === 2
+                    && $dos->pluck('doc_num')->contains('DO-MULTI-001');
+            });
+    }
 }
+
 
 

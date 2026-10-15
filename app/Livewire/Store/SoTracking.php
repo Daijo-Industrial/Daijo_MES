@@ -162,6 +162,25 @@ class SoTracking extends Component
 
         $this->barcodeScanInput = '';
         $this->resetPage();
+        $this->resetPage('doPage');
+    }
+
+    public function updatingSpkSearch(): void
+    {
+        $this->resetPage();
+        $this->resetPage('doPage');
+    }
+
+    public function updatingLabelSearch(): void
+    {
+        $this->resetPage();
+        $this->resetPage('doPage');
+    }
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+        $this->resetPage('doPage');
     }
 
     public function resetFilters(): void
@@ -177,6 +196,7 @@ class SoTracking extends Component
         $this->dateTo = null;
         $this->lastScannedFeedback = null;
         $this->resetPage();
+        $this->resetPage('doPage');
     }
 
     public function toggleAdvancedFilter(): void
@@ -455,6 +475,7 @@ class SoTracking extends Component
     public function searchBySpkAndLabel(): void
     {
         $this->resetPage();
+        $this->resetPage('doPage');
     }
 
     public function render()
@@ -472,6 +493,7 @@ class SoTracking extends Component
                     'unique_do_count'  => 0,
                 ],
                 'isSearching'     => false,
+                'matchingDos'     => collect(),
                 'directMatches'   => collect(),
                 'hasActiveSearch' => false,
             ]);
@@ -485,7 +507,7 @@ class SoTracking extends Component
             COUNT(DISTINCT scanned_data.doc_num) as unique_do_count
         ')->first();
 
-        // 2. Grouped DO summary if searching by SPK/Label/Search (Level Dokumen DO)
+        // 2. Grouped DO summary with dedicated pagination (Level Dokumen DO)
         $isSearching = !empty(trim($this->spkSearch)) || !empty(trim($this->labelSearch)) || !empty(trim($this->search));
         $matchingDos = collect();
 
@@ -499,31 +521,30 @@ class SoTracking extends Component
                 ])
                 ->groupBy('scanned_data.doc_num')
                 ->orderByDesc('last_scanned_at')
-                ->take(6)
-                ->get();
+                ->paginate(6, ['*'], 'doPage');
 
             if ($doGrouped->isNotEmpty()) {
-                $docNums = $doGrouped->pluck('doc_num')->values();
+                $docNums = $doGrouped->getCollection()->pluck('doc_num')->values();
                 $soDatas = SoData::whereIn('doc_num', $docNums)
                     ->select(['doc_num', 'customer', 'item_name', 'is_done', 'posting_date'])
                     ->get()
                     ->groupBy('doc_num');
 
-                $matchingDos = $doGrouped->map(function ($item) use ($soDatas) {
+                $doGrouped->getCollection()->transform(function ($item) use ($soDatas) {
                     $docItems = $soDatas->get($item->doc_num);
                     $firstItem = $docItems?->first();
 
-                    return (object) [
-                        'doc_num'         => $item->doc_num,
-                        'customer'        => $firstItem?->customer ?? 'N/A',
-                        'is_done'         => $docItems ? $docItems->every('is_done', 1) : false,
-                        'posting_date'    => $firstItem?->posting_date ?? '-',
-                        'box_count'       => (int) $item->box_count,
-                        'total_qty'       => (int) $item->total_qty,
-                        'last_scanned_at' => $item->last_scanned_at,
-                    ];
+                    $item->customer = $firstItem?->customer ?? 'N/A';
+                    $item->is_done = $docItems ? $docItems->every('is_done', 1) : false;
+                    $item->posting_date = $firstItem?->posting_date ?? '-';
+                    $item->box_count = (int) $item->box_count;
+                    $item->total_qty = (int) $item->total_qty;
+
+                    return $item;
                 });
             }
+
+            $matchingDos = $doGrouped;
         }
 
         // 3. Paginated records (Level Box Scan individual)
