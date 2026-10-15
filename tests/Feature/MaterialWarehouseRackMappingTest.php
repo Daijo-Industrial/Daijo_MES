@@ -45,6 +45,13 @@ class MaterialWarehouseRackMappingTest extends TestCase
             $table->timestamps();
         });
 
+        \Illuminate\Support\Facades\Schema::create('branches', function (\Illuminate\Database\Schema\Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+        });
+
         \Illuminate\Support\Facades\Schema::create('mwh_warehouses', function (\Illuminate\Database\Schema\Blueprint $table) {
             $table->id();
             $table->string('whse_code')->unique();
@@ -111,6 +118,7 @@ class MaterialWarehouseRackMappingTest extends TestCase
             $table->decimal('current_qty', 10, 2)->default(0);
             $table->string('uom')->default('KG');
             $table->foreignId('position_id')->nullable();
+            $table->foreignId('initial_position_id')->nullable();
             $table->string('status')->default('STORED');
             $table->boolean('is_qc_hold')->default(false);
             $table->string('qc_hold_reason')->nullable();
@@ -194,5 +202,42 @@ class MaterialWarehouseRackMappingTest extends TestCase
         $this->assertEquals(10, $pos->max_capacity);
         $this->assertEquals('PARTIAL', $pos->status);
         $this->assertEquals('MAT-POLY-001', $pos->last_item_code);
+    }
+
+    public function test_can_assign_temporary_pallet_to_slot_from_mapping()
+    {
+        $whse = MwhWarehouse::create(['whse_code' => 'KBN', 'whse_name' => 'KBN Material Whse']);
+        $rack = MwhRack::create(['whse_id' => $whse->id, 'rack_code' => 'R-01']);
+        $pos = MwhPosition::create([
+            'rack_id' => $rack->id,
+            'level_no' => 1,
+            'slot_no' => 1,
+            'position_code' => 'R-01-L01-S01',
+            'slot_label' => 'Slot 1',
+            'max_capacity' => 1000,
+            'status' => 'EMPTY',
+        ]);
+
+        $pallet = \App\Models\MwhPallet::create([
+            'whse_id' => $whse->id,
+            'pallet_id' => 'PLT-TEMP-001',
+            'item_code' => 'RESIN-ABS-01',
+            'initial_qty' => 500,
+            'current_qty' => 500,
+            'status' => 'STORED',
+            'position_id' => null, // temporary
+        ]);
+
+        $this->assertNull($pallet->position_id);
+
+        Livewire::test(RackMapping::class)
+            ->call('assignPalletToPosition', $pallet->id, $pos->id);
+
+        $pallet->refresh();
+        $pos->refresh();
+
+        $this->assertEquals($pos->id, $pallet->position_id);
+        $this->assertEquals('PARTIAL', $pos->status);
+        $this->assertEquals('RESIN-ABS-01', $pos->last_item_code);
     }
 }

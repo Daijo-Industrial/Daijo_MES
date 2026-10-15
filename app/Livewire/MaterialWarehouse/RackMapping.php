@@ -46,6 +46,11 @@ class RackMapping extends Component
     public bool $showFifoSummaryModal = false;
     public ?string $expandedFifoItemCode = null;
 
+    // Temporary Area Modal & Assignment State
+    public bool $showTemporaryModal = false;
+    public ?int $selectedTemporaryPalletId = null;
+    public ?int $targetPositionIdForTemporary = null;
+
     protected $queryString = [
         'selectedWhseId' => ['except' => 'ALL'],
         'searchTerm' => ['except' => ''],
@@ -246,20 +251,28 @@ class RackMapping extends Component
         }
     }
 
-    public function assignTemporaryPalletToSlot(int $palletId, MaterialWarehouseService $mwhService): void
+    public function openTemporaryModal(): void
     {
-        if (!$this->selectedPositionId) {
-            session()->flash('error', 'Pilih slot rak tujuan terlebih dahulu.');
-            return;
-        }
+        $this->showTemporaryModal = true;
+        $this->selectedTemporaryPalletId = null;
+        $this->targetPositionIdForTemporary = null;
+    }
 
+    public function closeTemporaryModal(): void
+    {
+        $this->showTemporaryModal = false;
+        $this->selectedTemporaryPalletId = null;
+        $this->targetPositionIdForTemporary = null;
+    }
+
+    public function assignPalletToPosition(int $palletId, int $positionId, MaterialWarehouseService $mwhService): void
+    {
         try {
             DB::beginTransaction();
 
-            $pos = MwhPosition::with('rack')->findOrFail($this->selectedPositionId);
+            $pos = MwhPosition::with('rack')->findOrFail($positionId);
             $pallet = MwhPallet::findOrFail($palletId);
 
-            // Cek apakah slot masih muat
             $currentStored = MwhPallet::where('position_id', $pos->id)->where('current_qty', '>', 0)->sum('current_qty');
             $availableCap = (float) $pos->max_capacity - (float) $currentStored;
 
@@ -278,13 +291,25 @@ class RackMapping extends Component
 
             DB::commit();
 
-            session()->flash('success', "Pallet {$pallet->pallet_id} ({$pallet->item_code}) berhasil dimasukkan dari Area Temporary ke Slot {$pos->position_code}.");
+            session()->flash('success', "Pallet {$pallet->pallet_id} ({$pallet->item_code}) berhasil dimasukkan ke Slot {$pos->position_code}.");
 
-            $this->selectPosition($this->selectedPositionId);
+            if ($this->selectedPositionId) {
+                $this->selectPosition($this->selectedPositionId);
+            }
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal memasukkan pallet ke slot: ' . $e->getMessage());
         }
+    }
+
+    public function assignTemporaryPalletToSlot(int $palletId, MaterialWarehouseService $mwhService): void
+    {
+        if (!$this->selectedPositionId) {
+            session()->flash('error', 'Pilih slot rak tujuan terlebih dahulu.');
+            return;
+        }
+
+        $this->assignPalletToPosition($palletId, (int) $this->selectedPositionId, $mwhService);
     }
 
     public function deletePalletFromSlot($palletId, MaterialWarehouseService $mwhService): void
@@ -701,18 +726,25 @@ class RackMapping extends Component
             ->orderBy('created_at', 'asc')
             ->get();
 
+        $availablePositionsForWarehouse = MwhPosition::with('rack')
+            ->whereIn('status', ['EMPTY', 'PARTIAL'])
+            ->when($activeWhseId, fn($q) => $q->whereHas('rack', fn($rq) => $rq->where('whse_id', $activeWhseId)))
+            ->orderBy('position_code', 'asc')
+            ->get();
+
         return view('livewire.material-warehouse.rack-mapping', [
-            'warehouses'          => $this->warehouses,
-            'racks'               => $racks,
-            'groupedRacks'        => $groupedRacks,
-            'availableAreas'      => $availableAreas,
-            'selectedPosData'     => $selectedPosData,
-            'matchingPositionIds' => $matchingPositionIds,
-            'availableItemCodes'  => $availableItemCodes,
-            'searchSuggestions'   => $searchSuggestions,
-            'activeItemSummary'   => $activeItemSummary,
-            'fifoSummaryData'     => $fifoSummaryData,
-            'temporaryPallets'    => $temporaryPallets,
+            'warehouses'                     => $this->warehouses,
+            'racks'                          => $racks,
+            'groupedRacks'                   => $groupedRacks,
+            'availableAreas'                 => $availableAreas,
+            'selectedPosData'                => $selectedPosData,
+            'matchingPositionIds'            => $matchingPositionIds,
+            'availableItemCodes'             => $availableItemCodes,
+            'searchSuggestions'              => $searchSuggestions,
+            'activeItemSummary'              => $activeItemSummary,
+            'fifoSummaryData'                => $fifoSummaryData,
+            'temporaryPallets'               => $temporaryPallets,
+            'availablePositionsForWarehouse' => $availablePositionsForWarehouse,
         ]);
     }
 }
