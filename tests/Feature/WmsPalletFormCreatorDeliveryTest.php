@@ -866,5 +866,61 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
         $this->assertNotNull($pallet->assigned_at);
         $this->assertEquals('PARTIAL', $this->position->fresh()->status);
     }
+
+    public function test_manual_assign_modal_and_warehouse_filtering()
+    {
+        $this->actingAs($this->adminUser);
+
+        // Create a second warehouse with a position
+        $whse2 = WmsWarehouse::create([
+            'whse_code' => 'GUB',
+            'whse_name' => 'Gudang Utama B',
+        ]);
+        $rack2 = WmsRack::create([
+            'whse_id' => $whse2->id,
+            'rack_code' => 'F25',
+        ]);
+        $pos2 = WmsPosition::create([
+            'rack_id' => $rack2->id,
+            'level_no' => 1,
+            'slot_no' => 1,
+            'position_code' => 'GUB-F25-01',
+            'customer_code' => 'CUST-A',
+            'status' => 'EMPTY',
+            'max_capacity' => 10,
+        ]);
+
+        $pallet = WmsPalletForm::create([
+            'pallet_id'        => 'PLT-MANUAL-01',
+            'part_no'          => 'PART-XYZ',
+            'model_name'       => 'Test Part Model',
+            'prod_date'        => '2026-10-15',
+            'total_pallet_qty' => 100,
+            'box_qty'          => 5,
+            'status'           => 'STORED',
+            'position_id'      => null,
+        ]);
+
+        $comp = Livewire::test(\App\Livewire\Wms\PalletFormIndex::class)
+            ->call('openAssignModal', 'PLT-MANUAL-01')
+            ->assertSet('showAssignModal', true)
+            ->assertSet('scannedPallet.pallet_id', 'PLT-MANUAL-01');
+
+        // Test filtering by warehouse GUB
+        $comp->set('filterWarehouseId', (string) $whse2->id)
+            ->assertSet('filterWarehouseId', (string) $whse2->id);
+
+        $available = $comp->viewData('availablePositions');
+        $this->assertTrue($available->contains('id', $pos2->id));
+        $this->assertFalse($available->contains('id', $this->position->id));
+
+        // Test selecting slot and saving assignment
+        $comp->set('assignPositionId', $pos2->id)
+            ->call('saveAssignSlot')
+            ->assertSet('showAssignModal', false);
+
+        $pallet->refresh();
+        $this->assertEquals($pos2->id, $pallet->position_id);
+    }
 }
 

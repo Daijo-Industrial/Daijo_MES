@@ -109,13 +109,60 @@ class PalletFormIndex extends Component
         $this->assignPositionId       = $pallet->position_id;
         $this->showBoxDetails         = false;
 
-        // Smart Recommendation calculation
-        $customerCodes = $pallet->details->map(fn($d) => $d->item?->customer?->customer_code)
-            ->filter()->unique()->toArray();
-        $rec = $wmsService->recommendPosition($customerCodes, (string) $pallet->part_no);
-        $this->recommendedPositionId = $rec?->id;
+        // Auto pre-select warehouse from existing pallet position if any, or default to first warehouse
+        if ($pallet->position?->rack?->whse_id) {
+            $this->filterWarehouseId = (string) $pallet->position->rack->whse_id;
+        } elseif (empty($this->filterWarehouseId)) {
+            $firstWhse = WmsWarehouse::orderBy('whse_code', 'asc')->first();
+            if ($firstWhse) {
+                $this->filterWarehouseId = (string) $firstWhse->id;
+            }
+        }
+
+        $this->recalculateRecommendation($wmsService);
 
         $this->dispatch('scan-success');
+    }
+
+    /**
+     * Recalculate recommendation scoped to selected warehouse
+     */
+    public function recalculateRecommendation(?WmsService $wmsService = null)
+    {
+        if (!$this->scannedPallet) {
+            $this->recommendedPositionId = null;
+            return;
+        }
+
+        $wmsService = $wmsService ?? app(WmsService::class);
+        $customerCodes = $this->scannedPallet->details->map(fn($d) => $d->item?->customer?->customer_code)
+            ->filter()->unique()->toArray();
+        $rec = $wmsService->recommendPosition(
+            $customerCodes, 
+            (string) $this->scannedPallet->part_no,
+            $this->filterWarehouseId ?: null
+        );
+        $this->recommendedPositionId = $rec?->id;
+    }
+
+    /**
+     * Auto re-filter slots when warehouse selection changes
+     */
+    public function updatedFilterWarehouseId()
+    {
+        $this->recalculateRecommendation();
+
+        // If currently chosen slot does not belong to the newly selected warehouse, reset it
+        if (!empty($this->filterWarehouseId)) {
+            $currId = $this->assignPositionId ?: $this->selectedPositionId;
+            if ($currId) {
+                $pos = WmsPosition::with('rack')->find($currId);
+                if ($pos && (string)$pos->rack?->whse_id !== (string)$this->filterWarehouseId) {
+                    $this->selectedPositionId = null;
+                    $this->assignPositionId   = null;
+                }
+            }
+        }
     }
 
     /**
@@ -165,7 +212,19 @@ class PalletFormIndex extends Component
         $this->scanPallet($wmsService);
 
         if ($this->scannedPallet) {
-            $this->showAssignModal = true;
+            if ($this->scannedPallet->position?->rack?->whse_id) {
+                $this->filterWarehouseId = (string) $this->scannedPallet->position->rack->whse_id;
+            } elseif (empty($this->filterWarehouseId)) {
+                $firstWhse = WmsWarehouse::orderBy('whse_code', 'asc')->first();
+                if ($firstWhse) {
+                    $this->filterWarehouseId = (string) $firstWhse->id;
+                }
+            }
+
+            $this->recalculateRecommendation($wmsService);
+            $this->assignPositionId   = $this->scannedPallet->position_id;
+            $this->selectedPositionId = $this->scannedPallet->position_id;
+            $this->showAssignModal    = true;
         }
     }
 
@@ -182,7 +241,7 @@ class PalletFormIndex extends Component
             return;
         }
 
-        $targetPosId = $this->selectedPositionId ?? $this->assignPositionId;
+        $targetPosId = $this->showAssignModal ? $this->assignPositionId : ($this->selectedPositionId ?? $this->assignPositionId);
 
         try {
             $pallet = WmsPalletForm::where('pallet_id', $palletId)->firstOrFail();

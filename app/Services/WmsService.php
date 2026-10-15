@@ -67,10 +67,11 @@ class WmsService
      * Recommend a position for the given customer codes and primary part no.
      * Supports multi-item pallets (mixed customer codes).
      *
-     * @param  array  $customerCodes  All customer codes from scanned items
-     * @param  string $primaryPartNo  First/primary item code (for consolidation)
+     * @param  array   $customerCodes  All customer codes from scanned items
+     * @param  string  $primaryPartNo  First/primary item code (for consolidation)
+     * @param  string|null $warehouseId Optional warehouse ID to scope slot recommendations
      */
-    public function recommendPosition(array $customerCodes, string $primaryPartNo): ?WmsPosition
+    public function recommendPosition(array $customerCodes, string $primaryPartNo, ?string $warehouseId = null): ?WmsPosition
     {
         $uniqueCustomers = array_unique(array_filter($customerCodes));
         $isMixed         = count($uniqueCustomers) > 1;
@@ -79,6 +80,14 @@ class WmsService
         $priorityItems = $this->getPriorityItems();
         $cleanPartNo = str_replace('..', '', $primaryPartNo);
         $isPriority = in_array($primaryPartNo, $priorityItems) || in_array($cleanPartNo, $priorityItems) || in_array($cleanPartNo . '..', $priorityItems);
+
+        $applyWarehouseFilter = function($query) use ($warehouseId) {
+            if (!empty($warehouseId)) {
+                $query->whereHas('rack', function($rq) use ($warehouseId) {
+                    $rq->where('whse_id', $warehouseId);
+                });
+            }
+        };
 
         if (!$isMixed && count($uniqueCustomers) === 1) {
             $customerCode = $uniqueCustomers[0];
@@ -89,6 +98,8 @@ class WmsService
                 ->where('last_item_code', $primaryPartNo)
                 ->where('status', 'PARTIAL');
                 
+            $applyWarehouseFilter($partialSlotQuery);
+
             if ($isPriority) {
                 $partialSlotQuery->where('level_no', 1);
             } else {
@@ -107,6 +118,8 @@ class WmsService
             $emptyCustomerQuery = WmsPosition::where('customer_code', $customerCode)
                 ->where('status', 'EMPTY');
 
+            $applyWarehouseFilter($emptyCustomerQuery);
+
             if ($isPriority) {
                 $emptyCustomerQuery->where('level_no', 1);
             } else {
@@ -122,6 +135,7 @@ class WmsService
 
         // 3. Fallback: any EMPTY slot (for mixed customers or when customer slots are full)
         $fallbackQuery = WmsPosition::where('status', 'EMPTY');
+        $applyWarehouseFilter($fallbackQuery);
         if ($isPriority) {
             $fallbackQuery->where('level_no', 1);
         } else {

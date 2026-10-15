@@ -288,26 +288,57 @@
                             </div>
 
                             <!-- Warehouse & Slot Selector Dropdown -->
-                            <div class="space-y-1.5">
-                                <div class="flex justify-between items-center">
-                                    <label class="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Pilih Slot Rak Manual:</label>
-                                    <!-- Warehouse Filter Pill -->
-                                    <select wire:model.live="filterWarehouseId" class="text-[10px] bg-white border border-gray-300 rounded-lg px-2 py-0.5 font-bold text-gray-700 outline-none">
-                                        <option value="">Semua Gudang</option>
+                            <div class="space-y-2">
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                                            <span>🏭</span>
+                                            <span>Pilih Gudang:</span>
+                                        </label>
+                                        @php
+                                            $quickWhse = $warehouses->firstWhere('id', $filterWarehouseId);
+                                        @endphp
+                                        <span class="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                            {{ $quickWhse ? $quickWhse->whse_code : 'Semua Gudang' }}
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-4 gap-1.5">
                                         @foreach($warehouses as $wh)
-                                            <option value="{{ $wh->id }}">{{ $wh->whse_code }} - {{ $wh->whse_name }}</option>
+                                            <button type="button" 
+                                                    wire:click="$set('filterWarehouseId', '{{ $wh->id }}')"
+                                                    class="py-1 px-1.5 rounded-lg text-center font-mono text-xs font-black transition border cursor-pointer {{ (string)$filterWarehouseId === (string)$wh->id ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300' }}">
+                                                {{ $wh->whse_code }}
+                                            </button>
+                                        @endforeach
+                                        <button type="button" 
+                                                wire:click="$set('filterWarehouseId', '')"
+                                                class="py-1 px-1.5 rounded-lg text-center text-[10px] font-bold transition border cursor-pointer {{ empty($filterWarehouseId) ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300' }}">
+                                            SEMUA
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-1">
+                                    <div class="flex justify-between items-center">
+                                        <label class="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                                            <span>🎯</span>
+                                            <span>Pilih Slot Rak:</span>
+                                        </label>
+                                        <span class="text-[9px] text-gray-400 font-semibold">{{ $availablePositions->count() }} Slot</span>
+                                    </div>
+                                    <select wire:model="selectedPositionId" class="w-full p-2.5 bg-white border-2 border-blue-400 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-3xs">
+                                        <option value="">⏳ TEMPORARY (Belum ada tempat / Unassigned)</option>
+                                        @foreach ($availablePositions as $pos)
+                                            @php
+                                                $isFull = $pos->status === 'FULL';
+                                                $statusIcon = $pos->status === 'EMPTY' ? '⚪ Kosong' : ($pos->status === 'PARTIAL' ? '🟡 Partial' : '⛔ FULL');
+                                            @endphp
+                                            <option value="{{ $pos->id }}" @disabled($isFull) class="{{ $isFull ? 'text-gray-400 bg-gray-50' : '' }}">
+                                                📍 {{ $pos->position_code }} [{{ $pos->rack?->warehouse?->whse_code ?? 'WMS' }}] &bull; {{ $statusIcon }} &bull; (Cust: {{ $pos->customer_code ?: 'ALL' }})
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
-
-                                <select wire:model="selectedPositionId" class="w-full p-2.5 bg-white border-2 border-blue-400 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-3xs">
-                                    <option value="">⏳ TEMPORARY (Belum ada tempat / Unassigned)</option>
-                                    @foreach ($availablePositions as $pos)
-                                        <option value="{{ $pos->id }}">
-                                            📍 {{ $pos->position_code }} [{{ $pos->rack?->warehouse?->whse_code ?? 'WMS' }}] (Status: {{ $pos->status }}, Cust: {{ $pos->customer_code ?: 'ALL' }})
-                                        </option>
-                                    @endforeach
-                                </select>
                             </div>
 
                             <!-- Placement Action Buttons -->
@@ -548,25 +579,72 @@
                         </div>
                     </div>
 
+                    <!-- 1. Pilihan Gudang -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span>🏭</span>
+                                <span>1. Pilih Gudang:</span>
+                            </span>
+                            @php
+                                $modalWhse = $warehouses->firstWhere('id', $filterWarehouseId);
+                            @endphp
+                            <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
+                                {{ $modalWhse ? $modalWhse->whse_code . ' - ' . $modalWhse->whse_name : 'Semua Gudang' }}
+                            </span>
+                        </label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            @foreach($warehouses as $wh)
+                                <button type="button" 
+                                        wire:click="$set('filterWarehouseId', '{{ $wh->id }}')"
+                                        class="px-2.5 py-2 rounded-xl text-xs font-black transition border text-left flex flex-col justify-between cursor-pointer {{ (string)$filterWarehouseId === (string)$wh->id ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-300' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200' }}">
+                                    <span class="font-mono text-xs leading-tight">{{ $wh->whse_code }}</span>
+                                    <span class="text-[9px] truncate opacity-80 mt-0.5">{{ $wh->whse_name }}</span>
+                                </button>
+                            @endforeach
+                            <button type="button" 
+                                    wire:click="$set('filterWarehouseId', '')"
+                                    class="px-2.5 py-2 rounded-xl text-xs font-bold transition border text-left flex flex-col justify-between cursor-pointer {{ empty($filterWarehouseId) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-300' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200' }}">
+                                <span class="text-xs font-black leading-tight">SEMUA</span>
+                                <span class="text-[9px] truncate opacity-80 mt-0.5">Semua Gudang</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Rekomendasi Sistem (Opsional) -->
                     @if($recommendedPosition)
-                        <div class="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-2">
+                        <div class="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-2 shadow-xs">
                             <div class="text-xs">
-                                <span class="font-bold text-emerald-800 text-[10px] block">💡 REKOMENDASI SISTEM:</span>
-                                <span class="font-black font-mono text-emerald-900">{{ $recommendedPosition->position_code }}</span>
+                                <span class="font-black text-emerald-800 text-[10px] block flex items-center gap-1">
+                                    <span>💡</span> REKOMENDASI DI GUDANG INI:
+                                </span>
+                                <span class="font-black font-mono text-emerald-900 text-sm">{{ $recommendedPosition->position_code }}</span>
+                                <span class="text-[10px] text-emerald-700 font-semibold block">({{ $recommendedPosition->rack?->warehouse?->whse_code ?? 'WMS' }} - Status: {{ $recommendedPosition->status }})</span>
                             </div>
-                            <button type="button" wire:click="applyRecommendation" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold">
-                                Pakai
+                            <button type="button" wire:click="applyRecommendation" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black transition cursor-pointer shadow-xs">
+                                ⚡ Pakai
                             </button>
                         </div>
                     @endif
 
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Pilih Slot Rak WMS:</label>
-                        <select wire:model="assignPositionId" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                    <!-- 2. Pilih Slot Rak di Gudang Tersebut -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span>🎯</span>
+                                <span>2. Pilih Slot Rak @if($modalWhse) ({{ $modalWhse->whse_code }}) @endif:</span>
+                            </span>
+                            <span class="text-[10px] text-gray-500 font-semibold">{{ $availablePositions->count() }} Slot Tersedia</span>
+                        </label>
+                        <select wire:model="assignPositionId" class="w-full p-3 bg-white border-2 border-indigo-400 focus:border-indigo-600 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none shadow-xs text-gray-900">
                             <option value="">⏳ TEMPORARY (Belum ada tempat / Unassigned)</option>
                             @foreach ($availablePositions as $pos)
-                                <option value="{{ $pos->id }}">
-                                    📍 {{ $pos->position_code }} ({{ $pos->rack?->warehouse?->whse_code ?? 'WMS' }} - Cust: {{ $pos->customer_code ?: 'ALL' }}, Status: {{ $pos->status }})
+                                @php
+                                    $isFull = $pos->status === 'FULL';
+                                    $statusIcon = $pos->status === 'EMPTY' ? '⚪ Kosong' : ($pos->status === 'PARTIAL' ? '🟡 Partial' : '⛔ FULL');
+                                @endphp
+                                <option value="{{ $pos->id }}" @disabled($isFull) class="{{ $isFull ? 'text-gray-400 bg-gray-50' : '' }}">
+                                    📍 {{ $pos->position_code }} [{{ $pos->rack?->warehouse?->whse_code ?? 'WMS' }}] &bull; {{ $statusIcon }} &bull; (Cust: {{ $pos->customer_code ?: 'ALL' }})
                                 </option>
                             @endforeach
                         </select>
