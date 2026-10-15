@@ -157,6 +157,33 @@
             </div>
         </div>
 
+        <!-- Area Temporary / Transit Alert Banner -->
+        @if (!empty($temporaryPallets) && $temporaryPallets->isNotEmpty())
+            <div class="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white p-4 sm:p-5 rounded-2xl shadow-md border border-amber-400 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-in fade-in">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-11 h-11 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30 text-xl flex-shrink-0">
+                        ⏳
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2 py-0.5 bg-black/20 text-amber-100 text-[9px] font-black rounded-md uppercase tracking-widest border border-white/20">Area Transit</span>
+                            <h2 class="text-base font-black tracking-tight">MATERIAL DI AREA TEMPORARY (BELUM ADA SLOT)</h2>
+                        </div>
+                        <p class="text-xs text-amber-100 mt-0.5">
+                            Terdapat <strong class="text-white underline font-bold">{{ $temporaryPallets->count() }} Pallet</strong> (Total <strong class="text-white font-bold">{{ number_format($temporaryPallets->sum('current_qty'), 2) }} KG</strong>) yang siap dipindahkan ke slot rak kosong.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 self-end md:self-auto">
+                    <a href="{{ route('mwh.pallets.index', ['statusFilter' => 'TEMPORARY', 'whse_id' => $selectedWhseId]) }}" class="px-4 py-2 bg-white text-amber-900 hover:bg-amber-50 rounded-xl text-xs font-black transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap">
+                        <svg class="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                        <span>Kelola & Masukkan ke Slot</span>
+                    </a>
+                </div>
+            </div>
+        @endif
+
         <!-- Special Active Item FIFO Summary Banner (Appears right above slot status legend bar when item is typed/selected) -->
         @if ($activeItemSummary)
             <div class="bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 text-white p-5 rounded-2xl shadow-lg border border-emerald-700/50 space-y-4 animate-in fade-in duration-200">
@@ -518,6 +545,60 @@
                                     </div>
                                 @endif
                             </div>
+
+                            <!-- Section: Masukkan Material dari Area Temporary ke Slot Ini -->
+                            @if (!$isViewOnly && $selectedPosData->status !== 'FULL' && !empty($temporaryPallets) && $temporaryPallets->isNotEmpty())
+                                @php
+                                    $currentSlotStored = $selectedPosData->pallets ? $selectedPosData->pallets->sum('current_qty') : 0;
+                                    $slotRemainingCap = max(0, (float)$selectedPosData->max_capacity - (float)$currentSlotStored);
+                                @endphp
+                                <div class="border-t border-gray-100 pt-4 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="w-2.5 h-2.5 bg-amber-500 rounded-full inline-block animate-pulse"></span>
+                                            <h4 class="text-xs font-black text-amber-900 uppercase tracking-widest">
+                                                Masukkan dari Area Temporary
+                                            </h4>
+                                        </div>
+                                        <span class="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                                            Sisa Slot: {{ number_format($slotRemainingCap, 2) }} KG
+                                        </span>
+                                    </div>
+
+                                    <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
+                                        @foreach ($temporaryPallets as $tempPallet)
+                                            @php
+                                                $fitsInSlot = $slotRemainingCap >= (float)$tempPallet->current_qty;
+                                            @endphp
+                                            <div class="p-2.5 rounded-xl border {{ $fitsInSlot ? 'bg-amber-50/70 border-amber-200' : 'bg-gray-50 border-gray-200 opacity-60' }} flex items-center justify-between gap-2">
+                                                <div>
+                                                    <div class="flex items-center space-x-1.5 font-mono text-xs font-bold text-gray-900">
+                                                        <span>{{ $tempPallet->pallet_id }}</span>
+                                                        <span class="text-amber-800 font-black">({{ $tempPallet->item_code }})</span>
+                                                    </div>
+                                                    <div class="text-[10px] text-gray-500 font-bold">
+                                                        Qty: <strong class="text-emerald-700">{{ number_format($tempPallet->current_qty, 2) }} KG</strong>
+                                                        @if ($tempPallet->lot_no) &bull; Lot: {{ $tempPallet->lot_no }} @endif
+                                                    </div>
+                                                </div>
+
+                                                @if ($fitsInSlot)
+                                                    <button type="button" 
+                                                            wire:click="assignTemporaryPalletToSlot({{ $tempPallet->id }})" 
+                                                            class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-xs flex-shrink-0">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                        <span>+ Masuk Slot</span>
+                                                    </button>
+                                                @else
+                                                    <span class="text-[10px] text-rose-500 font-bold flex-shrink-0" title="Kapasitas slot tersisa tidak cukup untuk pallet ini">
+                                                        Over Kapasitas
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
 
                             <!-- Section 2: Form Edit Configuration Slot (Collapsible) -->
                             <div class="border-t border-gray-100 pt-4 space-y-3" x-data="{ showEditSlot: false }">

@@ -66,6 +66,22 @@ class MwhPallet extends Model
     }
 
     /**
+     * Check if this pallet is currently in the temporary area (unassigned slot).
+     */
+    public function isTemporary(): bool
+    {
+        return is_null($this->position_id) && $this->current_qty > 0;
+    }
+
+    /**
+     * Accessor for is_temporary attribute.
+     */
+    public function getIsTemporaryAttribute(): bool
+    {
+        return $this->isTemporary();
+    }
+
+    /**
      * Dynamically compute live pallet status based on current_qty vs initial_qty.
      */
     public function getStatusAttribute($value): string
@@ -79,3 +95,4 @@ class MwhPallet extends Model
         return $value ?: 'STORED';
     }
 }
+

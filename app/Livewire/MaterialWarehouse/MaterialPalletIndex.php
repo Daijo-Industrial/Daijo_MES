@@ -23,6 +23,7 @@ class MaterialPalletIndex extends Component
     public ?int $relocatingPalletId = null;
     public ?string $relocatingPalletCode = null;
     public ?int $newPositionId = null;
+    public bool $isFromTemporary = false;
 
     // QC Hold Modal State
     public bool $showQcHoldModal = false;
@@ -102,6 +103,7 @@ class MaterialPalletIndex extends Component
         $this->relocatingPalletId   = $pallet->id;
         $this->relocatingPalletCode = $pallet->pallet_id;
         $this->newPositionId        = $pallet->position_id;
+        $this->isFromTemporary      = is_null($pallet->position_id);
         $this->showRelocateModal    = true;
     }
 
@@ -109,14 +111,29 @@ class MaterialPalletIndex extends Component
     {
         $this->validate([
             'newPositionId' => 'required|exists:mwh_positions,id',
+        ], [
+            'newPositionId.required' => 'Pilih slot rak tujuan penempatan.',
+            'newPositionId.exists'   => 'Slot rak tujuan tidak valid.',
         ]);
 
         $pallet = MwhPallet::findOrFail($this->relocatingPalletId);
         $oldPositionId = $pallet->position_id;
 
         if ($oldPositionId !== (int) $this->newPositionId) {
+            $newPos = MwhPosition::findOrFail($this->newPositionId);
+
+            // Cek ketersediaan kapasitas di slot tujuan
+            $currentStored = MwhPallet::where('position_id', $newPos->id)->where('current_qty', '>', 0)->sum('current_qty');
+            $availableCap = $newPos->max_capacity - $currentStored;
+
+            if ($availableCap < $pallet->current_qty) {
+                session()->flash('error', "Kapasitas slot {$newPos->position_code} tersisa " . number_format($availableCap, 2) . " KG, tidak muat untuk pallet seberat " . number_format($pallet->current_qty, 2) . " KG.");
+                return;
+            }
+
             $pallet->update([
-                'position_id' => $this->newPositionId,
+                'position_id'         => $this->newPositionId,
+                'initial_position_id' => $pallet->initial_position_id ?: $this->newPositionId,
             ]);
 
             // Update status of old and new rack slots
@@ -125,7 +142,10 @@ class MaterialPalletIndex extends Component
             }
             $mwhService->updatePositionStatus($this->newPositionId);
 
-            session()->flash('success', "Pallet {$pallet->pallet_id} berhasil direlokasi ke slot baru.");
+            $actionText = $oldPositionId 
+                ? "direlokasi ke slot {$newPos->position_code}" 
+                : "berhasil dimasukkan dari Temporary ke slot {$newPos->position_code}";
+            session()->flash('success', "Pallet {$pallet->pallet_id} {$actionText}.");
         }
 
         $this->showRelocateModal = false;
@@ -189,6 +209,9 @@ class MaterialPalletIndex extends Component
                     });
                 } elseif ($this->statusFilter === 'QC_HOLD') {
                     $query->where('is_qc_hold', true);
+                } elseif ($this->statusFilter === 'TEMPORARY') {
+                    $query->whereNull('mwh_pallets.position_id')
+                          ->where('mwh_pallets.current_qty', '>', 0);
                 }
             })
             ->when($this->whse_id && $this->whse_id !== 'ALL', function ($query) {
@@ -204,10 +227,22 @@ class MaterialPalletIndex extends Component
             ->orderBy('mwh_pallets.id', 'desc')
             ->paginate($this->perPage);
 
-        $availablePositions = MwhPosition::with('rack')
-            ->whereIn('status', ['EMPTY', 'PARTIAL'])
-            ->orderBy('position_code', 'asc')
-            ->get();
+        $targetWhseId = null;
+        if ($this->relocatingPalletId) {
+            $relocatingPallet = MwhPallet::with('position.rack')->find($this->relocatingPalletId);
+            $targetWhseId = $relocatingPallet ? ($relocatingPallet->whse_id ?: $relocatingPallet->position?->rack?->whse_id) : null;
+        } elseif ($this->whse_id !== 'ALL' && $this->whse_id) {
+            $targetWhseId = (int) $this->whse_id;
+        }
+
+        $availablePositionsQuery = MwhPosition::with('rack')
+            ->whereIn('status', ['EMPTY', 'PARTIAL']);
+
+        if ($targetWhseId) {
+            $availablePositionsQuery->whereHas('rack', fn($q) => $q->where('whse_id', $targetWhseId));
+        }
+
+        $availablePositions = $availablePositionsQuery->orderBy('position_code', 'asc')->get();
 
         return view('livewire.material-warehouse.material-pallet-index', [
             'warehouses'         => $this->warehouses,

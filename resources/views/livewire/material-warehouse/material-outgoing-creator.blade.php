@@ -126,7 +126,7 @@
                                 </div>
 
                                 <div class="text-[11px] text-gray-600 flex justify-between items-center font-mono">
-                                    <span>Slot Rak: <strong>{{ $f['position']['position_code'] ?? 'Unassigned' }}</strong></span>
+                                    <span>Slot Rak: <strong>{{ $f['position']['position_code'] ?? '⏳ TEMPORARY' }}</strong></span>
                                     <span class="text-[10px] text-emerald-800 font-bold">Tgl Kedatangan: {{ isset($f['incoming_header']['arrival_date']) && $f['incoming_header']['arrival_date'] ? date('d M Y', strtotime($f['incoming_header']['arrival_date'])) : date('d M Y', strtotime($f['created_at'])) }}</span>
                                 </div>
 
@@ -170,7 +170,7 @@
                         <div class="p-4 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-black text-amber-900 font-mono">PALLET TERPILIH: {{ $selectedPallet->pallet_id }}</span>
-                                <span class="px-2.5 py-0.5 bg-amber-200 text-amber-900 rounded-full text-[10px] font-bold">Slot: {{ $selectedPallet->position ? $selectedPallet->position->position_code : 'Unassigned' }}</span>
+                                <span class="px-2.5 py-0.5 bg-amber-200 text-amber-900 rounded-full text-[10px] font-bold">Slot: {{ $selectedPallet->position ? $selectedPallet->position->position_code : '⏳ TEMPORARY (Area Transit)' }}</span>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-xs">
                                 <div><span class="text-gray-500">Part Code:</span> <strong class="font-mono">{{ $selectedPallet->item_code }}</strong></div>

@@ -246,6 +246,47 @@ class RackMapping extends Component
         }
     }
 
+    public function assignTemporaryPalletToSlot(int $palletId, MaterialWarehouseService $mwhService): void
+    {
+        if (!$this->selectedPositionId) {
+            session()->flash('error', 'Pilih slot rak tujuan terlebih dahulu.');
+            return;
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $pos = MwhPosition::with('rack')->findOrFail($this->selectedPositionId);
+            $pallet = MwhPallet::findOrFail($palletId);
+
+            // Cek apakah slot masih muat
+            $currentStored = MwhPallet::where('position_id', $pos->id)->where('current_qty', '>', 0)->sum('current_qty');
+            $availableCap = (float) $pos->max_capacity - (float) $currentStored;
+
+            if ($availableCap < (float) $pallet->current_qty) {
+                session()->flash('error', "Kapasitas slot {$pos->position_code} tersisa " . number_format($availableCap, 2) . " KG, tidak muat untuk pallet seberat " . number_format($pallet->current_qty, 2) . " KG.");
+                DB::rollBack();
+                return;
+            }
+
+            $pallet->update([
+                'position_id'         => $pos->id,
+                'initial_position_id' => $pallet->initial_position_id ?: $pos->id,
+            ]);
+
+            $mwhService->updatePositionStatus($pos->id);
+
+            DB::commit();
+
+            session()->flash('success', "Pallet {$pallet->pallet_id} ({$pallet->item_code}) berhasil dimasukkan dari Area Temporary ke Slot {$pos->position_code}.");
+
+            $this->selectPosition($this->selectedPositionId);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal memasukkan pallet ke slot: ' . $e->getMessage());
+        }
+    }
+
     public function deletePalletFromSlot($palletId, MaterialWarehouseService $mwhService): void
     {
         try {
@@ -653,6 +694,13 @@ class RackMapping extends Component
         sort($availableAreas);
         ksort($groupedRacks);
 
+        $temporaryPallets = MwhPallet::with(['material', 'incomingHeader'])
+            ->whereNull('position_id')
+            ->where('current_qty', '>', 0)
+            ->when($activeWhseId, fn($q) => $q->where('whse_id', $activeWhseId))
+            ->orderBy('created_at', 'asc')
+            ->get();
+
         return view('livewire.material-warehouse.rack-mapping', [
             'warehouses'          => $this->warehouses,
             'racks'               => $racks,
@@ -664,6 +712,7 @@ class RackMapping extends Component
             'searchSuggestions'   => $searchSuggestions,
             'activeItemSummary'   => $activeItemSummary,
             'fifoSummaryData'     => $fifoSummaryData,
+            'temporaryPallets'    => $temporaryPallets,
         ]);
     }
 }

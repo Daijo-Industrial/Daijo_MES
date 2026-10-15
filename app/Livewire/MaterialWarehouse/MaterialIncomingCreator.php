@@ -140,6 +140,20 @@ class MaterialIncomingCreator extends Component
         $this->items[$index]['searchResults']    = [];
     }
 
+    public function setRowToTemporary(int $index): void
+    {
+        if (isset($this->items[$index])) {
+            $this->items[$index]['position_id'] = 'TEMPORARY';
+        }
+    }
+
+    public function setAllToTemporary(): void
+    {
+        foreach ($this->items as $index => $row) {
+            $this->items[$index]['position_id'] = 'TEMPORARY';
+        }
+    }
+
     public function saveIncoming(MaterialWarehouseService $mwhService): void
     {
         $this->validate([
@@ -154,12 +168,19 @@ class MaterialIncomingCreator extends Component
             'items'                  => 'required|array|min:1',
             'items.*.item_code'      => 'required|string|exists:master_list_materials,item_code',
             'items.*.qty'            => 'required|numeric|min:0.01',
-            'items.*.position_id'    => 'required|exists:mwh_positions,id',
+            'items.*.position_id'    => [
+                'required',
+                function ($attribute, $value, $fail) {
+                    if ($value !== 'TEMPORARY' && !MwhPosition::where('id', $value)->exists()) {
+                        $fail('Pilih slot rak lokasi penyimpanan atau Area Temporary.');
+                    }
+                },
+            ],
         ], [
             'items.*.item_code.required'   => 'Part Code material harus diisi.',
             'items.*.item_code.exists'     => 'Part Code material tidak ada di Master List.',
             'items.*.qty.required'         => 'Jumlah (KG) harus diisi.',
-            'items.*.position_id.required' => 'Pilih slot rak lokasi penyimpanan.',
+            'items.*.position_id.required' => 'Pilih slot rak lokasi penyimpanan atau Area Temporary.',
         ]);
 
         try {
@@ -180,10 +201,11 @@ class MaterialIncomingCreator extends Component
             $this->createdPallets = [];
 
             foreach ($this->items as $row) {
-                $totalQty = (float) $row['qty'];
-                $itemCode = strtoupper(trim($row['item_code']));
-                $lotNo    = trim($row['lot_no']) ?: null;
-                $initialPosId = (int) $row['position_id'];
+                $totalQty     = (float) $row['qty'];
+                $itemCode     = strtoupper(trim($row['item_code']));
+                $lotNo        = trim($row['lot_no']) ?: null;
+                $isTemporary  = ($row['position_id'] === 'TEMPORARY');
+                $initialPosId = $isTemporary ? null : (int) $row['position_id'];
 
                 $remainingToSplit = $totalQty;
 
@@ -191,26 +213,30 @@ class MaterialIncomingCreator extends Component
                     $palletQty = min(1000.0, $remainingToSplit);
                     $remainingToSplit -= $palletQty;
 
-                    // Determine target slot position for this specific pallet
-                    $targetPosId = $initialPosId;
+                    $targetPosId = null;
 
-                    $targetPos = MwhPosition::find($targetPosId);
-                    $currentStored = MwhPallet::where('position_id', $targetPosId)->where('current_qty', '>', 0)->sum('current_qty');
-                    $availableCap = $targetPos ? ($targetPos->max_capacity - $currentStored) : 0;
+                    if (!$isTemporary) {
+                        // Determine target slot position for this specific pallet
+                        $targetPosId = $initialPosId;
 
-                    // If selected target slot does not have enough capacity for this pallet, find next available empty/partial slot in same warehouse
-                    if ($availableCap < $palletQty) {
-                        $nextPos = MwhPosition::whereHas('rack', fn($q) => $q->where('whse_id', $this->whse_id))
-                            ->whereIn('status', ['EMPTY', 'PARTIAL'])
-                            ->where('id', '!=', $targetPosId)
-                            ->get()
-                            ->first(function($p) use ($palletQty) {
-                                $stored = MwhPallet::where('position_id', $p->id)->where('current_qty', '>', 0)->sum('current_qty');
-                                return ($p->max_capacity - $stored) >= $palletQty;
-                            });
+                        $targetPos = MwhPosition::find($targetPosId);
+                        $currentStored = MwhPallet::where('position_id', $targetPosId)->where('current_qty', '>', 0)->sum('current_qty');
+                        $availableCap = $targetPos ? ($targetPos->max_capacity - $currentStored) : 0;
 
-                        if ($nextPos) {
-                            $targetPosId = $nextPos->id;
+                        // If selected target slot does not have enough capacity for this pallet, find next available empty/partial slot in same warehouse
+                        if ($availableCap < $palletQty) {
+                            $nextPos = MwhPosition::whereHas('rack', fn($q) => $q->where('whse_id', $this->whse_id))
+                                ->whereIn('status', ['EMPTY', 'PARTIAL'])
+                                ->where('id', '!=', $targetPosId)
+                                ->get()
+                                ->first(function($p) use ($palletQty) {
+                                    $stored = MwhPallet::where('position_id', $p->id)->where('current_qty', '>', 0)->sum('current_qty');
+                                    return ($p->max_capacity - $stored) >= $palletQty;
+                                });
+
+                            if ($nextPos) {
+                                $targetPosId = $nextPos->id;
+                            }
                         }
                     }
 
@@ -244,13 +270,16 @@ class MaterialIncomingCreator extends Component
                         }
                     }
 
-                    $mwhService->updatePositionStatus($targetPosId);
+                    if ($targetPosId) {
+                        $mwhService->updatePositionStatus($targetPosId);
+                    }
 
                     $this->createdPallets[] = [
-                        'pallet_id'   => $pallet->pallet_id,
-                        'item_code'   => $pallet->item_code,
-                        'qty'         => $pallet->current_qty,
-                        'position'    => $pallet->position ? $pallet->position->position_code : '-',
+                        'pallet_id'    => $pallet->pallet_id,
+                        'item_code'    => $pallet->item_code,
+                        'qty'          => $pallet->current_qty,
+                        'position'     => $pallet->position ? $pallet->position->position_code : '⏳ TEMPORARY',
+                        'is_temporary' => $isTemporary,
                     ];
                 }
             }

@@ -85,6 +85,7 @@
                     <span class="text-gray-500">Status:</span>
                     <select wire:model.live="statusFilter" class="bg-gray-50 border border-gray-200 rounded-xl text-xs px-3 py-1.5 focus:ring-2 focus:ring-emerald-500 font-bold">
                         <option value="ALL">Semua Status</option>
+                        <option value="TEMPORARY">⏳ TEMPORARY (Area Transit / Belum Ada Slot)</option>
                         <option value="STORED">STORED (Utuh)</option>
                         <option value="PARTIAL">PARTIAL (Slot / Terambil)</option>
                         <option value="EMPTY">EMPTY (Habis)</option>
@@ -163,6 +164,13 @@
                                                 <span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-black rounded border border-emerald-300">FULL SLOT</span>
                                             @endif
                                         </div>
+                                    @elseif ($p->isTemporary())
+                                        <div>
+                                            <span class="inline-flex items-center px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-[10px] font-black">
+                                                ⏳ TEMPORARY
+                                            </span>
+                                            <div class="text-[9px] text-amber-700 font-bold mt-0.5">Area Transit (Belum Ada Slot)</div>
+                                        </div>
                                     @elseif ($p->initialPosition)
                                         <div class="flex items-center space-x-1.5">
                                             <span class="inline-block px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-[11px] font-mono font-bold">
@@ -198,6 +206,12 @@
                                     @endif
                                 </td>
                                 <td class="py-3.5 px-4 text-right space-x-1.5">
+                                    @if ($p->isTemporary())
+                                        <button wire:click="openRelocateModal({{ $p->id }})" class="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-black inline-flex items-center space-x-1 shadow-xs transition" title="Tempatkan Pallet ke Slot Rak">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                                            <span>Masuk Slot</span>
+                                        </button>
+                                    @endif
                                     <button wire:click="openQcHoldModal({{ $p->id }})" class="p-1.5 {{ $p->is_qc_hold ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-amber-50 text-amber-700 hover:bg-amber-100' }} rounded-lg inline-block transition" title="QC Hold / Release / Edit Remark">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                     </button>
@@ -279,19 +293,26 @@
             <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-scale-up">
                 <div class="p-6 bg-gray-900 text-white flex justify-between items-center">
                     <div>
-                        <h3 class="text-lg font-black tracking-tight">Relokasi Pallet</h3>
-                        <p class="text-xs text-gray-400">Pindahkan Pallet <strong class="text-emerald-400 font-mono">{{ $relocatingPalletCode }}</strong> ke Slot Rak Baru</p>
+                        <h3 class="text-lg font-black tracking-tight">
+                            {{ $isFromTemporary ? '📥 Masukkan Pallet ke Slot Rak' : 'Relokasi Pallet' }}
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            {{ $isFromTemporary ? 'Tempatkan Pallet dari Area Temporary ke Slot Rak' : 'Pindahkan Pallet ke Slot Rak Baru' }}
+                            (<strong class="text-emerald-400 font-mono">{{ $relocatingPalletCode }}</strong>)
+                        </p>
                     </div>
                     <button wire:click="$set('showRelocateModal', false)" class="text-gray-400 hover:text-white transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
 
                 <form wire:submit.prevent="saveRelocation" class="p-6 space-y-4">
                     <div>
-                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Pilih Slot Rak Tujuan Baru *</label>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                            {{ $isFromTemporary ? 'Pilih Slot Rak Penempatan Material *' : 'Pilih Slot Rak Tujuan Baru *' }}
+                        </label>
                         <select wire:model="newPositionId" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-800 focus:ring-2 focus:ring-emerald-500">
-                            <option value="">-- Pilih Slot Rak Baru --</option>
+                            <option value="">-- Pilih Slot Rak --</option>
                             @foreach ($availablePositions as $pos)
-                                <option value="{{ $pos->id }}">{{ $pos->position_code }} ({{ $pos->slot_label ?: 'Slot' }}) — Status: {{ $pos->status }}</option>
+                                <option value="{{ $pos->id }}">{{ $pos->position_code }} ({{ $pos->slot_label ?: 'Slot' }}) — Status: {{ $pos->status }} (Max {{ number_format($pos->max_capacity) }} KG)</option>
                             @endforeach
                         </select>
                         @error('newPositionId') <span class="text-[10px] text-rose-500 font-bold block mt-1">{{ $message }}</span> @enderror

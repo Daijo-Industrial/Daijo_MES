@@ -670,5 +670,167 @@ class MaterialWarehouseTransactionTest extends TestCase
             ->assertSee('RAK-DIR-L01-S01')
             ->assertDontSee('UNASSIGNED');
     }
+
+    public function test_incoming_material_can_be_placed_in_temporary_without_slot_limits(): void
+    {
+        $kbnWh = MwhWarehouse::firstOrCreate(['whse_code' => 'KBN'], ['whse_name' => 'Gudang Material KBN']);
+        $krwWh = MwhWarehouse::firstOrCreate(['whse_code' => 'KRW'], ['whse_name' => 'Gudang Material Karawang']);
+
+        MasterListMaterial::firstOrCreate(
+            ['item_code' => 'RAW-TMP-PP'],
+            ['item_description' => 'Polypropylene Temporary Resin Test', 'purchasing_uom' => 'KG']
+        );
+
+        // 1. Incoming ke Temporary di KBN (2500 KG -> dipecah 3 pallet: 1000, 1000, 500 KG)
+        Livewire::test(MaterialIncomingCreator::class)
+            ->set('whse_id', $kbnWh->id)
+            ->set('incoming_type', 'SUPPLIER')
+            ->set('supplier_name', 'PT. Supplier KBN')
+            ->set('arrival_date', '2026-10-15')
+            ->set('items', [
+                [
+                    'item_code'        => 'RAW-TMP-PP',
+                    'item_description' => 'Polypropylene Temporary Resin Test',
+                    'lot_no'           => 'LOT-KBN-01',
+                    'qty'              => '2500',
+                    'position_id'      => 'TEMPORARY',
+                    'searchResults'    => [],
+                ]
+            ])
+            ->call('saveIncoming')
+            ->assertHasNoErrors()
+            ->assertSet('showSuccessModal', true);
+
+        $kbnPallets = MwhPallet::where('whse_id', $kbnWh->id)->where('item_code', 'RAW-TMP-PP')->get();
+        $this->assertCount(3, $kbnPallets);
+        $this->assertEquals(2500.0, $kbnPallets->sum('current_qty'));
+        foreach ($kbnPallets as $p) {
+            $this->assertNull($p->position_id);
+            $this->assertNull($p->initial_position_id);
+            $this->assertEquals('STORED', $p->status);
+            $this->assertTrue($p->isTemporary());
+        }
+
+        // 2. Incoming ke Temporary di Karawang (1500 KG -> dipecah 2 pallet: 1000, 500 KG)
+        Livewire::test(MaterialIncomingCreator::class)
+            ->set('whse_id', $krwWh->id)
+            ->set('incoming_type', 'SUPPLIER')
+            ->set('supplier_name', 'PT. Supplier Karawang')
+            ->set('arrival_date', '2026-10-15')
+            ->set('items', [
+                [
+                    'item_code'        => 'RAW-TMP-PP',
+                    'item_description' => 'Polypropylene Temporary Resin Test',
+                    'lot_no'           => 'LOT-KRW-01',
+                    'qty'              => '1500',
+                    'position_id'      => 'TEMPORARY',
+                    'searchResults'    => [],
+                ]
+            ])
+            ->call('saveIncoming')
+            ->assertHasNoErrors()
+            ->assertSet('showSuccessModal', true);
+
+        $krwPallets = MwhPallet::where('whse_id', $krwWh->id)->where('item_code', 'RAW-TMP-PP')->get();
+        $this->assertCount(2, $krwPallets);
+        $this->assertEquals(1500.0, $krwPallets->sum('current_qty'));
+        foreach ($krwPallets as $p) {
+            $this->assertNull($p->position_id);
+            $this->assertNull($p->initial_position_id);
+            $this->assertEquals('STORED', $p->status);
+            $this->assertTrue($p->isTemporary());
+        }
+    }
+
+    public function test_temporary_pallet_can_be_filtered_and_relocated_to_slot(): void
+    {
+        $kbnWh = MwhWarehouse::firstOrCreate(['whse_code' => 'KBN'], ['whse_name' => 'Gudang Material KBN']);
+
+        $rack = MwhRack::create(['whse_id' => $kbnWh->id, 'rack_code' => 'RAK-TMP-A']);
+        $slot = MwhPosition::create([
+            'rack_id'       => $rack->id,
+            'level_no'      => 1,
+            'slot_no'       => 1,
+            'position_code' => 'RAK-TMP-A-L01-S01',
+            'status'        => 'EMPTY',
+            'max_capacity'  => 1000,
+        ]);
+
+        $pallet = MwhPallet::create([
+            'whse_id'             => $kbnWh->id,
+            'pallet_id'           => 'MPLT-TMP-RELOC-1',
+            'item_code'           => 'RAW-TMP-PP',
+            'initial_qty'         => 800,
+            'current_qty'         => 800,
+            'position_id'         => null,
+            'initial_position_id' => null,
+            'status'              => 'STORED',
+        ]);
+
+        $this->assertTrue($pallet->isTemporary());
+
+        // Test Filter TEMPORARY in MaterialPalletIndex
+        Livewire::test(MaterialPalletIndex::class)
+            ->set('statusFilter', 'TEMPORARY')
+            ->assertSee('MPLT-TMP-RELOC-1')
+            ->assertSee('TEMPORARY')
+            ->assertSee('Masuk Slot')
+            ->call('openRelocateModal', $pallet->id)
+            ->assertSet('isFromTemporary', true)
+            ->set('newPositionId', $slot->id)
+            ->call('saveRelocation')
+            ->assertHasNoErrors();
+
+        $pallet->refresh();
+        $slot->refresh();
+
+        $this->assertEquals($slot->id, $pallet->position_id);
+        $this->assertEquals($slot->id, $pallet->initial_position_id);
+        $this->assertFalse($pallet->isTemporary());
+        $this->assertEquals('PARTIAL', $slot->status);
+        $this->assertEquals('RAW-TMP-PP', $slot->last_item_code);
+    }
+
+    public function test_rack_mapping_can_view_temporary_pallets_and_assign_to_slot(): void
+    {
+        $krwWh = MwhWarehouse::firstOrCreate(['whse_code' => 'KRW'], ['whse_name' => 'Gudang Material Karawang']);
+
+        $rack = MwhRack::create(['whse_id' => $krwWh->id, 'rack_code' => 'RAK-MAP-KRW']);
+        $slot = MwhPosition::create([
+            'rack_id'       => $rack->id,
+            'level_no'      => 1,
+            'slot_no'       => 1,
+            'position_code' => 'RAK-MAP-KRW-L01-S01',
+            'status'        => 'EMPTY',
+            'max_capacity'  => 1000,
+        ]);
+
+        $tempPallet = MwhPallet::create([
+            'whse_id'             => $krwWh->id,
+            'pallet_id'           => 'MPLT-MAP-TEMP-99',
+            'item_code'           => 'RAW-TMP-PP',
+            'initial_qty'         => 600,
+            'current_qty'         => 600,
+            'position_id'         => null,
+            'initial_position_id' => null,
+            'status'              => 'STORED',
+        ]);
+
+        Livewire::test(\App\Livewire\MaterialWarehouse\RackMapping::class)
+            ->set('selectedWhseId', $krwWh->id)
+            ->assertSee('MATERIAL DI AREA TEMPORARY (BELUM ADA SLOT)')
+            ->call('selectPosition', $slot->id)
+            ->assertSee('Masukkan dari Area Temporary')
+            ->assertSee('MPLT-MAP-TEMP-99')
+            ->call('assignTemporaryPalletToSlot', $tempPallet->id)
+            ->assertHasNoErrors();
+
+        $tempPallet->refresh();
+        $slot->refresh();
+
+        $this->assertEquals($slot->id, $tempPallet->position_id);
+        $this->assertEquals('PARTIAL', $slot->status);
+    }
 }
+
 

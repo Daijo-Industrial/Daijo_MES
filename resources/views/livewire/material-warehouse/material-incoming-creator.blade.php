@@ -124,16 +124,29 @@
 
             <!-- Section 2: Multi-Item Detail Table -->
             <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-2 gap-1">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-2 gap-2">
                     <h3 class="text-xs font-black text-emerald-800 uppercase tracking-widest">2. Detail Item Material Kedatangan</h3>
-                    <span class="text-[11px] text-gray-400">💡 Qty > 1,000 KG otomatis dipecah menjadi beberapa Pallet ID</span>
+                    <div class="flex items-center flex-wrap gap-2">
+                        <button type="button" wire:click="setAllToTemporary" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-black transition flex items-center space-x-1 shadow-2xs">
+                            <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>⏳ Set Semua ke Temporary</span>
+                        </button>
+                        <span class="text-[11px] text-gray-400">💡 Qty > 1,000 KG otomatis dipecah menjadi beberapa Pallet ID</span>
+                    </div>
                 </div>
 
                 <div class="space-y-4">
                     @foreach ($items as $index => $row)
-                        <div class="p-4 bg-gray-50/70 rounded-2xl border border-gray-200/80 relative space-y-3">
+                        <div class="p-4 bg-gray-50/70 rounded-2xl border border-gray-200/80 relative space-y-3 {{ ($row['position_id'] ?? '') === 'TEMPORARY' ? 'ring-1 ring-amber-300 bg-amber-50/20' : '' }}">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-black text-gray-500 uppercase tracking-wider">Item #{{ $index + 1 }}</span>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs font-black text-gray-500 uppercase tracking-wider">Item #{{ $index + 1 }}</span>
+                                    @if (($row['position_id'] ?? '') === 'TEMPORARY')
+                                        <span class="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-[10px] font-black">
+                                            ⏳ Area Temporary
+                                        </span>
+                                    @endif
+                                </div>
                                 @if (count($items) > 1 && !($is_prefilled_from_outgoing && $index === 0))
                                     <button type="button" wire:click="removeItemRow({{ $index }})" class="text-rose-500 hover:text-rose-700 text-xs font-bold flex items-center space-x-1">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -194,15 +207,27 @@
 
                                 <!-- Slot Rak Assignment -->
                                 <div class="sm:col-span-2 md:col-span-12">
-                                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Assign Slot Rak Lokasi Penyimpanan *</label>
-                                    <select wire:model="items.{{ $index }}.position_id" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-800 focus:ring-2 focus:ring-emerald-500">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Assign Slot Rak Lokasi Penyimpanan *</label>
+                                        <button type="button" wire:click="setRowToTemporary({{ $index }})" class="text-[10px] font-black text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded transition inline-flex items-center space-x-1">
+                                            <span>⏳ Taruh di Area Temporary</span>
+                                        </button>
+                                    </div>
+                                    <select wire:model.live="items.{{ $index }}.position_id" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-800 focus:ring-2 focus:ring-emerald-500 {{ ($row['position_id'] ?? '') === 'TEMPORARY' ? 'bg-amber-50/70 border-amber-300 text-amber-900 font-black' : '' }}">
                                         <option value="">-- Pilih Slot Rak Material --</option>
+                                        <option value="TEMPORARY" class="font-black text-amber-800 bg-amber-50">⏳ [TEMPORARY] Area Temporary / Transit (Tanpa Batas Kapasitas Slot)</option>
                                         @foreach ($positions as $pos)
                                             <option value="{{ $pos->id }}">
                                                 {{ $pos->position_code }} ({{ $pos->slot_label ?: 'Slot' }}) — Status: {{ $pos->status }} (Max {{ number_format($pos->max_capacity) }} KG)
                                             </option>
                                         @endforeach
                                     </select>
+                                    @if (($row['position_id'] ?? '') === 'TEMPORARY')
+                                        <div class="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-xl flex items-center space-x-2 text-xs font-bold text-amber-900">
+                                            <svg class="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            <span>Pallet akan disimpan di <strong>Area Temporary / Transit</strong> (Tanpa limit kapasitas). Pengguna dapat memindahkannya ke slot rak kosong kapan saja kemudian.</span>
+                                        </div>
+                                    @endif
                                     @error("items.{$index}.position_id") <span class="text-[10px] text-rose-500 font-bold block mt-1">{{ $message }}</span> @enderror
                                 </div>
                             </div>
@@ -262,7 +287,15 @@
                                     <td class="py-3 px-3 font-mono font-bold text-emerald-800">{{ $p['pallet_id'] }}</td>
                                     <td class="py-3 px-3 font-mono text-gray-800">{{ $p['item_code'] }}</td>
                                     <td class="py-3 px-3 font-bold text-gray-900">{{ number_format($p['qty'], 2) }} KG</td>
-                                    <td class="py-3 px-3 font-mono text-gray-700">{{ $p['position'] }}</td>
+                                    <td class="py-3 px-3 font-mono text-gray-700">
+                                        @if (($p['is_temporary'] ?? false) || ($p['position'] ?? '') === '⏳ TEMPORARY')
+                                            <span class="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded font-black text-[11px] inline-flex items-center space-x-1">
+                                                <span>⏳ TEMPORARY</span>
+                                            </span>
+                                        @else
+                                            <span class="font-bold">{{ $p['position'] }}</span>
+                                        @endif
+                                    </td>
                                     <td class="py-3 px-3 text-right">
                                         <a href="{{ route('mwh.pallet.print', $p['pallet_id']) }}" target="_blank" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold inline-flex items-center space-x-1 shadow-sm transition">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
