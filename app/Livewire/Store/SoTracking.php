@@ -249,8 +249,9 @@ class SoTracking extends Component
 
     /**
      * Build base query joining ScannedData with SoData metadata without N+1 duplication.
+     * Contains only joins and where clauses (no column selects or order by) to prevent MySQL ONLY_FULL_GROUP_BY issues.
      */
-    protected function buildQuery()
+    protected function buildFilteredQuery()
     {
         $query = ScannedData::query()
             ->leftJoinSub(
@@ -282,21 +283,7 @@ class SoTracking extends Component
                 'scanned_data.doc_num',
                 '=',
                 'so_headers.doc_num'
-            )
-            ->select([
-                'scanned_data.id',
-                'scanned_data.doc_num',
-                'scanned_data.item_code',
-                'scanned_data.spk_code',
-                'scanned_data.quantity',
-                'scanned_data.warehouse',
-                'scanned_data.label',
-                'scanned_data.created_at as scanned_at',
-                DB::raw("COALESCE(so_items.customer, so_headers.fallback_customer, 'N/A') as customer"),
-                'so_items.item_name',
-                DB::raw('COALESCE(so_items.is_done, so_headers.fallback_is_done, 0) as is_done'),
-                'so_items.posting_date',
-            ]);
+            );
 
         // Universal search
         if (!empty(trim($this->search))) {
@@ -359,6 +346,30 @@ class SoTracking extends Component
         if (!empty($this->dateTo)) {
             $query->whereDate('scanned_data.created_at', '<=', $this->dateTo);
         }
+
+        return $query;
+    }
+
+    /**
+     * Build complete query for record listing with columns and order by.
+     */
+    protected function buildQuery()
+    {
+        $query = $this->buildFilteredQuery()
+            ->select([
+                'scanned_data.id',
+                'scanned_data.doc_num',
+                'scanned_data.item_code',
+                'scanned_data.spk_code',
+                'scanned_data.quantity',
+                'scanned_data.warehouse',
+                'scanned_data.label',
+                'scanned_data.created_at as scanned_at',
+                DB::raw("COALESCE(so_items.customer, so_headers.fallback_customer, 'N/A') as customer"),
+                'so_items.item_name',
+                DB::raw('COALESCE(so_items.is_done, so_headers.fallback_is_done, 0) as is_done'),
+                'so_items.posting_date',
+            ]);
 
         // Sorting
         $sortCol = match ($this->sortField) {
@@ -428,10 +439,8 @@ class SoTracking extends Component
 
     public function render()
     {
-        $baseQuery = $this->buildQuery();
-
-        // Calculate KPI stats on current filter query
-        $stats = (clone $baseQuery)->selectRaw('
+        // Calculate KPI stats on current filter query (aggregates ONLY, completely separate from record selects)
+        $stats = $this->buildFilteredQuery()->selectRaw('
             COUNT(*) as total_boxes,
             COALESCE(SUM(scanned_data.quantity), 0) as total_qty,
             COUNT(DISTINCT scanned_data.spk_code) as unique_spk_count,
@@ -439,9 +448,9 @@ class SoTracking extends Component
         ')->first();
 
         $isSearching = !empty(trim($this->spkSearch)) || !empty(trim($this->labelSearch)) || !empty(trim($this->search));
-        $directMatches = $isSearching ? (clone $baseQuery)->take(5)->get() : collect();
+        $directMatches = $isSearching ? $this->buildQuery()->take(5)->get() : collect();
 
-        $records = $baseQuery->paginate($this->perPage);
+        $records = $this->buildQuery()->paginate($this->perPage);
 
         return view('livewire.store.so-tracking', [
             'records'       => $records,

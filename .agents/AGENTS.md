@@ -131,6 +131,13 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
    - High-throughput scanning for sales orders / delivery orders (`/so/process/{docNum}`).
    - Fast sub-second scan processing via composite database indexes on `scanned_data` (`[doc_num, item_code]`, `[doc_num, spk_code, label]`), `so_datas` (`[doc_num, item_code]`), and `wms_pallet_form_details` (`[part_no, label]`).
    - Frontend scanning features immediate Enter key handling, composite tab-delimited QR barcode parsing, and rapid debouncing (150ms).
+   - **Tracking SPK & Label DO (`SoTracking`, `/so/tracking`, route `so.tracking`)**:
+     - Menu pelacakan instan untuk mengetahui nomor SPK, label box, atau part number telah di-scan masuk ke dokumen DO / SO mana (`scanned_data` di-join ke `so_datas`).
+     - **Quick Barcode Scanner Strip**: Mendukung direct physical barcode scanner dengan auto-parsing QR composite (format tab-delimited `part\tspk\tqty\tlabel`).
+     - **Universal & Advanced Filtering**: Filter instan berdasarkan SPK, Label, No DO, Part No, Customer, rentang tanggal scan, dan status DO (`SELESAI (DONE)` vs `IN PROGRESS`).
+     - **Real-Time KPI Stats**: Menampilkan total box ter-scan, total qty (pcs), jumlah SPK unik, dan jumlah dokumen DO terkait.
+     - **DO Breakdown Modal**: Menampilkan perincian progress scan per item untuk dokumen DO terkait dengan 1-klik tautan langsung ke halaman proses scan DO (`/so/process/{docNum}`).
+     - **Instant CSV Export**: Fitur streaming download CSV UTF-8 BOM untuk pelaporan dan rekonsiliasi audit pengiriman.
 
 8. **WMS Pallet Form Creation (`PalletFormCreator`, `WmsPalletForm`)**:
    - Manages pallet generation for internal transfer and delivery (`/wms/pallet-form/create-delivery`).
@@ -139,6 +146,27 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
      - *Atomic Lock*: Server acquires `Cache::lock("wms_pallet_gen_lock_{$userKey}", 15)` to block concurrent requests per user/session.
      - *Payload Hash Idempotency*: Generates deterministic MD5 hash of production date, lot, delivery, shift, and scanned box list cached for 5 minutes (`wms_pallet_gen_hash_{$hash}`) returning existing pallet ID on repeat submissions.
      - *Database Label Guard*: Scans `WmsPalletFormDetail` within the last 10 minutes for any matching box label; if matched, re-attaches to the existing pallet instead of creating duplicate records.
+   - **Daily Delivery Recap (`DailyDeliveryRecap`, `WmsDeliveryRecapService`, `DailyDeliveryRecapExport`)**:
+     - Daily finished goods delivery aggregation and recap (`/wms/pallet-form/daily-recap`), linked directly from `/wms/pallet-form/create-delivery` and sidebar navigation.
+     - **07:30 Production Day Cutoff**: Date D spans from `D 07:30:00` to `(D+1) 07:29:59` WIB (Shift 3 night runs until 07:29 morning of next day before rolling over to day D+1 at 07:30:00).
+     - **Shift Schedule Determination (`determineShiftFromTime`)**:
+       - Shift 1: `07:30:00` - `15:29:59`
+       - Shift 2: `15:30:00` - `23:29:59`
+       - Shift 3: `23:30:00` - `07:29:59` (next day)
+       - Both recap aggregation and `PalletFormCreator` automatically assign and display shifts using this exact schedule based on scan/creation time.
+     - **Grouping by Item Code (Part No)**: Summarizes total delivery quantity (pcs), total box count, pallet count, customer name, shift breakdown (Shift 1, 2, 3), SPK list, and transporters/deliveries.
+     - Interactive drill-down / accordion displays each pallet carrying the item, rack slot, and box scan audit trail.
+     - Dual views: Tab 1 (Rekap per Item Code), Tab 2 (Rekap per Pallet), Tab 3 (Log Scan Box Lengkap).
+     - **Multi-Sheet Excel Export**: Downloads `.xlsx` with Sheet 1 (`Rekap per Item Code`) and Sheet 2 (`Detail Box & Pallet`).
+   - **Store Putaway Quick Scan & Verification (`PalletFormIndex`, `/wms/pallet-form/history`)**:
+     - High-throughput barcode scanner input for physical pallet verification during warehouse store putaway (`wire:keydown.enter="scanPallet"`).
+     - Immediate verification display: Pallet ID, status, Item Part No & Model, Customer, total Qty (pcs), box count, delivery name/shift, lot number, and putaway lead time.
+     - Collapsible itemized box audit breakdown (`details` listing box barcode labels, SPK numbers, and quantities) to cross-check physical stickers.
+     - Integrated destination rack assignment:
+       - Smart system recommendation via `WmsService::recommendPosition` (prioritizing consolidation of same item on PARTIAL slots, Level 1 for heavy/priority parts, or customer-specific EMPTY slots) with 1-click apply button.
+       - Direct barcode scanner for rack positions (`wire:keydown.enter="scanRackPosition"`).
+       - Dropdown selector filterable by warehouse (`whse_id`) with real-time status indicators (EMPTY / PARTIAL / FULL) and customer mapping.
+     - Zero-dependency Web Audio API synthesizer feedback (high success beep / low error double-beep) and automatic scanner focus recycling.
 
 9. **WMS Multi-Warehouse Rack Mapping (`RackMapping`, `WmsWarehouse`, `WmsRack`, `WmsPosition`)**:
    - Visual mapping and slot assignment for warehouse racks (`/wms/mapping`).
@@ -317,6 +345,33 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
      - **Backward Compatibility & Alias Mapping**: `AuthServiceProvider` gates and `Role::defaultPermissionFallback` automatically map legacy split checks (`view-*`, `manage-*`) to the canonical feature gate.
      - **Consolidated Navigation**: All Second Process sub-features are consolidated into a single "Second Process" parent dropdown in `sidebar.blade.php`, dynamically rendering only child links permitted for the authenticated user.
      - **Plant Access Middleware (`EnsureSecondProcessPlantAccess`)**: Evaluates canonical route gates. Instead of leaving users stuck on an HTTP 403 error page, unauthorized web requests redirect back to the previous page (with a safe dashboard fallback preventing loops) with an error flash message, while API/JSON requests return a 403 JSON response.
+
+15. **Material Warehouse (Store Material) & Daily Audit (`MaterialDailyAudit`, `MwhDailyAudit`, `MwhDailyAuditItem`)**:
+    - Manages raw material inventory, pallet tracking, and rack slot positioning (`/material-warehouse/*`).
+    - **Daily Audit (`/material-warehouse/daily-audit`, route `mwh.daily-audit`)**:
+      - Accessed via prominent `📋 AUDIT HARIAN` buttons in `RackMapping` (`/material-warehouse/mapping`) and `Stock & Pallet Material` (`/material-warehouse/pallets`), and sidebar navigation.
+      - **Audit Table Columns**:
+        - Kolom 1 (`Rak / Posisi`): Position code (e.g. `A-01-01`), level, slot, and rack block badge.
+        - Kolom 2 (`Detail Data Sistem`): Pallet ID, Part No / Item Code, Material Description, Lot No.
+        - Kolom 3 (`Qty Sistem`): Current active qty in system and UOM (`decimal(12,2)`).
+        - Kolom 4 (`Actual Barang (Part No)`): User input for physical item code found at location (supports 1-click `=` fill shortcut).
+        - Kolom 5 (`Actual Qty`): User input for physical counted quantity with real-time dynamic discrepancy badge (`✓ MATCH` / `⚠️ Selisih`).
+        - Kolom 6 (`Alasan Jika Ada Perbedaan Data`): User input for discrepancy remark/reason, highlighted with warning styling when actual differs from system.
+      - **Fast Auditor Workflows**:
+        - `⚡ Isi Cepat Sesuai Sistem`: 1-click shortcut filling all rows to match system values, allowing auditors to only adjust rows with physical discrepancies.
+        - `🔄 Reset`: Clears all actual inputs.
+        - `📜 Riwayat Audit`: Interactive modal inspecting previous audit runs by date, auditor, and discrepancy counts.
+      - **Persistence**: Persists audit runs into `mwh_daily_audits` (audit code, date, warehouse, auditor, counts) and itemized logs into `mwh_daily_audit_items` (`MATCH`, `DISCREPANCY`, `PENDING`).
+    - **Temporary / Transit Area (`position_id = null`)**:
+      - Menyediakan opsi penampungan incoming material di area **Temporary** (transit) terlebih dahulu tanpa harus langsung memilih/mengisi slot rak tertentu, berlaku untuk gudang KBN (`whse_id = 1`) maupun Karawang (`whse_id = 2`).
+      - Pengguna dapat menampung banyak barang di area temporary tanpa dibatasi batas kapasitas slot rak fisik.
+      - **Incoming Form (`MaterialIncomingCreator`)**: Opsi slot `TEMPORARY` di dropdown, tombol cepat per baris `[⏳ Taruh di Area Temporary]`, dan tombol batch di header `[⏳ Set Semua ke Temporary]`.
+      - **Stock Pallet & Relocation (`MaterialPalletIndex`)**: Menampilkan badge `⏳ TEMPORARY (Area Transit)` pada kolom Slot Rak, filter status `TEMPORARY`, dan aksi langsung `[📥 Masuk Slot]` yang membuka modal penempatan slot terfilter sesuai gudang pallet (`whse_id`).
+      - **2D Denah & Quick Assign (`RackMapping`)**: Menampilkan alert banner material temporary di gudang aktif dengan tombol `[📥 ASSIGN LANGSUNG KE SLOT RAK]` (membuka modal in-page untuk memilih slot tujuan & cek denah tanpa reload/pindah halaman), serta panel khusus `[+ Masuk Slot]` di drawer slot saat operator mengklik slot rak yang masih memiliki ruang/kapasitas (`EMPTY` atau `PARTIAL`).
+    - **FIFO Violation Forensic Audit (`MaterialFifoService::detectFifoDeviations`)**:
+      - Merekonstruksi sisa stok historis pallet lama secara presisi pada saat transaksi outgoing terjadi (`initial_qty - sum(outgoings sebelum timestamp)`).
+      - Mengeliminasi *false positive* di mana pallet lama sebenarnya sudah habis terpakai 100% sebelum transaksi outgoing tersebut terjadi (sebelumnya keliru membandingkan `updated_at > outgoingTimestamp` sehingga record yang tersentuh update/audit falsely dihitung melanggar).
+      - Menampilkan pemisahan status sisa stok saat ini (`skipped_current_qty`) vs stok pada saat kejadian (`skipped_stock_at_time`) dengan label informatif `(Stok Saat Itu: X KG • Sekarang Habis)` jika pallet lama tersebut telah dihabiskan belakangan.
 
 ## 3. Essential Development Guidelines
 - Always verify changes with automated tests via Sail: `./vendor/bin/sail test --filter=<TestClass>`.

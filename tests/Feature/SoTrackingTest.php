@@ -278,4 +278,29 @@ class SoTrackingTest extends TestCase
             ->call('exportCsv')
             ->assertFileDownloaded();
     }
+
+    public function test_kpi_stats_query_does_not_contain_non_aggregated_columns_in_select(): void
+    {
+        $component = new SoTracking();
+        $reflection = new \ReflectionClass($component);
+        $method = $reflection->getMethod('buildFilteredQuery');
+        $method->setAccessible(true);
+
+        /** @var \Illuminate\Database\Eloquent\Builder $query */
+        $query = $method->invoke($component);
+        $statsQuery = $query->selectRaw('
+            COUNT(*) as total_boxes,
+            COALESCE(SUM(scanned_data.quantity), 0) as total_qty,
+            COUNT(DISTINCT scanned_data.spk_code) as unique_spk_count,
+            COUNT(DISTINCT scanned_data.doc_num) as unique_do_count
+        ');
+
+        $sql = $statsQuery->toSql();
+
+        // Must NOT select non-aggregate columns like scanned_data.id or scanned_data.doc_num directly before aggregates
+        $this->assertStringNotContainsString('select "scanned_data"."id"', strtolower($sql));
+        $this->assertStringNotContainsString('select `scanned_data`.`id`', strtolower($sql));
+        $this->assertStringContainsString('count(*)', strtolower($sql));
+    }
 }
+
