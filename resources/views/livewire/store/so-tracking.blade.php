@@ -98,10 +98,16 @@
 
             <!-- Action Buttons -->
             <div class="md:col-span-2 flex items-center gap-2">
-                <button wire:click="searchBySpkAndLabel" type="button" 
-                        class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center space-x-1.5 cursor-pointer">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <span>Lacak DO</span>
+                <button wire:click="searchBySpkAndLabel" type="button" wire:loading.attr="disabled"
+                        class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-95 disabled:opacity-70 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center space-x-1.5 cursor-pointer">
+                    <span wire:loading.remove class="flex items-center space-x-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <span>Lacak DO</span>
+                    </span>
+                    <span wire:loading class="flex items-center space-x-1.5">
+                        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                        <span>Mencari...</span>
+                    </span>
                 </button>
             </div>
         </div>
@@ -153,7 +159,7 @@
                         </div>
                     </div>
                     <span class="px-3 py-1 bg-emerald-600 text-white rounded-full text-xs font-black">
-                        {{ $records->total() }} Box Cocok
+                        {{ $records ? $records->total() : $directMatches->count() }} Box Cocok
                     </span>
                 </div>
 
@@ -415,7 +421,7 @@
                 <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
                 <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Hasil Pelacakan Box Scan DO</h3>
                 <span class="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-xs">
-                    {{ $records->total() }} Data
+                    {{ $records ? $records->total() : 0 }} Data
                 </span>
             </div>
 
@@ -497,135 +503,151 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-slate-700 font-medium">
-                    @forelse ($records as $index => $row)
-                        <tr class="hover:bg-blue-50/40 transition-colors">
-                            <td class="py-3 px-4 text-slate-400 font-bold">
-                                {{ $records->firstItem() + $index }}
-                            </td>
-
-                            <!-- Nomor DO / SO -->
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <div class="flex items-center space-x-1.5">
-                                    <a href="{{ route('so.process', $row->doc_num) }}" 
-                                       target="_blank"
-                                       class="font-mono font-black text-blue-600 hover:text-blue-800 hover:underline flex items-center space-x-1" 
-                                       title="Buka proses scan DO {{ $row->doc_num }}">
-                                        <span>{{ $row->doc_num }}</span>
-                                        <svg class="w-3 h-3 text-slate-400 hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                    </a>
-                                </div>
-                            </td>
-
-                            <!-- Customer -->
-                            <td class="py-3 px-4">
-                                <span class="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-lg text-[11px] font-bold border border-slate-200/60 whitespace-nowrap block max-w-xs truncate">
-                                    {{ $row->customer ?: 'N/A' }}
-                                </span>
-                            </td>
-
-                            <!-- Status DO -->
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                @if ($row->is_done)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                        ✓ SELESAI
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
-                                        ⏳ PROGRESS
-                                    </span>
-                                @endif
-                            </td>
-
-                            <!-- Nomor SPK -->
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                @if ($row->spk_code)
-                                    <span class="font-mono font-black text-slate-900 bg-purple-50 text-purple-900 border border-purple-200 px-2.5 py-1 rounded-lg inline-block">
-                                        {{ $row->spk_code }}
-                                    </span>
-                                @else
-                                    <span class="text-slate-400 italic">-</span>
-                                @endif
-                            </td>
-
-                            <!-- Label Box -->
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="font-mono font-bold text-slate-800 bg-slate-100 border border-slate-300 px-2 py-1 rounded-md inline-block">
-                                    {{ $row->label ?: '-' }}
-                                </span>
-                            </td>
-
-                            <!-- Part No & Item Description -->
-                            <td class="py-3 px-4">
-                                <div class="font-mono font-black text-slate-900 text-xs">
-                                    {{ $row->item_code }}
-                                </div>
-                                <div class="text-[11px] text-slate-500 max-w-sm truncate" title="{{ $row->item_name }}">
-                                    {{ $row->item_name ?: '-' }}
-                                </div>
-                            </td>
-
-                            <!-- Quantity -->
-                            <td class="py-3 px-4 text-right whitespace-nowrap">
-                                <span class="font-mono font-black text-emerald-700 text-sm">
-                                    {{ number_format($row->quantity) }}
-                                </span>
-                                <span class="text-[10px] text-slate-400 font-bold ml-0.5">pcs</span>
-                            </td>
-
-                            <!-- Warehouse -->
-                            <td class="py-3 px-4 text-center whitespace-nowrap">
-                                <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold">
-                                    {{ $row->warehouse ?: '-' }}
-                                </span>
-                            </td>
-
-                            <!-- Waktu Scan -->
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <div class="font-bold text-slate-800 text-[11px]">
-                                    {{ $row->scanned_at ? \Carbon\Carbon::parse($row->scanned_at)->format('d/m/Y H:i:s') : '-' }}
-                                </div>
-                                <div class="text-[10px] text-slate-400">
-                                    {{ $row->scanned_at ? \Carbon\Carbon::parse($row->scanned_at)->diffForHumans() : '' }}
-                                </div>
-                            </td>
-
-                            <!-- Action -->
-                            <td class="py-3 px-4 text-center whitespace-nowrap">
-                                <button type="button" 
-                                        wire:click="openDocDetail('{{ $row->doc_num }}')" 
-                                        class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-xl text-[11px] font-bold transition flex items-center space-x-1 mx-auto cursor-pointer shadow-2xs"
-                                        title="Lihat seluruh box dalam DO ini">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                    <span>Detail DO</span>
-                                </button>
-                            </td>
-                        </tr>
-                    @empty
+                    @if (!$hasActiveSearch)
                         <tr>
                             <td colspan="11" class="py-16 text-center text-slate-400">
-                                <div class="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-2xl">
-                                    🔎
+                                <div class="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center text-3xl mx-auto mb-3 shadow-xs">
+                                    🎯
                                 </div>
-                                <p class="text-sm font-bold text-slate-600 mb-1">Tidak ada data scan ditemukan!</p>
-                                <p class="text-xs text-slate-400 max-w-sm mx-auto">
-                                    Gunakan kolom pencarian di atas untuk memasukkan nomor SPK, label box, atau nomor DO lainnya.
+                                <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-1">Menunggu Input Nomor SPK / Label Box</h4>
+                                <p class="text-xs text-slate-500 max-w-md mx-auto">
+                                    Silakan masukkan <strong>Nomor SPK</strong> dan/atau <strong>Nomor Label Box</strong> pada kolom di atas, lalu tekan <strong>Enter</strong> atau klik tombol <strong>Lacak DO</strong> untuk melacak dokumen DO.
                                 </p>
-                                @if ($search || $spkSearch || $labelSearch || $docNumSearch || $itemCodeSearch || $statusFilter !== 'ALL')
-                                    <button wire:click="resetFilters" class="mt-4 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-bold transition">
-                                        Reset Filter Pencarian
-                                    </button>
-                                @endif
                             </td>
                         </tr>
-                    @endforelse
+                    @else
+                        @forelse ($records as $index => $row)
+                            <tr class="hover:bg-blue-50/40 transition-colors">
+                                <td class="py-3 px-4 text-slate-400 font-bold">
+                                    {{ $records->firstItem() + $index }}
+                                </td>
+
+                                <!-- Nomor DO / SO -->
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    <div class="flex items-center space-x-1.5">
+                                        <a href="{{ route('so.process', $row->doc_num) }}" 
+                                           target="_blank"
+                                           class="font-mono font-black text-blue-600 hover:text-blue-800 hover:underline flex items-center space-x-1" 
+                                           title="Buka proses scan DO {{ $row->doc_num }}">
+                                            <span>{{ $row->doc_num }}</span>
+                                            <svg class="w-3 h-3 text-slate-400 hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </a>
+                                    </div>
+                                </td>
+
+                                <!-- Customer -->
+                                <td class="py-3 px-4">
+                                    <span class="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-lg text-[11px] font-bold border border-slate-200/60 whitespace-nowrap block max-w-xs truncate">
+                                        {{ $row->customer ?: 'N/A' }}
+                                    </span>
+                                </td>
+
+                                <!-- Status DO -->
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    @if ($row->is_done)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            ✓ SELESAI
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                                            ⏳ PROGRESS
+                                        </span>
+                                    @endif
+                                </td>
+
+                                <!-- Nomor SPK -->
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    @if ($row->spk_code)
+                                        <span class="font-mono font-black text-slate-900 bg-purple-50 text-purple-900 border border-purple-200 px-2.5 py-1 rounded-lg inline-block">
+                                            {{ $row->spk_code }}
+                                        </span>
+                                    @else
+                                        <span class="text-slate-400 italic">-</span>
+                                    @endif
+                                </td>
+
+                                <!-- Label Box -->
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    <span class="font-mono font-bold text-slate-800 bg-slate-100 border border-slate-300 px-2 py-1 rounded-md inline-block">
+                                        {{ $row->label ?: '-' }}
+                                    </span>
+                                </td>
+
+                                <!-- Part No & Item Description -->
+                                <td class="py-3 px-4">
+                                    <div class="font-mono font-black text-slate-900 text-xs">
+                                        {{ $row->item_code }}
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 max-w-sm truncate" title="{{ $row->item_name }}">
+                                        {{ $row->item_name ?: '-' }}
+                                    </div>
+                                </td>
+
+                                <!-- Quantity -->
+                                <td class="py-3 px-4 text-right whitespace-nowrap">
+                                    <span class="font-mono font-black text-emerald-700 text-sm">
+                                        {{ number_format($row->quantity) }}
+                                    </span>
+                                    <span class="text-[10px] text-slate-400 font-bold ml-0.5">pcs</span>
+                                </td>
+
+                                <!-- Warehouse -->
+                                <td class="py-3 px-4 text-center whitespace-nowrap">
+                                    <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold">
+                                        {{ $row->warehouse ?: '-' }}
+                                    </span>
+                                </td>
+
+                                <!-- Waktu Scan -->
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    <div class="font-bold text-slate-800 text-[11px]">
+                                        {{ $row->scanned_at ? \Carbon\Carbon::parse($row->scanned_at)->format('d/m/Y H:i:s') : '-' }}
+                                    </div>
+                                    <div class="text-[10px] text-slate-400">
+                                        {{ $row->scanned_at ? \Carbon\Carbon::parse($row->scanned_at)->diffForHumans() : '' }}
+                                    </div>
+                                </td>
+
+                                <!-- Action -->
+                                <td class="py-3 px-4 text-center whitespace-nowrap">
+                                    <button type="button" 
+                                            wire:click="openDocDetail('{{ $row->doc_num }}')" 
+                                            class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-xl text-[11px] font-bold transition flex items-center space-x-1 mx-auto cursor-pointer shadow-2xs"
+                                            title="Lihat seluruh box dalam DO ini">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        <span>Detail DO</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="11" class="py-16 text-center text-slate-400">
+                                    <div class="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-2xl">
+                                        🔎
+                                    </div>
+                                    <p class="text-sm font-bold text-slate-600 mb-1">Tidak ada data scan ditemukan!</p>
+                                    <p class="text-xs text-slate-400 max-w-sm mx-auto">
+                                        Gunakan kolom pencarian di atas untuk memasukkan nomor SPK, label box, atau nomor DO lainnya.
+                                    </p>
+                                    @if ($search || $spkSearch || $labelSearch || $docNumSearch || $itemCodeSearch || $statusFilter !== 'ALL')
+                                        <button wire:click="resetFilters" class="mt-4 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-bold transition">
+                                            Reset Filter Pencarian
+                                        </button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforelse
+                    @endif
                 </tbody>
             </table>
         </div>
 
         <!-- Pagination Bar -->
-        <div class="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/50">
-            {{ $records->links() }}
-        </div>
+        @if ($records)
+            <div class="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/50">
+                {{ $records->links() }}
+            </div>
+        @endif
     </div>
 
     <!-- DO Detail Interactive Modal -->

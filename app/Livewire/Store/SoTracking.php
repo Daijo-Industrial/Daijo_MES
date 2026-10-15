@@ -248,63 +248,36 @@ class SoTracking extends Component
     }
 
     /**
-     * Build base query joining ScannedData with SoData metadata without N+1 duplication.
-     * Contains only joins and where clauses (no column selects or order by) to prevent MySQL ONLY_FULL_GROUP_BY issues.
+     * Check if any search filter is actively entered by the user.
+     * Prevents running heavy queries across millions of rows on initial page load.
+     */
+    public function hasActiveSearch(): bool
+    {
+        return !empty(trim($this->spkSearch))
+            || !empty(trim($this->labelSearch))
+            || !empty(trim($this->search))
+            || !empty(trim($this->docNumSearch))
+            || !empty(trim($this->itemCodeSearch))
+            || !empty(trim($this->customerSearch))
+            || !empty($this->dateFrom)
+            || !empty($this->dateTo);
+    }
+
+    /**
+     * Build base query directly on ScannedData utilizing composite indexes (spk_code, label, doc_num).
+     * Avoids heavy derived table subqueries on the entire so_datas table.
      */
     protected function buildFilteredQuery()
     {
-        $query = ScannedData::query()
-            ->leftJoinSub(
-                DB::table('so_datas')
-                    ->select([
-                        'doc_num',
-                        'item_code',
-                        DB::raw('MAX(customer) as customer'),
-                        DB::raw('MAX(item_name) as item_name'),
-                        DB::raw('MAX(is_done) as is_done'),
-                        DB::raw('MAX(posting_date) as posting_date')
-                    ])
-                    ->groupBy('doc_num', 'item_code'),
-                'so_items',
-                function ($join) {
-                    $join->on('scanned_data.doc_num', '=', 'so_items.doc_num')
-                         ->on('scanned_data.item_code', '=', 'so_items.item_code');
-                }
-            )
-            ->leftJoinSub(
-                DB::table('so_datas')
-                    ->select([
-                        'doc_num',
-                        DB::raw('MAX(customer) as fallback_customer'),
-                        DB::raw('MAX(is_done) as fallback_is_done'),
-                    ])
-                    ->groupBy('doc_num'),
-                'so_headers',
-                'scanned_data.doc_num',
-                '=',
-                'so_headers.doc_num'
-            );
+        $query = ScannedData::query();
 
-        // Universal search
-        if (!empty(trim($this->search))) {
-            $term = trim($this->search);
-            $query->where(function ($q) use ($term) {
-                $q->where('scanned_data.spk_code', 'like', "%{$term}%")
-                  ->orWhere('scanned_data.label', 'like', "%{$term}%")
-                  ->orWhere('scanned_data.doc_num', 'like', "%{$term}%")
-                  ->orWhere('scanned_data.item_code', 'like', "%{$term}%")
-                  ->orWhere('so_items.customer', 'like', "%{$term}%")
-                  ->orWhere('so_headers.fallback_customer', 'like', "%{$term}%");
-            });
-        }
-
-        // Specific filter: SPK Code
+        // Specific filter: SPK Code (uses composite index idx_scanned_data_spk_label)
         if (!empty(trim($this->spkSearch))) {
             $term = trim($this->spkSearch);
             $query->where('scanned_data.spk_code', 'like', "%{$term}%");
         }
 
-        // Specific filter: Label
+        // Specific filter: Label Box
         if (!empty(trim($this->labelSearch))) {
             $term = trim($this->labelSearch);
             $query->where('scanned_data.label', 'like', "%{$term}%");
@@ -325,17 +298,44 @@ class SoTracking extends Component
         // Specific filter: Customer
         if (!empty(trim($this->customerSearch))) {
             $term = trim($this->customerSearch);
-            $query->where(function ($q) use ($term) {
-                $q->where('so_items.customer', 'like', "%{$term}%")
-                  ->orWhere('so_headers.fallback_customer', 'like', "%{$term}%");
+            $matchingDocNums = SoData::where('customer', 'like', "%{$term}%")
+                ->pluck('doc_num')
+                ->unique();
+            $query->whereIn('scanned_data.doc_num', $matchingDocNums);
+        }
+
+        // Universal search
+        if (!empty(trim($this->search))) {
+            $term = trim($this->search);
+            $matchingDocNums = SoData::where('customer', 'like', "%{$term}%")
+                ->orWhere('item_name', 'like', "%{$term}%")
+                ->pluck('doc_num')
+                ->unique();
+
+            $query->where(function ($q) use ($term, $matchingDocNums) {
+                $q->where('scanned_data.spk_code', 'like', "%{$term}%")
+                  ->orWhere('scanned_data.label', 'like', "%{$term}%")
+                  ->orWhere('scanned_data.doc_num', 'like', "%{$term}%")
+                  ->orWhere('scanned_data.item_code', 'like', "%{$term}%");
+                if ($matchingDocNums->isNotEmpty()) {
+                    $q->orWhereIn('scanned_data.doc_num', $matchingDocNums);
+                }
             });
         }
 
         // Status DO filter
         if ($this->statusFilter === 'DONE') {
-            $query->whereRaw('COALESCE(so_items.is_done, so_headers.fallback_is_done, 0) = 1');
+            $doneDocNums = SoData::select('doc_num')
+                ->groupBy('doc_num')
+                ->havingRaw('MIN(is_done) = 1')
+                ->pluck('doc_num');
+            $query->whereIn('scanned_data.doc_num', $doneDocNums);
         } elseif ($this->statusFilter === 'PROGRESS') {
-            $query->whereRaw('COALESCE(so_items.is_done, so_headers.fallback_is_done, 0) = 0');
+            $progressDocNums = SoData::select('doc_num')
+                ->groupBy('doc_num')
+                ->havingRaw('MIN(is_done) = 0')
+                ->pluck('doc_num');
+            $query->whereIn('scanned_data.doc_num', $progressDocNums);
         }
 
         // Date range filter
@@ -351,25 +351,11 @@ class SoTracking extends Component
     }
 
     /**
-     * Build complete query for record listing with columns and order by.
+     * Build complete query for record listing with sorting.
      */
     protected function buildQuery()
     {
-        $query = $this->buildFilteredQuery()
-            ->select([
-                'scanned_data.id',
-                'scanned_data.doc_num',
-                'scanned_data.item_code',
-                'scanned_data.spk_code',
-                'scanned_data.quantity',
-                'scanned_data.warehouse',
-                'scanned_data.label',
-                'scanned_data.created_at as scanned_at',
-                DB::raw("COALESCE(so_items.customer, so_headers.fallback_customer, 'N/A') as customer"),
-                'so_items.item_name',
-                DB::raw('COALESCE(so_items.is_done, so_headers.fallback_is_done, 0) as is_done'),
-                'so_items.posting_date',
-            ]);
+        $query = $this->buildFilteredQuery();
 
         // Sorting
         $sortCol = match ($this->sortField) {
@@ -378,7 +364,6 @@ class SoTracking extends Component
             'label'     => 'scanned_data.label',
             'item_code' => 'scanned_data.item_code',
             'quantity'  => 'scanned_data.quantity',
-            'customer'  => DB::raw("COALESCE(so_items.customer, so_headers.fallback_customer, 'N/A')"),
             default     => 'scanned_data.created_at',
         };
 
@@ -386,11 +371,46 @@ class SoTracking extends Component
     }
 
     /**
+     * Enrich ScannedData records with customer, item_name, and is_done from SoData.
+     * Efficiently executes 1 indexed lookup on SoData for ONLY the current page's doc_nums.
+     */
+    protected function enrichRecords($collection)
+    {
+        if (!$collection || $collection->isEmpty()) {
+            return $collection;
+        }
+
+        $docNums = $collection->pluck('doc_num')->unique()->filter()->values();
+        if ($docNums->isEmpty()) {
+            return $collection;
+        }
+
+        $soDataMap = SoData::whereIn('doc_num', $docNums)
+            ->select(['doc_num', 'item_code', 'customer', 'item_name', 'is_done', 'posting_date'])
+            ->get()
+            ->groupBy('doc_num');
+
+        return $collection->transform(function ($row) use ($soDataMap) {
+            $docItems = $soDataMap->get($row->doc_num);
+            $itemMatch = $docItems?->firstWhere('item_code', $row->item_code) ?? $docItems?->first();
+
+            $row->customer = $itemMatch?->customer ?? 'N/A';
+            $row->item_name = $itemMatch?->item_name ?? '-';
+            $row->is_done = $docItems ? $docItems->every('is_done', 1) : false;
+            $row->posting_date = $itemMatch?->posting_date ?? '-';
+            $row->scanned_at = $row->created_at;
+
+            return $row;
+        });
+    }
+
+    /**
      * Instant CSV Export for filtered audit records.
      */
     public function exportCsv()
     {
-        $records = $this->buildQuery()->get();
+        $records = $this->buildQuery()->take(5000)->get();
+        $this->enrichRecords($records);
         $filename = 'tracking_spk_label_do_' . date('Ymd_His') . '.csv';
 
         return response()->streamDownload(function () use ($records) {
@@ -439,7 +459,25 @@ class SoTracking extends Component
 
     public function render()
     {
-        // Calculate KPI stats on current filter query (aggregates ONLY, completely separate from record selects)
+        $hasActiveSearch = $this->hasActiveSearch();
+
+        // When user opens the menu without active input, DO NOT run heavy queries!
+        if (!$hasActiveSearch) {
+            return view('livewire.store.so-tracking', [
+                'records'         => null,
+                'stats'           => (object) [
+                    'total_boxes'      => 0,
+                    'total_qty'        => 0,
+                    'unique_spk_count' => 0,
+                    'unique_do_count'  => 0,
+                ],
+                'isSearching'     => false,
+                'directMatches'   => collect(),
+                'hasActiveSearch' => false,
+            ]);
+        }
+
+        // 1. Calculate KPI stats on current filter query (aggregates ONLY, super fast on scanned_data)
         $stats = $this->buildFilteredQuery()->selectRaw('
             COUNT(*) as total_boxes,
             COALESCE(SUM(scanned_data.quantity), 0) as total_qty,
@@ -447,16 +485,23 @@ class SoTracking extends Component
             COUNT(DISTINCT scanned_data.doc_num) as unique_do_count
         ')->first();
 
+        // 2. Direct matches if searching by SPK/Label
         $isSearching = !empty(trim($this->spkSearch)) || !empty(trim($this->labelSearch)) || !empty(trim($this->search));
-        $directMatches = $isSearching ? $this->buildQuery()->take(5)->get() : collect();
+        $directMatches = $isSearching ? (clone $this->buildQuery())->take(5)->get() : collect();
+        if ($directMatches->isNotEmpty()) {
+            $this->enrichRecords($directMatches);
+        }
 
+        // 3. Paginated records
         $records = $this->buildQuery()->paginate($this->perPage);
+        $this->enrichRecords($records->getCollection());
 
         return view('livewire.store.so-tracking', [
-            'records'       => $records,
-            'stats'         => $stats,
-            'isSearching'   => $isSearching,
-            'directMatches' => $directMatches,
+            'records'         => $records,
+            'stats'           => $stats,
+            'isSearching'     => $isSearching,
+            'directMatches'   => $directMatches,
+            'hasActiveSearch' => true,
         ]);
     }
 }

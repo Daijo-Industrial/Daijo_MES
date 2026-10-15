@@ -302,5 +302,14 @@ class SoTrackingTest extends TestCase
         $this->assertStringNotContainsString('select `scanned_data`.`id`', strtolower($sql));
         $this->assertStringContainsString('count(*)', strtolower($sql));
     }
+
+    public function test_page_renders_standby_state_without_running_query_when_no_search_entered(): void
+    {
+        Livewire::test(SoTracking::class)
+            ->assertSee('Menunggu Input Nomor SPK / Label Box')
+            ->assertViewHas('hasActiveSearch', false)
+            ->assertViewHas('records', null);
+    }
 }
+
 
