@@ -138,100 +138,107 @@
         @endif
     </div>
 
-    <!-- Instant DO Pinpoint Result Card (When user is searching SPK/Label) -->
+    <!-- Instant DO Summary Cards (Grouped by Target DO) -->
     @if ($isSearching)
-        @if ($directMatches->isNotEmpty())
+        @if ($matchingDos->isNotEmpty())
             <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border-2 border-emerald-500/80 p-5 sm:p-6 rounded-3xl shadow-md space-y-4 animate-in fade-in">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div class="flex items-center space-x-2.5">
-                        <span class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-sm">
-                            ✓
+                        <span class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
+                            📋
                         </span>
                         <div>
-                            <h3 class="text-sm font-black uppercase text-emerald-900 tracking-wider">
-                                HASIL PELACAKAN: BOX DITEMUKAN PADA DOKUMEN DO
+                            <h3 class="text-sm font-black uppercase text-emerald-950 tracking-wider">
+                                DOKUMEN DO YANG MEMUAT SPK / BOX INI
                             </h3>
                             <p class="text-xs text-emerald-700">
                                 Box dengan SPK <strong>{{ $spkSearch ?: ($search ?: 'Semua') }}</strong> 
                                 @if ($labelSearch) &bull; Label <strong>{{ $labelSearch }}</strong> @endif 
-                                telah di-scan ke DO berikut:
+                                terdaftar pada <strong>{{ $stats->unique_do_count }} Dokumen DO</strong>:
                             </p>
                         </div>
                     </div>
-                    <span class="px-3 py-1 bg-emerald-600 text-white rounded-full text-xs font-black">
-                        {{ $records ? $records->total() : $directMatches->count() }} Box Cocok
-                    </span>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-3 py-1 bg-emerald-600 text-white rounded-full text-xs font-black shadow-xs">
+                            {{ $stats->unique_do_count }} Dokumen DO Terkait
+                        </span>
+                        <span class="px-3 py-1 bg-blue-600 text-white rounded-full text-xs font-black shadow-xs">
+                            Total {{ number_format($stats->total_boxes) }} Box ({{ number_format($stats->total_qty) }} pcs)
+                        </span>
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    @foreach ($directMatches->take(2) as $match)
-                        <div class="bg-white p-4 rounded-2xl border border-emerald-200 shadow-xs space-y-3">
-                            <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
-                                <div>
-                                    <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Nomor Dokumen DO / SO:</span>
-                                    <span class="text-lg font-black font-mono text-blue-600 hover:text-blue-800">
-                                        {{ $match->doc_num }}
-                                    </span>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    @foreach ($matchingDos as $do)
+                        <div class="bg-white p-5 rounded-2xl border border-emerald-200/90 shadow-sm space-y-3.5 flex flex-col justify-between hover:border-emerald-400 transition-all">
+                            <div class="space-y-2.5">
+                                <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                                    <div>
+                                        <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Nomor Dokumen DO / SO:</span>
+                                        <span class="text-lg font-black font-mono text-blue-600 hover:text-blue-800">
+                                            {{ $do->doc_num }}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        @if ($do->is_done)
+                                            <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                ✓ SELESAI (DONE)
+                                            </span>
+                                        @else
+                                            <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-200">
+                                                ⏳ IN PROGRESS
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
-                                <div>
-                                    @if ($match->is_done)
-                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                            ✓ SELESAI (DONE)
-                                        </span>
-                                    @else
-                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-200">
-                                            ⏳ IN PROGRESS
-                                        </span>
+
+                                <div class="space-y-2 text-xs">
+                                    <div>
+                                        <span class="text-[10px] text-slate-400 font-bold block uppercase">Customer</span>
+                                        <span class="font-bold text-slate-800 line-clamp-1" title="{{ $do->customer }}">{{ $do->customer ?: 'N/A' }}</span>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                            <span class="text-[10px] text-slate-400 font-bold block uppercase">Box SPK Ini</span>
+                                            <span class="text-sm font-black font-mono text-slate-800">{{ number_format($do->box_count) }} <span class="text-[10px] font-normal text-slate-400">box</span></span>
+                                        </div>
+                                        <div class="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
+                                            <span class="text-[10px] text-emerald-600 font-bold block uppercase">Qty SPK Ini</span>
+                                            <span class="text-sm font-black font-mono text-emerald-700">{{ number_format($do->total_qty) }} <span class="text-[10px] font-normal text-emerald-600">pcs</span></span>
+                                        </div>
+                                    </div>
+
+                                    @if ($do->last_scanned_at)
+                                        <div class="pt-1 text-[10px] text-slate-400 flex items-center justify-between">
+                                            <span>Scan Terakhir:</span>
+                                            <span class="font-bold text-slate-600">{{ \Carbon\Carbon::parse($do->last_scanned_at)->format('d/m/Y H:i') }}</span>
+                                        </div>
                                     @endif
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                    <span class="text-[10px] text-slate-400 font-bold block uppercase">Customer</span>
-                                    <span class="font-bold text-slate-800">{{ $match->customer ?: 'N/A' }}</span>
-                                </div>
-                                <div>
-                                    <span class="text-[10px] text-slate-400 font-bold block uppercase">Waktu Scan</span>
-                                    <span class="font-bold text-slate-800">{{ $match->scanned_at ? \Carbon\Carbon::parse($match->scanned_at)->format('d/m/Y H:i') : '-' }}</span>
-                                </div>
-                                <div>
-                                    <span class="text-[10px] text-slate-400 font-bold block uppercase">Nomor SPK</span>
-                                    <span class="font-mono font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 inline-block">
-                                        {{ $match->spk_code ?: '-' }}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="text-[10px] text-slate-400 font-bold block uppercase">Label Box</span>
-                                    <span class="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block">
-                                        {{ $match->label ?: '-' }}
-                                    </span>
-                                </div>
-                                <div class="col-span-2 pt-1 border-t border-slate-100 flex items-center justify-between">
-                                    <div>
-                                        <div class="font-mono font-black text-slate-900">{{ $match->item_code }}</div>
-                                        <div class="text-[11px] text-slate-500 truncate max-w-xs">{{ $match->item_name ?: '-' }}</div>
-                                    </div>
-                                    <div class="text-right">
-                                        <span class="font-mono font-black text-emerald-700 text-sm">{{ number_format($match->quantity) }} pcs</span>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div class="pt-2 border-t border-slate-100 flex items-center gap-2">
-                                <a href="{{ route('so.process', $match->doc_num) }}" target="_blank" 
-                                   class="flex-grow py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 shadow-xs">
-                                    <span>Buka Dokumen DO ({{ $match->doc_num }})</span>
+                                <a href="{{ route('so.process', $do->doc_num) }}" target="_blank" 
+                                   class="flex-grow py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 shadow-xs">
+                                    <span>Buka Dokumen DO ({{ $do->doc_num }})</span>
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                                 </a>
-                                <button type="button" wire:click="openDocDetail('{{ $match->doc_num }}')" 
-                                        class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer">
+                                <button type="button" wire:click="openDocDetail('{{ $do->doc_num }}')" 
+                                        class="px-3 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer">
                                     Detail DO
                                 </button>
                             </div>
                         </div>
                     @endforeach
                 </div>
+
+                @if ($stats->unique_do_count > $matchingDos->count())
+                    <div class="p-3 bg-white/80 rounded-2xl border border-emerald-200/60 text-xs text-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span>ℹ️ Menampilkan <strong>{{ $matchingDos->count() }}</strong> dari total <strong>{{ $stats->unique_do_count }}</strong> Dokumen DO terkait.</span>
+                        <span class="text-slate-500 font-medium">Rincian stiker/label setiap box lengkap dapat dilihat pada tabel di bawah.</span>
+                    </div>
+                @endif
             </div>
         @else
             <div class="bg-amber-50 border-2 border-amber-300 p-5 rounded-3xl flex items-center justify-between gap-4 animate-in fade-in">

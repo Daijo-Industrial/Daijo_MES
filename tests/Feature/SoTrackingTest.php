@@ -198,7 +198,7 @@ class SoTrackingTest extends TestCase
             ->set('spkSearch', '26023496')
             ->set('labelSearch', '301')
             ->call('searchBySpkAndLabel')
-            ->assertSee('HASIL PELACAKAN: BOX DITEMUKAN PADA DOKUMEN DO')
+            ->assertSee('DOKUMEN DO YANG MEMUAT SPK / BOX INI')
             ->assertSee('DO-TARGET-102458')
             ->assertSee('PT YAMAHA INDONESIA MOTOR')
             ->assertSee('275PVM650A')

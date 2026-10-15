@@ -485,14 +485,48 @@ class SoTracking extends Component
             COUNT(DISTINCT scanned_data.doc_num) as unique_do_count
         ')->first();
 
-        // 2. Direct matches if searching by SPK/Label
+        // 2. Grouped DO summary if searching by SPK/Label/Search (Level Dokumen DO)
         $isSearching = !empty(trim($this->spkSearch)) || !empty(trim($this->labelSearch)) || !empty(trim($this->search));
-        $directMatches = $isSearching ? (clone $this->buildQuery())->take(5)->get() : collect();
-        if ($directMatches->isNotEmpty()) {
-            $this->enrichRecords($directMatches);
+        $matchingDos = collect();
+
+        if ($isSearching) {
+            $doGrouped = (clone $this->buildFilteredQuery())
+                ->select([
+                    'scanned_data.doc_num',
+                    DB::raw('COUNT(*) as box_count'),
+                    DB::raw('COALESCE(SUM(scanned_data.quantity), 0) as total_qty'),
+                    DB::raw('MAX(scanned_data.created_at) as last_scanned_at'),
+                ])
+                ->groupBy('scanned_data.doc_num')
+                ->orderByDesc('last_scanned_at')
+                ->take(6)
+                ->get();
+
+            if ($doGrouped->isNotEmpty()) {
+                $docNums = $doGrouped->pluck('doc_num')->values();
+                $soDatas = SoData::whereIn('doc_num', $docNums)
+                    ->select(['doc_num', 'customer', 'item_name', 'is_done', 'posting_date'])
+                    ->get()
+                    ->groupBy('doc_num');
+
+                $matchingDos = $doGrouped->map(function ($item) use ($soDatas) {
+                    $docItems = $soDatas->get($item->doc_num);
+                    $firstItem = $docItems?->first();
+
+                    return (object) [
+                        'doc_num'         => $item->doc_num,
+                        'customer'        => $firstItem?->customer ?? 'N/A',
+                        'is_done'         => $docItems ? $docItems->every('is_done', 1) : false,
+                        'posting_date'    => $firstItem?->posting_date ?? '-',
+                        'box_count'       => (int) $item->box_count,
+                        'total_qty'       => (int) $item->total_qty,
+                        'last_scanned_at' => $item->last_scanned_at,
+                    ];
+                });
+            }
         }
 
-        // 3. Paginated records
+        // 3. Paginated records (Level Box Scan individual)
         $records = $this->buildQuery()->paginate($this->perPage);
         $this->enrichRecords($records->getCollection());
 
@@ -500,7 +534,8 @@ class SoTracking extends Component
             'records'         => $records,
             'stats'           => $stats,
             'isSearching'     => $isSearching,
-            'directMatches'   => $directMatches,
+            'matchingDos'     => $matchingDos,
+            'directMatches'   => $matchingDos, // alias for backwards compatibility
             'hasActiveSearch' => true,
         ]);
     }
