@@ -517,7 +517,12 @@
                                                     <span class="text-[10px] text-slate-500 font-normal">({{ $d['skipped_position_code'] }})</span>
                                                 </div>
                                                 <div class="text-[10px] text-slate-600">
-                                                    Lot: <strong>{{ $d['skipped_lot_no'] }}</strong> &bull; Masuk: <strong>{{ $d['skipped_arrival_date'] }}</strong> (Sisa: {{ number_format($d['skipped_current_qty'], 1) }} KG)
+                                                    Lot: <strong>{{ $d['skipped_lot_no'] }}</strong> &bull; Masuk: <strong>{{ $d['skipped_arrival_date'] }}</strong>
+                                                    @if ($d['skipped_current_qty'] > 0)
+                                                        (Sisa: <strong class="text-rose-700">{{ number_format($d['skipped_current_qty'], 1) }} KG</strong>)
+                                                    @else
+                                                        (Stok Saat Itu: <strong class="text-rose-700">{{ number_format($d['skipped_stock_at_time'] ?? 0, 1) }} KG</strong> &bull; <span class="text-slate-500 font-semibold">Sekarang Habis</span>)
+                                                    @endif
                                                 </div>
                                             </td>
                                             <td class="px-4 py-3.5 text-center">

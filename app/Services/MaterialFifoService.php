@@ -160,9 +160,9 @@ class MaterialFifoService
             return [];
         }
 
-        // Bulk-load all candidate pallets in ONE single query (no N+1 loop queries)
+        // Bulk-load all candidate pallets with their outgoings in ONE query (no N+1 loop queries)
         $itemCodes = $outgoings->pluck('item_code')->unique()->values();
-        $candidatePalletsGrouped = MwhPallet::with(['incomingHeader', 'position.rack'])
+        $candidatePalletsGrouped = MwhPallet::with(['incomingHeader', 'position.rack', 'initialPosition.rack', 'outgoings'])
             ->whereIn('item_code', $itemCodes)
             ->where('is_qc_hold', false)
             ->when($whseId, fn($q) => $q->where('whse_id', $whseId))
@@ -190,37 +190,64 @@ class MaterialFifoService
             $potentialOlderPallets = $candidatePalletsGrouped->get($out->item_code, collect())
                 ->where('pallet_id', '!=', $pickedPallet->pallet_id);
 
-            $skippedOlderPallets = $potentialOlderPallets->filter(function ($older) use ($pickedArrivalDate, $outgoingTimestamp) {
+            $skippedOlderPallets = [];
+
+            foreach ($potentialOlderPallets as $older) {
                 $olderArrival = $older->incomingHeader?->arrival_date
                     ? Carbon::parse($older->incomingHeader->arrival_date)->format('Y-m-d')
                     : $older->created_at->format('Y-m-d');
 
                 // Must be strictly older than picked lot
                 if ($olderArrival >= $pickedArrivalDate) {
+                    continue;
+                }
+
+                // Calculate historical stock of $older at the moment of this outgoing
+                $initialQty = (float) $older->initial_qty > 0 
+                    ? (float) $older->initial_qty 
+                    : ((float) $older->current_qty + (float) $older->outgoings->sum('qty_taken'));
+
+                $consumedBeforeOrAt = (float) $older->outgoings->filter(function ($o) use ($out, $outgoingTimestamp) {
+                    if ($o->id === $out->id) {
+                        return false;
+                    }
+                    $oDate = Carbon::parse($o->outgoing_date);
+                    if ($o->created_at) {
+                        $oDate->setTimeFrom($o->created_at);
+                    }
+                    if ($oDate->lt($outgoingTimestamp)) {
+                        return true;
+                    }
+                    if ($oDate->eq($outgoingTimestamp) && $o->id < $out->id) {
+                        return true;
+                    }
                     return false;
+                })->sum('qty_taken');
+
+                $stockAtTime = max(0, $initialQty - $consumedBeforeOrAt);
+
+                // If older pallet was ALREADY EMPTY at the time of this outgoing, it could not have been bypassed!
+                if ($stockAtTime <= 0) {
+                    continue;
                 }
 
-                // Check if older lot was in stock at the time of outgoing:
-                if ($older->current_qty > 0) {
-                    return true;
-                }
+                $skippedOlderPallets[] = [
+                    'pallet'        => $older,
+                    'arrival_date'  => $olderArrival,
+                    'stock_at_time' => $stockAtTime,
+                ];
+            }
 
-                if ($older->updated_at && $older->updated_at->greaterThan($outgoingTimestamp)) {
-                    return true;
-                }
+            if (!empty($skippedOlderPallets)) {
+                // Find the oldest skipped pallet (sorted by arrival_date ascending)
+                usort($skippedOlderPallets, function ($a, $b) {
+                    return strcmp($a['arrival_date'], $b['arrival_date']);
+                });
 
-                return false;
-            });
-
-            if ($skippedOlderPallets->isNotEmpty()) {
-                // Find the oldest skipped pallet
-                $oldestSkipped = $skippedOlderPallets->sortBy(function ($p) {
-                    return $p->incomingHeader?->arrival_date ?? $p->created_at->format('Y-m-d');
-                })->first();
-
-                $oldestArrival = $oldestSkipped->incomingHeader?->arrival_date
-                    ? Carbon::parse($oldestSkipped->incomingHeader->arrival_date)->format('Y-m-d')
-                    : $oldestSkipped->created_at->format('Y-m-d');
+                $oldestEntry   = $skippedOlderPallets[0];
+                $oldestSkipped = $oldestEntry['pallet'];
+                $oldestArrival = $oldestEntry['arrival_date'];
+                $stockAtTime   = $oldestEntry['stock_at_time'];
 
                 $deltaDays = Carbon::parse($oldestArrival)->diffInDays(Carbon::parse($pickedArrivalDate));
 
@@ -243,8 +270,9 @@ class MaterialFifoService
                         'skipped_pallet_id'     => $oldestSkipped->pallet_id,
                         'skipped_lot_no'        => $oldestSkipped->lot_no ?: '-',
                         'skipped_arrival_date'  => Carbon::parse($oldestArrival)->format('d/m/Y'),
-                        'skipped_position_code' => $oldestSkipped->position?->position_code ?: 'Non-Rak',
+                        'skipped_position_code' => $oldestSkipped->position?->position_code ?: ($oldestSkipped->initialPosition?->position_code ?: 'Non-Rak'),
                         'skipped_current_qty'   => (float) $oldestSkipped->current_qty,
+                        'skipped_stock_at_time' => (float) $stockAtTime,
                         'delta_days'            => (int) $deltaDays,
                         'severity'              => $deltaDays >= 30 ? 'HIGH' : ($deltaDays >= 7 ? 'MEDIUM' : 'LOW'),
                     ];

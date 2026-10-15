@@ -420,6 +420,81 @@ class MaterialFifoDirectorDashboardTest extends TestCase
         $this->assertEquals('PLT-LOT-B', $firstItem['next_in_line'][0]['pallet_id']);
     }
 
+    public function test_fifo_service_does_not_flag_older_pallet_if_already_depleted_before_outgoing()
+    {
+        $data = $this->seedStandardTestData();
+
+        // 1. Older Pallet arrived on Aug 01, 2026 (1000 KG)
+        $incOld = MwhIncomingHeader::create([
+            'whse_id' => $data['warehouse']->id,
+            'document_no' => 'INC-OLD-01',
+            'arrival_date' => '2026-08-01',
+        ]);
+
+        $palletOld = MwhPallet::create([
+            'whse_id' => $data['warehouse']->id,
+            'pallet_id' => 'PLT-OLD-DEPLETED',
+            'incoming_header_id' => $incOld->id,
+            'item_code' => 'RESIN-PP-001',
+            'lot_no' => 'LOT-OLD-01',
+            'initial_qty' => 1000,
+            'current_qty' => 0, // fully consumed!
+            'position_id' => null,
+            'status' => 'EMPTY',
+            'created_at' => Carbon::parse('2026-08-01 08:00:00'),
+            'updated_at' => Carbon::parse('2026-08-20 12:00:00'), // updated later (e.g. audit or migration)
+        ]);
+
+        // Outgoing that consumed the older pallet happened on Aug 05, 2026
+        MwhOutgoing::create([
+            'whse_id' => $data['warehouse']->id,
+            'outgoing_code' => 'OUT-OLD-01',
+            'pallet_id' => $palletOld->pallet_id,
+            'item_code' => 'RESIN-PP-001',
+            'qty_taken' => 1000,
+            'outgoing_date' => '2026-08-05',
+            'created_at' => Carbon::parse('2026-08-05 10:00:00'),
+        ]);
+
+        // 2. Newer Pallet arrived on Aug 10, 2026 (500 KG)
+        $incNew = MwhIncomingHeader::create([
+            'whse_id' => $data['warehouse']->id,
+            'document_no' => 'INC-NEW-02',
+            'arrival_date' => '2026-08-10',
+        ]);
+
+        $palletNew = MwhPallet::create([
+            'whse_id' => $data['warehouse']->id,
+            'pallet_id' => 'PLT-NEW-02',
+            'incoming_header_id' => $incNew->id,
+            'item_code' => 'RESIN-PP-001',
+            'lot_no' => 'LOT-NEW-02',
+            'initial_qty' => 500,
+            'current_qty' => 200,
+            'position_id' => $data['pos2']->id,
+            'status' => 'PARTIAL',
+            'created_at' => Carbon::parse('2026-08-10 09:00:00'),
+        ]);
+
+        // 3. Outgoing from newer pallet on Aug 15, 2026
+        MwhOutgoing::create([
+            'whse_id' => $data['warehouse']->id,
+            'outgoing_code' => 'OUT-NEW-02',
+            'pallet_id' => $palletNew->pallet_id,
+            'item_code' => 'RESIN-PP-001',
+            'qty_taken' => 300,
+            'outgoing_date' => '2026-08-15',
+            'created_at' => Carbon::parse('2026-08-15 10:00:00'),
+        ]);
+
+        $service = new MaterialFifoService();
+        $deviations = $service->detectFifoDeviations('ALL', '2026-08-10', '2026-08-20');
+
+        // Since PLT-OLD-DEPLETED was ALREADY fully consumed on Aug 05 (before Aug 15),
+        // OUT-NEW-02 did NOT bypass it. So violations must be 0!
+        $this->assertCount(0, $deviations);
+    }
+
     public function test_livewire_fifo_dashboard_component_renders_and_interacts()
     {
         $data = $this->seedStandardTestData();
