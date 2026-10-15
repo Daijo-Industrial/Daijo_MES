@@ -183,6 +183,7 @@ class InitialBarcodeController extends Controller
             'model' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:255',
             'position' => 'nullable|string|max:255',
+            'rh_lh' => 'nullable|string|max:255',
             'part_weight' => 'nullable|numeric|min:0',
             'std_pack' => 'nullable|integer|min:0',
             'made_in' => 'nullable|string|max:255',
@@ -255,7 +256,8 @@ class InitialBarcodeController extends Controller
             $request->input('std_pack'),
             $request->input('made_in'),
             $request->input('expiry_date'),
-            $request->input('shipment_date')
+            $request->input('shipment_date'),
+            $request->input('rh_lh')
         );
 
         $logoBase64 = $this->getLogoBase64();
@@ -326,7 +328,8 @@ class InitialBarcodeController extends Controller
         ?int $customStdPack = null,
         ?string $customMadeIn = null,
         ?string $customExpiryDate = null,
-        ?string $customShipmentDate = null
+        ?string $customShipmentDate = null,
+        ?string $customRhLh = null
     ): array {
         $spkNumber = $spkNumber ?: '-';
         $item = MasterListItem::where('item_code', $itemCode)->first();
@@ -340,19 +343,40 @@ class InitialBarcodeController extends Controller
         $expiryDate = $customExpiryDate ?: '';
         $shipmentDate = $customShipmentDate ?: '';
         
-        // Position format: 'right' -> 'RH', 'left' -> 'LH'
+        // Position format: strictly determines enlarged half code (1 for Left/HC1, 2 for Right/HC2)
         $positionInput = $customPosition ?: (($item?->position && $item->position !== '0') ? $item->position : '');
         $posRaw = strtolower(trim((string) $positionInput));
-        if ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r') {
-            $position = 'RH';
+        if ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r' || $posRaw === '2') {
             $enlargedHalfCode = 2;
-        } elseif ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l') {
-            $position = 'LH';
+        } elseif ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l' || $posRaw === '1') {
             $enlargedHalfCode = 1;
         } else {
-            $position = strtoupper($positionInput ?: '-');
-            $enlargedHalfCode = (str_contains($posRaw, 'left') || str_contains($posRaw, 'lh')) ? 1 : 2;
+            $enlargedHalfCode = (str_contains($posRaw, 'left') || str_contains($posRaw, 'lh') || str_contains($posRaw, '1')) ? 1 : 2;
         }
+
+        // RH / LH data: manually provided by user for ITSP (with backward compatibility fallback)
+        $rhLhInput = trim((string) ($customRhLh ?? ''));
+        if ($rhLhInput !== '') {
+            $rhLhRaw = strtolower($rhLhInput);
+            if ($rhLhRaw === 'right' || $rhLhRaw === 'rh' || $rhLhRaw === 'r') {
+                $rhLh = 'RH';
+            } elseif ($rhLhRaw === 'left' || $rhLhRaw === 'lh' || $rhLhRaw === 'l') {
+                $rhLh = 'LH';
+            } else {
+                $rhLh = strtoupper($rhLhInput);
+            }
+        } else {
+            // Backward compatibility fallback to position if rh_lh was not provided
+            if ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r') {
+                $rhLh = 'RH';
+            } elseif ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l') {
+                $rhLh = 'LH';
+            } else {
+                $rhLh = strtoupper($positionInput ?: '-');
+            }
+        }
+
+        $position = $rhLh;
 
         // Half codes for ITSP
         $h1 = strtoupper(trim((string) ($item?->half_code_1 && $item->half_code_1 !== '0' ? $item->half_code_1 : '')));
@@ -395,8 +419,12 @@ class InitialBarcodeController extends Controller
                 margin: 0
             );
 
-            $qrResult = $writer->write($qrCode);
-            $qrBase64 = base64_encode($qrResult->getString());
+            if (extension_loaded('gd')) {
+                $qrResult = $writer->write($qrCode);
+                $qrBase64 = base64_encode($qrResult->getString());
+            } else {
+                $qrBase64 = '';
+            }
 
             $labels[] = [
                 'label_no' => $i,
@@ -406,6 +434,7 @@ class InitialBarcodeController extends Controller
                 'model' => $model,
                 'color' => $color,
                 'position' => $position,
+                'rh_lh' => $rhLh,
                 'half_code_1' => $h1,
                 'half_code_2' => $h2,
                 'itsp_code' => $itspCode,

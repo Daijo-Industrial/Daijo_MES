@@ -79,7 +79,7 @@
                                             Customer PT. ITSP
                                             <span class="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2 py-0.5 rounded">ITSP</span>
                                         </span>
-                                        <span class="block text-xs text-slate-500 mt-0.5">Part Tag (8 label/sheet): Model, Part Code, Color, Position (RH/LH), Half Code & SP</span>
+                                        <span class="block text-xs text-slate-500 mt-0.5">Part Tag (8 label/sheet): Model, Part Code, Color, RH/LH, Half Code & SP</span>
                                     </div>
                                 </label>
 
@@ -235,9 +235,32 @@
                         <!-- Position -->
                         <div>
                             <label for="position" class="block text-sm font-semibold text-slate-700 mb-2">
-                                Position <span class="text-xs font-normal text-slate-500">(Khusus ITSP: Left/LH -> Half Code 1 besar, Right/RH -> Half Code 2 besar)</span>
+                                Position <span class="text-xs font-normal text-slate-500">(Khusus ITSP: Left -> Half Code 1 besar, Right -> Half Code 2 besar)</span>
                             </label>
-                            <input type="text" id="position" name="position" placeholder="Otomatis terisi dari Position (RH / LH)" class="block w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="text" id="position" name="position" placeholder="Otomatis terisi dari Position master (Left / Right)" class="block w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <!-- RH / LH -->
+                        <div id="rh_lh_container">
+                            <div class="flex items-center justify-between mb-2">
+                                <label for="rh_lh" class="block text-sm font-semibold text-slate-700">
+                                    RH / LH <span class="text-xs font-normal text-slate-500">(Khusus ITSP: Posisi Part RH / LH)</span>
+                                </label>
+                                <span class="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Input Manual</span>
+                            </div>
+                            <div class="relative flex items-center">
+                                <input type="text"
+                                       id="rh_lh"
+                                       name="rh_lh"
+                                       value="{{ old('rh_lh', '') }}"
+                                       placeholder="Ketik RH atau LH (cth: RH / LH)"
+                                       autocomplete="off"
+                                       class="block w-full pl-4 pr-24 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold uppercase text-slate-800">
+                                <div class="absolute right-1.5 flex items-center gap-1">
+                                    <button type="button" class="px-2.5 py-1 text-xs font-extrabold rounded bg-slate-100 hover:bg-slate-200 active:bg-indigo-100 text-slate-700 border border-slate-200 transition cursor-pointer" onclick="document.getElementById('rh_lh').value='RH';">RH</button>
+                                    <button type="button" class="px-2.5 py-1 text-xs font-extrabold rounded bg-slate-100 hover:bg-slate-200 active:bg-indigo-100 text-slate-700 border border-slate-200 transition cursor-pointer" onclick="document.getElementById('rh_lh').value='LH';">LH</button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- SPK Number Selection -->
@@ -544,6 +567,7 @@
             const modelInput = document.getElementById('model');
             const colorInput = document.getElementById('color');
             const positionInput = document.getElementById('position');
+            const rhLhInput = document.getElementById('rh_lh');
             const partWeightInput = document.getElementById('part_weight');
             const stdPackInput = document.getElementById('std_pack');
             const madeInInput = document.getElementById('made_in');
@@ -753,6 +777,7 @@
                 hiddenItemCode.removeAttribute('data-std-pack');
                 hiddenItemCode.removeAttribute('data-part-weight');
                 hiddenItemCode.dispatchEvent(new Event('change', { bubbles: true }));
+                if (rhLhInput) rhLhInput.value = '';
 
                 searchInput.value = '';
                 searchInput.classList.remove('border-indigo-500', 'bg-indigo-50/20', 'text-indigo-950', 'font-bold');

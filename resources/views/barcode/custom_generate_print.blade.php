@@ -1011,11 +1011,9 @@
                                     <div class="itsp-main-code">
                                         @if(!empty($label['half_code_1']) || !empty($label['half_code_2']))
                                             @php
-                                                $posClean = strtoupper(trim((string)($label['position'] ?? '')));
-                                                $isLeft = ($label['enlarged_half_code'] ?? null) === 1 
-                                                    || in_array($posClean, ['LH', 'LEFT', 'L'])
-                                                    || str_contains($posClean, 'LEFT')
-                                                    || str_contains($posClean, 'LH');
+                                                $isLeft = isset($label['enlarged_half_code'])
+                                                    ? ((int)$label['enlarged_half_code'] === 1)
+                                                    : in_array(strtoupper(trim((string)($label['position'] ?? ''))), ['LH', 'LEFT', 'L', '1']);
                                             @endphp
                                             @if($isLeft)
                                                 <span style="font-size: 16pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 11pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
@@ -1088,7 +1086,7 @@
                                         <div class="itsp-bottom-grid">
                                             <div class="itsp-color-pos-box">
                                                 <div class="itsp-color-cell">{{ $label['color'] ?: '-' }}</div>
-                                                <div class="itsp-pos-cell">{{ $label['position'] ?: '-' }}</div>
+                                                <div class="itsp-pos-cell">{{ $label['rh_lh'] ?: ($label['position'] ?: '-') }}</div>
                                             </div>
                                             <div class="itsp-stamp-box">
                                                 <div class="itsp-stamp-cols">
