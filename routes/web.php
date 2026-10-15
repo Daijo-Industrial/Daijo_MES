@@ -634,6 +634,7 @@ Route::middleware('auth')->group(function (){
     Route::post('/import-excel', [SOController::class, 'import'])->name('import.so.data');
 
     Route::get('/pegawai/scan', [SOController::class, 'indexpegawai'])->name('pegawai.scan');
+    Route::get('/so/tracking', \App\Livewire\Store\SoTracking::class)->name('so.tracking');
     //Route untuk Handle SO dari diss 
 
     Route::put('/scan/{id}', [SOController::class, 'update'])

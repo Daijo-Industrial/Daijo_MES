@@ -192,6 +192,7 @@ new class extends Component {
                     ['name' => 'so.index', 'label' => 'DATA SO / DO Index'],
                     ['name' => 'so.dashboard', 'label' => 'SO Dashboard'],
                     ['name' => 'pegawai.scan', 'label' => 'Scan SO'],
+                    ['name' => 'so.tracking', 'label' => 'Tracking SPK & Label DO'],
                 ]" />
 
                 <!-- 7. Dropdown: Barcode & Scan -->
@@ -351,6 +352,9 @@ new class extends Component {
                         wire:navigate />
 
                     <livewire:sidebar-link href="{{ route('pegawai.scan') }}" label="SCAN SO" :active="request()->routeIs('pegawai.scan')"
+                        wire:navigate />
+
+                    <livewire:sidebar-link href="{{ route('so.tracking') }}" label="TRACKING SPK & LABEL" :active="request()->routeIs('so.tracking')"
                         wire:navigate />
 
                     <livewire:sidebar-link href="{{ route('production-summary-monitor') }}"
