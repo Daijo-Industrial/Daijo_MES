@@ -43,4 +43,6 @@ return [
         'password'   => env('SAP_PASSWORD'),
     ],
 
+    'api_secret_key' => env('API_SECRET_KEY'),
+
 ];
