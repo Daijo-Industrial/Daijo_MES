@@ -30,11 +30,15 @@ class IpAndApiKeyWhitelist
             ], 403);
         }
 
-        // Cek API Key dari header
-        $apiKey = $request->header('X-API-KEY');
-        $validApiKey = env('API_SECRET_KEY');
+        // Cek API Key dari header (toleran case & fallback query input)
+        $apiKey = $request->header('X-API-KEY') 
+            ?? $request->header('x-api-key') 
+            ?? $request->input('api_key') 
+            ?? $request->input('apiKey');
 
-        if ($apiKey !== $validApiKey) {
+        $validApiKey = config('services.api_secret_key') ?: env('API_SECRET_KEY');
+
+        if (empty($apiKey) || empty($validApiKey) || trim((string)$apiKey) !== trim((string)$validApiKey)) {
             return response()->json([
                 'message' => 'Unauthorized: Invalid API Key',
                 'client_ip' => $clientIp
