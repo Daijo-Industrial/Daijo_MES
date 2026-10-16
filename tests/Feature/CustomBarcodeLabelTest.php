@@ -243,6 +243,48 @@ class CustomBarcodeLabelTest extends TestCase
         $this->assertStringContainsString('font-size: 11pt; font-weight: 900;">TSPT10</span><span style="font-size: 16pt; font-weight: 900;">188XA</span>', $content);
     }
 
+    public function test_itsp_half_code_uniform_size_when_position_is_center()
+    {
+        $user = User::create([
+            'name'     => 'ITSP User Center',
+            'email'    => 'itsp_center@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        MasterListItem::create([
+            'item_code'   => 'TSPT10188XA-INJ',
+            'item_name'   => 'PANEL CONSOLE RR SIDE CTR',
+            'half_code_1' => 'TSPT10',
+            'half_code_2' => '188XA',
+            'position'    => 'Center',
+        ]);
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('barcode.custom.print'), [
+            'item_code'    => 'TSPT10188XA-INJ',
+            'spk_number'   => 'SPK-ITSP-03',
+            'quantity'     => 80,
+            'warehouse'    => 'WFI',
+            'start_label'  => 1,
+            'end_label'    => 1,
+            'shift'        => 'I',
+            'barcode_type' => 'itsp',
+            'position'     => 'Center',
+        ]);
+
+        $response->assertOk();
+        $response->assertViewHas('labels', function ($labels) {
+            return $labels[0]['position'] === 'CTR'
+                && $labels[0]['enlarged_half_code'] === 0;
+        });
+
+        // Verify that both half codes have uniform font-size 13.5pt and neither is 16pt or 11pt
+        $content = $response->getContent();
+        $this->assertStringContainsString('font-size: 13.5pt; font-weight: 900;">TSPT10</span><span style="font-size: 13.5pt; font-weight: 900;">188XA</span>', $content);
+        $this->assertStringNotContainsString('font-size: 16pt;', $content);
+    }
+
     public function test_itsp_half_code_and_rh_lh_independent_left_position_with_rh_side()
     {
         $user = User::create([

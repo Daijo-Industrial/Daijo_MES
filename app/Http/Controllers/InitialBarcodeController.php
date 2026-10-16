@@ -343,15 +343,22 @@ class InitialBarcodeController extends Controller
         $expiryDate = $customExpiryDate ?: '';
         $shipmentDate = $customShipmentDate ?: '';
         
-        // Position format: strictly determines enlarged half code (1 for Left/HC1, 2 for Right/HC2)
+        // Position format: strictly determines enlarged half code (1 for Left/HC1, 2 for Right/HC2, 0 for Center/None)
         $positionInput = $customPosition ?: (($item?->position && $item->position !== '0') ? $item->position : '');
         $posRaw = strtolower(trim((string) $positionInput));
-        if ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r' || $posRaw === '2') {
-            $enlargedHalfCode = 2;
-        } elseif ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l' || $posRaw === '1') {
+        
+        $isCenterPos = ($posRaw === 'center' || $posRaw === 'c' || $posRaw === 'ctr' || $posRaw === 'middle' || str_contains($posRaw, 'center') || str_contains($posRaw, 'tengah'));
+        $isLeftPos   = !$isCenterPos && ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l' || $posRaw === '1' || str_contains($posRaw, 'left') || str_contains($posRaw, 'lh'));
+        $isRightPos  = !$isCenterPos && ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r' || $posRaw === '2' || str_contains($posRaw, 'right') || str_contains($posRaw, 'rh'));
+
+        if ($isCenterPos) {
+            $enlargedHalfCode = 0;
+        } elseif ($isLeftPos) {
             $enlargedHalfCode = 1;
+        } elseif ($isRightPos) {
+            $enlargedHalfCode = 2;
         } else {
-            $enlargedHalfCode = (str_contains($posRaw, 'left') || str_contains($posRaw, 'lh') || str_contains($posRaw, '1')) ? 1 : 2;
+            $enlargedHalfCode = 0;
         }
 
         // RH / LH data: manually provided by user for ITSP (with backward compatibility fallback)
@@ -362,15 +369,19 @@ class InitialBarcodeController extends Controller
                 $rhLh = 'RH';
             } elseif ($rhLhRaw === 'left' || $rhLhRaw === 'lh' || $rhLhRaw === 'l') {
                 $rhLh = 'LH';
+            } elseif ($rhLhRaw === 'center' || $rhLhRaw === 'c' || $rhLhRaw === 'ctr' || $rhLhRaw === 'middle') {
+                $rhLh = 'CTR';
             } else {
                 $rhLh = strtoupper($rhLhInput);
             }
         } else {
             // Backward compatibility fallback to position if rh_lh was not provided
-            if ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r') {
+            if ($isRightPos) {
                 $rhLh = 'RH';
-            } elseif ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l') {
+            } elseif ($isLeftPos) {
                 $rhLh = 'LH';
+            } elseif ($isCenterPos) {
+                $rhLh = 'CTR';
             } else {
                 $rhLh = strtoupper($positionInput ?: '-');
             }
