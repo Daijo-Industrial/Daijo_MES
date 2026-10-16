@@ -40,6 +40,7 @@ class CustomBarcodeLabelTest extends TestCase
             $table->string('email')->unique();
             $table->string('password');
             $table->foreignId('role_id')->nullable();
+            $table->timestamp('last_activity_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -79,6 +80,20 @@ class CustomBarcodeLabelTest extends TestCase
             $table->string('barcode_type')->nullable();
             $table->boolean('is_trial')->default(false);
             $table->text('remark')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('activity_log', function ($table) {
+            $table->id();
+            $table->string('log_name')->nullable();
+            $table->text('description');
+            $table->string('subject_type')->nullable();
+            $table->string('subject_id', 191)->nullable();
+            $table->string('causer_type')->nullable();
+            $table->string('causer_id', 191)->nullable();
+            $table->json('properties')->nullable();
+            $table->uuid('batch_uuid')->nullable();
+            $table->string('event')->nullable();
             $table->timestamps();
         });
     }
