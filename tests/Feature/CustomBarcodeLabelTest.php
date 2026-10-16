@@ -40,6 +40,7 @@ class CustomBarcodeLabelTest extends TestCase
             $table->string('email')->unique();
             $table->string('password');
             $table->foreignId('role_id')->nullable();
+            $table->timestamp('last_activity_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -79,6 +80,20 @@ class CustomBarcodeLabelTest extends TestCase
             $table->string('barcode_type')->nullable();
             $table->boolean('is_trial')->default(false);
             $table->text('remark')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('activity_log', function ($table) {
+            $table->id();
+            $table->string('log_name')->nullable();
+            $table->text('description');
+            $table->string('subject_type')->nullable();
+            $table->string('subject_id', 191)->nullable();
+            $table->string('causer_type')->nullable();
+            $table->string('causer_id', 191)->nullable();
+            $table->json('properties')->nullable();
+            $table->uuid('batch_uuid')->nullable();
+            $table->string('event')->nullable();
             $table->timestamps();
         });
     }
@@ -241,6 +256,48 @@ class CustomBarcodeLabelTest extends TestCase
         // Verify that half_code_1 has font-size 11pt and half_code_2 has font-size 16pt
         $content = $response->getContent();
         $this->assertStringContainsString('font-size: 11pt; font-weight: 900;">TSPT10</span><span style="font-size: 16pt; font-weight: 900;">188XA</span>', $content);
+    }
+
+    public function test_itsp_half_code_uniform_size_when_position_is_center()
+    {
+        $user = User::create([
+            'name'     => 'ITSP User Center',
+            'email'    => 'itsp_center@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        MasterListItem::create([
+            'item_code'   => 'TSPT10188XA-INJ',
+            'item_name'   => 'PANEL CONSOLE RR SIDE CTR',
+            'half_code_1' => 'TSPT10',
+            'half_code_2' => '188XA',
+            'position'    => 'Center',
+        ]);
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('barcode.custom.print'), [
+            'item_code'    => 'TSPT10188XA-INJ',
+            'spk_number'   => 'SPK-ITSP-03',
+            'quantity'     => 80,
+            'warehouse'    => 'WFI',
+            'start_label'  => 1,
+            'end_label'    => 1,
+            'shift'        => 'I',
+            'barcode_type' => 'itsp',
+            'position'     => 'Center',
+        ]);
+
+        $response->assertOk();
+        $response->assertViewHas('labels', function ($labels) {
+            return $labels[0]['position'] === 'CTR'
+                && $labels[0]['enlarged_half_code'] === 0;
+        });
+
+        // Verify that both half codes have uniform font-size 13.5pt and neither is 16pt or 11pt
+        $content = $response->getContent();
+        $this->assertStringContainsString('font-size: 13.5pt; font-weight: 900;">TSPT10</span><span style="font-size: 13.5pt; font-weight: 900;">188XA</span>', $content);
+        $this->assertStringNotContainsString('font-size: 16pt;', $content);
     }
 
     public function test_itsp_half_code_and_rh_lh_independent_left_position_with_rh_side()

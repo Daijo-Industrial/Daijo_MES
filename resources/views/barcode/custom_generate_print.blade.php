@@ -1011,14 +1011,36 @@
                                     <div class="itsp-main-code">
                                         @if(!empty($label['half_code_1']) || !empty($label['half_code_2']))
                                             @php
-                                                $isLeft = isset($label['enlarged_half_code'])
-                                                    ? ((int)$label['enlarged_half_code'] === 1)
-                                                    : in_array(strtoupper(trim((string)($label['position'] ?? ''))), ['LH', 'LEFT', 'L', '1']);
+                                                $posClean = strtoupper(trim((string)($label['position'] ?? '')));
+                                                if (isset($label['enlarged_half_code'])) {
+                                                    $enlarged = (int)$label['enlarged_half_code'];
+                                                    $isLeft   = ($enlarged === 1);
+                                                    $isRight  = ($enlarged === 2);
+                                                    $isCenter = ($enlarged === 0);
+                                                } else {
+                                                    $isCenter = in_array($posClean, ['CENTER', 'C', 'CTR', 'MIDDLE'])
+                                                        || str_contains($posClean, 'CENTER')
+                                                        || str_contains($posClean, 'CTR');
+
+                                                    $isLeft = !$isCenter && (
+                                                        in_array($posClean, ['LH', 'LEFT', 'L', '1'])
+                                                        || str_contains($posClean, 'LEFT')
+                                                        || str_contains($posClean, 'LH')
+                                                    );
+
+                                                    $isRight = !$isCenter && (
+                                                        in_array($posClean, ['RH', 'RIGHT', 'R', '2'])
+                                                        || str_contains($posClean, 'RIGHT')
+                                                        || str_contains($posClean, 'RH')
+                                                    );
+                                                }
                                             @endphp
                                             @if($isLeft)
                                                 <span style="font-size: 16pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 11pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
-                                            @else
+                                            @elseif($isRight)
                                                 <span style="font-size: 11pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 16pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
+                                            @else
+                                                <span style="font-size: 13.5pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 13.5pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
                                             @endif
                                         @else
                                             <span style="font-size: 13.5pt; font-weight: 900;">{{ $label['itsp_code'] }}</span>

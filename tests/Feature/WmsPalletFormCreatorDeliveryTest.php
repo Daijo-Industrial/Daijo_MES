@@ -102,6 +102,7 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
             $table->string('email')->unique();
             $table->string('password');
             $table->foreignId('role_id')->nullable(); // Allow null temporarily during creation
+            $table->timestamp('last_activity_at')->nullable();
             $table->timestamps();
         });
 
@@ -225,6 +226,20 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
             $table->foreignId('position_id')->nullable();
             $table->foreignId('user_id')->nullable();
             $table->text('notes')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('activity_log', function (Blueprint $table) {
+            $table->id();
+            $table->string('log_name')->nullable();
+            $table->text('description');
+            $table->string('subject_type')->nullable();
+            $table->string('subject_id', 191)->nullable();
+            $table->string('causer_type')->nullable();
+            $table->string('causer_id', 191)->nullable();
+            $table->json('properties')->nullable();
+            $table->uuid('batch_uuid')->nullable();
+            $table->string('event')->nullable();
             $table->timestamps();
         });
     }

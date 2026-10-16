@@ -1,0 +1,44 @@
+meta {
+  name: 02 - SAP SPK Webhook (POST sap-spk)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{mes_base_url}}/api/sap/spk
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  X-API-KEY: {{mes_api_key}}
+}
+
+body:json {
+  [
+    {
+      "spk_number": "SPK2410-0012",
+      "item_code": "TSPT10188XA-INJ"
+    }
+  ]
+}
+
+docs {
+  # SAP SPK Item Mapping Inbound Webhook
+  
+  Endpoint: `POST /api/sap/spk`
+  Controller: `App\Http\Controllers\Store\SOController::storeSpkNew`
+  Middleware: `['ip.and.apikey', 'throttle:sap-api']`
+  
+  Autentikasi:
+  - Whitelist IP: `192.168.6.1`
+  - Header: `X-API-KEY: <API_SECRET_KEY>`
+  
+  Fungsi:
+  - Menerima relasi SPK Number dengan Item Code dari SAP.
+  - Memperbarui atau membuat record pada tabel `spk_item_histories`.
+  - Digunakan oleh modul WMS dan Barcode Scanner untuk cross-reference part number dari nomor SPK.
+  - Mencatat log transaksi ke tabel `api_logs` (API Name: `SPK Insert SAP`).
+}

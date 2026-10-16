@@ -1,0 +1,48 @@
+meta {
+  name: 03 - SAP Master List Item Webhook (POST sap-master-list-item)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{mes_base_url}}/api/sap/master-list-item
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  X-API-KEY: {{mes_api_key}}
+}
+
+body:json {
+  {
+    "item_code": "TSPT10188XA-INJ",
+    "item_name": "PANEL CONSOLE RR SIDE LH",
+    "tipe_mesin": "INJECTION 350T",
+    "standart_packaging_list": 20,
+    "setup_time_minute": "45",
+    "pair": "LH",
+    "cavity": 2,
+    "customer_code": "CUST-ITSP-01",
+    "cycle_time": 42.5
+  }
+}
+
+docs {
+  # SAP Master List Item Inbound Webhook
+  
+  Endpoint: `POST /api/sap/master-list-item`
+  Controller: `App\Http\Controllers\MasterListItemController::storeFromSap`
+  Middleware: `['ip.and.apikey', 'throttle:sap-api']`
+  
+  Autentikasi:
+  - Whitelist IP: `192.168.6.1`
+  - Header: `X-API-KEY: <API_SECRET_KEY>`
+  
+  Fungsi:
+  - Menerima update data spesifikasi master item dari SAP.
+  - Memperbarui tabel `master_list_items`: nama part, standar packing box, waktu setup mesin, cavity cetakan, kode pelanggan, dan cycle time.
+  - Jika item belum ada, otomatis di-insert sebagai item baru.
+}

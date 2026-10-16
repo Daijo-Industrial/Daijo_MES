@@ -1,0 +1,35 @@
+meta {
+  name: 13 - Reject Inventory List
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{sap_base_url}}/api/sap_reject/list?itemGroupCodes=102,103&warehouseCodes=RJCT,RJCTEX
+  body: none
+  auth: bearer
+}
+
+params:query {
+  itemGroupCodes: 102,103
+  warehouseCodes: RJCT,RJCTEX
+}
+
+auth:bearer {
+  token: {{sap_token}}
+}
+
+headers {
+  Host: localhost
+  Accept: application/json
+}
+
+docs {
+  # Reject Warehouse Stock List
+  
+  Service Pengambil: `App\Services\RejectService`
+  Command Scheduler: `php artisan sync:delivery-data`
+  
+  Tabel Tujuan: `sap_reject`
+  Kolom Utama: `item_no`, `item_description`, `item_group`, `in_stock`.
+}
