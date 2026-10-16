@@ -435,8 +435,8 @@ class SecondProcessReportController extends Controller
                 }
 
                 if ($matType === 'paint') {
-                    if (!preg_match('/^(paint|hardener|thinner)/i', $itemName)) {
-                        $materialErrors["materials.{$idx}.item_name"] = "Item cat hanya boleh Paint, Hardener, atau Thinner.";
+                    if (!preg_match('/^(paint|hardener|thinner|basecoat|topcoat|primer|clear)/i', $itemName)) {
+                        $materialErrors["materials.{$idx}.item_name"] = "Item cat hanya boleh diawali Paint, Basecoat, Topcoat, Hardener, Thinner, atau Primer.";
                     }
                 } elseif ($matType === 'part') {
                     if (!preg_match('/^(wip|repair)/i', $itemName)) {

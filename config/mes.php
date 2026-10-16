@@ -169,6 +169,8 @@ return [
     */
     'sp_default_paint_materials' => [
         'Paint',
+        'Paint Basecoat',
+        'Paint Topcoat',
         'Hardener',
         'Thinner',
     ],

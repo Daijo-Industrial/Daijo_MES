@@ -1934,7 +1934,7 @@ class SecondProcessReportTest extends TestCase
         $responseInvalid = $this->post(route('second-process-reports.store'), $payloadInvalid);
         $responseInvalid->assertSessionHasErrors(['materials.0.item_name']);
 
-        // Valid item names (Paint, Hardener, Thinner)
+        // Valid item names (Paint, Hardener, Thinner, Paint Basecoat, Paint Topcoat, Paint #2)
         $payloadValid = [
             'date' => now()->format('Y-m-d'),
             'unit_line' => 'Line 1',
@@ -1946,8 +1946,11 @@ class SecondProcessReportTest extends TestCase
             'status' => 'draft',
             'materials' => [
                 ['type' => 'paint', 'item_name' => 'Paint', 'qty' => 10],
+                ['type' => 'paint', 'item_name' => 'Paint Basecoat', 'qty' => 8],
+                ['type' => 'paint', 'item_name' => 'Paint Topcoat', 'qty' => 6],
                 ['type' => 'paint', 'item_name' => 'Hardener', 'qty' => 2],
                 ['type' => 'paint', 'item_name' => 'Thinner', 'qty' => 5],
+                ['type' => 'paint', 'item_name' => 'Paint #2', 'qty' => 4],
             ],
         ];
 
@@ -1958,11 +1961,23 @@ class SecondProcessReportTest extends TestCase
             'type' => 'paint',
         ]);
         $this->assertDatabaseHas('second_process_materials', [
+            'item_name' => 'Paint Basecoat',
+            'type' => 'paint',
+        ]);
+        $this->assertDatabaseHas('second_process_materials', [
+            'item_name' => 'Paint Topcoat',
+            'type' => 'paint',
+        ]);
+        $this->assertDatabaseHas('second_process_materials', [
             'item_name' => 'Hardener',
             'type' => 'paint',
         ]);
         $this->assertDatabaseHas('second_process_materials', [
             'item_name' => 'Thinner',
+            'type' => 'paint',
+        ]);
+        $this->assertDatabaseHas('second_process_materials', [
+            'item_name' => 'Paint #2',
             'type' => 'paint',
         ]);
     }
@@ -2191,6 +2206,58 @@ class SecondProcessReportTest extends TestCase
         $this->assertCount(1, $report->materials);
         $this->assertEquals('Paint', $report->materials->first()->item_name);
         $this->assertEquals(15, $report->materials->first()->qty);
+    }
+
+    /**
+     * Test form renders default paint materials including Paint Basecoat & Paint Topcoat,
+     * and that users can save extra paint materials beyond the initial list.
+     */
+    public function test_can_add_paint_materials_beyond_initial_list_and_form_renders_defaults(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+
+        $responseView = $this->actingAs($user)->get(route('second-process-reports.create'));
+        $responseView->assertOk();
+        $responseView->assertSee('Paint Basecoat');
+        $responseView->assertSee('Paint Topcoat');
+        $responseView->assertSee('paint-item-suggestions');
+
+        $payload = [
+            'date' => now()->format('Y-m-d'),
+            'unit_line' => 'Painting Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-EXTRAS-PAINT',
+            'customer' => 'Toyota Motor Corp',
+            'materials' => [
+                ['type' => 'paint', 'item_name' => 'Paint', 'lot_number' => 'LOT-01', 'qty' => 10],
+                ['type' => 'paint', 'item_name' => 'Paint Basecoat', 'lot_number' => 'LOT-BC', 'qty' => 5],
+                ['type' => 'paint', 'item_name' => 'Paint Topcoat', 'lot_number' => 'LOT-TC', 'qty' => 5],
+                ['type' => 'paint', 'item_name' => 'Hardener', 'lot_number' => 'LOT-HD', 'qty' => 2],
+                ['type' => 'paint', 'item_name' => 'Thinner', 'lot_number' => 'LOT-TH', 'qty' => 3],
+                ['type' => 'paint', 'item_name' => 'Paint #2', 'lot_number' => 'LOT-EX1', 'qty' => 4],
+                ['type' => 'paint', 'item_name' => 'Topcoat Gloss', 'lot_number' => 'LOT-EX2', 'qty' => 2],
+                ['type' => 'paint', 'item_name' => 'Clear Coat', 'lot_number' => 'LOT-EX3', 'qty' => 1],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->post(route('second-process-reports.store'), $payload);
+        $response->assertRedirect(route('second-process-reports.index'));
+
+        $report = SecondProcessReport::where('part_number', 'PART-EXTRAS-PAINT')->first();
+        $this->assertNotNull($report);
+        $this->assertCount(8, $report->materials);
+
+        $savedNames = $report->materials->pluck('item_name')->toArray();
+        $this->assertContains('Paint', $savedNames);
+        $this->assertContains('Paint Basecoat', $savedNames);
+        $this->assertContains('Paint Topcoat', $savedNames);
+        $this->assertContains('Hardener', $savedNames);
+        $this->assertContains('Thinner', $savedNames);
+        $this->assertContains('Paint #2', $savedNames);
+        $this->assertContains('Topcoat Gloss', $savedNames);
+        $this->assertContains('Clear Coat', $savedNames);
     }
 }
 

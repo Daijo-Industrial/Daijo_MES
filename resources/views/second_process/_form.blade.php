@@ -2,22 +2,22 @@
 <div class="bg-white shadow-xl rounded-lg overflow-hidden mb-6 border border-gray-200">
 
     <!-- Header Section -->
-    <div class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-6">
-        <div class="flex flex-wrap justify-between items-center">
+    <div class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-                <h1 class="text-3xl font-extrabold tracking-tight">PT. DAIJO INDUSTRIAL</h1>
-                <p class="text-sm font-semibold opacity-90 mt-1">Second Process Departement</p>
+                <h1 class="text-xl sm:text-3xl font-extrabold tracking-tight">PT. DAIJO INDUSTRIAL</h1>
+                <p class="text-xs sm:text-sm font-semibold opacity-90 mt-0.5 sm:mt-1">Second Process Departement</p>
             </div>
             <div
-                class="text-right text-xs md:text-sm space-y-1 bg-white/10 p-3 rounded-lg backdrop-blur-sm mt-4 md:mt-0">
-                <div><span class="font-bold">No. Dokumen:</span> DI-F-P/PR/07/SP-001</div>
-                <div><span class="font-bold">Tgl. Dikeluarkan:</span> 04 Januari 2023</div>
-                <div><span class="font-bold">Mulai berlaku:</span> 08 Desember 2025</div>
-                <div><span class="font-bold">Revisi / Halaman:</span> 2 / 1 of 1</div>
+                class="w-full sm:w-auto text-left sm:text-right text-[11px] sm:text-xs md:text-sm space-y-0.5 sm:space-y-1 bg-white/10 p-2.5 sm:p-3 rounded-lg backdrop-blur-sm">
+                <div class="flex sm:block justify-between"><span class="font-bold">No. Dokumen:</span> <span>DI-F-P/PR/07/SP-001</span></div>
+                <div class="flex sm:block justify-between"><span class="font-bold">Tgl. Dikeluarkan:</span> <span>04 Januari 2023</span></div>
+                <div class="flex sm:block justify-between"><span class="font-bold">Mulai berlaku:</span> <span>08 Desember 2025</span></div>
+                <div class="flex sm:block justify-between"><span class="font-bold">Revisi / Hal:</span> <span>2 / 1 of 1</span></div>
             </div>
         </div>
-        <div class="text-center mt-6">
-            <h2 class="text-2xl font-bold uppercase tracking-wider">
+        <div class="text-center mt-3 sm:mt-6">
+            <h2 class="text-lg sm:text-2xl font-bold uppercase tracking-wider">
                 {{ $report->exists ? 'Edit Laporan Produksi Harian' : 'Laporan Produksi Harian' }}</h2>
         </div>
     </div>
@@ -77,61 +77,61 @@
 @endphp
 
     <!-- Option 2: Sticky Tabbed Navigation -->
-    <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
-        <nav class="-mb-px flex flex-wrap justify-between sm:justify-start gap-2 md:gap-6" aria-label="Tabs"
+    <div class="border-b border-gray-200 bg-gray-50 px-2 sm:px-6 py-1.5 sm:py-3 overflow-x-auto no-scrollbar scroll-smooth">
+        <nav class="-mb-px flex flex-nowrap items-center gap-1.5 sm:gap-4" aria-label="Tabs"
             id="form-tabs-navigation">
             <button type="button" data-tab="setup"
-                class="tab-btn active border-blue-600 text-blue-600 whitespace-nowrap py-3 px-3 border-b-2 font-bold text-sm flex items-center transition-all {{ $tabErrorCounts['setup'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="tab-btn active shrink-0 border-blue-600 text-blue-600 whitespace-nowrap py-2 sm:py-3 px-2.5 sm:px-3 border-b-2 font-bold text-xs sm:text-sm flex items-center transition-all {{ $tabErrorCounts['setup'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
+                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                     </path>
                 </svg>
                 1. Setup & Manpower
                 @if ($tabErrorCounts['setup'] > 0)
-                    <span class="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['setup'] }} error(s)">
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['setup'] }} error(s)">
                         {{ $tabErrorCounts['setup'] }}
                     </span>
                 @endif
             </button>
             <button type="button" data-tab="materials"
-                class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-3 border-b-2 font-bold text-sm flex items-center transition-all {{ $tabErrorCounts['materials'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="tab-btn shrink-0 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 sm:py-3 px-2.5 sm:px-3 border-b-2 font-bold text-xs sm:text-sm flex items-center transition-all {{ $tabErrorCounts['materials'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
+                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
                     </path>
                 </svg>
                 2. Materials
                 @if ($tabErrorCounts['materials'] > 0)
-                    <span class="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['materials'] }} error(s)">
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['materials'] }} error(s)">
                         {{ $tabErrorCounts['materials'] }}
                     </span>
                 @endif
             </button>
             <button type="button" data-tab="production"
-                class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-3 border-b-2 font-bold text-sm flex items-center transition-all {{ $tabErrorCounts['production'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="tab-btn shrink-0 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 sm:py-3 px-2.5 sm:px-3 border-b-2 font-bold text-xs sm:text-sm flex items-center transition-all {{ $tabErrorCounts['production'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
+                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
                     </path>
                 </svg>
                 3. Production Logs & NG
                 @if ($tabErrorCounts['production'] > 0)
-                    <span class="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['production'] }} error(s)">
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['production'] }} error(s)">
                         {{ $tabErrorCounts['production'] }}
                     </span>
                 @endif
             </button>
             <button type="button" data-tab="handover"
-                class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-3 border-b-2 font-bold text-sm flex items-center transition-all {{ $tabErrorCounts['handover'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="tab-btn shrink-0 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 sm:py-3 px-2.5 sm:px-3 border-b-2 font-bold text-xs sm:text-sm flex items-center transition-all {{ $tabErrorCounts['handover'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
+                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
                     </path>
                 </svg>
                 4. Handover & Signs
                 @if ($tabErrorCounts['handover'] > 0)
-                    <span class="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['handover'] }} error(s)">
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['handover'] }} error(s)">
                         {{ $tabErrorCounts['handover'] }}
                     </span>
                 @endif
@@ -140,7 +140,7 @@
     </div>
 
     <!-- Form Content Body -->
-    <div class="p-6">
+    <div class="p-3 sm:p-6">
 
         <!-- Top Error Summary Banner -->
         @if ($errors->any())
@@ -210,16 +210,16 @@
         <div id="tab-content-setup" class="tab-pane space-y-8">
 
             <!-- Header Logistics Section -->
-            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="bg-gray-50 p-3.5 sm:p-5 rounded-lg border border-gray-200">
+                <h3 class="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4 border-b pb-2 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                         </path>
                     </svg>
                     Shift Logistics & Setup
                 </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tanggal</label>
                         <input type="date" name="date" value="{{ old('date', $report->date ?? date('Y-m-d')) }}"
@@ -400,7 +400,7 @@
 
                 <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200" id="manpower-table">
+                        <table class="w-full min-w-[440px] divide-y divide-gray-200" id="manpower-table">
                             <thead class="bg-gray-100">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-bold text-gray-600 w-12">No</th>
@@ -497,9 +497,9 @@
             </div>
 
             <!-- Navigation Tab 1 -->
-            <div class="flex justify-end pt-4 border-t border-gray-200 mt-6">
+            <div class="flex justify-stretch sm:justify-end pt-4 border-t border-gray-200 mt-6">
                 <button type="button" onclick="switchTab('materials')"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
+                    class="w-full sm:w-auto text-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
                     Next: Materials &rarr;
                 </button>
             </div>
@@ -522,7 +522,7 @@
                     }
 
                     if ($paintMaterials->isEmpty()) {
-                        $defaultPaints = config('mes.sp_default_paint_materials', ['Paint', 'Hardener', 'Thinner']);
+                        $defaultPaints = config('mes.sp_default_paint_materials', ['Paint', 'Paint Basecoat', 'Paint Topcoat', 'Hardener', 'Thinner']);
                         foreach ($defaultPaints as $pName) {
                             $paintMaterials->push((object)[
                                 'item_name' => $pName,
@@ -537,15 +537,15 @@
                 @endphp
 
                 @php
-                    $isPaintApplicable = in_array(old('process_prod', $report->process_prod ?? 'Painting'), ['Painting', 'Repair']);
+                    $isPaintApplicable = in_array(old('process_prod', $report->process_prod ?? 'Painting'), ['Painting', 'Painting Basecoat', 'Painting Topcoat', 'Repair']);
                 @endphp
 
                 <!-- Item Paint Table -->
                 <div id="paint-materials-card" class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between transition-all duration-200 {{ !$isPaintApplicable ? 'opacity-60 bg-gray-50' : '' }}">
                     <div>
-                        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+                        <div class="bg-gray-100 px-3 sm:px-4 py-2 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                             <div class="flex items-center gap-2">
-                                <h4 class="text-sm font-bold text-gray-700">Item Paint (Viscosity & Mixing Ratio)</h4>
+                                <h4 class="text-xs sm:text-sm font-bold text-gray-700">Item Paint (Viscosity & Mixing Ratio)</h4>
                                 <span id="paint-process-badge" class="{{ $isPaintApplicable ? 'hidden' : '' }} text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
                                     Hanya untuk Proses Painting & Repair
                                 </span>
@@ -556,90 +556,99 @@
                             <span>Item Paint dinonaktifkan karena Proses Prod bukan <strong>Painting</strong> atau <strong>Repair</strong>.</span>
                             <button type="button" onclick="switchTab('setup')" class="text-blue-700 underline font-bold ml-2">Ubah di Tab 1 &rarr;</button>
                         </div>
-                        <div id="mixing-ratio-suggestion" class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs flex flex-wrap justify-between items-center gap-2 {{ !$isPaintApplicable ? 'hidden' : '' }}">
+                        <div id="mixing-ratio-suggestion" class="px-3 sm:px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs flex flex-wrap justify-between items-center gap-2 {{ !$isPaintApplicable ? 'hidden' : '' }}">
                             <div class="text-gray-700">
                                 <span class="font-semibold text-gray-600">Formula Rasio:</span>
                                 <span id="mixing-ratio-live-formula" class="font-mono font-bold text-gray-900 ml-1">-</span>
                             </div>
                             <span class="text-[11px] text-gray-500">Isi angka rasio untuk masing-masing item (misal: Paint 4, Hardener 1, Thinner 2)</span>
                         </div>
-                        <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-3 py-2 text-left font-bold text-gray-600">Item Paint</th>
-                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-1/5">Lot Number</th>
-                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-16">Visco</th>
-                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-24">Mixing Ratio</th>
-                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-20">Qty</th>
-                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-20">UOM</th>
-                                    <th class="px-1 py-2 text-center font-bold text-gray-600 w-8"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="paint-materials-tbody" class="divide-y divide-gray-200">
-                                @foreach ($paintMaterials as $mat)
-                                    @php $currIdx = $materialGlobalIndex++; @endphp
+                        <datalist id="paint-item-suggestions">
+                            @foreach (config('mes.sp_default_paint_materials', ['Paint', 'Paint Basecoat', 'Paint Topcoat', 'Hardener', 'Thinner']) as $sug)
+                                <option value="{{ $sug }}">
+                            @endforeach
+                            <option value="Paint Primer">
+                            <option value="Paint Clear">
+                        </datalist>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[560px] divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
                                     <tr>
-                                        <td class="px-3 py-2">
-                                            <input type="hidden" name="materials[{{ $currIdx }}][type]" value="paint" {{ !$isPaintApplicable ? 'disabled' : '' }}>
-                                            <input type="text" name="materials[{{ $currIdx }}][item_name]"
-                                                value="{{ old('materials.' . $currIdx . '.item_name', $mat->item_name ?? '') }}"
-                                                placeholder="Paint Item Name"
-                                                class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800 {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
-                                                readonly
-                                                {{ !$isPaintApplicable ? 'disabled' : '' }}>
-                                            @if ($errors->has('materials.' . $currIdx . '.item_name'))
-                                                <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('materials.' . $currIdx . '.item_name') }}</p>
-                                             @endif
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            <input type="text" name="materials[{{ $currIdx }}][lot_number]"
-                                                value="{{ old('materials.' . $currIdx . '.lot_number', $mat->lot_number ?? '') }}"
-                                                placeholder="Lot"
-                                                class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
-                                                {{ !$isPaintApplicable ? 'disabled' : '' }}>
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            <input type="text" name="materials[{{ $currIdx }}][visco]"
-                                                value="{{ old('materials.' . $currIdx . '.visco', $mat->visco ?? '') }}"
-                                                placeholder="Visco"
-                                                class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
-                                                {{ !$isPaintApplicable ? 'disabled' : '' }}>
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            @php
-                                                $matLower = strtolower($mat->item_name ?? '');
-                                                $ratioPlaceholder = str_contains($matLower, 'hardener') ? 'Misal 1' : (str_contains($matLower, 'thinner') ? 'Misal 2' : 'Misal 4');
-                                            @endphp
-                                            <input type="text" inputmode="decimal" name="materials[{{ $currIdx }}][mixing_ratio]"
-                                                value="{{ old('materials.' . $currIdx . '.mixing_ratio', $mat->mixing_ratio ?? '') }}"
-                                                placeholder="{{ $ratioPlaceholder }}"
-                                                oninput="updateMixingRatioSuggestion()"
-                                                class="mixing-ratio-val w-full text-xs rounded border-gray-300 py-1 font-mono font-semibold {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
-                                                {{ !$isPaintApplicable ? 'disabled' : '' }}>
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            <input type="number" step="any" name="materials[{{ $currIdx }}][qty]"
-                                                value="{{ old('materials.' . $currIdx . '.qty', $mat->qty ?? '') }}"
-                                                placeholder="Qty"
-                                                class="w-full text-xs rounded border-gray-300 py-1 {{ $errors->has('materials.' . $currIdx . '.qty') ? 'border-red-500 ring-1 ring-red-500' : '' }} {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
-                                                {{ !$isPaintApplicable ? 'disabled' : '' }}>
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            <input type="text" name="materials[{{ $currIdx }}][uom]"
-                                                value="{{ old('materials.' . $currIdx . '.uom', $mat->uom ?? '') }}"
-                                                placeholder="UOM"
-                                                class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
-                                                {{ !$isPaintApplicable ? 'disabled' : '' }}>
-                                        </td>
-                                        <td class="px-1 py-2 text-center">
-                                            <button type="button" onclick="removePaintMaterialRow(this)"
-                                                class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition {{ !$isPaintApplicable ? 'cursor-not-allowed opacity-50' : '' }}"
-                                                title="Remove Row" {{ !$isPaintApplicable ? 'disabled' : '' }}>&times;</button>
-                                        </td>
+                                        <th class="px-3 py-2 text-left font-bold text-gray-600 min-w-[130px]">Item Paint</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-1/5 min-w-[85px]">Lot Number</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-16 min-w-[65px]">Visco</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-24 min-w-[85px]">Mixing Ratio</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-20 min-w-[70px]">Qty</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-20 min-w-[60px]">UOM</th>
+                                        <th class="px-1 py-2 text-center font-bold text-gray-600 w-8"></th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody id="paint-materials-tbody" class="divide-y divide-gray-200">
+                                    @foreach ($paintMaterials as $mat)
+                                        @php $currIdx = $materialGlobalIndex++; @endphp
+                                        <tr>
+                                            <td class="px-3 py-2">
+                                                <input type="hidden" name="materials[{{ $currIdx }}][type]" value="paint" {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                                <input type="text" name="materials[{{ $currIdx }}][item_name]"
+                                                    value="{{ old('materials.' . $currIdx . '.item_name', $mat->item_name ?? '') }}"
+                                                    placeholder="Paint Item Name"
+                                                    list="paint-item-suggestions"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800 {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                                @if ($errors->has('materials.' . $currIdx . '.item_name'))
+                                                    <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('materials.' . $currIdx . '.item_name') }}</p>
+                                                 @endif
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <input type="text" name="materials[{{ $currIdx }}][lot_number]"
+                                                    value="{{ old('materials.' . $currIdx . '.lot_number', $mat->lot_number ?? '') }}"
+                                                    placeholder="Lot"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <input type="text" name="materials[{{ $currIdx }}][visco]"
+                                                    value="{{ old('materials.' . $currIdx . '.visco', $mat->visco ?? '') }}"
+                                                    placeholder="Visco"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                @php
+                                                    $matLower = strtolower($mat->item_name ?? '');
+                                                    $ratioPlaceholder = str_contains($matLower, 'hardener') ? 'Misal 1' : (str_contains($matLower, 'thinner') ? 'Misal 2' : 'Misal 4');
+                                                @endphp
+                                                <input type="text" inputmode="decimal" name="materials[{{ $currIdx }}][mixing_ratio]"
+                                                    value="{{ old('materials.' . $currIdx . '.mixing_ratio', $mat->mixing_ratio ?? '') }}"
+                                                    placeholder="{{ $ratioPlaceholder }}"
+                                                    oninput="updateMixingRatioSuggestion()"
+                                                    class="mixing-ratio-val w-full text-xs rounded border-gray-300 py-1 font-mono font-semibold {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <input type="number" step="any" name="materials[{{ $currIdx }}][qty]"
+                                                    value="{{ old('materials.' . $currIdx . '.qty', $mat->qty ?? '') }}"
+                                                    placeholder="Qty"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 {{ $errors->has('materials.' . $currIdx . '.qty') ? 'border-red-500 ring-1 ring-red-500' : '' }} {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <input type="text" name="materials[{{ $currIdx }}][uom]"
+                                                    value="{{ old('materials.' . $currIdx . '.uom', $mat->uom ?? '') }}"
+                                                    placeholder="UOM"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-1 py-2 text-center">
+                                                <button type="button" onclick="removePaintMaterialRow(this)"
+                                                    class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition {{ !$isPaintApplicable ? 'cursor-not-allowed opacity-50' : '' }}"
+                                                    title="Remove Row" {{ !$isPaintApplicable ? 'disabled' : '' }}>&times;</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     <div class="p-3 bg-gray-50 border-t border-gray-200">
                         <button type="button" id="add-paint-item-btn" onclick="addPaintMaterialRow()"
@@ -663,31 +672,32 @@
                 <!-- Item Parts Table -->
                 <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between">
                     <div>
-                        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-                            <h4 class="text-sm font-bold text-gray-700">Item Parts / WIP Lots</h4>
+                        <div class="bg-gray-100 px-3 sm:px-4 py-2 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <h4 class="text-xs sm:text-sm font-bold text-gray-700">Item Parts / WIP Lots</h4>
                             <span class="text-[10px] text-gray-500">Lot values from Plastic/FG IQC</span>
                         </div>
-                        <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-3 py-2 text-left font-bold text-gray-600">Item Parts</th>
-                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-1/3">Lot Number</th>
-                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-24">Qty</th>
-                                    <th class="px-2 py-2 text-left font-bold text-gray-600 w-24">UOM</th>
-                                    <th class="px-1 py-2 text-center font-bold text-gray-600 w-8"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="part-materials-tbody" class="divide-y divide-gray-200">
-                                @foreach ($partMaterials as $mat)
-                                    @php $currIdx = $materialGlobalIndex++; @endphp
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[460px] divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
                                     <tr>
-                                        <td class="px-3 py-2">
-                                            <input type="hidden" name="materials[{{ $currIdx }}][type]" value="part">
-                                            <input type="text" name="materials[{{ $currIdx }}][item_name]"
-                                                value="{{ old('materials.' . $currIdx . '.item_name', $mat->item_name ?? '') }}"
-                                                placeholder="Part / WIP Item Name"
-                                                class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800 {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
-                                                readonly>
+                                        <th class="px-3 py-2 text-left font-bold text-gray-600 min-w-[130px]">Item Parts</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-1/3 min-w-[100px]">Lot Number</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-24 min-w-[75px]">Qty</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-24 min-w-[65px]">UOM</th>
+                                        <th class="px-1 py-2 text-center font-bold text-gray-600 w-8"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="part-materials-tbody" class="divide-y divide-gray-200">
+                                    @foreach ($partMaterials as $mat)
+                                        @php $currIdx = $materialGlobalIndex++; @endphp
+                                        <tr>
+                                            <td class="px-3 py-2">
+                                                <input type="hidden" name="materials[{{ $currIdx }}][type]" value="part">
+                                                <input type="text" name="materials[{{ $currIdx }}][item_name]"
+                                                    value="{{ old('materials.' . $currIdx . '.item_name', $mat->item_name ?? '') }}"
+                                                    placeholder="Part / WIP Item Name"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800 {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
+                                                    readonly>
                                             @if ($errors->has('materials.' . $currIdx . '.item_name'))
                                                 <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('materials.' . $currIdx . '.item_name') }}</p>
                                             @endif
@@ -720,43 +730,44 @@
                             </tbody>
                         </table>
                     </div>
-                    <!-- Live Breakdown Summary Bar -->
-                    <div class="px-4 py-2.5 bg-slate-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-                        <div class="text-gray-500 font-medium">
-                            Breakdown Summary:
-                        </div>
-                        <div class="flex items-center gap-4 font-mono font-bold">
-                            <span class="text-blue-700">WIP: <span id="summary-wip-qty">0</span> Pcs</span>
-                            <span class="text-amber-700">Repairan: <span id="summary-repairan-qty">0</span> Pcs</span>
-                            <span class="text-slate-800 border-l border-gray-300 pl-4">Total: <span id="summary-total-input-qty">0</span> Pcs</span>
-                        </div>
+                </div>
+                <!-- Live Breakdown Summary Bar -->
+                <div class="px-3 sm:px-4 py-2.5 bg-slate-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div class="text-gray-500 font-medium">
+                        Breakdown Summary:
                     </div>
-                    <div class="p-3 bg-gray-50 border-t border-gray-200 flex items-center gap-3">
-                        <button type="button" onclick="addPartBatch('WIP')"
-                            class="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold flex items-center gap-1.5 py-1.5 px-3 rounded border border-blue-300 shadow-sm transition">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            Batch WIP
-                        </button>
-                        <button type="button" onclick="addPartBatch('Repairan')"
-                            class="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold flex items-center gap-1.5 py-1.5 px-3 rounded border border-amber-300 shadow-sm transition">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            Batch Repairan
-                        </button>
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-4 font-mono font-bold text-xs">
+                        <span class="text-blue-700">WIP: <span id="summary-wip-qty">0</span> Pcs</span>
+                        <span class="text-amber-700">Repairan: <span id="summary-repairan-qty">0</span> Pcs</span>
+                        <span class="text-slate-800 border-l border-gray-300 pl-2 sm:pl-4">Total: <span id="summary-total-input-qty">0</span> Pcs</span>
                     </div>
                 </div>
+                <div class="p-3 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center gap-2 sm:gap-3">
+                    <button type="button" onclick="addPartBatch('WIP')"
+                        class="flex-1 sm:flex-none justify-center text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold flex items-center gap-1.5 py-2 sm:py-1.5 px-3 rounded border border-blue-300 shadow-sm transition">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Batch WIP
+                    </button>
+                    <button type="button" onclick="addPartBatch('Repairan')"
+                        class="flex-1 sm:flex-none justify-center text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold flex items-center gap-1.5 py-2 sm:py-1.5 px-3 rounded border border-amber-300 shadow-sm transition">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Batch Repairan
+                    </button>
+                </div>
             </div>
+        </div>
 
-            <!-- Navigation Tab 2 -->
-            <div class="flex justify-between pt-4 border-t border-gray-200 mt-6">
-                <button type="button" onclick="switchTab('setup')"
-                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition">
-                    &larr; Back to Setup
-                </button>
-                <button type="button" onclick="switchTab('production')"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
-                    Next: Production Logs &rarr;
-                </button>
-            </div>
+        <!-- Navigation Tab 2 -->
+        <div class="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-4 items-stretch sm:items-center justify-between pt-4 border-t border-gray-200 mt-6">
+            <button type="button" onclick="switchTab('setup')"
+                class="w-full sm:w-auto text-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
+                &larr; Back to Setup
+            </button>
+            <button type="button" onclick="switchTab('production')"
+                class="w-full sm:w-auto text-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
+                Next: Production Logs &rarr;
+            </button>
+        </div>
         </div> <!-- END TAB 2 -->
 
         <!-- TAB 3: PRODUCTION & NG LOGS -->
@@ -812,7 +823,7 @@
                             <div class="text-2xl sm:text-3xl font-black font-mono text-gray-900 leading-none">
                                 <span id="reconcile-total-output">{{ number_format($calcTotalReportOutput) }}</span> <span class="text-xs font-semibold text-gray-500">pcs</span>
                             </div>
-                            <div class="flex items-center gap-1.5 text-xs font-mono font-bold border-l border-gray-100 pl-2.5">
+                            <div class="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-mono font-bold border-l border-gray-100 pl-2 sm:pl-2.5">
                                 <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200" title="Total OK">OK:<span id="reconcile-ok-qty" class="ml-0.5">{{ number_format($report->jumlah_ok ?? 0) }}</span></span>
                                 <span class="px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200" title="Total NG">NG:<span id="reconcile-ng-qty" class="ml-0.5">{{ number_format($report->jumlah_ng ?? 0) }}</span></span>
                                 <span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200" title="Scrap lebur">Scrap:<span id="reconcile-scrap-qty" class="ml-0.5">{{ number_format($report->jml_ng_lebur ?? 0) }}</span></span>
@@ -927,40 +938,45 @@
             <div class="space-y-6">
                 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
                     <div
-                        class="bg-gradient-to-r from-blue-700 to-indigo-800 px-5 py-3 border-b border-gray-200 flex justify-between items-center text-white">
-                        <h4 class="text-sm font-bold flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 17v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2m0 0h2a2 2 0 002-2v-3a2 2 0 110-4m0 0V5a2 2 0 012-2h2a2 2 0 012 2v3m0 0a2 2 0 110 4m0 0v3a2 2 0 01-2 2h-2m-4-3H9m4 0h2m-4 0v2m0-4V7">
-                                </path>
-                            </svg>
-                            Production & NG Hourly Spreadsheet
-                        </h4>
-                        <div class="flex space-x-2">
+                        class="bg-gradient-to-r from-blue-700 to-indigo-800 px-3 sm:px-5 py-2.5 sm:py-3 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 text-white">
+                        <div class="flex items-center justify-between w-full sm:w-auto">
+                            <h4 class="text-xs sm:text-sm font-bold flex items-center">
+                                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 17v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2m0 0h2a2 2 0 002-2v-3a2 2 0 110-4m0 0V5a2 2 0 012-2h2a2 2 0 012 2v3m0 0a2 2 0 110 4m0 0v3a2 2 0 01-2 2h-2m-4-3H9m4 0h2m-4 0v2m0-4V7">
+                                    </path>
+                                </svg>
+                                <span>Production & NG Hourly Spreadsheet</span>
+                            </h4>
+                            <span class="sm:hidden text-[11px] text-blue-200 font-semibold flex items-center gap-1 shrink-0">
+                                ↔ Geser Tabel
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-1.5 sm:space-x-2 w-full sm:w-auto">
                             <button type="button" id="remove-hour-btn"
-                                class="bg-red-800 hover:bg-red-900 text-white font-bold text-xs px-3 py-1.5 rounded shadow-sm border border-red-900 transition-colors flex items-center">
+                                class="flex-1 sm:flex-none justify-center bg-red-800 hover:bg-red-900 text-white font-bold text-xs px-2.5 sm:px-3 py-1.5 rounded shadow-sm border border-red-900 transition-colors flex items-center">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M20 12H4"></path>
-                                </svg> Hour
+                                </svg> - Hour
                             </button>
                             <button type="button" id="add-hour-btn"
-                                class="bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-3 py-1.5 rounded shadow-sm border border-green-700 transition-colors flex items-center">
+                                class="flex-1 sm:flex-none justify-center bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-2.5 sm:px-3 py-1.5 rounded shadow-sm border border-green-700 transition-colors flex items-center">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 4v16m8-8H4"></path>
-                                </svg> Hour
+                                </svg> + Hour
                             </button>
                             <button type="button" id="add-ng-type-btn"
-                                class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded shadow-sm border border-indigo-700 transition-colors flex items-center">
+                                class="flex-1 sm:flex-none justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-2.5 sm:px-3 py-1.5 rounded shadow-sm border border-indigo-700 transition-colors flex items-center">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 4v16m8-8H4"></path>
-                                </svg> NG Type
+                                </svg> + NG Type
                             </button>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto touch-pan-x" style="-webkit-overflow-scrolling: touch;">
                         <!-- ponytail: apply minimum width to all spreadsheet number inputs cleanly via CSS -->
                         <style>
                             #unified-production-table tbody input[type="number"] {
@@ -1104,13 +1120,13 @@
             </div>
 
             <!-- Navigation Tab 3 -->
-            <div class="flex justify-between pt-4 border-t border-gray-200 mt-6">
+            <div class="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-4 items-stretch sm:items-center justify-between pt-4 border-t border-gray-200 mt-6">
                 <button type="button" onclick="switchTab('materials')"
-                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition">
+                    class="w-full sm:w-auto text-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
                     &larr; Back to Materials
                 </button>
                 <button type="button" onclick="switchTab('handover')"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
+                    class="w-full sm:w-auto text-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
                     Next: Handover &rarr;
                 </button>
             </div>
@@ -1263,7 +1279,7 @@
 
             <!-- Notes, Attendance, & Schedule Section -->
             <div
-                class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-5 rounded-lg border border-gray-200 text-sm">
+                class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 bg-gray-50 p-3.5 sm:p-5 rounded-lg border border-gray-200 text-sm">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan
@@ -1324,14 +1340,14 @@
             </div>
 
             <!-- Navigation Tab 4 -->
-            <div class="flex justify-between pt-4 border-t border-gray-200 mt-6">
+            <div class="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-4 items-stretch sm:items-center justify-between pt-4 border-t border-gray-200 mt-6">
                 <button type="button" onclick="switchTab('production')"
-                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition">
+                    class="w-full sm:w-auto text-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
                     &larr; Back to Production
                 </button>
-                <div>
+                <div class="w-full sm:w-auto">
                     <button type="button" onclick="submitProductionReport()" id="submit-btn"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-md transition">
+                        class="w-full sm:w-auto text-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow-md transition">
                         Submit Production Report
                     </button>
                 </div>
@@ -1342,11 +1358,11 @@
     </div>
 
     <!-- Sticky Footer (For Global Save Draft utility) -->
-    <div class="bg-gray-100 px-6 py-4 flex justify-between items-center border-t border-gray-200">
+    <div class="bg-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center border-t border-gray-200">
         <a href="{{ $report->exists ? route('second-process-reports.show', $report->id) : route('second-process-reports.index') }}"
             class="text-gray-600 hover:text-gray-800 text-sm font-semibold transition">Cancel</a>
         <button type="button" onclick="saveAsDraft()"
-            class="bg-gray-600 hover:bg-gray-700 text-white text-xs font-bold py-1.5 px-4 rounded shadow transition">
+            class="bg-gray-600 hover:bg-gray-700 text-white text-xs font-bold py-2 sm:py-1.5 px-4 rounded shadow transition">
             Save Draft
         </button>
     </div>
@@ -1412,6 +1428,16 @@
             if (tabNav) {
                 tabNav.scrollIntoView({
                     behavior: 'smooth',
+                    block: 'nearest'
+                });
+            }
+
+            // Scroll active tab button into center view horizontally on mobile
+            const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+            if (activeBtn) {
+                activeBtn.scrollIntoView({
+                    behavior: 'smooth',
+                    inline: 'center',
                     block: 'nearest'
                 });
             }
@@ -2446,10 +2472,14 @@
 
     // Tab 2 Materials Dynamic Rows Logic
     let materialRowIndex = {{ $materialGlobalIndex ?? 100 }};
+    @php
+        $jsDefaultPaints = config('mes.sp_default_paint_materials', ['Paint', 'Paint Basecoat', 'Paint Topcoat', 'Hardener', 'Thinner']);
+    @endphp
+    const defaultPaintList = @json($jsDefaultPaints);
 
     window.addPaintMaterialRow = function() {
         const processSelect = document.getElementById('process_prod');
-        if (processSelect && !['Painting', 'Repair'].includes(processSelect.value)) {
+        if (processSelect && !['Painting', 'Painting Basecoat', 'Painting Topcoat', 'Repair'].includes(processSelect.value)) {
             return;
         }
         const tbody = document.getElementById('paint-materials-tbody');
@@ -2461,19 +2491,33 @@
             if (val) existingNames.push(val);
         });
 
-        const missing = ['Paint', 'Hardener', 'Thinner'].filter(item => !existingNames.includes(item));
-        if (missing.length === 0) {
-            alert('Semua komponen cat (Paint, Hardener, Thinner) sudah ditambahkan.');
-            return;
+        const missing = defaultPaintList.filter(item => !existingNames.includes(item));
+        let nextItem = '';
+        if (missing.length > 0) {
+            nextItem = missing[0];
+        } else {
+            let count = 1;
+            while (existingNames.some(n => n.toLowerCase() === `paint #${count}`.toLowerCase() || n.toLowerCase() === `paint ${count}`.toLowerCase())) {
+                count++;
+            }
+            nextItem = `Paint #${count}`;
         }
 
-        const nextItem = missing[0];
-        const ratioPlaceholder = nextItem === 'Paint' ? 'Misal 4' : (nextItem === 'Hardener' ? 'Misal 1' : 'Misal 2');
+        const nextLower = nextItem.toLowerCase();
+        let ratioPlaceholder = 'Misal 4';
+        if (nextLower.includes('hardener')) {
+            ratioPlaceholder = 'Misal 1';
+        } else if (nextLower.includes('thinner')) {
+            ratioPlaceholder = 'Misal 2';
+        } else if (nextLower.includes('basecoat') || nextLower.includes('topcoat')) {
+            ratioPlaceholder = 'Misal 4';
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="px-3 py-2">
                 <input type="hidden" name="materials[${materialRowIndex}][type]" value="paint">
-                <input type="text" name="materials[${materialRowIndex}][item_name]" value="${nextItem}" placeholder="Paint Item Name" class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800" readonly>
+                <input type="text" name="materials[${materialRowIndex}][item_name]" value="${nextItem}" placeholder="Paint Item Name" list="paint-item-suggestions" class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800">
             </td>
             <td class="px-2 py-2">
                 <input type="text" name="materials[${materialRowIndex}][lot_number]" value="" placeholder="Lot" class="w-full text-xs rounded border-gray-300 py-1">
@@ -2536,16 +2580,18 @@
 
         const addBtn = document.getElementById('add-paint-item-btn');
         if (addBtn) {
-            const names = items.map(it => it.name);
-            const missing = ['Paint', 'Hardener', 'Thinner'].filter(item => !names.includes(item));
-            if (missing.length === 0) {
-                addBtn.disabled = true;
-                addBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                addBtn.innerHTML = 'Komponen Cat Lengkap (Paint, Hardener, Thinner)';
-            } else {
+            const processSelect = document.getElementById('process_prod');
+            const isApplicable = processSelect ? ['Painting', 'Painting Basecoat', 'Painting Topcoat', 'Repair'].includes(processSelect.value) : true;
+            if (isApplicable) {
                 addBtn.disabled = false;
                 addBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                addBtn.innerHTML = `+ Tambah Item Cat (${missing.join(', ')})`;
+                const names = items.map(it => it.name);
+                const missing = defaultPaintList.filter(item => !names.includes(item));
+                if (missing.length > 0) {
+                    addBtn.innerHTML = `+ Tambah Item Cat (${missing[0]})`;
+                } else {
+                    addBtn.innerHTML = '+ Tambah Item Cat Ekstra';
+                }
             }
         }
     }
@@ -2553,7 +2599,7 @@
 
     function togglePaintMaterialsByProcess() {
         const processSelect = document.getElementById('process_prod');
-        const isPaintApplicable = processSelect ? ['Painting', 'Repair'].includes(processSelect.value) : true;
+        const isPaintApplicable = processSelect ? ['Painting', 'Painting Basecoat', 'Painting Topcoat', 'Repair'].includes(processSelect.value) : true;
 
         const paintCard = document.getElementById('paint-materials-card');
         const paintBadge = document.getElementById('paint-process-badge');
