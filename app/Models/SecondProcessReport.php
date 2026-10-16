@@ -4,10 +4,37 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class SecondProcessReport extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'status',
+                'process_prod',
+                'unit_line',
+                'shift',
+                'part_number',
+                'customer',
+                'jumlah_ok',
+                'jumlah_ng',
+                'created_by_name',
+                'leader_name',
+                'leader_signed_at',
+                'pqc_name',
+                'pqc_signed_at',
+                'acknowledged_by_name',
+                'acknowledged_signed_at',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('second_process');
+    }
 
     protected $fillable = [
         'date',

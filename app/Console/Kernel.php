@@ -96,6 +96,12 @@ class Kernel extends ConsoleKernel
             ->dailyAt('02:00')
             ->timezone('Asia/Jakarta')
             ->withoutOverlapping();
+
+        // ISO 27001 & GDPR: Otomatis bersihkan activity_log yang lebih tua dari 365 hari (dijalankan setiap hari jam 01:00 WIB)
+        $schedule->command('activitylog:clean')
+            ->dailyAt('01:00')
+            ->timezone('Asia/Jakarta')
+            ->withoutOverlapping();
     }
 
     /**
