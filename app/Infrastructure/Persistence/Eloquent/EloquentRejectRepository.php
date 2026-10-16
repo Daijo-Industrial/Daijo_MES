@@ -19,7 +19,7 @@ class EloquentRejectRepository implements RejectRepositoryInterface
             ->select(['item_no', 'in_stock'])
             ->get()
             ->keyBy('item_no')
-            ->map(fn($row) => $row->in_stock)
+            ->map(fn ($row) => $row->in_stock)
             ->all();
     }
 }

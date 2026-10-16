@@ -8,5 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class CapForecastSorted extends Model
 {
     use HasFactory;
+
     protected $table = 'cap_forecast_sorteds';
 }

@@ -2,14 +2,16 @@
 
 namespace App\Models\Delivery;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SapBomWip extends Model
 {
     protected $table = 'sap_bom_wip';
+
     public $timestamps = false;
+
     public $incrementing = false;
+
     protected $primaryKey = null;
 
     protected $fillable = [

@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AdjustMachineLog;
-use App\Models\DailyItemCode;
 use App\Models\MachineJob;
 use App\Models\OperatorUser;
 use App\Models\Role;
@@ -20,10 +18,11 @@ class AdjustMachineRestrictionTest extends TestCase
 
         config(['database.default' => 'sqlite']);
         config(['database.connections.sqlite' => [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]]);
+        config(['activitylog.enabled' => false]);
 
         $this->createTestSchema();
         $this->seedTestData();
@@ -43,6 +42,7 @@ class AdjustMachineRestrictionTest extends TestCase
             $table->string('email')->unique();
             $table->string('password');
             $table->foreignId('role_id')->nullable();
+            $table->timestamp('last_activity_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -123,16 +123,16 @@ class AdjustMachineRestrictionTest extends TestCase
     {
         $role = Role::where('name', 'OPERATOR')->first();
         $machine = User::create([
-            'name'     => 'K01',
-            'email'    => 'k01@daijo.com',
+            'name' => 'K01',
+            'email' => 'k01@daijo.com',
             'password' => bcrypt('password'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
 
         MachineJob::create(['user_id' => $machine->id, 'item_code' => 'ITEM-01']);
 
         $response = $this->actingAs($machine)->postJson(route('adjust.machine.start'), [
-            'pic_name'  => 'Budi Santoso',
+            'pic_name' => 'Budi Santoso',
             'item_code' => 'ITEM-01',
         ]);
 
@@ -145,23 +145,23 @@ class AdjustMachineRestrictionTest extends TestCase
     {
         $role = Role::where('name', 'OPERATOR')->first();
         $machine = User::create([
-            'name'     => 'K02',
-            'email'    => 'k02@daijo.com',
+            'name' => 'K02',
+            'email' => 'k02@daijo.com',
             'password' => bcrypt('password'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
 
         MachineJob::create(['user_id' => $machine->id, 'item_code' => 'ITEM-01']);
 
         $response = $this->actingAs($machine)->postJson(route('adjust.machine.start'), [
-            'pic_name'  => 'Haerul Anwar',
+            'pic_name' => 'Haerul Anwar',
             'item_code' => 'ITEM-01',
         ]);
 
         $response->assertStatus(200);
         $this->assertDatabaseHas('adjust_machine_logs', [
-            'user_id'   => $machine->id,
-            'pic'       => 'Haerul Anwar',
+            'user_id' => $machine->id,
+            'pic' => 'Haerul Anwar',
             'item_code' => 'ITEM-01',
         ]);
     }
@@ -170,16 +170,16 @@ class AdjustMachineRestrictionTest extends TestCase
     {
         $role = Role::where('name', 'OPERATOR')->first();
         $machine = User::create([
-            'name'     => '0350F',
-            'email'    => '0350f@daijo.com',
+            'name' => '0350F',
+            'email' => '0350f@daijo.com',
             'password' => bcrypt('password'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
 
         MachineJob::create(['user_id' => $machine->id, 'item_code' => 'ITEM-01']);
 
         $response = $this->actingAs($machine)->postJson(route('adjust.machine.start'), [
-            'pic_name'  => 'Rodi Khayrudin',
+            'pic_name' => 'Rodi Khayrudin',
             'item_code' => 'ITEM-01',
         ]);
 
@@ -192,23 +192,23 @@ class AdjustMachineRestrictionTest extends TestCase
     {
         $role = Role::where('name', 'OPERATOR')->first();
         $machine = User::create([
-            'name'     => '0650F',
-            'email'    => '0650f@daijo.com',
+            'name' => '0650F',
+            'email' => '0650f@daijo.com',
             'password' => bcrypt('password'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
 
         MachineJob::create(['user_id' => $machine->id, 'item_code' => 'ITEM-01']);
 
         $response = $this->actingAs($machine)->postJson(route('adjust.machine.start'), [
-            'pic_name'  => 'Budi Santoso',
+            'pic_name' => 'Budi Santoso',
             'item_code' => 'ITEM-01',
         ]);
 
         $response->assertStatus(200);
         $this->assertDatabaseHas('adjust_machine_logs', [
-            'user_id'   => $machine->id,
-            'pic'       => 'Budi Santoso',
+            'user_id' => $machine->id,
+            'pic' => 'Budi Santoso',
             'item_code' => 'ITEM-01',
         ]);
     }
@@ -260,22 +260,22 @@ class AdjustMachineRestrictionTest extends TestCase
     {
         $role = Role::where('name', 'OPERATOR')->first();
         $machine = User::create([
-            'name'     => '0350F',
-            'email'    => '0350f_job@daijo.com',
+            'name' => '0350F',
+            'email' => '0350f_job@daijo.com',
             'password' => bcrypt('password'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
 
         $machineJob = MachineJob::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'ACTIVE-ITEM-01',
-            'shift'     => 1,
-            'dic_id'    => 99,
+            'shift' => 1,
+            'dic_id' => 99,
         ]);
 
         // 1. Start Adjust Machine
         $responseStart = $this->actingAs($machine)->postJson(route('adjust.machine.start'), [
-            'pic_name'  => 'Budi Santoso',
+            'pic_name' => 'Budi Santoso',
             'item_code' => 'ACTIVE-ITEM-01',
         ]);
 
@@ -306,14 +306,14 @@ class AdjustMachineRestrictionTest extends TestCase
     {
         $role = Role::where('name', 'OPERATOR')->first();
         $machine = User::create([
-            'name'     => '0350F',
-            'email'    => '0350f_repair@daijo.com',
+            'name' => '0350F',
+            'email' => '0350f_repair@daijo.com',
             'password' => bcrypt('password'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
 
         $response = $this->actingAs($machine)->postJson(route('repair.machine.start'), [
-            'pic_name'  => 'Mamat Maintenance',
+            'pic_name' => 'Mamat Maintenance',
             'item_code' => 'REPAIR-ITEM-01',
         ]);
 
@@ -321,8 +321,8 @@ class AdjustMachineRestrictionTest extends TestCase
         $response->assertJson(['message' => 'Repair Machine started']);
 
         $this->assertDatabaseHas('repair_machine_logs', [
-            'user_id'   => $machine->id,
-            'pic'       => 'Mamat Maintenance',
+            'user_id' => $machine->id,
+            'pic' => 'Mamat Maintenance',
             'item_code' => 'REPAIR-ITEM-01',
         ]);
     }
@@ -331,23 +331,23 @@ class AdjustMachineRestrictionTest extends TestCase
     {
         $role = Role::where('name', 'OPERATOR')->first();
         $machine = User::create([
-            'name'     => '0350F',
-            'email'    => '0350f_repair_end@daijo.com',
+            'name' => '0350F',
+            'email' => '0350f_repair_end@daijo.com',
             'password' => bcrypt('password'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
 
         $machineJob = MachineJob::create([
-            'user_id'       => $machine->id,
-            'item_code'     => 'ACTIVE-ITEM-REPAIR-01',
+            'user_id' => $machine->id,
+            'item_code' => 'ACTIVE-ITEM-REPAIR-01',
             'employee_name' => 'Operator Tetap',
-            'shift'         => 2,
-            'dic_id'        => 88,
+            'shift' => 2,
+            'dic_id' => 88,
         ]);
 
         // Start Repair
         $this->actingAs($machine)->postJson(route('repair.machine.start'), [
-            'pic_name'  => 'Mamat Maintenance',
+            'pic_name' => 'Mamat Maintenance',
             'item_code' => 'ACTIVE-ITEM-REPAIR-01',
         ]);
 
@@ -367,4 +367,3 @@ class AdjustMachineRestrictionTest extends TestCase
         $this->assertEquals(88, $machineJob->dic_id);
     }
 }
-

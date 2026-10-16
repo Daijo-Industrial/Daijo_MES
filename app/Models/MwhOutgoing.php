@@ -26,7 +26,7 @@ class MwhOutgoing extends Model
     ];
 
     protected $casts = [
-        'qty_taken'     => 'decimal:2',
+        'qty_taken' => 'decimal:2',
         'outgoing_date' => 'date',
     ];
 

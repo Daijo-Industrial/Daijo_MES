@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\CustomBarcodeLog;
 use App\Models\MasterListItem;
 use App\Models\SpkItemHistory;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
 use Milon\Barcode\DNS1D;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\Writer\PngWriter;
 
 class InitialBarcodeController extends Controller
 {
@@ -155,7 +155,7 @@ class InitialBarcodeController extends Controller
     public function getSpksByItem(Request $request)
     {
         $itemCode = $request->input('item_code');
-        
+
         $spks = SpkItemHistory::where('item_code', $itemCode)
             ->whereNotNull('spk_number')
             ->distinct()
@@ -342,14 +342,14 @@ class InitialBarcodeController extends Controller
         $madeIn = $customMadeIn ?: 'Indonesia';
         $expiryDate = $customExpiryDate ?: '';
         $shipmentDate = $customShipmentDate ?: '';
-        
+
         // Position format: strictly determines enlarged half code (1 for Left/HC1, 2 for Right/HC2, 0 for Center/None)
         $positionInput = $customPosition ?: (($item?->position && $item->position !== '0') ? $item->position : '');
         $posRaw = strtolower(trim((string) $positionInput));
-        
+
         $isCenterPos = ($posRaw === 'center' || $posRaw === 'c' || $posRaw === 'ctr' || $posRaw === 'middle' || str_contains($posRaw, 'center') || str_contains($posRaw, 'tengah'));
-        $isLeftPos   = !$isCenterPos && ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l' || $posRaw === '1' || str_contains($posRaw, 'left') || str_contains($posRaw, 'lh'));
-        $isRightPos  = !$isCenterPos && ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r' || $posRaw === '2' || str_contains($posRaw, 'right') || str_contains($posRaw, 'rh'));
+        $isLeftPos = ! $isCenterPos && ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l' || $posRaw === '1' || str_contains($posRaw, 'left') || str_contains($posRaw, 'lh'));
+        $isRightPos = ! $isCenterPos && ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r' || $posRaw === '2' || str_contains($posRaw, 'right') || str_contains($posRaw, 'rh'));
 
         if ($isCenterPos) {
             $enlargedHalfCode = 0;
@@ -414,7 +414,7 @@ class InitialBarcodeController extends Controller
         }
 
         $labels = [];
-        $writer = new PngWriter();
+        $writer = new PngWriter;
 
         for ($i = $startLabel; $i <= $endLabel; $i++) {
             // Format: spkno(tab)quantity(tab)warehouse(tab)nolabel
@@ -422,7 +422,7 @@ class InitialBarcodeController extends Controller
             if ($isTrial) {
                 $qrData .= "\tTRIAL";
             }
-            
+
             $qrCode = new QrCode(
                 data: $qrData,
                 errorCorrectionLevel: ErrorCorrectionLevel::High,
@@ -478,21 +478,23 @@ class InitialBarcodeController extends Controller
     protected function getLogoBase64(): ?string
     {
         $logoPath = public_path('picture/logo-dj.png');
-        if (!file_exists($logoPath)) {
+        if (! file_exists($logoPath)) {
             $logoPath = storage_path('app/public/picture/logo-dj.png');
         }
+
         return file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
     }
 
     protected function getVinfastLogoBase64(): ?string
     {
         $logoPath = public_path('picture/vinfast-logo.png');
-        if (!file_exists($logoPath)) {
+        if (! file_exists($logoPath)) {
             $logoPath = public_path('images/vinfast-logo.png');
         }
-        if (!file_exists($logoPath)) {
+        if (! file_exists($logoPath)) {
             $logoPath = storage_path('app/public/picture/vinfast-logo.png');
         }
+
         return file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
     }
 
@@ -506,10 +508,11 @@ class InitialBarcodeController extends Controller
         $lastTwo = sprintf('%02d', (int) $year % 100);
         $map = [
             '0' => 'O', '1' => 'A', '2' => 'B', '3' => 'C', '4' => 'D',
-            '5' => 'E', '6' => 'F', '7' => 'G', '8' => 'H', '9' => 'I'
+            '5' => 'E', '6' => 'F', '7' => 'G', '8' => 'H', '9' => 'I',
         ];
         $d1 = $lastTwo[0];
         $d2 = $lastTwo[1];
+
         return ($map[$d1] ?? '') . ($map[$d2] ?? '');
     }
 
@@ -521,8 +524,9 @@ class InitialBarcodeController extends Controller
         $months = [
             1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL',
             5 => 'MEI', 6 => 'JUNI', 7 => 'JULI', 8 => 'AGUSTUS',
-            9 => 'SEPTEMBER', 10 => 'OKTOBER', 11 => 'NOVEMBER', 12 => 'DESEMBER'
+            9 => 'SEPTEMBER', 10 => 'OKTOBER', 11 => 'NOVEMBER', 12 => 'DESEMBER',
         ];
+
         return $months[(int) $monthNumber] ?? '';
     }
 }

@@ -3,24 +3,25 @@
 namespace App\Imports;
 
 use App\Models\SpkItemHistory;
-use Maatwebsite\Excel\Concerns\ToModel;
-use Maatwebsite\Excel\Concerns\WithStartRow;
-use Maatwebsite\Excel\Concerns\WithBatchInserts;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Maatwebsite\Excel\Concerns\WithEvents;
-use Maatwebsite\Excel\Events\ImportFailed;
-use Maatwebsite\Excel\Events\BeforeImport;
-use Maatwebsite\Excel\Events\AfterImport;
-use Maatwebsite\Excel\Events\AfterChunk;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithBatchInserts;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithStartRow;
+use Maatwebsite\Excel\Events\AfterChunk;
+use Maatwebsite\Excel\Events\AfterImport;
+use Maatwebsite\Excel\Events\BeforeImport;
+use Maatwebsite\Excel\Events\ImportFailed;
 
-class SpkItemHistoryImport implements ToModel, WithStartRow, WithBatchInserts, WithChunkReading, ShouldQueue, WithEvents, WithCustomCsvSettings
+class SpkItemHistoryImport implements ShouldQueue, ToModel, WithBatchInserts, WithChunkReading, WithCustomCsvSettings, WithEvents, WithStartRow
 {
     private $cacheKey;
+
     private $delimiter;
 
     public function __construct(string $cacheKey = '', string $delimiter = "\t")
@@ -32,7 +33,7 @@ class SpkItemHistoryImport implements ToModel, WithStartRow, WithBatchInserts, W
     public function getCsvSettings(): array
     {
         return [
-            'delimiter' => $this->delimiter
+            'delimiter' => $this->delimiter,
         ];
     }
 
@@ -45,21 +46,19 @@ class SpkItemHistoryImport implements ToModel, WithStartRow, WithBatchInserts, W
     }
 
     /**
-    * @param array $row
-    *
-    * @return \Illuminate\Database\Eloquent\Model|null
-    */
+     * @return \Illuminate\Database\Eloquent\Model|null
+     */
     public function model(array $row)
     {
         // $row[0] = #
         // $row[1] = Document (spk_number)
         // $row[2] = Product No (item_code)
 
-        if (!isset($row[1]) || !isset($row[2])) {
-            return null; // Skip invalid rows
+        if (! isset($row[1]) || ! isset($row[2])) {
+            return; // Skip invalid rows
         }
 
-        // Return a new model instance. 
+        // Return a new model instance.
         // We set created_at and updated_at to null as requested.
         $model = new SpkItemHistory([
             'spk_number' => $row[1],
@@ -101,7 +100,7 @@ class SpkItemHistoryImport implements ToModel, WithStartRow, WithBatchInserts, W
             AfterChunk::class => function (AfterChunk $event) {
                 if ($this->cacheKey) {
                     $processed = Cache::get($this->cacheKey . '_processed', 0);
-                    $processed += $this->chunkSize(); 
+                    $processed += $this->chunkSize();
                     Cache::put($this->cacheKey . '_processed', $processed, now()->addHours(1));
                 }
             },
@@ -110,7 +109,7 @@ class SpkItemHistoryImport implements ToModel, WithStartRow, WithBatchInserts, W
                     Cache::put($this->cacheKey . '_status', 'finished', now()->addHours(1));
                 }
             },
-            ImportFailed::class => function(ImportFailed $event) {
+            ImportFailed::class => function (ImportFailed $event) {
                 Log::error('SPK Item History Import failed: ' . $event->getException()->getMessage());
                 if ($this->cacheKey) {
                     Cache::put($this->cacheKey . '_status', 'failed', now()->addHours(1));

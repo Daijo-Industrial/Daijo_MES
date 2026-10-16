@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class PRD_MouldingUserLog extends Model
 {
-    use HasFactory, BroadcastsDashboardModelUpdates;
+    use BroadcastsDashboardModelUpdates, HasFactory;
+
     protected $table = 'prd_moulding_user_logs';
 
     protected $fillable = [

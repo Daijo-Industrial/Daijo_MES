@@ -9,13 +9,13 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithEvents;
-use Maatwebsite\Excel\Events\BeforeImport;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Events\AfterImport;
+use Maatwebsite\Excel\Events\BeforeImport;
 use Maatwebsite\Excel\Events\ImportFailed;
 
-class MasterListMaterialImport implements ToCollection, WithHeadingRow, WithChunkReading, ShouldQueue, WithEvents
+class MasterListMaterialImport implements ShouldQueue, ToCollection, WithChunkReading, WithEvents, WithHeadingRow
 {
     private string $batchId;
 
@@ -47,7 +47,7 @@ class MasterListMaterialImport implements ToCollection, WithHeadingRow, WithChun
             );
 
             // Skip row if item_code is missing/empty or header label string
-            if (!$itemCode || in_array(strtolower($itemCode), ['item_no', 'item no', 'item_no.', 'item no.', 'item_code', 'item code', '#', 'item number'])) {
+            if (! $itemCode || in_array(strtolower($itemCode), ['item_no', 'item no', 'item_no.', 'item no.', 'item_code', 'item code', '#', 'item number'])) {
                 continue;
             }
 
@@ -64,16 +64,16 @@ class MasterListMaterialImport implements ToCollection, WithHeadingRow, WithChun
             );
 
             $upsertData[] = [
-                'item_code'          => $itemCode,
-                'item_description'   => $itemDesc,
+                'item_code' => $itemCode,
+                'item_description' => $itemDesc,
                 'preferred_supplier' => $supplier,
-                'purchasing_uom'     => $uom,
-                'created_at'         => $now,
-                'updated_at'         => $now,
+                'purchasing_uom' => $uom,
+                'created_at' => $now,
+                'updated_at' => $now,
             ];
         }
 
-        if (!empty($upsertData)) {
+        if (! empty($upsertData)) {
             MasterListMaterial::upsert(
                 $upsertData,
                 ['item_code'], // unique key for match
@@ -111,7 +111,6 @@ class MasterListMaterialImport implements ToCollection, WithHeadingRow, WithChun
             return $values[$shiftedIndex];
         }
 
-        return null;
     }
 
     private function cleanValue($value): ?string
@@ -134,9 +133,9 @@ class MasterListMaterialImport implements ToCollection, WithHeadingRow, WithChun
         return [
             BeforeImport::class => function (BeforeImport $event) {
                 Cache::put('mwh_import_progress_' . $this->batchId, [
-                    'status'    => 'processing',
+                    'status' => 'processing',
                     'processed' => 0,
-                    'started_at'=> now()->toDateTimeString(),
+                    'started_at' => now()->toDateTimeString(),
                 ], 3600);
             },
 
@@ -144,8 +143,8 @@ class MasterListMaterialImport implements ToCollection, WithHeadingRow, WithChun
                 $cacheKey = 'mwh_import_progress_' . $this->batchId;
                 $current = Cache::get($cacheKey, ['processed' => 0]);
                 Cache::put($cacheKey, [
-                    'status'      => 'completed',
-                    'processed'   => $current['processed'] ?? 0,
+                    'status' => 'completed',
+                    'processed' => $current['processed'] ?? 0,
                     'finished_at' => now()->toDateTimeString(),
                 ], 3600);
             },
@@ -154,7 +153,7 @@ class MasterListMaterialImport implements ToCollection, WithHeadingRow, WithChun
                 Log::error('MasterListMaterialImport failed: ' . $event->getException()->getMessage());
                 Cache::put('mwh_import_progress_' . $this->batchId, [
                     'status' => 'failed',
-                    'error'  => $event->getException()->getMessage(),
+                    'error' => $event->getException()->getMessage(),
                 ], 3600);
             },
         ];

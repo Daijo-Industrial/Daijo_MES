@@ -2,13 +2,13 @@
 
 namespace App\Livewire\Wms;
 
-use App\Models\WmsRack;
 use App\Models\WmsPosition;
+use App\Models\WmsRack;
 use App\Services\WmsService;
-use Livewire\Component;
-use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class RackMapping extends Component
 {
@@ -16,56 +16,89 @@ class RackMapping extends Component
 
     // Slot Detail & Edit State
     public $selectedPositionId;
+
     public $editMaxCapacity;
+
     public $editCustomerCode;
-    
+
     // Filtering & Search State
     public $filterCustomer = '';
+
     public $searchItem = '';
+
     public $viewMode = 'layout'; // 'layout' (denah 2D) or 'grid' (card list)
+
     public $activeLevel = 1;    // Level filter for 2D layout (1, 2, 3)
+
     protected $queryString = ['filterCustomer', 'searchItem', 'whseId', 'viewMode', 'activeLevel'];
-    
+
     // UI State
     public $showDetail = false;
 
     // Add Rack Modal State
     public $newRackCode;
+
     public $newLevels = 2;
+
     public $newSlotsPerLevel = 4;
+
     public $newRackCustomer;
+
     public $newMaxCapacity = 1;
+
     public $newOrientation = 'VERTICAL'; // 'VERTICAL' or 'HORIZONTAL'
+
     public $newZone = 'DEFAULT';         // 'LOGISTIC', 'STORE', 'WIP', 'FG', 'DEFAULT'
+
     public $newXPos = 0;
+
     public $newYPos = 0;
+
     public $showAddRackModal = false;
 
     // Warehouse State
     public $whseId = null;
+
     public $whseName = '';
+
     public $whseCode = '';
+
     public $whseExitLocation = 'BOTTOM_RIGHT';
+
     public $uploadBlueprint = null;
+
     public $currentLayoutImage = null;
+
     public $showEditWarehouseModal = false;
 
     // Create Warehouse State
     public $showCreateWarehouseModal = false;
+
     public $newWhseCode = '';
+
     public $newWhseName = '';
 
     // Edit Rack & Dimension State
     public $editingRackId = null;
+
     public $editRackCode = '';
+
     public $editRackLevels = 1;
+
     public $editRackSlotsPerLevel = 1;
+
     public $editRackCustomer = '';
+
     public $editRackMaxCapacity = 1;
+
     public $editRackOrientation = 'VERTICAL';
+
     public $editRackZone = 'DEFAULT';
+
     public $editRackXPos = 0;
+
     public $editRackYPos = 0;
+
     public $showEditRackModal = false;
 
     // Interactive Layout Settings Mode
@@ -152,7 +185,7 @@ class RackMapping extends Component
             $pallet->delete();
 
             // Log transaction
-            $wmsService->logTransaction($palletId, 'DELETE_PALLET', $positionId, "Pallet deleted from Rack Mapping by Store");
+            $wmsService->logTransaction($palletId, 'DELETE_PALLET', $positionId, 'Pallet deleted from Rack Mapping by Store');
 
             // Recalculate position status if it was assigned to a slot
             if ($positionId) {
@@ -169,7 +202,7 @@ class RackMapping extends Component
             }
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal menghapus pallet: " . $e->getMessage());
+            session()->flash('error', 'Gagal menghapus pallet: ' . $e->getMessage());
         }
     }
 
@@ -196,7 +229,7 @@ class RackMapping extends Component
                 $wmsService->updatePositionStatus($oldPosId);
             }
 
-            $wmsService->logTransaction($pallet->pallet_id, 'UNASSIGN_SLOT', null, "Unassigned from Rack Mapping by Store");
+            $wmsService->logTransaction($pallet->pallet_id, 'UNASSIGN_SLOT', null, 'Unassigned from Rack Mapping by Store');
 
             DB::commit();
 
@@ -208,7 +241,7 @@ class RackMapping extends Component
             }
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal melepas pallet: " . $e->getMessage());
+            session()->flash('error', 'Gagal melepas pallet: ' . $e->getMessage());
         }
     }
 
@@ -217,11 +250,12 @@ class RackMapping extends Component
         $samplePos = $rack->positions->first();
         $whseCode = $rack->warehouse?->whse_code ?? $this->whseCode ?? 'J06';
 
-        if ($samplePos && !empty($samplePos->position_code)) {
+        if ($samplePos && ! empty($samplePos->position_code)) {
             // Pattern: WHSE-CUST-RACK-L1S1
             if (preg_match('/^([A-Za-z0-9]+)-([A-Za-z0-9]+)-[A-Za-z0-9]+-L\d+S\d+$/i', $samplePos->position_code, $matches)) {
                 $whsePrefix = $matches[1];
                 $custCode = $matches[2];
+
                 return "{$whsePrefix}-{$custCode}-{$rack->rack_code}-L{$levelNo}S{$slotNo}";
             }
             // Pattern: WHSE-CUST-RACK-L01-S01
@@ -230,12 +264,14 @@ class RackMapping extends Component
                 $custCode = $matches[2];
                 $lStr = str_pad($levelNo, 2, '0', STR_PAD_LEFT);
                 $sStr = str_pad($slotNo, 2, '0', STR_PAD_LEFT);
+
                 return "{$whsePrefix}-{$custCode}-{$rack->rack_code}-L{$lStr}-S{$sStr}";
             }
         }
 
         $levelStr = str_pad($levelNo, 2, '0', STR_PAD_LEFT);
         $slotStr = str_pad($slotNo, 2, '0', STR_PAD_LEFT);
+
         return strtoupper($rack->rack_code) . "-L{$levelStr}-S{$slotStr}";
     }
 
@@ -255,6 +291,7 @@ class RackMapping extends Component
                 'customer_code' => $customerCode,
                 'status' => $existing->palletForms()->where('total_pallet_qty', '>', 0)->exists() ? $existing->status : 'EMPTY',
             ]);
+
             return $existing;
         }
 
@@ -274,10 +311,10 @@ class RackMapping extends Component
         $wmsService = $wmsService ?? app(WmsService::class);
         $this->validate([
             'newRackCode' => [
-                'required', 
+                'required',
                 Rule::unique('wms_racks', 'rack_code')
                     ->where('whse_id', $this->whseId)
-                    ->whereNull('deleted_at')
+                    ->whereNull('deleted_at'),
             ],
             'newLevels' => 'required|integer|min:1',
             'newSlotsPerLevel' => 'required|integer|min:1',
@@ -306,7 +343,7 @@ class RackMapping extends Component
                 'height' => $orientation === 'HORIZONTAL' ? 100 : 200,
             ]);
 
-            $cust = !empty($this->newRackCustomer) ? strtoupper($this->newRackCustomer) : null;
+            $cust = ! empty($this->newRackCustomer) ? strtoupper($this->newRackCustomer) : null;
 
             // Simple Batch generation
             for ($l = 1; $l <= $this->newLevels; $l++) {
@@ -318,7 +355,7 @@ class RackMapping extends Component
 
             DB::commit();
             session()->flash('success', "Rak {$rack->rack_code} berhasil dibuat ({$orientation}, Kapasitas: {$this->newMaxCapacity}).");
-            
+
             $this->reset(['newRackCode', 'newRackCustomer', 'newMaxCapacity', 'newOrientation', 'newZone', 'newXPos', 'newYPos', 'showAddRackModal']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -338,23 +375,23 @@ class RackMapping extends Component
                 // Detach from Pallet Forms and reset status so they are not lost
                 \App\Models\WmsPalletForm::whereIn('position_id', $positionIds)->update([
                     'position_id' => null,
-                    'status' => 'GENERATED'
+                    'status' => 'GENERATED',
                 ]);
 
                 // Detach from Logs to preserve history without breaking foreign key
                 \App\Models\WmsPalletLog::whereIn('position_id', $positionIds)->update([
-                    'position_id' => null
+                    'position_id' => null,
                 ]);
 
                 // Force delete all positions under this rack to keep DB clean
                 WmsPosition::withTrashed()->whereIn('id', $positionIds)->forceDelete();
-                
+
                 $rackCode = $rack->rack_code;
                 $rack->delete();
 
                 DB::commit();
                 session()->flash('success', 'Rak ' . $rackCode . ' beserta seluruh slotnya berhasil dihapus.');
-                
+
                 // Reset selected slot if it belongs to the deleted rack
                 $this->selectedPositionId = null;
                 $this->showDetail = false;
@@ -375,7 +412,7 @@ class RackMapping extends Component
             $warehouse = \App\Models\WmsWarehouse::find($this->whseId);
         }
 
-        if (!$warehouse) {
+        if (! $warehouse) {
             $warehouse = \App\Models\WmsWarehouse::first() ?? \App\Models\WmsWarehouse::create([
                 'whse_code' => 'J06',
                 'whse_name' => 'Monitoring Hunian Rak Gudang J06 (Highly Marelli)',
@@ -432,15 +469,19 @@ class RackMapping extends Component
     public function deleteWarehouse($id)
     {
         $whse = \App\Models\WmsWarehouse::find($id);
-        if (!$whse) return;
+        if (! $whse) {
+            return;
+        }
 
         if ($whse->racks()->exists()) {
             session()->flash('error', "Gudang {$whse->whse_code} tidak dapat dihapus karena masih memiliki rak aktif. Hapus seluruh rak terlebih dahulu.");
+
             return;
         }
 
         if (\App\Models\WmsWarehouse::count() <= 1) {
-            session()->flash('error', "Minimal harus ada 1 gudang di sistem.");
+            session()->flash('error', 'Minimal harus ada 1 gudang di sistem.');
+
             return;
         }
 
@@ -496,13 +537,13 @@ class RackMapping extends Component
         ]);
 
         $warehouse = \App\Models\WmsWarehouse::find($this->whseId) ?? \App\Models\WmsWarehouse::first();
-        
+
         $imagePath = $warehouse?->layout_image;
         if ($this->uploadBlueprint) {
             $imagePath = $this->uploadBlueprint->store('wms/layouts', 'public');
         }
 
-        if (!$warehouse) {
+        if (! $warehouse) {
             $warehouse = \App\Models\WmsWarehouse::create([
                 'whse_code' => strtoupper(trim($this->whseCode)),
                 'whse_name' => trim($this->whseName),
@@ -531,8 +572,9 @@ class RackMapping extends Component
     public function openEditRackModal($rackId)
     {
         $rack = WmsRack::with('positions')->find($rackId);
-        if (!$rack) {
+        if (! $rack) {
             session()->flash('error', 'Rak tidak ditemukan.');
+
             return;
         }
 
@@ -562,7 +604,7 @@ class RackMapping extends Component
             'editRackCode' => [
                 'required',
                 'string',
-                Rule::unique('wms_racks', 'rack_code')->ignore($this->editingRackId)->whereNull('deleted_at')
+                Rule::unique('wms_racks', 'rack_code')->ignore($this->editingRackId)->whereNull('deleted_at'),
             ],
             'editRackLevels' => 'required|integer|min:1|max:20',
             'editRackSlotsPerLevel' => 'required|integer|min:1|max:50',
@@ -591,7 +633,7 @@ class RackMapping extends Component
             ]);
 
             $existingPositions = WmsPosition::where('rack_id', $rack->id)->get();
-            $existingMap = $existingPositions->keyBy(fn($p) => "{$p->level_no}-{$p->slot_no}");
+            $existingMap = $existingPositions->keyBy(fn ($p) => "{$p->level_no}-{$p->slot_no}");
 
             // Check if any positions to be deleted contain active pallets
             $positionsToDelete = [];
@@ -604,6 +646,7 @@ class RackMapping extends Component
                     if ($hasActivePallet) {
                         DB::rollBack();
                         session()->flash('error', "Gagal memperkecil rak: Slot {$pos->position_code} masih berisi pallet aktif. Pindahkan pallet terlebih dahulu.");
+
                         return;
                     }
 
@@ -618,7 +661,7 @@ class RackMapping extends Component
                 $pos->forceDelete();
             }
 
-            $cust = !empty($this->editRackCustomer) ? strtoupper($this->editRackCustomer) : null;
+            $cust = ! empty($this->editRackCustomer) ? strtoupper($this->editRackCustomer) : null;
 
             // Create new positions or update existing ones
             for ($l = 1; $l <= $this->editRackLevels; $l++) {
@@ -648,20 +691,21 @@ class RackMapping extends Component
             }
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal menyimpan perubahan rak: " . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan perubahan rak: ' . $e->getMessage());
         }
     }
 
     public function toggleLayoutEditMode()
     {
-        $this->isLayoutEditMode = !$this->isLayoutEditMode;
+        $this->isLayoutEditMode = ! $this->isLayoutEditMode;
     }
 
     public function toggleRackOrientation($rackId)
     {
         $rack = WmsRack::find($rackId);
-        if (!$rack) {
+        if (! $rack) {
             session()->flash('error', 'Rak tidak ditemukan.');
+
             return;
         }
 
@@ -680,7 +724,9 @@ class RackMapping extends Component
     public function updateRackZone($rackId, $zone)
     {
         $rack = WmsRack::find($rackId);
-        if (!$rack) return;
+        if (! $rack) {
+            return;
+        }
 
         $zone = strtoupper(trim($zone));
         $rack->update(['zone' => $zone]);
@@ -690,7 +736,9 @@ class RackMapping extends Component
     public function moveRack($rackId, $direction)
     {
         $rack = WmsRack::find($rackId);
-        if (!$rack) return;
+        if (! $rack) {
+            return;
+        }
 
         $step = 40;
         $x = $rack->x_pos ?? 0;
@@ -756,6 +804,7 @@ class RackMapping extends Component
         $racks = WmsRack::where('whse_id', $this->whseId)->orderBy('rack_code')->get();
         if ($racks->isEmpty()) {
             session()->flash('error', 'Belum ada rak di gudang ini.');
+
             return;
         }
 
@@ -849,6 +898,7 @@ class RackMapping extends Component
         $racks = WmsRack::where('whse_id', $this->whseId)->orderBy('rack_code')->get();
         if ($racks->isEmpty()) {
             session()->flash('error', 'Belum ada rak untuk diatur.');
+
             return;
         }
 
@@ -908,7 +958,7 @@ class RackMapping extends Component
             session()->flash('success', "Berhasil menambahkan Level {$newLevel} pada Rak {$rack->rack_code}.");
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal menambah level: " . $e->getMessage());
+            session()->flash('error', 'Gagal menambah level: ' . $e->getMessage());
         }
     }
 
@@ -920,6 +970,7 @@ class RackMapping extends Component
             $maxLevel = $rack->positions->max('level_no');
             if ($maxLevel <= 1) {
                 session()->flash('error', "Rak {$rack->rack_code} harus memiliki minimal 1 level.");
+
                 return;
             }
 
@@ -929,6 +980,7 @@ class RackMapping extends Component
                 if ($hasActivePallet) {
                     DB::rollBack();
                     session()->flash('error', "Tidak dapat menghapus Level {$maxLevel} karena slot {$pos->position_code} masih berisi pallet aktif.");
+
                     return;
                 }
             }
@@ -943,7 +995,7 @@ class RackMapping extends Component
             session()->flash('success', "Level {$maxLevel} pada Rak {$rack->rack_code} berhasil dihapus.");
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal menghapus level: " . $e->getMessage());
+            session()->flash('error', 'Gagal menghapus level: ' . $e->getMessage());
         }
     }
 
@@ -976,7 +1028,7 @@ class RackMapping extends Component
             session()->flash('success', "Berhasil menambahkan Slot S{$newSlot} ke semua level pada Rak {$rack->rack_code}.");
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal menambah slot: " . $e->getMessage());
+            session()->flash('error', 'Gagal menambah slot: ' . $e->getMessage());
         }
     }
 
@@ -988,6 +1040,7 @@ class RackMapping extends Component
             $maxSlot = $rack->positions->max('slot_no');
             if ($maxSlot <= 1) {
                 session()->flash('error', "Rak {$rack->rack_code} harus memiliki minimal 1 slot per level.");
+
                 return;
             }
 
@@ -997,6 +1050,7 @@ class RackMapping extends Component
                 if ($hasActivePallet) {
                     DB::rollBack();
                     session()->flash('error', "Tidak dapat menghapus Slot S{$maxSlot} karena slot {$pos->position_code} masih berisi pallet aktif.");
+
                     return;
                 }
             }
@@ -1011,7 +1065,7 @@ class RackMapping extends Component
             session()->flash('success', "Slot S{$maxSlot} pada Rak {$rack->rack_code} berhasil dihapus.");
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal menghapus slot: " . $e->getMessage());
+            session()->flash('error', 'Gagal menghapus slot: ' . $e->getMessage());
         }
     }
 
@@ -1023,6 +1077,7 @@ class RackMapping extends Component
             $hasActivePallet = \App\Models\WmsPalletForm::where('position_id', $pos->id)->where('total_pallet_qty', '>', 0)->exists();
             if ($hasActivePallet) {
                 session()->flash('error', "Slot {$pos->position_code} masih berisi pallet aktif. Kosongkan atau pindahkan pallet terlebih dahulu.");
+
                 return;
             }
 
@@ -1037,7 +1092,7 @@ class RackMapping extends Component
             session()->flash('success', "Slot {$posCode} berhasil dihapus.");
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal menghapus slot: " . $e->getMessage());
+            session()->flash('error', 'Gagal menghapus slot: ' . $e->getMessage());
         }
     }
 
@@ -1046,23 +1101,23 @@ class RackMapping extends Component
         $hasCustomerTable = \Illuminate\Support\Facades\Schema::hasTable('master_customer_delivery');
 
         $racks = WmsRack::where('whse_id', $this->whseId)
-            ->with(['positions' => function($query) use ($hasCustomerTable) {
+            ->with(['positions' => function ($query) use ($hasCustomerTable) {
                 if ($hasCustomerTable) {
                     $query->with('customer');
                 }
-                $query->with(['palletForms' => function($q) {
+                $query->with(['palletForms' => function ($q) {
                     $q->with('details');
                 }])
-                ->withCount('palletForms')
-                ->orderBy('level_no', 'desc')
-                ->orderBy('slot_no', 'asc');
+                    ->withCount('palletForms')
+                    ->orderBy('level_no', 'desc')
+                    ->orderBy('slot_no', 'asc');
             }])
             ->orderBy('rack_code')
             ->get();
 
         $matchingPositionIds = [];
         $searchTerm = trim($this->searchItem);
-        if (!empty($searchTerm)) {
+        if (! empty($searchTerm)) {
             $term = '%' . $searchTerm . '%';
 
             // 1. Position code or last_item_code
@@ -1073,24 +1128,24 @@ class RackMapping extends Component
             // 2. Pallet forms header fields (pallet_id, part_no, model_name, lot_no) with qty > 0
             $posIds2 = \App\Models\WmsPalletForm::whereNotNull('position_id')
                 ->where('total_pallet_qty', '>', 0)
-                ->where(function($q) use ($term) {
+                ->where(function ($q) use ($term) {
                     $q->where('pallet_id', 'like', $term)
-                      ->orWhere('part_no', 'like', $term)
-                      ->orWhere('model_name', 'like', $term)
-                      ->orWhere('lot_no', 'like', $term);
+                        ->orWhere('part_no', 'like', $term)
+                        ->orWhere('model_name', 'like', $term)
+                        ->orWhere('lot_no', 'like', $term);
                 })
                 ->pluck('position_id');
 
             // 3. Pallet form details (item box level inside mixed pallets) with qty > 0
             $posIds3 = \App\Models\WmsPalletForm::whereNotNull('position_id')
-                ->whereHas('details', function($q) use ($term) {
+                ->whereHas('details', function ($q) use ($term) {
                     $q->where('qty', '>', 0)
-                      ->where(function($dq) use ($term) {
-                          $dq->where('part_no', 'like', $term)
-                             ->orWhere('model_name', 'like', $term)
-                             ->orWhere('spk_no', 'like', $term)
-                             ->orWhere('label', 'like', $term);
-                      });
+                        ->where(function ($dq) use ($term) {
+                            $dq->where('part_no', 'like', $term)
+                                ->orWhere('model_name', 'like', $term)
+                                ->orWhere('spk_no', 'like', $term)
+                                ->orWhere('label', 'like', $term);
+                        });
                 })
                 ->pluck('position_id');
 
@@ -1102,31 +1157,31 @@ class RackMapping extends Component
         if (strlen($searchTerm) >= 1) {
             $term = '%' . $searchTerm . '%';
 
-            $detailsQuery = \App\Models\WmsPalletFormDetail::whereHas('header', function($q) {
+            $detailsQuery = \App\Models\WmsPalletFormDetail::whereHas('header', function ($q) {
                 $q->whereNotNull('position_id');
             })
-            ->where('qty', '>', 0)
-            ->where(function($q) use ($term) {
-                $q->where('part_no', 'like', $term)
-                  ->orWhere('model_name', 'like', $term)
-                  ->orWhere('spk_no', 'like', $term)
-                  ->orWhere('label', 'like', $term);
-            })
-            ->with(['header.position'])
-            ->get();
+                ->where('qty', '>', 0)
+                ->where(function ($q) use ($term) {
+                    $q->where('part_no', 'like', $term)
+                        ->orWhere('model_name', 'like', $term)
+                        ->orWhere('spk_no', 'like', $term)
+                        ->orWhere('label', 'like', $term);
+                })
+                ->with(['header.position'])
+                ->get();
 
             $searchSuggestions = $detailsQuery->groupBy('part_no')
-                ->map(function($group, $partNo) {
+                ->map(function ($group, $partNo) {
                     $first = $group->first();
                     $totalQty = $group->sum('qty');
-                    $positions = $group->map(fn($d) => $d->header?->position?->position_code)->filter()->unique()->values()->all();
+                    $positions = $group->map(fn ($d) => $d->header?->position?->position_code)->filter()->unique()->values()->all();
 
                     return [
-                        'part_no'      => $partNo ?: $first->part_no,
-                        'model_name'   => $first->model_name ?: 'No Model Name',
-                        'total_qty'    => $totalQty,
+                        'part_no' => $partNo ?: $first->part_no,
+                        'model_name' => $first->model_name ?: 'No Model Name',
+                        'total_qty' => $totalQty,
                         'pallet_count' => count($positions),
-                        'positions'    => implode(', ', array_slice($positions, 0, 3)) . (count($positions) > 3 ? '...' : ''),
+                        'positions' => implode(', ', array_slice($positions, 0, 3)) . (count($positions) > 3 ? '...' : ''),
                     ];
                 })
                 ->values()
@@ -1139,8 +1194,8 @@ class RackMapping extends Component
             $selectedPosRelations[] = 'customer';
         }
 
-        $selectedPosData = $this->selectedPositionId 
-            ? WmsPosition::with($selectedPosRelations)->withCount('palletForms')->find($this->selectedPositionId) 
+        $selectedPosData = $this->selectedPositionId
+            ? WmsPosition::with($selectedPosRelations)->withCount('palletForms')->find($this->selectedPositionId)
             : null;
 
         $customers = $hasCustomerTable
@@ -1163,22 +1218,22 @@ class RackMapping extends Component
         }
 
         // Dynamic rack segregation for 2D layout
-        $horizontalRacks = $racks->filter(fn($r) => $r->orientation === 'HORIZONTAL')
-            ->sortBy(fn($r) => ($r->y_pos * 1000) + ($r->sort_order ?: 0))
+        $horizontalRacks = $racks->filter(fn ($r) => $r->orientation === 'HORIZONTAL')
+            ->sortBy(fn ($r) => ($r->y_pos * 1000) + ($r->sort_order ?: 0))
             ->values();
 
-        $verticalRacks = $racks->filter(fn($r) => $r->orientation !== 'HORIZONTAL')
-            ->sortBy(fn($r) => ($r->y_pos * 100000) + ($r->x_pos * 1000) + ($r->sort_order ?: 0))
+        $verticalRacks = $racks->filter(fn ($r) => $r->orientation !== 'HORIZONTAL')
+            ->sortBy(fn ($r) => ($r->y_pos * 100000) + ($r->x_pos * 1000) + ($r->sort_order ?: 0))
             ->values();
 
         // Horizontal Wings & Pairs Clustering (Dual Wing layout like GUB)
         $horizontalWings = [];
         if ($horizontalRacks->isNotEmpty()) {
-            $hasWings = $horizontalRacks->contains(fn($r) => $r->x_pos >= 450) && $horizontalRacks->contains(fn($r) => $r->x_pos < 450);
+            $hasWings = $horizontalRacks->contains(fn ($r) => $r->x_pos >= 450) && $horizontalRacks->contains(fn ($r) => $r->x_pos < 450);
 
             if ($hasWings) {
-                $leftRacks = $horizontalRacks->filter(fn($r) => $r->x_pos < 450)->sortBy('y_pos')->values();
-                $rightRacks = $horizontalRacks->filter(fn($r) => $r->x_pos >= 450)->sortBy('y_pos')->values();
+                $leftRacks = $horizontalRacks->filter(fn ($r) => $r->x_pos < 450)->sortBy('y_pos')->values();
+                $rightRacks = $horizontalRacks->filter(fn ($r) => $r->x_pos >= 450)->sortBy('y_pos')->values();
 
                 $horizontalWings = [
                     'left' => [
@@ -1216,7 +1271,7 @@ class RackMapping extends Component
                         break;
                     }
                 }
-                if (!$found) {
+                if (! $found) {
                     $clusteredRows[] = [
                         'center_y' => $y,
                         'y_values' => [$y],
@@ -1226,9 +1281,9 @@ class RackMapping extends Component
 
             $rowBlocks = [];
             foreach ($clusteredRows as $idx => $cluster) {
-                $matchingRacks = $verticalRacks->filter(fn($r) => in_array($r->y_pos, $cluster['y_values']))->sortBy('x_pos')->values();
-                
-                $rowLabel = count($clusteredRows) === 2 
+                $matchingRacks = $verticalRacks->filter(fn ($r) => in_array($r->y_pos, $cluster['y_values']))->sortBy('x_pos')->values();
+
+                $rowLabel = count($clusteredRows) === 2
                     ? ($idx === 0 ? 'Blok Baris Atas (Upper Aisle)' : 'Blok Baris Bawah (Lower Aisle)')
                     : 'Blok Baris ' . ($idx + 1);
 
@@ -1238,12 +1293,14 @@ class RackMapping extends Component
 
                 for ($i = 0; $i < $matchingRacks->count(); $i++) {
                     $r1 = $matchingRacks[$i];
-                    if (in_array($r1->id, $usedIds)) continue;
+                    if (in_array($r1->id, $usedIds)) {
+                        continue;
+                    }
 
                     $r2 = null;
                     if ($i + 1 < $matchingRacks->count()) {
                         $candidate = $matchingRacks[$i + 1];
-                        if (!in_array($candidate->id, $usedIds) && abs($candidate->x_pos - $r1->x_pos) <= 60) {
+                        if (! in_array($candidate->id, $usedIds) && abs($candidate->x_pos - $r1->x_pos) <= 60) {
                             $r2 = $candidate;
                         }
                     }
@@ -1269,17 +1326,17 @@ class RackMapping extends Component
                 }
 
                 $rowBlocks[] = [
-                    'label'    => $rowLabel,
-                    'y_pos'    => $cluster['center_y'],
-                    'racks'    => $matchingRacks,
-                    'pairs'    => $pairs,
+                    'label' => $rowLabel,
+                    'y_pos' => $cluster['center_y'],
+                    'racks' => $matchingRacks,
+                    'pairs' => $pairs,
                 ];
             }
         }
 
         // Calculate dynamic summary per zone (like the summary table in the diagram)
         $zoneSummaries = [];
-        $groupedByZone = $racks->groupBy(fn($r) => $r->effective_zone);
+        $groupedByZone = $racks->groupBy(fn ($r) => $r->effective_zone);
 
         foreach ($groupedByZone as $zoneName => $zoneRacks) {
             $rackCodes = $zoneRacks->pluck('rack_code')->sort()->values();
@@ -1302,40 +1359,40 @@ class RackMapping extends Component
 
             $colorMeta = match ($zoneName) {
                 'LOGISTIC' => ['border' => 'border-emerald-500', 'badge' => 'bg-emerald-600 text-white', 'bg' => 'bg-emerald-50', 'text' => 'text-emerald-800'],
-                'STORE'    => ['border' => 'border-blue-500',    'badge' => 'bg-blue-600 text-white',    'bg' => 'bg-blue-50',    'text' => 'text-blue-800'],
-                'WIP'      => ['border' => 'border-amber-500',   'badge' => 'bg-amber-600 text-white',   'bg' => 'bg-amber-50',   'text' => 'text-amber-800'],
-                'FG'       => ['border' => 'border-purple-500',  'badge' => 'bg-purple-600 text-white',  'bg' => 'bg-purple-50',  'text' => 'text-purple-800'],
-                default    => ['border' => 'border-slate-500',   'badge' => 'bg-slate-700 text-white',   'bg' => 'bg-slate-50',   'text' => 'text-slate-800'],
+                'STORE' => ['border' => 'border-blue-500',    'badge' => 'bg-blue-600 text-white',    'bg' => 'bg-blue-50',    'text' => 'text-blue-800'],
+                'WIP' => ['border' => 'border-amber-500',   'badge' => 'bg-amber-600 text-white',   'bg' => 'bg-amber-50',   'text' => 'text-amber-800'],
+                'FG' => ['border' => 'border-purple-500',  'badge' => 'bg-purple-600 text-white',  'bg' => 'bg-purple-50',  'text' => 'text-purple-800'],
+                default => ['border' => 'border-slate-500',   'badge' => 'bg-slate-700 text-white',   'bg' => 'bg-slate-50',   'text' => 'text-slate-800'],
             };
 
             $zoneSummaries[] = [
-                'zone_name'      => $zoneName,
-                'code_range'     => $codeRange,
-                'rack_count'     => $zoneRacks->count(),
-                'level_count'    => $maxLevels,
-                'slot_count'     => $maxSlotsPerLevel,
-                'total_slots'    => $totalSlots,
+                'zone_name' => $zoneName,
+                'code_range' => $codeRange,
+                'rack_count' => $zoneRacks->count(),
+                'level_count' => $maxLevels,
+                'slot_count' => $maxSlotsPerLevel,
+                'total_slots' => $totalSlots,
                 'total_capacity' => $totalCapacity,
-                'color'          => $colorMeta,
+                'color' => $colorMeta,
             ];
         }
 
         return view('livewire.wms.rack-mapping', [
-            'warehouse'           => $warehouse,
-            'warehouses'          => $warehouses,
-            'racks'               => $racks,
-            'racksByCode'         => $racksByCode,
-            'rackRanks'           => $rackRanks,
-            'horizontalRacks'     => $horizontalRacks,
-            'horizontalWings'     => $horizontalWings,
-            'verticalRacks'       => $verticalRacks,
-            'rowBlocks'           => $rowBlocks,
-            'zoneSummaries'       => $zoneSummaries,
-            'selectedPosData'     => $selectedPosData,
-            'customers'           => $customers,
-            'unassignedPallets'   => $unassignedPallets,
+            'warehouse' => $warehouse,
+            'warehouses' => $warehouses,
+            'racks' => $racks,
+            'racksByCode' => $racksByCode,
+            'rackRanks' => $rackRanks,
+            'horizontalRacks' => $horizontalRacks,
+            'horizontalWings' => $horizontalWings,
+            'verticalRacks' => $verticalRacks,
+            'rowBlocks' => $rowBlocks,
+            'zoneSummaries' => $zoneSummaries,
+            'selectedPosData' => $selectedPosData,
+            'customers' => $customers,
+            'unassignedPallets' => $unassignedPallets,
             'matchingPositionIds' => $matchingPositionIds,
-            'searchSuggestions'   => $searchSuggestions,
+            'searchSuggestions' => $searchSuggestions,
         ]);
     }
 
@@ -1346,12 +1403,14 @@ class RackMapping extends Component
 
         for ($i = 0; $i < $racks->count(); $i++) {
             $r1 = $racks[$i];
-            if (in_array($r1->id, $usedIds)) continue;
+            if (in_array($r1->id, $usedIds)) {
+                continue;
+            }
 
             $r2 = null;
             if ($i + 1 < $racks->count()) {
                 $candidate = $racks[$i + 1];
-                if (!in_array($candidate->id, $usedIds) && abs($candidate->y_pos - $r1->y_pos) <= 65) {
+                if (! in_array($candidate->id, $usedIds) && abs($candidate->y_pos - $r1->y_pos) <= 65) {
                     $r2 = $candidate;
                 }
             }
@@ -1389,6 +1448,7 @@ class RackMapping extends Component
         $wmsService = $wmsService ?? app(WmsService::class);
         if (! $this->selectedPositionId) {
             session()->flash('error', 'Pilih slot rak terlebih dahulu.');
+
             return;
         }
 
@@ -1398,6 +1458,7 @@ class RackMapping extends Component
 
             if ($pallet->total_pallet_qty <= 0) {
                 session()->flash('error', "Pallet {$pallet->pallet_id} sudah habis (quantity 0) dan tidak perlu di-assign ke slot rak.");
+
                 return;
             }
 
@@ -1412,11 +1473,11 @@ class RackMapping extends Component
             }
             $wmsService->updatePositionStatus($pos->id);
 
-            $wmsService->logTransaction($pallet->pallet_id, 'ASSIGN_SLOT', $pos->id, "Assigned by Store from Rack Mapping");
+            $wmsService->logTransaction($pallet->pallet_id, 'ASSIGN_SLOT', $pos->id, 'Assigned by Store from Rack Mapping');
 
             session()->flash('success', "Pallet {$pallet->pallet_id} berhasil di-assign ke slot rak {$pos->position_code}.");
         } catch (\Exception $e) {
-            session()->flash('error', "Gagal assign pallet: " . $e->getMessage());
+            session()->flash('error', 'Gagal assign pallet: ' . $e->getMessage());
         }
     }
 }

@@ -18,6 +18,7 @@ class BusinessPartnerTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Role $adminRole;
 
     protected function setUp(): void

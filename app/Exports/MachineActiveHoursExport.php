@@ -3,15 +3,16 @@
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class MachineActiveHoursExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
+class MachineActiveHoursExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     protected $data;
+
     protected $no = 1;
 
     public function __construct($data)
@@ -48,7 +49,7 @@ class MachineActiveHoursExport implements FromCollection, WithHeadings, WithMapp
     {
         return [
             // Bold the header row
-            1    => ['font' => ['bold' => true]],
+            1 => ['font' => ['bold' => true]],
         ];
     }
 }

@@ -8,8 +8,6 @@ use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
-use Yajra\DataTables\Html\Editor\Editor;
-use Yajra\DataTables\Html\Editor\Fields;
 use Yajra\DataTables\Services\DataTable;
 
 class CapLineSummaryDataTable extends DataTable
@@ -18,14 +16,13 @@ class CapLineSummaryDataTable extends DataTable
      * Build DataTable class.
      *
      * @param QueryBuilder $query Results from query() method.
-     * @return \Yajra\DataTables\EloquentDataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
             ->addColumn('status', function ($row) {
-                return $row->capacity_req_percent > 100 
-                    ? 'Danger' 
+                return $row->capacity_req_percent > 100
+                    ? 'Danger'
                     : 'Normal';
             })
             ->addColumn('action', 'caplinesummary.action')
@@ -34,15 +31,12 @@ class CapLineSummaryDataTable extends DataTable
             ->setRowAttr([
                 'class' => function ($row) {
                     return $row->capacity_req_percent > 100 ? 'text-red-500' : 'text-green-500';
-                }
+                },
             ]);
     }
 
     /**
      * Get query source of dataTable.
-     *
-     * @param \App\Models\CapLineSummary $model
-     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function query(CapLineSummary $model): QueryBuilder
     {
@@ -51,48 +45,44 @@ class CapLineSummaryDataTable extends DataTable
 
     /**
      * Optional method if you want to use html builder.
-     *
-     * @return \Yajra\DataTables\Html\Builder
      */
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('caplinesummary-table')
-                    ->columns($this->getColumns())
-                    ->minifiedAjax()
-                    ->dom('<"flex justify-between items-center mb-4"lfB>t<"flex justify-between items-center mt-4"ip>')
-                    ->orderBy(1)
-                    ->selectStyleSingle()
-                    ->buttons([
-                        Button::make('excel'),
-                        Button::make('csv'),
-                        Button::make('pdf'),
-                        Button::make('print'),
-                        Button::make('reset'),
-                        Button::make('reload')
-                    ])
-                    ->language([
-                        'paginate' => [
-                            'previous' => '←',
-                            'next' => '→',
-                        ],
-                        'search' => 'Search:',
-                        'lengthMenu' => 'Show _MENU_ entries',
-                        'info' => 'Showing _START_ to _END_ of _TOTAL_ entries',
-                    ])
-                    ->parameters([
-                        'columnDefs' => [
-                            ['className' => 'px-4 py-2 border', 'targets' => '_all'], // Tailwind padding for all columns
-                        ],
-                        'pageLength' => 25, // Default to show 25 rows
-                        'lengthMenu' => [10, 25, 50, 100],
-                    ]);
+            ->setTableId('caplinesummary-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('<"flex justify-between items-center mb-4"lfB>t<"flex justify-between items-center mt-4"ip>')
+            ->orderBy(1)
+            ->selectStyleSingle()
+            ->buttons([
+                Button::make('excel'),
+                Button::make('csv'),
+                Button::make('pdf'),
+                Button::make('print'),
+                Button::make('reset'),
+                Button::make('reload'),
+            ])
+            ->language([
+                'paginate' => [
+                    'previous' => '←',
+                    'next' => '→',
+                ],
+                'search' => 'Search:',
+                'lengthMenu' => 'Show _MENU_ entries',
+                'info' => 'Showing _START_ to _END_ of _TOTAL_ entries',
+            ])
+            ->parameters([
+                'columnDefs' => [
+                    ['className' => 'px-4 py-2 border', 'targets' => '_all'], // Tailwind padding for all columns
+                ],
+                'pageLength' => 25, // Default to show 25 rows
+                'lengthMenu' => [10, 25, 50, 100],
+            ]);
     }
 
     /**
      * Get the dataTable columns definition.
-     *
-     * @return array
      */
     public function getColumns(): array
     {
@@ -113,8 +103,6 @@ class CapLineSummaryDataTable extends DataTable
 
     /**
      * Get filename for export.
-     *
-     * @return string
      */
     protected function filename(): string
     {

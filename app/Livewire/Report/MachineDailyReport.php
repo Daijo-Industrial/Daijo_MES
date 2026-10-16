@@ -8,28 +8,38 @@ use App\Models\ProductionNgDetail;
 use App\Models\ProductionNgType;
 use App\Models\User;
 use Carbon\Carbon;
-use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Component;
 
 #[Layout('layouts.dashboard')]
 class MachineDailyReport extends Component
 {
     public $selectedDate;
+
     public $selectedMachineId;
+
     public $selectedItemCode = '';
+
     public bool $isPpicView = false;
-    
+
     public bool $showChecklistModal = false;
+
     public $checklistHeader = null;
+
     public $checklistItems = [];
 
     public bool $showLotModal = false;
+
     public $editingPlanId = null;
+
     public $editingMaterialLot = '';
 
     public bool $showAccessoryModal = false;
+
     public $selectedPlanIdForAcc = null;
+
     public $newAccName = '';
+
     public $newAccLot = '';
 
     public function openLotModal($planId)
@@ -114,7 +124,9 @@ class MachineDailyReport extends Component
 
     public function openChecklistModal()
     {
-        if (!$this->selectedMachineId) return;
+        if (! $this->selectedMachineId) {
+            return;
+        }
 
         $this->checklistHeader = \App\Models\MaintenanceCheckHeader::where('machine_id', $this->selectedMachineId)
             ->where('date', $this->selectedDate)
@@ -167,7 +179,7 @@ class MachineDailyReport extends Component
     public function mount()
     {
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated.');
         }
 
@@ -176,32 +188,32 @@ class MachineDailyReport extends Component
 
         if ($this->isPpicView) {
             // Access control for PPIC / Admin view
-            if (!$user->hasRole('PPIC') && !$user->hasRole('ADMIN') && !$user->hasRole('SUPER-ADMIN')) {
+            if (! $user->hasRole('PPIC') && ! $user->hasRole('ADMIN') && ! $user->hasRole('SUPER-ADMIN')) {
                 abort(403, 'Unauthorized. Access is restricted to PPIC and Administrators.');
             }
-            
+
             // Set default selected date if empty
-            if (!$this->selectedDate) {
+            if (! $this->selectedDate) {
                 $this->selectedDate = Carbon::today('Asia/Jakarta')->format('Y-m-d');
             }
 
             // Load default machine if empty
-            if (!$this->selectedMachineId) {
-                $firstMachine = User::whereHas('role', function($q) {
+            if (! $this->selectedMachineId) {
+                $firstMachine = User::whereHas('role', function ($q) {
                     $q->where('name', 'OPERATOR');
                 })->orderBy('name')->first();
                 $this->selectedMachineId = $firstMachine?->id;
             }
         } else {
             // Access control for Operator view
-            if (!$user->hasRole('OPERATOR') && !$user->hasRole('ADMIN') && !$user->hasRole('SUPER-ADMIN')) {
+            if (! $user->hasRole('OPERATOR') && ! $user->hasRole('ADMIN') && ! $user->hasRole('SUPER-ADMIN')) {
                 abort(403, 'Unauthorized. Access is restricted to Operators.');
             }
 
             // Operators are locked to their own user/machine record
             $this->selectedMachineId = $user->id;
-            
-            if (!$this->selectedDate) {
+
+            if (! $this->selectedDate) {
                 $this->selectedDate = Carbon::today('Asia/Jakarta')->format('Y-m-d');
             }
         }
@@ -211,7 +223,7 @@ class MachineDailyReport extends Component
     {
         // 1. Get Machines list (only needed for dropdown in PPIC view)
         $machines = $this->isPpicView
-            ? User::whereHas('role', fn($q) => $q->where('name', 'OPERATOR'))->orderBy('name')->get()
+            ? User::whereHas('role', fn ($q) => $q->where('name', 'OPERATOR'))->orderBy('name')->get()
             : collect();
 
         $selectedMachine = User::find($this->selectedMachineId);
@@ -226,13 +238,14 @@ class MachineDailyReport extends Component
                 ->with(['masterItem.customer', 'scannedData', 'accessoryLots'])
                 ->orderBy('shift', 'asc')
                 ->get();
-                
+
             $dicIds = $dailyPlans->pluck('id');
         }
 
         // Available distinct item codes for dropdown filter
-        $availableItems = $dailyPlans->mapWithKeys(function($plan) {
+        $availableItems = $dailyPlans->mapWithKeys(function ($plan) {
             $name = optional($plan->masterItem)->item_name ?? optional($plan->masterItem)->part_name ?? $plan->item_code;
+
             return [$plan->item_code => $name];
         })->all();
 
@@ -248,9 +261,9 @@ class MachineDailyReport extends Component
         foreach ([1, 2, 3] as $shift) {
             foreach (self::$shiftSlots[$shift] as $hourIdx => $slot) {
                 // Find matching remark in DB
-                $remark = $hourlyRemarks->first(function($r) use ($shift, $slot) {
-                    return $r->dailyItemCode->shift == $shift 
-                        && $r->start_time == $slot['start'] 
+                $remark = $hourlyRemarks->first(function ($r) use ($shift, $slot) {
+                    return $r->dailyItemCode->shift == $shift
+                        && $r->start_time == $slot['start']
                         && $r->end_time == $slot['end'];
                 });
 
@@ -315,12 +328,18 @@ class MachineDailyReport extends Component
         // 6. Operator names per shift (derived from unique HourlyRemark PICs: pic, pic_2, pic_3)
         $operatorNames = [1 => '-', 2 => '-', 3 => '-'];
         foreach ([1, 2, 3] as $shift) {
-            $shiftRemarks = $hourlyRemarks->filter(fn($r) => $r->dailyItemCode->shift == $shift);
+            $shiftRemarks = $hourlyRemarks->filter(fn ($r) => $r->dailyItemCode->shift == $shift);
             $pics = collect();
             foreach ($shiftRemarks as $r) {
-                if (!empty($r->pic) && $r->pic !== '-') $pics->push($r->pic);
-                if (!empty($r->pic_2) && $r->pic_2 !== '-') $pics->push($r->pic_2);
-                if (!empty($r->pic_3) && $r->pic_3 !== '-') $pics->push($r->pic_3);
+                if (! empty($r->pic) && $r->pic !== '-') {
+                    $pics->push($r->pic);
+                }
+                if (! empty($r->pic_2) && $r->pic_2 !== '-') {
+                    $pics->push($r->pic_2);
+                }
+                if (! empty($r->pic_3) && $r->pic_3 !== '-') {
+                    $pics->push($r->pic_3);
+                }
             }
             $pics = $pics->unique();
             if ($pics->isNotEmpty()) {
@@ -343,7 +362,7 @@ class MachineDailyReport extends Component
                 ->get();
 
             foreach ($ngDetails as $detail) {
-                $shift = (int)($detail->hourlyRemark->dailyItemCode->shift ?? 1);
+                $shift = (int) ($detail->hourlyRemark->dailyItemCode->shift ?? 1);
                 if (isset($defectMatrix[$shift][$detail->ng_type_id])) {
                     $defectMatrix[$shift][$detail->ng_type_id] += $detail->ng_quantity;
                 }
@@ -352,7 +371,7 @@ class MachineDailyReport extends Component
 
         // 8. Calculate aggregate actual metrics for OK and NG
         $filteredPlans = $this->selectedItemCode ? $dailyPlans->where('item_code', $this->selectedItemCode) : $dailyPlans;
-        $filteredRemarks = $this->selectedItemCode ? $hourlyRemarks->filter(fn($r) => $r->dailyItemCode?->item_code === $this->selectedItemCode) : $hourlyRemarks;
+        $filteredRemarks = $this->selectedItemCode ? $hourlyRemarks->filter(fn ($r) => $r->dailyItemCode?->item_code === $this->selectedItemCode) : $hourlyRemarks;
 
         $totals = [
             'planned_target' => $filteredPlans->sum('quantity'),

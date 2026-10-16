@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\Admin\BranchDepartmentManager;
 use App\Livewire\Admin\UserRoleManager;
-use App\Livewire\Common\PlantSwitcher;
 use App\Models\Branch;
 use App\Models\DailyItemCode;
 use App\Models\Department;
@@ -22,12 +21,19 @@ class BranchDepartmentManagementTest extends TestCase
     use RefreshDatabase;
 
     protected Role $superAdminRole;
+
     protected Role $operatorRole;
+
     protected User $superAdmin;
+
     protected User $standardUser;
+
     protected Branch $jktBranch;
+
     protected Branch $krwBranch;
+
     protected Department $prodDept;
+
     protected Department $qcDept;
 
     protected function setUp(): void

@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\BelongsToBranch;
 
 class MwhWarehouse extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToBranch;
+    use BelongsToBranch, HasFactory, SoftDeletes;
 
     protected $table = 'mwh_warehouses';
 

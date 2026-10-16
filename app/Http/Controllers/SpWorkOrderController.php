@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\MasterListItem;
-use App\Models\SpWorkOrder;
 use App\Models\FirstPieceInspection;
-use Carbon\Carbon;
+use App\Models\SpWorkOrder;
 use Illuminate\Http\Request;
 
 class SpWorkOrderController extends Controller
@@ -81,9 +79,9 @@ class SpWorkOrderController extends Controller
 
             $validated['planned_date'] = $validated['planned_date'] ?? now()->toDateString();
             $cust = $request->input('customer');
-            $validated['customer'] = (!empty($cust) && $cust !== '0' && $cust !== '-') ? $cust : 'N/A';
+            $validated['customer'] = (! empty($cust) && $cust !== '0' && $cust !== '-') ? $cust : 'N/A';
             $mod = $request->input('model');
-            $validated['model'] = (!empty($mod) && $mod !== '0' && $mod !== '-') ? $mod : 'N/A';
+            $validated['model'] = (! empty($mod) && $mod !== '0' && $mod !== '-') ? $mod : 'N/A';
             $validated['target_qty'] = $validated['target_qty'] ?? 0;
             $validated['status'] = 'draft';
         } else {
@@ -99,9 +97,9 @@ class SpWorkOrderController extends Controller
                 'target_qty' => 'required|integer|min:1',
             ]);
             $cust = $request->input('customer');
-            $validated['customer'] = (!empty($cust) && $cust !== '0' && $cust !== '-') ? $cust : 'N/A';
+            $validated['customer'] = (! empty($cust) && $cust !== '0' && $cust !== '-') ? $cust : 'N/A';
             $mod = $request->input('model');
-            $validated['model'] = (!empty($mod) && $mod !== '0' && $mod !== '-') ? $mod : 'N/A';
+            $validated['model'] = (! empty($mod) && $mod !== '0' && $mod !== '-') ? $mod : 'N/A';
             $validated['status'] = 'planned';
         }
 
@@ -109,8 +107,8 @@ class SpWorkOrderController extends Controller
 
         $wo = SpWorkOrder::create($validated);
 
-        $msg = $isDraft 
-            ? "Work Order {$wo->wo_number} saved as draft." 
+        $msg = $isDraft
+            ? "Work Order {$wo->wo_number} saved as draft."
             : "Work Order {$wo->wo_number} created and released successfully.";
 
         return redirect()->route('sp-work-orders.show', $wo->id)->with('success', $msg);
@@ -120,7 +118,7 @@ class SpWorkOrderController extends Controller
     {
         $workOrder = SpWorkOrder::with(['creator', 'sessions.operator', 'sessions.productionEntries', 'sessions.rejectEntries', 'sessions.downtimeEntries', 'sessions.manpowerEntries'])->findOrFail($id);
 
-        $firstPiece = $workOrder->latestFirstPieceInspection 
+        $firstPiece = $workOrder->latestFirstPieceInspection
             ?? FirstPieceInspection::where('part_number', $workOrder->part_number)
                 ->whereDate('date', $workOrder->planned_date)
                 ->orderBy('id', 'desc')
@@ -184,14 +182,14 @@ class SpWorkOrderController extends Controller
         }
 
         $cust = $request->input('customer');
-        $validated['customer'] = (!empty($cust) && $cust !== '0' && $cust !== '-') ? $cust : 'N/A';
+        $validated['customer'] = (! empty($cust) && $cust !== '0' && $cust !== '-') ? $cust : 'N/A';
         $mod = $request->input('model');
-        $validated['model'] = (!empty($mod) && $mod !== '0' && $mod !== '-') ? $mod : 'N/A';
+        $validated['model'] = (! empty($mod) && $mod !== '0' && $mod !== '-') ? $mod : 'N/A';
 
         $workOrder->update($validated);
 
-        $msg = $isDraft 
-            ? "Draft Work Order {$workOrder->wo_number} updated." 
+        $msg = $isDraft
+            ? "Draft Work Order {$workOrder->wo_number} updated."
             : "Work Order {$workOrder->wo_number} updated and released to production.";
 
         return redirect()->route('sp-work-orders.show', $workOrder->id)->with('success', $msg);
@@ -212,9 +210,9 @@ class SpWorkOrderController extends Controller
         }
 
         $cust = $workOrder->customer;
-        $cleanCust = (!empty($cust) && $cust !== '0' && $cust !== '-') ? $cust : 'N/A';
+        $cleanCust = (! empty($cust) && $cust !== '0' && $cust !== '-') ? $cust : 'N/A';
         $mod = $workOrder->model;
-        $cleanMod = (!empty($mod) && $mod !== '0' && $mod !== '-') ? $mod : 'N/A';
+        $cleanMod = (! empty($mod) && $mod !== '0' && $mod !== '-') ? $mod : 'N/A';
 
         $workOrder->update([
             'customer' => $cleanCust,
@@ -250,7 +248,7 @@ class SpWorkOrderController extends Controller
     {
         $workOrder = SpWorkOrder::findOrFail($id);
 
-        if (!in_array($workOrder->status, ['draft', 'planned'])) {
+        if (! in_array($workOrder->status, ['draft', 'planned'])) {
             return redirect()->back()
                 ->with('error', 'Cannot delete Work Orders that are already in progress or completed.');
         }

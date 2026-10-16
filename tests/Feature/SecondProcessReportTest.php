@@ -821,7 +821,7 @@ class SecondProcessReportTest extends TestCase
 
         $report = SecondProcessReport::where('part_number', 'PART-TROUBLE-POP')->first();
         $this->assertNotNull($report);
-        
+
         $troubles = SecondProcessTrouble::where('report_id', $report->id)->get();
         $this->assertCount(2, $troubles);
 
@@ -2260,6 +2260,3 @@ class SecondProcessReportTest extends TestCase
         $this->assertContains('Clear Coat', $savedNames);
     }
 }
-
-
-

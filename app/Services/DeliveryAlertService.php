@@ -33,7 +33,7 @@ class DeliveryAlertService
             ->groupBy('delivery_date');
 
         return (object) [
-            'wip'   => $wip,
+            'wip' => $wip,
             'final' => $final,
         ];
     }

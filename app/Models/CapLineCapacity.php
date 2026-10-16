@@ -8,5 +8,4 @@ use Illuminate\Database\Eloquent\Model;
 class CapLineCapacity extends Model
 {
     use HasFactory;
-   
 }

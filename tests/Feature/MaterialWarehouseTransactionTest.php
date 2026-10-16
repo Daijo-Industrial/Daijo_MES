@@ -41,7 +41,7 @@ class MaterialWarehouseTransactionTest extends TestCase
         Schema::dropIfExists('mwh_pallets');
         Schema::dropIfExists('mwh_incoming_headers');
 
-        if (!Schema::hasTable('mwh_warehouses')) {
+        if (! Schema::hasTable('mwh_warehouses')) {
             Schema::create('mwh_warehouses', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->string('whse_code')->unique();
@@ -51,7 +51,7 @@ class MaterialWarehouseTransactionTest extends TestCase
             });
         }
 
-        if (!Schema::hasTable('mwh_racks')) {
+        if (! Schema::hasTable('mwh_racks')) {
             Schema::create('mwh_racks', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->foreignId('whse_id');
@@ -61,7 +61,7 @@ class MaterialWarehouseTransactionTest extends TestCase
             });
         }
 
-        if (!Schema::hasTable('mwh_positions')) {
+        if (! Schema::hasTable('mwh_positions')) {
             Schema::create('mwh_positions', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->foreignId('rack_id');
@@ -77,7 +77,7 @@ class MaterialWarehouseTransactionTest extends TestCase
             });
         }
 
-        if (!Schema::hasTable('master_list_materials')) {
+        if (! Schema::hasTable('master_list_materials')) {
             Schema::create('master_list_materials', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->string('item_code', 100)->unique();
@@ -89,7 +89,7 @@ class MaterialWarehouseTransactionTest extends TestCase
             });
         }
 
-        if (!Schema::hasTable('mwh_incoming_headers')) {
+        if (! Schema::hasTable('mwh_incoming_headers')) {
             Schema::create('mwh_incoming_headers', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->foreignId('whse_id')->nullable();
@@ -106,7 +106,7 @@ class MaterialWarehouseTransactionTest extends TestCase
             });
         }
 
-        if (!Schema::hasTable('mwh_pallets')) {
+        if (! Schema::hasTable('mwh_pallets')) {
             Schema::create('mwh_pallets', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->foreignId('whse_id')->nullable();
@@ -127,7 +127,7 @@ class MaterialWarehouseTransactionTest extends TestCase
             });
         }
 
-        if (!Schema::hasTable('mwh_outgoings')) {
+        if (! Schema::hasTable('mwh_outgoings')) {
             Schema::create('mwh_outgoings', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->foreignId('whse_id')->nullable();
@@ -145,7 +145,7 @@ class MaterialWarehouseTransactionTest extends TestCase
             });
         }
 
-        if (!Schema::hasTable('roles')) {
+        if (! Schema::hasTable('roles')) {
             Schema::create('roles', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->string('name');
@@ -153,7 +153,7 @@ class MaterialWarehouseTransactionTest extends TestCase
             });
         }
 
-        if (!Schema::hasTable('users')) {
+        if (! Schema::hasTable('users')) {
             Schema::create('users', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->string('name');
@@ -170,9 +170,9 @@ class MaterialWarehouseTransactionTest extends TestCase
         $wh = MwhWarehouse::firstOrCreate(['whse_code' => 'MTR-01'], ['whse_name' => 'Gudang Material']);
         $rack = MwhRack::firstOrCreate(['whse_id' => $wh->id, 'rack_code' => 'RAK-A1']);
         $pos = MwhPosition::firstOrCreate([
-            'rack_id'       => $rack->id,
-            'level_no'      => 1,
-            'slot_no'       => 1,
+            'rack_id' => $rack->id,
+            'level_no' => 1,
+            'slot_no' => 1,
             'position_code' => 'RAK-A1-L01-S01',
         ], ['max_capacity' => 2000]);
 
@@ -180,14 +180,14 @@ class MaterialWarehouseTransactionTest extends TestCase
             'item_code' => '180-CN890-FL',
         ], [
             'item_description' => 'SPK CORD 22AWG 3M TR TUBE W-B',
-            'purchasing_uom'   => 'PCS',
+            'purchasing_uom' => 'PCS',
         ]);
 
         $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Admin User',
-            'email'    => 'admin_' . uniqid() . '@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Admin User',
+            'email' => 'admin_' . uniqid() . '@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -219,20 +219,20 @@ class MaterialWarehouseTransactionTest extends TestCase
         $wh = MwhWarehouse::firstOrCreate(['whse_code' => 'MTR-01'], ['whse_name' => 'Gudang Material']);
         $rack = MwhRack::firstOrCreate(['whse_id' => $wh->id, 'rack_code' => 'RAK-A1']);
         $pos = MwhPosition::firstOrCreate([
-            'rack_id'       => $rack->id,
-            'level_no'      => 1,
-            'slot_no'       => 2,
+            'rack_id' => $rack->id,
+            'level_no' => 1,
+            'slot_no' => 2,
             'position_code' => 'RAK-A1-L01-S02',
         ], ['max_capacity' => 1000]);
 
         $pallet = MwhPallet::create([
-            'pallet_id'   => 'MPLT-TEST-001',
-            'item_code'   => '180-CN890-FL',
+            'pallet_id' => 'MPLT-TEST-001',
+            'item_code' => '180-CN890-FL',
             'initial_qty' => 800.00,
             'current_qty' => 800.00,
-            'uom'         => 'KG',
+            'uom' => 'KG',
             'position_id' => $pos->id,
-            'status'      => 'STORED',
+            'status' => 'STORED',
         ]);
 
         $mwhService->updatePositionStatus($pos->id);
@@ -255,9 +255,9 @@ class MaterialWarehouseTransactionTest extends TestCase
     {
         $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Admin User',
-            'email'    => 'admin_' . uniqid() . '@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Admin User',
+            'email' => 'admin_' . uniqid() . '@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -275,26 +275,26 @@ class MaterialWarehouseTransactionTest extends TestCase
         $wh = MwhWarehouse::firstOrCreate(['whse_code' => 'MTR-01'], ['whse_name' => 'Gudang Material']);
         $rack = MwhRack::firstOrCreate(['whse_id' => $wh->id, 'rack_code' => 'RAK-B1']);
         $pos = MwhPosition::firstOrCreate([
-            'rack_id'       => $rack->id,
-            'level_no'      => 1,
-            'slot_no'       => 1,
+            'rack_id' => $rack->id,
+            'level_no' => 1,
+            'slot_no' => 1,
             'position_code' => 'RAK-B1-L01-S01',
         ], ['max_capacity' => 1000]);
 
         $pallet = MwhPallet::create([
-            'pallet_id'   => 'MPLT-SEARCH-999',
-            'item_code'   => 'SEARCH-ITEM-01',
+            'pallet_id' => 'MPLT-SEARCH-999',
+            'item_code' => 'SEARCH-ITEM-01',
             'initial_qty' => 750.00,
             'current_qty' => 750.00,
             'position_id' => $pos->id,
-            'status'      => 'STORED',
+            'status' => 'STORED',
         ]);
 
         $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Admin User',
-            'email'    => 'admin_' . uniqid() . '@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Admin User',
+            'email' => 'admin_' . uniqid() . '@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -316,9 +316,9 @@ class MaterialWarehouseTransactionTest extends TestCase
         $wh = MwhWarehouse::firstOrCreate(['whse_code' => 'MTR-01'], ['whse_name' => 'Gudang Material']);
         $rack = MwhRack::firstOrCreate(['whse_id' => $wh->id, 'rack_code' => 'RAK-C1']);
         $pos = MwhPosition::firstOrCreate([
-            'rack_id'       => $rack->id,
-            'level_no'      => 1,
-            'slot_no'       => 1,
+            'rack_id' => $rack->id,
+            'level_no' => 1,
+            'slot_no' => 1,
             'position_code' => 'RAK-C1-L01-S01',
         ], ['max_capacity' => 1000]);
 
@@ -326,14 +326,14 @@ class MaterialWarehouseTransactionTest extends TestCase
             'item_code' => 'MAT-DIRECT-01',
         ], [
             'item_description' => 'Direct Test Material',
-            'purchasing_uom'   => 'KG',
+            'purchasing_uom' => 'KG',
         ]);
 
         $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Admin User',
-            'email'    => 'admin_' . uniqid() . '@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Admin User',
+            'email' => 'admin_' . uniqid() . '@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -375,11 +375,11 @@ class MaterialWarehouseTransactionTest extends TestCase
     public function test_public_pallet_lookup_accessible_without_authentication()
     {
         $pallet = MwhPallet::create([
-            'pallet_id'   => 'MPLT-PUBLIC-777',
-            'item_code'   => 'PUBLIC-ITEM-01',
+            'pallet_id' => 'MPLT-PUBLIC-777',
+            'item_code' => 'PUBLIC-ITEM-01',
             'initial_qty' => 500.00,
             'current_qty' => 500.00,
-            'status'      => 'STORED',
+            'status' => 'STORED',
         ]);
 
         // Unsigned request should be rejected with 403 Forbidden
@@ -401,11 +401,11 @@ class MaterialWarehouseTransactionTest extends TestCase
 
         $p1Code = $mwhService->generatePalletId();
         $p1 = MwhPallet::create([
-            'pallet_id'   => $p1Code,
-            'item_code'   => 'TEST-ITEM-DUP',
+            'pallet_id' => $p1Code,
+            'item_code' => 'TEST-ITEM-DUP',
             'initial_qty' => 100,
             'current_qty' => 100,
-            'status'      => 'STORED',
+            'status' => 'STORED',
         ]);
 
         // Soft delete p1
@@ -418,11 +418,11 @@ class MaterialWarehouseTransactionTest extends TestCase
 
         // Creating p2 must succeed without Duplicate Entry exception
         $p2 = MwhPallet::create([
-            'pallet_id'   => $p2Code,
-            'item_code'   => 'TEST-ITEM-DUP',
+            'pallet_id' => $p2Code,
+            'item_code' => 'TEST-ITEM-DUP',
             'initial_qty' => 200,
             'current_qty' => 200,
-            'status'      => 'STORED',
+            'status' => 'STORED',
         ]);
 
         $this->assertDatabaseHas('mwh_pallets', ['pallet_id' => $p2Code, 'deleted_at' => null]);
@@ -441,12 +441,12 @@ class MaterialWarehouseTransactionTest extends TestCase
         $mwhService = app(MaterialWarehouseService::class);
 
         $pallet = MwhPallet::create([
-            'pallet_id'      => 'MPLT-QCHOLD-001',
-            'item_code'      => 'MAT-QCHOLD-99',
-            'initial_qty'    => 500.00,
-            'current_qty'    => 500.00,
-            'status'         => 'STORED',
-            'is_qc_hold'     => true,
+            'pallet_id' => 'MPLT-QCHOLD-001',
+            'item_code' => 'MAT-QCHOLD-99',
+            'initial_qty' => 500.00,
+            'current_qty' => 500.00,
+            'status' => 'STORED',
+            'is_qc_hold' => true,
             'qc_hold_reason' => 'Warna tidak sesuai spesifikasi QC',
         ]);
 
@@ -463,33 +463,33 @@ class MaterialWarehouseTransactionTest extends TestCase
             'item_code' => 'MAT-STOCKCARD-01',
         ], [
             'item_description' => 'RESIN ABS NATURAL HI-IMPACT',
-            'purchasing_uom'   => 'KG',
+            'purchasing_uom' => 'KG',
         ]);
 
         $pallet = MwhPallet::create([
-            'pallet_id'   => 'MPLT-SC-001',
-            'item_code'   => 'MAT-STOCKCARD-01',
+            'pallet_id' => 'MPLT-SC-001',
+            'item_code' => 'MAT-STOCKCARD-01',
             'initial_qty' => 1000.00,
             'current_qty' => 750.00,
-            'uom'         => 'KG',
-            'status'      => 'PARTIAL',
+            'uom' => 'KG',
+            'status' => 'PARTIAL',
         ]);
 
         \App\Models\MwhOutgoing::create([
             'outgoing_code' => 'OUT-SC-001',
-            'pallet_id'     => 'MPLT-SC-001',
-            'item_code'     => 'MAT-STOCKCARD-01',
-            'qty_taken'     => 250.00,
-            'uom'           => 'KG',
+            'pallet_id' => 'MPLT-SC-001',
+            'item_code' => 'MAT-STOCKCARD-01',
+            'qty_taken' => 250.00,
+            'uom' => 'KG',
             'outgoing_date' => now()->toDateString(),
-            'issued_to'     => 'PRODUKSI MOLDING 01',
+            'issued_to' => 'PRODUKSI MOLDING 01',
         ]);
 
         $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'StockCard User',
-            'email'    => 'stockcard_' . uniqid() . '@example.com',
-            'role_id'  => $role->id,
+            'name' => 'StockCard User',
+            'email' => 'stockcard_' . uniqid() . '@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -510,34 +510,34 @@ class MaterialWarehouseTransactionTest extends TestCase
 
         $rackKbn = MwhRack::create(['whse_id' => $kbn->id, 'rack_code' => 'RAK-KBN-01']);
         $posKbn = MwhPosition::create([
-            'rack_id'       => $rackKbn->id,
-            'level_no'      => 1,
-            'slot_no'       => 1,
+            'rack_id' => $rackKbn->id,
+            'level_no' => 1,
+            'slot_no' => 1,
             'position_code' => 'RAK-KBN-01-L01-S01',
-            'max_capacity'  => 1000,
+            'max_capacity' => 1000,
         ]);
 
         $rackKrw = MwhRack::create(['whse_id' => $krw->id, 'rack_code' => 'RAK-KRW-01']);
         $posKrw = MwhPosition::create([
-            'rack_id'       => $rackKrw->id,
-            'level_no'      => 1,
-            'slot_no'       => 1,
+            'rack_id' => $rackKrw->id,
+            'level_no' => 1,
+            'slot_no' => 1,
             'position_code' => 'RAK-KRW-01-L01-S01',
-            'max_capacity'  => 1000,
+            'max_capacity' => 1000,
         ]);
 
         $mat = MasterListMaterial::firstOrCreate([
             'item_code' => 'MAT-BRANCH-TEST',
         ], [
             'item_description' => 'TEST RESIN FOR BRANCH SEPARATION',
-            'purchasing_uom'   => 'KG',
+            'purchasing_uom' => 'KG',
         ]);
 
         $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Branch User',
-            'email'    => 'branch_' . uniqid() . '@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Branch User',
+            'email' => 'branch_' . uniqid() . '@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -584,9 +584,9 @@ class MaterialWarehouseTransactionTest extends TestCase
         $wh = MwhWarehouse::firstOrCreate(['whse_code' => 'MTR-01'], ['whse_name' => 'Gudang Material']);
         $rack = MwhRack::firstOrCreate(['whse_id' => $wh->id, 'rack_code' => 'RAK-DIR']);
         $pos = MwhPosition::firstOrCreate([
-            'rack_id'       => $rack->id,
-            'level_no'      => 1,
-            'slot_no'       => 1,
+            'rack_id' => $rack->id,
+            'level_no' => 1,
+            'slot_no' => 1,
             'position_code' => 'RAK-DIR-L01-S01',
         ], ['max_capacity' => 1000]);
 
@@ -594,14 +594,14 @@ class MaterialWarehouseTransactionTest extends TestCase
             'item_code' => '400-TBP7JA127BLU',
         ], [
             'item_description' => 'ABS CLEAR BLUE 244 TBP7JA127',
-            'purchasing_uom'   => 'KG',
+            'purchasing_uom' => 'KG',
         ]);
 
         $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Store User',
-            'email'    => 'store_' . uniqid() . '@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Store User',
+            'email' => 'store_' . uniqid() . '@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -641,24 +641,24 @@ class MaterialWarehouseTransactionTest extends TestCase
 
         // 4. Test legacy pallet without initial_position_id fallback to outgoings history
         $legacyPallet = MwhPallet::create([
-            'whse_id'             => $wh->id,
-            'pallet_id'           => 'MPLT-LEGACY-001',
-            'item_code'           => '400-TBP7JA127BLU',
-            'initial_qty'         => 500,
-            'current_qty'         => 0,
-            'position_id'         => null,
+            'whse_id' => $wh->id,
+            'pallet_id' => 'MPLT-LEGACY-001',
+            'item_code' => '400-TBP7JA127BLU',
+            'initial_qty' => 500,
+            'current_qty' => 0,
+            'position_id' => null,
             'initial_position_id' => null,
-            'status'              => 'EMPTY',
-            'created_at'          => '2026-08-20 08:00:00',
+            'status' => 'EMPTY',
+            'created_at' => '2026-08-20 08:00:00',
         ]);
 
         \App\Models\MwhOutgoing::create([
-            'whse_id'       => $wh->id,
+            'whse_id' => $wh->id,
             'outgoing_code' => 'OUT-LEGACY-001',
-            'pallet_id'     => 'MPLT-LEGACY-001',
-            'position_id'   => $pos->id,
-            'item_code'     => '400-TBP7JA127BLU',
-            'qty_taken'     => 500,
+            'pallet_id' => 'MPLT-LEGACY-001',
+            'position_id' => $pos->id,
+            'item_code' => '400-TBP7JA127BLU',
+            'qty_taken' => 500,
             'outgoing_date' => '2026-08-20',
         ]);
 
@@ -689,13 +689,13 @@ class MaterialWarehouseTransactionTest extends TestCase
             ->set('arrival_date', '2026-10-15')
             ->set('items', [
                 [
-                    'item_code'        => 'RAW-TMP-PP',
+                    'item_code' => 'RAW-TMP-PP',
                     'item_description' => 'Polypropylene Temporary Resin Test',
-                    'lot_no'           => 'LOT-KBN-01',
-                    'qty'              => '2500',
-                    'position_id'      => 'TEMPORARY',
-                    'searchResults'    => [],
-                ]
+                    'lot_no' => 'LOT-KBN-01',
+                    'qty' => '2500',
+                    'position_id' => 'TEMPORARY',
+                    'searchResults' => [],
+                ],
             ])
             ->call('saveIncoming')
             ->assertHasNoErrors()
@@ -719,13 +719,13 @@ class MaterialWarehouseTransactionTest extends TestCase
             ->set('arrival_date', '2026-10-15')
             ->set('items', [
                 [
-                    'item_code'        => 'RAW-TMP-PP',
+                    'item_code' => 'RAW-TMP-PP',
                     'item_description' => 'Polypropylene Temporary Resin Test',
-                    'lot_no'           => 'LOT-KRW-01',
-                    'qty'              => '1500',
-                    'position_id'      => 'TEMPORARY',
-                    'searchResults'    => [],
-                ]
+                    'lot_no' => 'LOT-KRW-01',
+                    'qty' => '1500',
+                    'position_id' => 'TEMPORARY',
+                    'searchResults' => [],
+                ],
             ])
             ->call('saveIncoming')
             ->assertHasNoErrors()
@@ -748,23 +748,23 @@ class MaterialWarehouseTransactionTest extends TestCase
 
         $rack = MwhRack::create(['whse_id' => $kbnWh->id, 'rack_code' => 'RAK-TMP-A']);
         $slot = MwhPosition::create([
-            'rack_id'       => $rack->id,
-            'level_no'      => 1,
-            'slot_no'       => 1,
+            'rack_id' => $rack->id,
+            'level_no' => 1,
+            'slot_no' => 1,
             'position_code' => 'RAK-TMP-A-L01-S01',
-            'status'        => 'EMPTY',
-            'max_capacity'  => 1000,
+            'status' => 'EMPTY',
+            'max_capacity' => 1000,
         ]);
 
         $pallet = MwhPallet::create([
-            'whse_id'             => $kbnWh->id,
-            'pallet_id'           => 'MPLT-TMP-RELOC-1',
-            'item_code'           => 'RAW-TMP-PP',
-            'initial_qty'         => 800,
-            'current_qty'         => 800,
-            'position_id'         => null,
+            'whse_id' => $kbnWh->id,
+            'pallet_id' => 'MPLT-TMP-RELOC-1',
+            'item_code' => 'RAW-TMP-PP',
+            'initial_qty' => 800,
+            'current_qty' => 800,
+            'position_id' => null,
             'initial_position_id' => null,
-            'status'              => 'STORED',
+            'status' => 'STORED',
         ]);
 
         $this->assertTrue($pallet->isTemporary());
@@ -797,23 +797,23 @@ class MaterialWarehouseTransactionTest extends TestCase
 
         $rack = MwhRack::create(['whse_id' => $krwWh->id, 'rack_code' => 'RAK-MAP-KRW']);
         $slot = MwhPosition::create([
-            'rack_id'       => $rack->id,
-            'level_no'      => 1,
-            'slot_no'       => 1,
+            'rack_id' => $rack->id,
+            'level_no' => 1,
+            'slot_no' => 1,
             'position_code' => 'RAK-MAP-KRW-L01-S01',
-            'status'        => 'EMPTY',
-            'max_capacity'  => 1000,
+            'status' => 'EMPTY',
+            'max_capacity' => 1000,
         ]);
 
         $tempPallet = MwhPallet::create([
-            'whse_id'             => $krwWh->id,
-            'pallet_id'           => 'MPLT-MAP-TEMP-99',
-            'item_code'           => 'RAW-TMP-PP',
-            'initial_qty'         => 600,
-            'current_qty'         => 600,
-            'position_id'         => null,
+            'whse_id' => $krwWh->id,
+            'pallet_id' => 'MPLT-MAP-TEMP-99',
+            'item_code' => 'RAW-TMP-PP',
+            'initial_qty' => 600,
+            'current_qty' => 600,
+            'position_id' => null,
             'initial_position_id' => null,
-            'status'              => 'STORED',
+            'status' => 'STORED',
         ]);
 
         Livewire::test(\App\Livewire\MaterialWarehouse\RackMapping::class)
@@ -832,5 +832,3 @@ class MaterialWarehouseTransactionTest extends TestCase
         $this->assertEquals('PARTIAL', $slot->status);
     }
 }
-
-

@@ -5,24 +5,22 @@ namespace App\Http\Controllers\Production;
 ini_set('memory_limit', '1024M');
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
+use App\Models\File;
 use App\Models\Production\PRD_BillOfMaterialChild;
+use App\Models\Production\PRD_BillOfMaterialParent;
 use App\Models\Production\PRD_MaterialLog;
 use App\Models\Production\PRD_MouldingUserLog;
-use App\Models\Production\PRD_BillOfMaterialParent;
-use App\Models\File;
 use Carbon\Carbon;
-
+use Illuminate\Http\Request;
 
 class WorkshopController extends Controller
 {
-    function determineShift($clockIn): ?int
+    public function determineShift($clockIn): ?int
     {
         $clockIn = Carbon::parse($clockIn);
 
         $today = $clockIn->format('Y-m-d');
-         // Define shift start and end times
+        // Define shift start and end times
         $shiftStartTimes = [
             1 => Carbon::parse("$today 07:30:00"),
             2 => Carbon::parse("$today 15:30:00"),
@@ -37,8 +35,6 @@ class WorkshopController extends Controller
         ];
 
         // // If the clock-in time is before 07:30 AM today, it's part of Shift 3
-        
-        
 
         foreach ($shiftStartTimes as $shift => $startTime) {
             $endTime = $shiftEndTimes[$shift];
@@ -47,12 +43,10 @@ class WorkshopController extends Controller
             }
         }
 
-
         if ($clockIn->lt($shiftStartTimes[1])) {
             return 3; // Shift 3
         }
 
-        
         return null; // Return null if no shift matches
     }
 
@@ -75,9 +69,9 @@ class WorkshopController extends Controller
     public function handleScanStart(Request $request)
     {
         // dd($request->all());
- 
+
         $clockIn = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-  
+
         $barcode = $request->input('barcode');
 
         // Split the barcode using '-' as the separator
@@ -90,11 +84,9 @@ class WorkshopController extends Controller
 
         $user = auth()->user();
 
-
         $data = PRD_BillOfMaterialChild::with('materialProcess', 'parent')->where('id', $item_id)->first();
-       
 
-        if (!$data) {
+        if (! $data) {
             return redirect()->back()->withErrors(['error' => 'Barcode data not found or invalid.']);
         }
 
@@ -103,11 +95,10 @@ class WorkshopController extends Controller
         }
 
         $materialProcess = $data->materialProcess()
-        ->where('process_name', $user->name)
-        ->whereNull('scan_in')  // Ensure scan_in is null
-        ->orderBy('created_at', 'asc')  // Order by created_at to get the earliest
-        ->first();  // Get the first match
-        
+            ->where('process_name', $user->name)
+            ->whereNull('scan_in')  // Ensure scan_in is null
+            ->orderBy('created_at', 'asc')  // Order by created_at to get the earliest
+            ->first();  // Get the first match
 
         // If a matching material process is found, update its scan_in field with the scan time
         if ($materialProcess) {
@@ -117,7 +108,7 @@ class WorkshopController extends Controller
             $materialProcess->save();  // Save the changes
             $anyScanIn = $data->materialProcess()->whereNotNull('scan_in')->exists();
 
-        // If any materialProcess has scan_in not null, update the status to 'started'
+            // If any materialProcess has scan_in not null, update the status to 'started'
             if ($anyScanIn) {
                 $data->status = 'Started';
                 $data->save();  // Save the status update
@@ -127,7 +118,7 @@ class WorkshopController extends Controller
             $childId = $barcodeElements[1] ?? null; // Get the second element (child ID)
             if ($childId) {
                 // Create a new material process using PRD_MaterialLog model
-                $newMaterialProcess = new \App\Models\Production\PRD_MaterialLog();
+                $newMaterialProcess = new \App\Models\Production\PRD_MaterialLog;
                 $newMaterialProcess->child_id = $childId;
                 $newMaterialProcess->process_name = auth()->user()->name; // Use the authenticated user's name
                 $newMaterialProcess->scan_in = $scanTime; // Use the current scan time
@@ -138,11 +129,11 @@ class WorkshopController extends Controller
                 $newMaterialProcess->remark = 'Proses Tambahan'; // Optional remark
                 $newMaterialProcess->is_draft = true; // Set is_draft to true
                 $newMaterialProcess->save(); // Save the new record
-                
+
                 return redirect()->route('workshop.main.menu');
-            }else {
-                    return back()->with('error', 'Invalid barcode format.');
-                }
+            } else {
+                return back()->with('error', 'Invalid barcode format.');
+            }
         }
 
         return redirect()->route('workshop.main.menu');
@@ -156,7 +147,7 @@ class WorkshopController extends Controller
             ->count() === PRD_MaterialLog::where('child_id', $materialChildId)->count(); // Check if all related processes are finished
 
         // If all processes are finished, update the MaterialChild status
-        if (!$allProcessesFinished) {
+        if (! $allProcessesFinished) {
             return; // Skip the update and exit early
         }
 
@@ -196,9 +187,9 @@ class WorkshopController extends Controller
         $log->save();
 
         $this->updateAllMaterialChildrenStatus();
+
         return redirect()->route('workshop.main.menu');
     }
-
 
     public function index($id)
     {
@@ -212,7 +203,7 @@ class WorkshopController extends Controller
 
         $image = File::where('item_code', $log->childData->item_code)->get();
         $workers = PRD_MouldingUserLog::where('material_log_id', $id)->get();
-       
+
         return view('production.workshop.index', compact('log', 'workers', 'allprocess', 'image'));
 
     }
@@ -354,17 +345,18 @@ class WorkshopController extends Controller
     public function addManualWorkshop()
     {
         $parents = PRD_BillOfMaterialParent::all();
+
         return view('production.workshop.add_manual', compact('parents'));
     }
 
-      public function getChildren($parentId)
+    public function getChildren($parentId)
     {
         return PRD_BillOfMaterialChild::where('parent_id', $parentId)->get();
     }
 
     public function handleScanManual(Request $request)
     {
-       
+
         $clockIn = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
 
         $barcode = $request->child;
@@ -379,10 +371,9 @@ class WorkshopController extends Controller
 
         $user = auth()->user();
 
-
         $data = PRD_BillOfMaterialChild::with('materialProcess', 'parent')->where('id', $item_id)->first();
 
-        if (!$data) {
+        if (! $data) {
             return redirect()->back()->withErrors(['error' => 'Barcode data not found or invalid.']);
         }
 
@@ -391,10 +382,10 @@ class WorkshopController extends Controller
         }
 
         $materialProcess = $data->materialProcess()
-        ->where('process_name', $user->name)
-        ->whereNull('scan_in')  // Ensure scan_in is null
-        ->orderBy('created_at', 'asc')  // Order by created_at to get the earliest
-        ->first();  // Get the first match
+            ->where('process_name', $user->name)
+            ->whereNull('scan_in')  // Ensure scan_in is null
+            ->orderBy('created_at', 'asc')  // Order by created_at to get the earliest
+            ->first();  // Get the first match
 
         // If a matching material process is found, update its scan_in field with the scan time
         if ($materialProcess) {
@@ -404,7 +395,7 @@ class WorkshopController extends Controller
             $materialProcess->save();  // Save the changes
             $anyScanIn = $data->materialProcess()->whereNotNull('scan_in')->exists();
 
-        // If any materialProcess has scan_in not null, update the status to 'started'
+            // If any materialProcess has scan_in not null, update the status to 'started'
             if ($anyScanIn) {
                 $data->status = 'Started';
                 $data->save();  // Save the status update
@@ -414,7 +405,7 @@ class WorkshopController extends Controller
             $childId = $barcodeElements[1] ?? null; // Get the second element (child ID)
             if ($childId) {
                 // Create a new material process using PRD_MaterialLog model
-                $newMaterialProcess = new \App\Models\Production\PRD_MaterialLog();
+                $newMaterialProcess = new \App\Models\Production\PRD_MaterialLog;
                 $newMaterialProcess->child_id = $childId;
                 $newMaterialProcess->process_name = auth()->user()->name; // Use the authenticated user's name
                 $newMaterialProcess->scan_in = $scanTime; // Use the current scan time
@@ -425,11 +416,11 @@ class WorkshopController extends Controller
                 $newMaterialProcess->remark = 'Proses Tambahan'; // Optional remark
                 $newMaterialProcess->is_draft = true; // Set is_draft to true
                 $newMaterialProcess->save(); // Save the new record
-                
+
                 return redirect()->route('workshop.main.menu');
-            }else {
-                    return back()->with('error', 'Invalid barcode format.');
-                }
+            } else {
+                return back()->with('error', 'Invalid barcode format.');
+            }
         }
 
         return redirect()->route('workshop.main.menu');

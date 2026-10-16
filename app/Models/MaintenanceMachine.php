@@ -25,10 +25,10 @@ class MaintenanceMachine extends Model
     ];
 
     protected $casts = [
-        'tanggal'      => 'date',
-        'created_at'   => 'datetime',
-        'updated_at'   => 'datetime',
-        'finished_at'  => 'datetime',
+        'tanggal' => 'date',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'finished_at' => 'datetime',
     ];
 
     /**
@@ -46,6 +46,7 @@ class MaintenanceMachine extends Model
 
             return "{$hours} jam {$minutes} menit";
         }
+
         return $value;
     }
 

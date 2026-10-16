@@ -2,7 +2,6 @@
 
 namespace App\Exports;
 
-use App\Models\Setting\HolidaySchedule;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -30,8 +29,6 @@ class HolidayScheduleExport implements FromCollection, WithHeadings
 
     /**
      * Define the headings for the Excel file
-     *
-     * @return array
      */
     public function headings(): array
     {

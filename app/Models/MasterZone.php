@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MasterZone extends Model
@@ -13,7 +12,6 @@ class MasterZone extends Model
         'zone_name',
     ];
 
-
     public function users()
     {
         return $this->hasMany(User::class, 'zone_id');
@@ -23,5 +21,4 @@ class MasterZone extends Model
     {
         return $this->hasMany(ZonePengawas::class, 'zone_id');
     }
-
 }

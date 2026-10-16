@@ -23,49 +23,67 @@ class UserActivityDashboard extends Component
 
     // Filters: Tab 1 (Activities)
     public string $logNameFilter = '';
+
     public string $causerFilter = '';
+
     public string $eventFilter = '';
+
     public string $dateFrom = '';
+
     public string $dateTo = '';
 
     // Filters: Tab 2 (Inactive Users)
     public string $inactiveSearch = '';
+
     public string $inactiveRoleFilter = '';
+
     public string $inactiveBranchFilter = '';
+
     public string $inactiveDepartmentFilter = '';
+
     public array $selectedUsers = [];
+
     public bool $selectAll = false;
 
     // Filters: Tab 3 (Auth & Security)
     public string $authSearch = '';
+
     public string $authEventFilter = ''; // login | logout | failed | lockout
 
     // Filters: Tab 4 (Inbound API & Webhooks)
     public string $apiSearch = '';
+
     public string $apiStatusFilter = ''; // 2xx | 4xx | 5xx
+
     public string $apiMethodFilter = '';
 
     // Modals
     public ?int $selectedActivityId = null;
+
     public ?Activity $selectedActivity = null;
+
     public bool $showDetailModal = false;
+
     public string $detailModalTab = 'diff'; // diff | json
 
     public ?int $userToDeactivateId = null;
+
     public ?string $userToDeactivateName = null;
+
     public bool $showDeactivateModal = false;
+
     public bool $showBulkDeactivateModal = false;
 
     protected $paginationTheme = 'tailwind';
 
     protected $queryString = [
         'activeTab' => ['except' => 'activities'],
-        'search'    => ['except' => ''],
+        'search' => ['except' => ''],
     ];
 
     public function mount(): void
     {
-        if (Gate::denies('manage-users-roles') && !auth()->user()?->hasRole('SUPER-ADMIN')) {
+        if (Gate::denies('manage-users-roles') && ! auth()->user()?->hasRole('SUPER-ADMIN')) {
             abort(403, 'Unauthorized Action. Super-Admin access required.');
         }
 
@@ -85,7 +103,7 @@ class UserActivityDashboard extends Component
     public function updatedSelectAll($value): void
     {
         if ($value) {
-            $this->selectedUsers = $this->getInactiveUsersQuery()->pluck('id')->map(fn($id) => (string)$id)->toArray();
+            $this->selectedUsers = $this->getInactiveUsersQuery()->pluck('id')->map(fn ($id) => (string) $id)->toArray();
         } else {
             $this->selectedUsers = [];
         }
@@ -186,6 +204,7 @@ class UserActivityDashboard extends Component
 
         if ($user->id === auth()->id()) {
             session()->flash('error', 'You cannot deactivate your own account.');
+
             return;
         }
 
@@ -196,7 +215,7 @@ class UserActivityDashboard extends Component
 
     public function deactivateUser(): void
     {
-        if (!$this->userToDeactivateId) {
+        if (! $this->userToDeactivateId) {
             return;
         }
 
@@ -205,6 +224,7 @@ class UserActivityDashboard extends Component
         if ($user->id === auth()->id()) {
             session()->flash('error', 'You cannot deactivate your own account.');
             $this->showDeactivateModal = false;
+
             return;
         }
 
@@ -215,8 +235,8 @@ class UserActivityDashboard extends Component
             ->causedBy(auth()->user())
             ->performedOn($user)
             ->withProperties([
-                'action'           => 'manual_inactivation',
-                'reason'           => 'Account inactive for more than 30 days',
+                'action' => 'manual_inactivation',
+                'reason' => 'Account inactive for more than 30 days',
                 'last_activity_at' => $user->last_activity_at?->toIso8601String() ?: 'never',
             ])
             ->log("Deactivated inactive user '{$user->name}' (ID: {$user->id})");
@@ -231,10 +251,11 @@ class UserActivityDashboard extends Component
     public function confirmBulkDeactivate(): void
     {
         // Exclude current authenticated user
-        $this->selectedUsers = array_diff($this->selectedUsers, [(string)auth()->id()]);
+        $this->selectedUsers = array_diff($this->selectedUsers, [(string) auth()->id()]);
 
         if (empty($this->selectedUsers)) {
             session()->flash('error', 'Please select at least one inactive user to deactivate.');
+
             return;
         }
 
@@ -243,10 +264,11 @@ class UserActivityDashboard extends Component
 
     public function bulkDeactivate(): void
     {
-        $this->selectedUsers = array_diff($this->selectedUsers, [(string)auth()->id()]);
+        $this->selectedUsers = array_diff($this->selectedUsers, [(string) auth()->id()]);
 
         if (empty($this->selectedUsers)) {
             $this->showBulkDeactivateModal = false;
+
             return;
         }
 
@@ -261,8 +283,8 @@ class UserActivityDashboard extends Component
                 ->causedBy(auth()->user())
                 ->performedOn($user)
                 ->withProperties([
-                    'action'           => 'bulk_manual_inactivation',
-                    'reason'           => 'Account inactive for more than 30 days',
+                    'action' => 'bulk_manual_inactivation',
+                    'reason' => 'Account inactive for more than 30 days',
                     'last_activity_at' => $user->last_activity_at?->toIso8601String() ?: 'never',
                 ])
                 ->log("Bulk deactivated inactive user '{$user->name}' (ID: {$user->id})");
@@ -286,28 +308,28 @@ class UserActivityDashboard extends Component
             ->where('is_active', true)
             ->where(function ($q) use ($cutoff) {
                 $q->whereNull('last_activity_at')
-                  ->orWhere('last_activity_at', '<', $cutoff);
+                    ->orWhere('last_activity_at', '<', $cutoff);
             })
             ->whereDoesntHave('role', fn ($q) => $q->where('name', 'SUPER-ADMIN'));
 
-        if (!empty($this->inactiveSearch)) {
+        if (! empty($this->inactiveSearch)) {
             $search = $this->inactiveSearch;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        if (!empty($this->inactiveRoleFilter)) {
+        if (! empty($this->inactiveRoleFilter)) {
             $query->where('role_id', $this->inactiveRoleFilter);
         }
 
-        if (!empty($this->inactiveBranchFilter)) {
+        if (! empty($this->inactiveBranchFilter)) {
             $query->where('branch_id', $this->inactiveBranchFilter);
         }
 
-        if (!empty($this->inactiveDepartmentFilter)) {
+        if (! empty($this->inactiveDepartmentFilter)) {
             $query->where('department_id', $this->inactiveDepartmentFilter);
         }
 
@@ -322,7 +344,7 @@ class UserActivityDashboard extends Component
         // KPI Counts for Inactive Tab
         $inactiveTotalCount = User::withoutTrashed()
             ->where('is_active', true)
-            ->where(fn($q) => $q->whereNull('last_activity_at')->orWhere('last_activity_at', '<', $cutoff30Days))
+            ->where(fn ($q) => $q->whereNull('last_activity_at')->orWhere('last_activity_at', '<', $cutoff30Days))
             ->whereDoesntHave('role', fn ($q) => $q->where('name', 'SUPER-ADMIN'))
             ->count();
 
@@ -349,35 +371,35 @@ class UserActivityDashboard extends Component
                 ->whereNotIn('log_name', ['api', 'webhook'])
                 ->latest();
 
-            if (!empty($this->search)) {
+            if (! empty($this->search)) {
                 $search = $this->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('description', 'like', "%{$search}%")
-                      ->orWhere('subject_type', 'like', "%{$search}%")
-                      ->orWhereHasMorph('causer', [User::class], function ($uq) use ($search) {
-                          $uq->where('name', 'like', "%{$search}%")
-                             ->orWhere('username', 'like', "%{$search}%");
-                      });
+                        ->orWhere('subject_type', 'like', "%{$search}%")
+                        ->orWhereHasMorph('causer', [User::class], function ($uq) use ($search) {
+                            $uq->where('name', 'like', "%{$search}%")
+                                ->orWhere('username', 'like', "%{$search}%");
+                        });
                 });
             }
 
-            if (!empty($this->logNameFilter)) {
+            if (! empty($this->logNameFilter)) {
                 $query->where('log_name', $this->logNameFilter);
             }
 
-            if (!empty($this->eventFilter)) {
+            if (! empty($this->eventFilter)) {
                 $query->where('event', $this->eventFilter);
             }
 
-            if (!empty($this->causerFilter)) {
+            if (! empty($this->causerFilter)) {
                 $query->where('causer_id', $this->causerFilter)->where('causer_type', User::class);
             }
 
-            if (!empty($this->dateFrom)) {
+            if (! empty($this->dateFrom)) {
                 $query->where('created_at', '>=', Carbon::parse($this->dateFrom)->startOfDay());
             }
 
-            if (!empty($this->dateTo)) {
+            if (! empty($this->dateTo)) {
                 $query->where('created_at', '<=', Carbon::parse($this->dateTo)->endOfDay());
             }
 
@@ -392,20 +414,20 @@ class UserActivityDashboard extends Component
                 ->where('log_name', 'auth')
                 ->latest();
 
-            if (!empty($this->authSearch)) {
+            if (! empty($this->authSearch)) {
                 $search = $this->authSearch;
                 $query->where(function ($q) use ($search) {
                     $q->where('description', 'like', "%{$search}%")
-                      ->orWhere('properties->ip', 'like', "%{$search}%")
-                      ->orWhere('properties->credentials->email', 'like', "%{$search}%")
-                      ->orWhere('properties->credentials->username', 'like', "%{$search}%")
-                      ->orWhereHasMorph('causer', [User::class], function ($uq) use ($search) {
-                          $uq->where('name', 'like', "%{$search}%");
-                      });
+                        ->orWhere('properties->ip', 'like', "%{$search}%")
+                        ->orWhere('properties->credentials->email', 'like', "%{$search}%")
+                        ->orWhere('properties->credentials->username', 'like', "%{$search}%")
+                        ->orWhereHasMorph('causer', [User::class], function ($uq) use ($search) {
+                            $uq->where('name', 'like', "%{$search}%");
+                        });
                 });
             }
 
-            if (!empty($this->authEventFilter)) {
+            if (! empty($this->authEventFilter)) {
                 $query->where('description', 'like', "%{$this->authEventFilter}%");
             }
 
@@ -413,20 +435,20 @@ class UserActivityDashboard extends Component
         } elseif ($this->activeTab === 'api') {
             $query = Activity::whereIn('log_name', ['api', 'webhook'])->latest();
 
-            if (!empty($this->apiSearch)) {
+            if (! empty($this->apiSearch)) {
                 $search = $this->apiSearch;
                 $query->where(function ($q) use ($search) {
                     $q->where('description', 'like', "%{$search}%")
-                      ->orWhere('properties->endpoint', 'like', "%{$search}%")
-                      ->orWhere('properties->ip', 'like', "%{$search}%");
+                        ->orWhere('properties->endpoint', 'like', "%{$search}%")
+                        ->orWhere('properties->ip', 'like', "%{$search}%");
                 });
             }
 
-            if (!empty($this->apiMethodFilter)) {
+            if (! empty($this->apiMethodFilter)) {
                 $query->where('properties->method', strtoupper($this->apiMethodFilter));
             }
 
-            if (!empty($this->apiStatusFilter)) {
+            if (! empty($this->apiStatusFilter)) {
                 if ($this->apiStatusFilter === '2xx') {
                     $query->whereBetween('properties->status_code', [200, 299]);
                 } elseif ($this->apiStatusFilter === '4xx') {
@@ -450,18 +472,18 @@ class UserActivityDashboard extends Component
             ->pluck('log_name');
 
         return view('livewire.admin.user-activity-dashboard', [
-            'activities'          => $activities,
-            'inactiveUsers'       => $inactiveUsers,
-            'authLogs'            => $authLogs,
-            'apiLogs'             => $apiLogs,
-            'roles'               => $roles,
-            'branches'            => $branches,
-            'departments'         => $departments,
-            'usersList'           => $usersList,
-            'logChannels'         => $logChannels,
-            'inactiveTotalCount'  => $inactiveTotalCount,
+            'activities' => $activities,
+            'inactiveUsers' => $inactiveUsers,
+            'authLogs' => $authLogs,
+            'apiLogs' => $apiLogs,
+            'roles' => $roles,
+            'branches' => $branches,
+            'departments' => $departments,
+            'usersList' => $usersList,
+            'logChannels' => $logChannels,
+            'inactiveTotalCount' => $inactiveTotalCount,
             'inactive60DaysCount' => $inactive60DaysCount,
-            'neverActiveCount'    => $neverActiveCount,
+            'neverActiveCount' => $neverActiveCount,
         ])->layout('layouts.dashboard');
     }
 }

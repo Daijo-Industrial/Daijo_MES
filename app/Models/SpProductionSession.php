@@ -122,14 +122,20 @@ class SpProductionSession extends Model
     public function getYieldAttribute(): float
     {
         $totalOutput = $this->total_good + $this->total_reject;
-        if ($totalOutput == 0) return 0;
+        if ($totalOutput == 0) {
+            return 0;
+        }
+
         return round(($this->total_good / $totalOutput) * 100, 2);
     }
 
     public function getNgRateAttribute(): float
     {
         $totalOutput = $this->total_good + $this->total_reject;
-        if ($totalOutput == 0) return 0;
+        if ($totalOutput == 0) {
+            return 0;
+        }
+
         return round(($this->total_reject / $totalOutput) * 100, 2);
     }
 

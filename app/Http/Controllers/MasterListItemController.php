@@ -2,22 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\User;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\Writer\PngWriter;
-
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\File;
-
-use App\Models\MasterListItem;
 use App\Models\Delivery\sapLineProduction;
-
-use Illuminate\Support\Facades\Validator;
+use App\Models\MasterListItem;
+use App\Models\User;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
-
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Validator;
 
 class MasterListItemController extends Controller
 {
@@ -48,7 +42,7 @@ class MasterListItemController extends Controller
             );
 
             // Create the QR code image with PngWriter
-            $writer = new PngWriter();
+            $writer = new PngWriter;
             $qrCodeResult = $writer->write($qrCode);
 
             // Get the PNG image as a string and base64 encode it
@@ -59,7 +53,7 @@ class MasterListItemController extends Controller
             $files = File::glob($storagePath . '*-' . $machine->item_code . '.png'); // Only PNG files
 
             // If a PNG file exists, store its path; otherwise, use a default image
-            $images[$machine->item_code] = !empty($files)
+            $images[$machine->item_code] = ! empty($files)
                 ? str_replace(storage_path('app/public/'), 'storage/', $files[0])
                 : asset('storage/default-image.png'); // Default image if not found
         }
@@ -84,7 +78,7 @@ class MasterListItemController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation failed',
-                'error' => $validator->errors()->first()
+                'error' => $validator->errors()->first(),
             ], 422);
         }
 
@@ -116,7 +110,7 @@ class MasterListItemController extends Controller
                         'pair',
                         'cavity',
                         'customer_code',
-                        'cycle_time'
+                        'cycle_time',
                     ]));
 
                     DB::commit();
@@ -149,7 +143,7 @@ class MasterListItemController extends Controller
 
             return response()->json([
                 'message' => 'Failed to process data',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

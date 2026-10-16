@@ -6,7 +6,6 @@ use App\Imports\MasterListMaterialImport;
 use App\Livewire\MaterialWarehouse\MasterListMaterialIndex;
 use App\Models\MasterListMaterial;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
@@ -33,7 +32,7 @@ class MasterListMaterialImportTest extends TestCase
             $table->softDeletes();
         });
 
-        if (!Schema::hasTable('roles')) {
+        if (! Schema::hasTable('roles')) {
             Schema::create('roles', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->string('name');
@@ -41,7 +40,7 @@ class MasterListMaterialImportTest extends TestCase
             });
         }
 
-        if (!Schema::hasTable('users')) {
+        if (! Schema::hasTable('users')) {
             Schema::create('users', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
                 $table->string('name');
@@ -56,15 +55,15 @@ class MasterListMaterialImportTest extends TestCase
     public function test_can_create_and_query_master_list_material()
     {
         $material = MasterListMaterial::create([
-            'item_code'          => '180-CN890-FL',
-            'item_description'   => 'SPK CORD 22AWG 3M TR TUBE W-B',
+            'item_code' => '180-CN890-FL',
+            'item_description' => 'SPK CORD 22AWG 3M TR TUBE W-B',
             'preferred_supplier' => null,
-            'purchasing_uom'     => 'PCS',
+            'purchasing_uom' => 'PCS',
         ]);
 
         $this->assertDatabaseHas('master_list_materials', [
-            'item_code'          => '180-CN890-FL',
-            'purchasing_uom'     => 'PCS',
+            'item_code' => '180-CN890-FL',
+            'purchasing_uom' => 'PCS',
         ]);
 
         $this->assertNull($material->preferred_supplier);
@@ -74,16 +73,16 @@ class MasterListMaterialImportTest extends TestCase
     {
         $rows = new Collection([
             [
-                'item_no'            => '180-CN890-FL',
-                'item_description'   => 'SPK CORD 22AWG 3M TR TUBE W-B',
+                'item_no' => '180-CN890-FL',
+                'item_description' => 'SPK CORD 22AWG 3M TR TUBE W-B',
                 'preferred_supplier' => '', // should be converted to null
-                'purchasing_uom'     => 'PCS',
+                'purchasing_uom' => 'PCS',
             ],
             [
-                'item_no'            => '182-BEATS-SPK',
-                'item_description'   => 'SPEAKER WIRE 2-PIN L-95mm',
+                'item_no' => '182-BEATS-SPK',
+                'item_description' => 'SPEAKER WIRE 2-PIN L-95mm',
                 'preferred_supplier' => 'VMI0000561',
-                'purchasing_uom'     => 'PCS',
+                'purchasing_uom' => 'PCS',
             ],
         ]);
 
@@ -91,12 +90,12 @@ class MasterListMaterialImportTest extends TestCase
         $import->collection($rows);
 
         $this->assertDatabaseHas('master_list_materials', [
-            'item_code'          => '180-CN890-FL',
+            'item_code' => '180-CN890-FL',
             'preferred_supplier' => null,
         ]);
 
         $this->assertDatabaseHas('master_list_materials', [
-            'item_code'          => '182-BEATS-SPK',
+            'item_code' => '182-BEATS-SPK',
             'preferred_supplier' => 'VMI0000561',
         ]);
     }
@@ -105,9 +104,9 @@ class MasterListMaterialImportTest extends TestCase
     {
         $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Admin User',
-            'email'    => 'admin_' . uniqid() . '@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Admin User',
+            'email' => 'admin_' . uniqid() . '@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 

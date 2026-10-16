@@ -10,11 +10,15 @@ class MasterBusinessPartner extends Model
     use HasFactory;
 
     public const CATEGORY_CUSTOMER = 'CUSTOMER';
+
     public const CATEGORY_VENDOR = 'VENDOR';
 
     public const INDUSTRY_AUTOMOTIVE = 'AUTOMOTIVE';
+
     public const INDUSTRY_ELECTRONICS = 'ELECTRONICS';
+
     public const INDUSTRY_MOULDING = 'MOULDING';
+
     public const INDUSTRY_GENERAL = 'GENERAL';
 
     protected $table = 'master_business_partners';

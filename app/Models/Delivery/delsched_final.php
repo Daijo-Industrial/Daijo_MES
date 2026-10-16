@@ -2,11 +2,11 @@
 
 namespace App\Models\Delivery;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class delsched_final extends Model
 {
     protected $table = 'delsched_final';
+
     public $timestamps = false;
 }

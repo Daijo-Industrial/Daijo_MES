@@ -7,7 +7,6 @@ use App\Models\MasterListMaterial;
 use App\Models\MwhDailyAudit;
 use App\Models\MwhDailyAuditItem;
 use App\Models\MwhPallet;
-use App\Models\MwhPosition;
 use App\Models\MwhWarehouse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,15 +17,22 @@ class MaterialDailyAudit extends Component
 {
     // Filter & Meta State
     public $selectedWhseId = 'ALL';
+
     public string $auditDate = '';
+
     public string $auditorName = '';
+
     public string $notes = '';
+
     public string $searchTerm = '';
+
     public string $selectedAreaFilter = 'ALL';
+
     public string $statusFilter = 'ALL'; // ALL, DISCREPANCY_ONLY, MATCH_ONLY, PENDING_ONLY
 
     // Available Master Options
     public array $warehouses = [];
+
     public array $availableAreas = [];
 
     // Working Audit Items (keyed by pallet_id or pos_{position_id})
@@ -34,11 +40,14 @@ class MaterialDailyAudit extends Component
 
     // Audit State
     public ?int $existingAuditId = null;
+
     public string $auditCode = '';
+
     public bool $isSaved = false;
 
     // History Modal State
     public bool $showHistoryModal = false;
+
     public ?int $viewingAuditId = null;
 
     protected $queryString = [
@@ -91,10 +100,10 @@ class MaterialDailyAudit extends Component
 
         if ($existingAudit && $existingAudit->items->isNotEmpty()) {
             $this->existingAuditId = $existingAudit->id;
-            $this->auditCode       = $existingAudit->audit_code;
-            $this->auditorName     = $existingAudit->auditor_name ?: (auth()->user()->name ?? 'Auditor Store Material');
-            $this->notes           = $existingAudit->notes ?? '';
-            $this->isSaved         = true;
+            $this->auditCode = $existingAudit->audit_code;
+            $this->auditorName = $existingAudit->auditor_name ?: (auth()->user()->name ?? 'Auditor Store Material');
+            $this->notes = $existingAudit->notes ?? '';
+            $this->isSaved = true;
 
             $itemCodes = $existingAudit->items->pluck('system_item_code')->toArray();
             $itemNamesMap = $this->resolveItemNamesMap($itemCodes);
@@ -106,7 +115,7 @@ class MaterialDailyAudit extends Component
                 $resolvedName = $itemNamesMap[$sysCode] ?? null;
 
                 // If previously saved name is empty, null, or identically equals the code, use the resolved name
-                $savedName = (!empty($auditItem->system_item_name) && $auditItem->system_item_name !== $sysCode)
+                $savedName = (! empty($auditItem->system_item_name) && $auditItem->system_item_name !== $sysCode)
                     ? $auditItem->system_item_name
                     : ($resolvedName ?: '-');
 
@@ -116,18 +125,18 @@ class MaterialDailyAudit extends Component
                 }
 
                 $itemsData[$key] = [
-                    'id'                 => $auditItem->id,
-                    'pallet_id'          => $auditItem->pallet_id,
-                    'position_id'        => $auditItem->position_id,
-                    'position_code'      => $auditItem->position_code,
-                    'rack_code'          => $auditItem->rack_code,
-                    'system_item_code'   => $sysCode,
-                    'system_item_name'   => $savedName,
-                    'system_lot_no'      => $auditItem->system_lot_no,
-                    'system_qty'         => (float) $auditItem->system_qty,
-                    'uom'                => $auditItem->uom,
-                    'actual_item_code'   => $auditItem->actual_item_code ?? '',
-                    'actual_qty'         => $auditItem->actual_qty !== null ? (float) $auditItem->actual_qty : null,
+                    'id' => $auditItem->id,
+                    'pallet_id' => $auditItem->pallet_id,
+                    'position_id' => $auditItem->position_id,
+                    'position_code' => $auditItem->position_code,
+                    'rack_code' => $auditItem->rack_code,
+                    'system_item_code' => $sysCode,
+                    'system_item_name' => $savedName,
+                    'system_lot_no' => $auditItem->system_lot_no,
+                    'system_qty' => (float) $auditItem->system_qty,
+                    'uom' => $auditItem->uom,
+                    'actual_item_code' => $auditItem->actual_item_code ?? '',
+                    'actual_qty' => $auditItem->actual_qty !== null ? (float) $auditItem->actual_qty : null,
                     'discrepancy_reason' => $auditItem->discrepancy_reason ?? '',
                 ];
             }
@@ -135,8 +144,8 @@ class MaterialDailyAudit extends Component
         } else {
             // 2. Initialize from active system pallets currently in rack positions
             $this->existingAuditId = null;
-            $this->auditCode       = 'AUD-MWH-' . Carbon::parse($this->auditDate)->format('Ymd') . '-' . ($this->selectedWhseId !== 'ALL' ? $this->selectedWhseId : 'ALL');
-            $this->isSaved         = false;
+            $this->auditCode = 'AUD-MWH-' . Carbon::parse($this->auditDate)->format('Ymd') . '-' . ($this->selectedWhseId !== 'ALL' ? $this->selectedWhseId : 'ALL');
+            $this->isSaved = false;
 
             $palletQuery = MwhPallet::with(['position.rack.warehouse', 'material'])
                 ->whereNotNull('position_id')
@@ -145,7 +154,7 @@ class MaterialDailyAudit extends Component
             if ($this->selectedWhseId !== 'ALL') {
                 $palletQuery->where(function ($q) {
                     $q->where('whse_id', $this->selectedWhseId)
-                      ->orWhereHas('position.rack', fn($rq) => $rq->where('whse_id', $this->selectedWhseId));
+                        ->orWhereHas('position.rack', fn ($rq) => $rq->where('whse_id', $this->selectedWhseId));
                 });
             }
 
@@ -166,18 +175,18 @@ class MaterialDailyAudit extends Component
                     ?? '-';
 
                 $itemsData[$key] = [
-                    'id'                 => null,
-                    'pallet_id'          => $p->pallet_id,
-                    'position_id'        => $p->position_id,
-                    'position_code'      => $pos ? $pos->position_code : 'N/A',
-                    'rack_code'          => $pos && $pos->rack ? $pos->rack->rack_code : '',
-                    'system_item_code'   => $p->item_code,
-                    'system_item_name'   => $itemName,
-                    'system_lot_no'      => $p->lot_no,
-                    'system_qty'         => (float) $p->current_qty,
-                    'uom'                => $p->uom ?: 'KG',
-                    'actual_item_code'   => '',
-                    'actual_qty'         => null,
+                    'id' => null,
+                    'pallet_id' => $p->pallet_id,
+                    'position_id' => $p->position_id,
+                    'position_code' => $pos ? $pos->position_code : 'N/A',
+                    'rack_code' => $pos && $pos->rack ? $pos->rack->rack_code : '',
+                    'system_item_code' => $p->item_code,
+                    'system_item_name' => $itemName,
+                    'system_lot_no' => $p->lot_no,
+                    'system_qty' => (float) $p->current_qty,
+                    'uom' => $p->uom ?: 'KG',
+                    'actual_item_code' => '',
+                    'actual_qty' => null,
                     'discrepancy_reason' => '',
                 ];
             }
@@ -216,7 +225,7 @@ class MaterialDailyAudit extends Component
 
         // 2. MasterListItem (item_name) for any missing
         $missing = array_diff($uniqueCodes, array_keys($map));
-        if (!empty($missing)) {
+        if (! empty($missing)) {
             $masterItems = MasterListItem::whereIn('item_code', $missing)
                 ->pluck('item_name', 'item_code')
                 ->filter()
@@ -226,7 +235,7 @@ class MaterialDailyAudit extends Component
 
         // 3. sap_inventory_mtr (material_name) for any still missing
         $stillMissing = array_diff($uniqueCodes, array_keys($map));
-        if (!empty($stillMissing) && Schema::hasTable('sap_inventory_mtr')) {
+        if (! empty($stillMissing) && Schema::hasTable('sap_inventory_mtr')) {
             $sapItems = DB::table('sap_inventory_mtr')
                 ->whereIn('material_code', $stillMissing)
                 ->pluck('material_name', 'material_code')
@@ -237,7 +246,7 @@ class MaterialDailyAudit extends Component
 
         // 4. master_bom_components (component_description)
         $stillMissing2 = array_diff($uniqueCodes, array_keys($map));
-        if (!empty($stillMissing2) && Schema::hasTable('master_bom_components')) {
+        if (! empty($stillMissing2) && Schema::hasTable('master_bom_components')) {
             $bomItems = DB::table('master_bom_components')
                 ->whereIn('component_item', $stillMissing2)
                 ->pluck('component_description', 'component_item')
@@ -257,7 +266,7 @@ class MaterialDailyAudit extends Component
     {
         foreach ($this->items as $key => $item) {
             $this->items[$key]['actual_item_code'] = $item['system_item_code'];
-            $this->items[$key]['actual_qty']       = $item['system_qty'];
+            $this->items[$key]['actual_qty'] = $item['system_qty'];
             $this->items[$key]['discrepancy_reason'] = '';
         }
 
@@ -271,7 +280,7 @@ class MaterialDailyAudit extends Component
     {
         if (isset($this->items[$key])) {
             $this->items[$key]['actual_item_code'] = $this->items[$key]['system_item_code'];
-            $this->items[$key]['actual_qty']       = $this->items[$key]['system_qty'];
+            $this->items[$key]['actual_qty'] = $this->items[$key]['system_qty'];
             $this->items[$key]['discrepancy_reason'] = '';
         }
     }
@@ -283,7 +292,7 @@ class MaterialDailyAudit extends Component
     {
         foreach ($this->items as $key => $item) {
             $this->items[$key]['actual_item_code'] = '';
-            $this->items[$key]['actual_qty']       = null;
+            $this->items[$key]['actual_qty'] = null;
             $this->items[$key]['discrepancy_reason'] = '';
         }
     }
@@ -295,25 +304,26 @@ class MaterialDailyAudit extends Component
     {
         if (empty($this->items)) {
             session()->flash('error', 'Tidak ada data item untuk diaudit.');
+
             return;
         }
 
         DB::beginTransaction();
         try {
-            $totalCount      = count($this->items);
-            $matchedCount    = 0;
+            $totalCount = count($this->items);
+            $matchedCount = 0;
             $discrepantCount = 0;
 
             foreach ($this->items as $item) {
                 $sysItem = trim($item['system_item_code'] ?? '');
                 $actItem = trim($item['actual_item_code'] ?? '');
-                $sysQty  = (float) ($item['system_qty'] ?? 0);
-                $actQty  = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
+                $sysQty = (float) ($item['system_qty'] ?? 0);
+                $actQty = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
 
                 $hasActual = ($actItem !== '' || $actQty !== null);
                 if ($hasActual) {
                     $itemMatches = ($actItem === '' || strcasecmp($actItem, $sysItem) === 0);
-                    $qtyMatches  = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
+                    $qtyMatches = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
 
                     if ($itemMatches && $qtyMatches) {
                         $matchedCount++;
@@ -331,17 +341,17 @@ class MaterialDailyAudit extends Component
             $audit = MwhDailyAudit::updateOrCreate(
                 [
                     'audit_date' => $this->auditDate,
-                    'whse_id'    => $whseId,
+                    'whse_id' => $whseId,
                 ],
                 [
-                    'audit_code'       => $auditCode,
-                    'auditor_id'       => auth()->id(),
-                    'auditor_name'     => $this->auditorName ?: (auth()->user()->name ?? 'Auditor Store Material'),
-                    'total_items'      => $totalCount,
-                    'matched_items'    => $matchedCount,
+                    'audit_code' => $auditCode,
+                    'auditor_id' => auth()->id(),
+                    'auditor_name' => $this->auditorName ?: (auth()->user()->name ?? 'Auditor Store Material'),
+                    'total_items' => $totalCount,
+                    'matched_items' => $matchedCount,
                     'discrepant_items' => $discrepantCount,
-                    'status'           => 'COMPLETED',
-                    'notes'            => trim($this->notes),
+                    'status' => 'COMPLETED',
+                    'notes' => trim($this->notes),
                 ]
             );
 
@@ -351,40 +361,40 @@ class MaterialDailyAudit extends Component
             foreach ($this->items as $item) {
                 $sysItem = trim($item['system_item_code'] ?? '');
                 $actItem = trim($item['actual_item_code'] ?? '');
-                $sysQty  = (float) ($item['system_qty'] ?? 0);
-                $actQty  = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
+                $sysQty = (float) ($item['system_qty'] ?? 0);
+                $actQty = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
                 $diffQty = $actQty !== null ? ($actQty - $sysQty) : 0;
 
                 $status = 'PENDING';
                 if ($actItem !== '' || $actQty !== null) {
                     $itemMatches = ($actItem === '' || strcasecmp($actItem, $sysItem) === 0);
-                    $qtyMatches  = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
+                    $qtyMatches = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
                     $status = ($itemMatches && $qtyMatches) ? 'MATCH' : 'DISCREPANCY';
                 }
 
                 MwhDailyAuditItem::create([
-                    'daily_audit_id'     => $audit->id,
-                    'pallet_id'          => $item['pallet_id'] ?? null,
-                    'position_id'        => $item['position_id'] ?? null,
-                    'position_code'      => $item['position_code'] ?? 'N/A',
-                    'rack_code'          => $item['rack_code'] ?? null,
-                    'system_item_code'   => $item['system_item_code'] ?? null,
-                    'system_item_name'   => $item['system_item_name'] ?? null,
-                    'system_lot_no'      => $item['system_lot_no'] ?? null,
-                    'system_qty'         => $sysQty,
-                    'uom'                => $item['uom'] ?? 'KG',
-                    'actual_item_code'   => $actItem ?: null,
-                    'actual_qty'         => $actQty,
-                    'diff_qty'           => $diffQty,
+                    'daily_audit_id' => $audit->id,
+                    'pallet_id' => $item['pallet_id'] ?? null,
+                    'position_id' => $item['position_id'] ?? null,
+                    'position_code' => $item['position_code'] ?? 'N/A',
+                    'rack_code' => $item['rack_code'] ?? null,
+                    'system_item_code' => $item['system_item_code'] ?? null,
+                    'system_item_name' => $item['system_item_name'] ?? null,
+                    'system_lot_no' => $item['system_lot_no'] ?? null,
+                    'system_qty' => $sysQty,
+                    'uom' => $item['uom'] ?? 'KG',
+                    'actual_item_code' => $actItem ?: null,
+                    'actual_qty' => $actQty,
+                    'diff_qty' => $diffQty,
                     'discrepancy_reason' => trim($item['discrepancy_reason'] ?? '') ?: null,
-                    'status'             => $status,
+                    'status' => $status,
                 ]);
             }
 
             DB::commit();
 
             $this->existingAuditId = $audit->id;
-            $this->isSaved         = true;
+            $this->isSaved = true;
 
             session()->flash('success', "✅ Audit Harian tanggal {$this->auditDate} berhasil disimpan! ({$matchedCount} sesuai, {$discrepantCount} selisih dari {$totalCount} item).");
         } catch (\Throwable $e) {
@@ -401,7 +411,7 @@ class MaterialDailyAudit extends Component
     public function closeHistoryModal(): void
     {
         $this->showHistoryModal = false;
-        $this->viewingAuditId   = null;
+        $this->viewingAuditId = null;
     }
 
     public function render()
@@ -409,7 +419,7 @@ class MaterialDailyAudit extends Component
         // Filter items for display
         $filteredItems = collect($this->items);
 
-        if (!empty($this->searchTerm)) {
+        if (! empty($this->searchTerm)) {
             $s = strtolower(trim($this->searchTerm));
             $filteredItems = $filteredItems->filter(function ($item) use ($s) {
                 return str_contains(strtolower($item['position_code'] ?? ''), $s) ||
@@ -433,28 +443,30 @@ class MaterialDailyAudit extends Component
             $filteredItems = $filteredItems->filter(function ($item) {
                 $sysItem = trim($item['system_item_code'] ?? '');
                 $actItem = trim($item['actual_item_code'] ?? '');
-                $sysQty  = (float) ($item['system_qty'] ?? 0);
-                $actQty  = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
+                $sysQty = (float) ($item['system_qty'] ?? 0);
+                $actQty = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
 
                 if ($actItem === '' && $actQty === null) {
                     return false;
                 }
                 $itemMatches = ($actItem === '' || strcasecmp($actItem, $sysItem) === 0);
-                $qtyMatches  = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
-                return !$itemMatches || !$qtyMatches;
+                $qtyMatches = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
+
+                return ! $itemMatches || ! $qtyMatches;
             });
         } elseif ($this->statusFilter === 'MATCH_ONLY') {
             $filteredItems = $filteredItems->filter(function ($item) {
                 $sysItem = trim($item['system_item_code'] ?? '');
                 $actItem = trim($item['actual_item_code'] ?? '');
-                $sysQty  = (float) ($item['system_qty'] ?? 0);
-                $actQty  = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
+                $sysQty = (float) ($item['system_qty'] ?? 0);
+                $actQty = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
 
                 if ($actItem === '' && $actQty === null) {
                     return false;
                 }
                 $itemMatches = ($actItem === '' || strcasecmp($actItem, $sysItem) === 0);
-                $qtyMatches  = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
+                $qtyMatches = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
+
                 return $itemMatches && $qtyMatches;
             });
         } elseif ($this->statusFilter === 'PENDING_ONLY') {
@@ -472,13 +484,13 @@ class MaterialDailyAudit extends Component
         foreach ($this->items as $item) {
             $sysItem = trim($item['system_item_code'] ?? '');
             $actItem = trim($item['actual_item_code'] ?? '');
-            $sysQty  = (float) ($item['system_qty'] ?? 0);
-            $actQty  = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
+            $sysQty = (float) ($item['system_qty'] ?? 0);
+            $actQty = $item['actual_qty'] !== null && $item['actual_qty'] !== '' ? (float) $item['actual_qty'] : null;
 
             if ($actItem !== '' || $actQty !== null) {
                 $totalFilled++;
                 $itemMatches = ($actItem === '' || strcasecmp($actItem, $sysItem) === 0);
-                $qtyMatches  = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
+                $qtyMatches = ($actQty !== null && abs($actQty - $sysQty) < 0.001);
                 if ($itemMatches && $qtyMatches) {
                     $totalMatch++;
                 } else {
@@ -501,13 +513,13 @@ class MaterialDailyAudit extends Component
         }
 
         return view('livewire.material-warehouse.material-daily-audit', [
-            'displayItems'      => $filteredItems,
-            'totalAll'          => $totalAll,
-            'totalFilled'       => $totalFilled,
-            'totalMatch'        => $totalMatch,
-            'totalDiscrepancy'  => $totalDiscrepancy,
-            'auditHistoryList'  => $auditHistoryList,
-            'viewingAudit'      => $viewingAudit,
+            'displayItems' => $filteredItems,
+            'totalAll' => $totalAll,
+            'totalFilled' => $totalFilled,
+            'totalMatch' => $totalMatch,
+            'totalDiscrepancy' => $totalDiscrepancy,
+            'auditHistoryList' => $auditHistoryList,
+            'viewingAudit' => $viewingAudit,
         ]);
     }
 }

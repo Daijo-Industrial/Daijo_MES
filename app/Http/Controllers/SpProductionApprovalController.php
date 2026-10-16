@@ -40,7 +40,7 @@ class SpProductionApprovalController extends Controller
         }
 
         // Search by WO number, Part number, Part name, or Operator name
-        if (!empty($search)) {
+        if (! empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->whereHas('workOrder', function ($woQ) use ($search) {
                     $woQ->where('wo_number', 'like', "%{$search}%")
@@ -52,22 +52,22 @@ class SpProductionApprovalController extends Controller
             });
         }
 
-        if (!empty($line)) {
+        if (! empty($line)) {
             $query->where('unit_line', $line);
         }
 
-        if (!empty($shift)) {
+        if (! empty($shift)) {
             $query->where('shift', $shift);
         }
 
         $tz = config('mes.timezone', 'Asia/Jakarta');
 
-        if (!empty($date)) {
+        if (! empty($date)) {
             $dateStartUtc = Carbon::parse($date, $tz)->startOfDay()->utc();
             $dateEndUtc = Carbon::parse($date, $tz)->endOfDay()->utc();
             $query->where(function ($q) use ($dateStartUtc, $dateEndUtc) {
                 $q->whereBetween('finished_at', [$dateStartUtc, $dateEndUtc])
-                  ->orWhereBetween('started_at', [$dateStartUtc, $dateEndUtc]);
+                    ->orWhereBetween('started_at', [$dateStartUtc, $dateEndUtc]);
             });
         }
 
@@ -122,11 +122,11 @@ class SpProductionApprovalController extends Controller
             'operator',
             'approvedBy',
             'qcBypassedBy',
-            'productionEntries' => fn($q) => $q->orderBy('created_at', 'asc'),
-            'rejectEntries' => fn($q) => $q->orderBy('created_at', 'asc'),
-            'downtimeEntries' => fn($q) => $q->orderBy('created_at', 'asc'),
-            'reworkEntries' => fn($q) => $q->orderBy('created_at', 'asc'),
-            'inputEntries' => fn($q) => $q->orderBy('created_at', 'asc'),
+            'productionEntries' => fn ($q) => $q->orderBy('created_at', 'asc'),
+            'rejectEntries' => fn ($q) => $q->orderBy('created_at', 'asc'),
+            'downtimeEntries' => fn ($q) => $q->orderBy('created_at', 'asc'),
+            'reworkEntries' => fn ($q) => $q->orderBy('created_at', 'asc'),
+            'inputEntries' => fn ($q) => $q->orderBy('created_at', 'asc'),
             'manpowerEntries',
             'materials',
         ]);
@@ -155,6 +155,7 @@ class SpProductionApprovalController extends Controller
                 $totalQty = $entries->sum('quantity');
                 $causes = $entries->pluck('cause')->filter()->unique()->implode(', ');
                 $percentage = $finalScrap > 0 ? round(($totalQty / $finalScrap) * 100, 1) : 0;
+
                 return [
                     'type' => $type,
                     'quantity' => $totalQty,
@@ -198,7 +199,7 @@ class SpProductionApprovalController extends Controller
      */
     public function approve(Request $request, SpProductionSession $session, SecondProcessReportSyncBridge $bridge)
     {
-        if (Gate::allows('approve-sp-sessions') === false && !Auth::user()?->hasRole('SUPER-ADMIN')) {
+        if (Gate::allows('approve-sp-sessions') === false && ! Auth::user()?->hasRole('SUPER-ADMIN')) {
             abort(403, 'Unauthorized action. Only Supervisors and Admins can approve production sessions.');
         }
 
@@ -225,7 +226,7 @@ class SpProductionApprovalController extends Controller
      */
     public function reject(Request $request, SpProductionSession $session, SecondProcessReportSyncBridge $bridge)
     {
-        if (Gate::allows('approve-sp-sessions') === false && !Auth::user()?->hasRole('SUPER-ADMIN')) {
+        if (Gate::allows('approve-sp-sessions') === false && ! Auth::user()?->hasRole('SUPER-ADMIN')) {
             abort(403, 'Unauthorized action. Only Supervisors and Admins can return production sessions.');
         }
 
@@ -238,9 +239,9 @@ class SpProductionApprovalController extends Controller
         ]);
 
         $newRemarks = $session->remarks;
-        if (!empty($validated['reason'])) {
+        if (! empty($validated['reason'])) {
             $supervisorName = Auth::user()?->name ?? 'Supervisor';
-            $rejectionNote = "[Correction Requested by {$supervisorName} on " . now()->format('Y-m-d H:i') . "]: " . $validated['reason'];
+            $rejectionNote = "[Correction Requested by {$supervisorName} on " . now()->format('Y-m-d H:i') . ']: ' . $validated['reason'];
             $newRemarks = $newRemarks ? ($newRemarks . "\n" . $rejectionNote) : $rejectionNote;
         }
 

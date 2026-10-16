@@ -33,11 +33,12 @@ class BackupDatabase extends Command
         $database = config('database.connections.mysql.database');
         $username = config('database.connections.mysql.username');
         $password = config('database.connections.mysql.password');
-        $host     = config('database.connections.mysql.host', '127.0.0.1');
-        $port     = config('database.connections.mysql.port', '3306');
+        $host = config('database.connections.mysql.host', '127.0.0.1');
+        $port = config('database.connections.mysql.port', '3306');
 
         if (empty($database)) {
             $this->error('Nama database belum dikonfigurasi di .env!');
+
             return 1;
         }
 
@@ -45,7 +46,7 @@ class BackupDatabase extends Command
         $customPath = $this->option('path');
         $backupDir = $customPath ?: storage_path('app/backups');
 
-        if (!File::exists($backupDir)) {
+        if (! File::exists($backupDir)) {
             File::makeDirectory($backupDir, 0755, true, true);
         }
 
@@ -57,9 +58,10 @@ class BackupDatabase extends Command
         // 3. Cari path mysqldump (kompatibel untuk Windows XAMPP & Linux/Docker)
         $mysqldumpPath = $this->findMysqldumpBinary();
 
-        if (!$mysqldumpPath) {
+        if (! $mysqldumpPath) {
             $this->error('Executable mysqldump tidak ditemukan di sistem atau folder XAMPP!');
             Log::error('Database backup failed: mysqldump binary not found.');
+
             return 1;
         }
 
@@ -70,8 +72,8 @@ class BackupDatabase extends Command
         $hostArg = "--host={$host}";
         $portArg = "--port={$port}";
         $userArg = "--user={$username}";
-        $passArg = !empty($password) ? "--password=" . escapeshellarg($password) : "";
-        $options = "--routines --triggers --single-transaction --quick --lock-tables=false";
+        $passArg = ! empty($password) ? '--password=' . escapeshellarg($password) : '';
+        $options = '--routines --triggers --single-transaction --quick --lock-tables=false';
 
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             // Windows command execution
@@ -92,14 +94,14 @@ class BackupDatabase extends Command
             $fileSizeBytes = File::size($filePath);
             $formattedSize = $this->formatBytes($fileSizeBytes);
 
-            $this->info("✅ Backup BERHASIL dibuat!");
+            $this->info('✅ Backup BERHASIL dibuat!');
             $this->line("📁 Lokasi File : {$filePath}");
             $this->line("📦 Ukuran File : {$formattedSize}");
 
             Log::info("Database backup created successfully: {$fileName} ({$formattedSize})");
 
             // 5. Bersihkan backup lama (Auto-pruning)
-            $keepDays = (int)$this->option('keep-days');
+            $keepDays = (int) $this->option('keep-days');
             $this->pruneOldBackups($backupDir, $keepDays);
 
             return 0;
@@ -140,16 +142,16 @@ class BackupDatabase extends Command
             // Coba dari PATH environment
             $output = [];
             $code = 0;
-            exec("where mysqldump", $output, $code);
-            if ($code === 0 && !empty($output[0])) {
+            exec('where mysqldump', $output, $code);
+            if ($code === 0 && ! empty($output[0])) {
                 return trim($output[0]);
             }
         } else {
             // Linux / Unix / Docker
             $output = [];
             $code = 0;
-            exec("which mysqldump", $output, $code);
-            if ($code === 0 && !empty($output[0])) {
+            exec('which mysqldump', $output, $code);
+            if ($code === 0 && ! empty($output[0])) {
                 return trim($output[0]);
             }
             if (file_exists('/usr/bin/mysqldump')) {
@@ -168,7 +170,9 @@ class BackupDatabase extends Command
      */
     private function pruneOldBackups(string $backupDir, int $keepDays): void
     {
-        if ($keepDays <= 0) return;
+        if ($keepDays <= 0) {
+            return;
+        }
 
         $thresholdDate = Carbon::now('Asia/Jakarta')->subDays($keepDays);
         $files = File::files($backupDir);

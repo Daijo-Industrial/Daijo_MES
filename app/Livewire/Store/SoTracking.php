@@ -47,16 +47,22 @@ class SoTracking extends Component
     public int $perPage = 25;
 
     public string $sortField = 'scanned_at';
+
     public string $sortDirection = 'desc';
 
     public string $barcodeScanInput = '';
+
     public ?string $lastScannedFeedback = null;
+
     public bool $showAdvancedFilter = false;
 
     // DO Detail Modal State
     public bool $showDocDetailModal = false;
+
     public ?string $selectedDocNum = null;
+
     public array $docDetailSummary = [];
+
     public array $docDetailItems = [];
 
     public function updatedSearch(): void
@@ -201,7 +207,7 @@ class SoTracking extends Component
 
     public function toggleAdvancedFilter(): void
     {
-        $this->showAdvancedFilter = !$this->showAdvancedFilter;
+        $this->showAdvancedFilter = ! $this->showAdvancedFilter;
     }
 
     public function sortBy(string $field): void
@@ -231,14 +237,14 @@ class SoTracking extends Component
         $scannedBoxes = ScannedData::where('doc_num', $docNum)->get();
 
         $this->docDetailSummary = [
-            'doc_num'             => $docNum,
-            'customer'            => $customer,
-            'posting_date'        => $postingDate,
-            'is_done'             => $isDone,
-            'total_so_qty'        => (int) $soItems->sum('quantity'),
-            'total_scanned_qty'   => (int) $scannedBoxes->sum('quantity'),
+            'doc_num' => $docNum,
+            'customer' => $customer,
+            'posting_date' => $postingDate,
+            'is_done' => $isDone,
+            'total_so_qty' => (int) $soItems->sum('quantity'),
+            'total_scanned_qty' => (int) $scannedBoxes->sum('quantity'),
             'total_scanned_boxes' => $scannedBoxes->count(),
-            'unique_spk_count'    => $scannedBoxes->pluck('spk_code')->filter()->unique()->count(),
+            'unique_spk_count' => $scannedBoxes->pluck('spk_code')->filter()->unique()->count(),
         ];
 
         $this->docDetailItems = $soItems->groupBy('item_code')->map(function ($group, $itemCode) use ($scannedBoxes) {
@@ -249,12 +255,12 @@ class SoTracking extends Component
             $scannedCount = $boxScans->count();
 
             return [
-                'item_code'     => $itemCode,
-                'item_name'     => $first->item_name ?? '-',
-                'target_qty'    => $targetQty,
-                'scanned_qty'   => $scannedQty,
+                'item_code' => $itemCode,
+                'item_name' => $first->item_name ?? '-',
+                'target_qty' => $targetQty,
+                'scanned_qty' => $scannedQty,
                 'scanned_boxes' => $scannedCount,
-                'is_finished'   => $scannedQty >= $targetQty && $targetQty > 0,
+                'is_finished' => $scannedQty >= $targetQty && $targetQty > 0,
             ];
         })->values()->toArray();
     }
@@ -273,14 +279,14 @@ class SoTracking extends Component
      */
     public function hasActiveSearch(): bool
     {
-        return !empty(trim($this->spkSearch))
-            || !empty(trim($this->labelSearch))
-            || !empty(trim($this->search))
-            || !empty(trim($this->docNumSearch))
-            || !empty(trim($this->itemCodeSearch))
-            || !empty(trim($this->customerSearch))
-            || !empty($this->dateFrom)
-            || !empty($this->dateTo);
+        return ! empty(trim($this->spkSearch))
+            || ! empty(trim($this->labelSearch))
+            || ! empty(trim($this->search))
+            || ! empty(trim($this->docNumSearch))
+            || ! empty(trim($this->itemCodeSearch))
+            || ! empty(trim($this->customerSearch))
+            || ! empty($this->dateFrom)
+            || ! empty($this->dateTo);
     }
 
     /**
@@ -292,35 +298,35 @@ class SoTracking extends Component
         $query = ScannedData::query();
 
         // Specific filter: SPK Code (uses composite index idx_scanned_data_spk_label)
-        if (!empty(trim($this->spkSearch))) {
+        if (! empty(trim($this->spkSearch))) {
             $term = trim($this->spkSearch);
             $prefix = str_starts_with($term, '%') ? $term : "{$term}%";
             $query->where('scanned_data.spk_code', 'like', $prefix);
         }
 
         // Specific filter: Label Box
-        if (!empty(trim($this->labelSearch))) {
+        if (! empty(trim($this->labelSearch))) {
             $term = trim($this->labelSearch);
             $prefix = str_starts_with($term, '%') ? $term : "{$term}%";
             $query->where('scanned_data.label', 'like', $prefix);
         }
 
         // Specific filter: DO / SO Document Number
-        if (!empty(trim($this->docNumSearch))) {
+        if (! empty(trim($this->docNumSearch))) {
             $term = trim($this->docNumSearch);
             $prefix = str_starts_with($term, '%') ? $term : "{$term}%";
             $query->where('scanned_data.doc_num', 'like', $prefix);
         }
 
         // Specific filter: Part Number
-        if (!empty(trim($this->itemCodeSearch))) {
+        if (! empty(trim($this->itemCodeSearch))) {
             $term = trim($this->itemCodeSearch);
             $prefix = str_starts_with($term, '%') ? $term : "{$term}%";
             $query->where('scanned_data.item_code', 'like', $prefix);
         }
 
         // Specific filter: Customer
-        if (!empty(trim($this->customerSearch))) {
+        if (! empty(trim($this->customerSearch))) {
             $term = trim($this->customerSearch);
             $prefix = str_starts_with($term, '%') ? $term : "{$term}%";
             $matchingDocNums = SoData::where('customer', 'like', $prefix)
@@ -330,7 +336,7 @@ class SoTracking extends Component
         }
 
         // Universal search
-        if (!empty(trim($this->search))) {
+        if (! empty(trim($this->search))) {
             $term = trim($this->search);
             $prefix = str_starts_with($term, '%') ? $term : "{$term}%";
             $matchingDocNums = SoData::where('customer', 'like', $prefix)
@@ -340,9 +346,9 @@ class SoTracking extends Component
 
             $query->where(function ($q) use ($prefix, $matchingDocNums) {
                 $q->where('scanned_data.spk_code', 'like', $prefix)
-                  ->orWhere('scanned_data.label', 'like', $prefix)
-                  ->orWhere('scanned_data.doc_num', 'like', $prefix)
-                  ->orWhere('scanned_data.item_code', 'like', $prefix);
+                    ->orWhere('scanned_data.label', 'like', $prefix)
+                    ->orWhere('scanned_data.doc_num', 'like', $prefix)
+                    ->orWhere('scanned_data.item_code', 'like', $prefix);
                 if ($matchingDocNums->isNotEmpty()) {
                     $q->orWhereIn('scanned_data.doc_num', $matchingDocNums);
                 }
@@ -365,11 +371,11 @@ class SoTracking extends Component
         }
 
         // Date range filter
-        if (!empty($this->dateFrom)) {
+        if (! empty($this->dateFrom)) {
             $query->whereDate('scanned_data.created_at', '>=', $this->dateFrom);
         }
 
-        if (!empty($this->dateTo)) {
+        if (! empty($this->dateTo)) {
             $query->whereDate('scanned_data.created_at', '<=', $this->dateTo);
         }
 
@@ -385,12 +391,12 @@ class SoTracking extends Component
 
         // Sorting
         $sortCol = match ($this->sortField) {
-            'doc_num'   => 'scanned_data.doc_num',
-            'spk_code'  => 'scanned_data.spk_code',
-            'label'     => 'scanned_data.label',
+            'doc_num' => 'scanned_data.doc_num',
+            'spk_code' => 'scanned_data.spk_code',
+            'label' => 'scanned_data.label',
             'item_code' => 'scanned_data.item_code',
-            'quantity'  => 'scanned_data.quantity',
-            default     => 'scanned_data.created_at',
+            'quantity' => 'scanned_data.quantity',
+            default => 'scanned_data.created_at',
         };
 
         return $query->orderBy($sortCol, $this->sortDirection);
@@ -402,7 +408,7 @@ class SoTracking extends Component
      */
     protected function enrichRecords($collection)
     {
-        if (!$collection || $collection->isEmpty()) {
+        if (! $collection || $collection->isEmpty()) {
             return $collection;
         }
 
@@ -441,7 +447,7 @@ class SoTracking extends Component
 
         return response()->streamDownload(function () use ($records) {
             $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM
 
             fputcsv($handle, [
                 'No DO / SO',
@@ -489,18 +495,18 @@ class SoTracking extends Component
         $hasActiveSearch = $this->hasActiveSearch();
 
         // When user opens the menu without active input, DO NOT run heavy queries!
-        if (!$hasActiveSearch) {
+        if (! $hasActiveSearch) {
             return view('livewire.store.so-tracking', [
-                'records'         => null,
-                'stats'           => (object) [
-                    'total_boxes'      => 0,
-                    'total_qty'        => 0,
+                'records' => null,
+                'stats' => (object) [
+                    'total_boxes' => 0,
+                    'total_qty' => 0,
                     'unique_spk_count' => 0,
-                    'unique_do_count'  => 0,
+                    'unique_do_count' => 0,
                 ],
-                'isSearching'     => false,
-                'matchingDos'     => collect(),
-                'directMatches'   => collect(),
+                'isSearching' => false,
+                'matchingDos' => collect(),
+                'directMatches' => collect(),
                 'hasActiveSearch' => false,
             ]);
         }
@@ -514,7 +520,7 @@ class SoTracking extends Component
         ')->first();
 
         // 2. Grouped DO summary with zero-overhead pagination (uses known unique_do_count)
-        $isSearching = !empty(trim($this->spkSearch)) || !empty(trim($this->labelSearch)) || !empty(trim($this->search));
+        $isSearching = ! empty(trim($this->spkSearch)) || ! empty(trim($this->labelSearch)) || ! empty(trim($this->search));
         $matchingDos = collect();
 
         if ($isSearching) {
@@ -569,11 +575,11 @@ class SoTracking extends Component
         $this->enrichRecords($records->getCollection());
 
         return view('livewire.store.so-tracking', [
-            'records'         => $records,
-            'stats'           => $stats,
-            'isSearching'     => $isSearching,
-            'matchingDos'     => $matchingDos,
-            'directMatches'   => $matchingDos, // alias for backwards compatibility
+            'records' => $records,
+            'stats' => $stats,
+            'isSearching' => $isSearching,
+            'matchingDos' => $matchingDos,
+            'directMatches' => $matchingDos, // alias for backwards compatibility
             'hasActiveSearch' => true,
         ]);
     }

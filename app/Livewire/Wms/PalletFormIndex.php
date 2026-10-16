@@ -6,29 +6,38 @@ use App\Models\WmsPalletForm;
 use App\Models\WmsPosition;
 use App\Models\WmsWarehouse;
 use App\Services\WmsService;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Illuminate\Support\Facades\DB;
 
 class PalletFormIndex extends Component
 {
     use WithPagination;
 
     public $search = '';
+
     public $filterSlot = 'ALL'; // ALL, UNASSIGNED, ASSIGNED
 
     // Quick Barcode Scanner & Verification State (Store Putaway)
     public string $scanPalletId = '';
+
     public ?WmsPalletForm $scannedPallet = null;
+
     public ?int $selectedPositionId = null;
+
     public ?string $scanRackCode = '';
+
     public ?int $recommendedPositionId = null;
+
     public string $filterWarehouseId = '';
+
     public bool $showBoxDetails = false;
 
     // Assign Slot Modal State (Store - Backward Compatible)
     public bool $showAssignModal = false;
+
     public ?string $assignPalletId = null;
+
     public ?int $assignPositionId = null;
 
     protected $queryString = ['search', 'filterSlot'];
@@ -51,6 +60,7 @@ class PalletFormIndex extends Component
         $this->scanPalletId = trim($value ?? '');
         if (empty($this->scanPalletId)) {
             $this->scannedPallet = null;
+
             return;
         }
 
@@ -66,7 +76,7 @@ class PalletFormIndex extends Component
     public function updatedScanRackCode($value)
     {
         $this->scanRackCode = trim($value ?? '');
-        if (!empty($this->scanRackCode) && strlen($this->scanRackCode) >= 3) {
+        if (! empty($this->scanRackCode) && strlen($this->scanRackCode) >= 3) {
             $this->scanRackPosition();
         }
     }
@@ -79,6 +89,7 @@ class PalletFormIndex extends Component
         $this->scanPalletId = trim($this->scanPalletId);
         if (empty($this->scanPalletId)) {
             $this->scannedPallet = null;
+
             return;
         }
 
@@ -89,10 +100,11 @@ class PalletFormIndex extends Component
             'details.item.customer',
         ])->where('pallet_id', $this->scanPalletId)->first();
 
-        if (!$pallet) {
+        if (! $pallet) {
             session()->flash('error', "Pallet ID \"{$this->scanPalletId}\" tidak ditemukan di sistem.");
             $this->scannedPallet = null;
             $this->dispatch('scan-error');
+
             return;
         }
 
@@ -100,14 +112,15 @@ class PalletFormIndex extends Component
             session()->flash('error', "Pallet {$pallet->pallet_id} sudah OUT / stok habis (0 pcs) dan tidak dapat di-assign ke rak.");
             $this->scannedPallet = null;
             $this->dispatch('scan-error');
+
             return;
         }
 
-        $this->scannedPallet          = $pallet;
-        $this->assignPalletId         = $pallet->pallet_id;
-        $this->selectedPositionId     = $pallet->position_id;
-        $this->assignPositionId       = $pallet->position_id;
-        $this->showBoxDetails         = false;
+        $this->scannedPallet = $pallet;
+        $this->assignPalletId = $pallet->pallet_id;
+        $this->selectedPositionId = $pallet->position_id;
+        $this->assignPositionId = $pallet->position_id;
+        $this->showBoxDetails = false;
 
         // Auto pre-select warehouse from existing pallet position if any, or default to first warehouse
         if ($pallet->position?->rack?->whse_id) {
@@ -129,16 +142,17 @@ class PalletFormIndex extends Component
      */
     public function recalculateRecommendation(?WmsService $wmsService = null)
     {
-        if (!$this->scannedPallet) {
+        if (! $this->scannedPallet) {
             $this->recommendedPositionId = null;
+
             return;
         }
 
         $wmsService = $wmsService ?? app(WmsService::class);
-        $customerCodes = $this->scannedPallet->details->map(fn($d) => $d->item?->customer?->customer_code)
+        $customerCodes = $this->scannedPallet->details->map(fn ($d) => $d->item?->customer?->customer_code)
             ->filter()->unique()->toArray();
         $rec = $wmsService->recommendPosition(
-            $customerCodes, 
+            $customerCodes,
             (string) $this->scannedPallet->part_no,
             $this->filterWarehouseId ?: null
         );
@@ -153,13 +167,13 @@ class PalletFormIndex extends Component
         $this->recalculateRecommendation();
 
         // If currently chosen slot does not belong to the newly selected warehouse, reset it
-        if (!empty($this->filterWarehouseId)) {
+        if (! empty($this->filterWarehouseId)) {
             $currId = $this->assignPositionId ?: $this->selectedPositionId;
             if ($currId) {
                 $pos = WmsPosition::with('rack')->find($currId);
-                if ($pos && (string)$pos->rack?->whse_id !== (string)$this->filterWarehouseId) {
+                if ($pos && (string) $pos->rack?->whse_id !== (string) $this->filterWarehouseId) {
                     $this->selectedPositionId = null;
-                    $this->assignPositionId   = null;
+                    $this->assignPositionId = null;
                 }
             }
         }
@@ -181,8 +195,8 @@ class PalletFormIndex extends Component
 
         if ($pos) {
             $this->selectedPositionId = $pos->id;
-            $this->assignPositionId   = $pos->id;
-            $this->scanRackCode       = '';
+            $this->assignPositionId = $pos->id;
+            $this->scanRackCode = '';
             $this->dispatch('scan-success');
             session()->flash('info', "Slot rak terpilih: {$pos->position_code}");
         } else {
@@ -198,7 +212,7 @@ class PalletFormIndex extends Component
     {
         if ($this->recommendedPositionId) {
             $this->selectedPositionId = $this->recommendedPositionId;
-            $this->assignPositionId   = $this->recommendedPositionId;
+            $this->assignPositionId = $this->recommendedPositionId;
             $this->dispatch('scan-success');
         }
     }
@@ -222,9 +236,9 @@ class PalletFormIndex extends Component
             }
 
             $this->recalculateRecommendation($wmsService);
-            $this->assignPositionId   = $this->scannedPallet->position_id;
+            $this->assignPositionId = $this->scannedPallet->position_id;
             $this->selectedPositionId = $this->scannedPallet->position_id;
-            $this->showAssignModal    = true;
+            $this->showAssignModal = true;
         }
     }
 
@@ -236,8 +250,9 @@ class PalletFormIndex extends Component
         $wmsService = $wmsService ?? app(WmsService::class);
         $palletId = $this->scannedPallet?->pallet_id ?? $this->assignPalletId;
 
-        if (!$palletId) {
-            session()->flash('error', "Silakan scan atau pilih pallet terlebih dahulu.");
+        if (! $palletId) {
+            session()->flash('error', 'Silakan scan atau pilih pallet terlebih dahulu.');
+
             return;
         }
 
@@ -249,11 +264,12 @@ class PalletFormIndex extends Component
             if ($pallet->total_pallet_qty <= 0 || $pallet->status === 'OUT') {
                 session()->flash('error', "Pallet {$pallet->pallet_id} sudah habis / OUT dan tidak perlu di-assign.");
                 $this->clearScannedPallet();
+
                 return;
             }
 
             $oldPositionId = $pallet->position_id;
-            $newPositionId = !empty($targetPosId) ? (int) $targetPosId : null;
+            $newPositionId = ! empty($targetPosId) ? (int) $targetPosId : null;
 
             $pallet->update([
                 'position_id' => $newPositionId,
@@ -270,7 +286,7 @@ class PalletFormIndex extends Component
 
             // Log Store transaction
             $action = $newPositionId ? 'ASSIGN_SLOT' : 'UNASSIGN_SLOT';
-            $notes  = $newPositionId ? "Assigned by Store via Quick Scan" : "Set to TEMPORARY (Belum ada tempat) by Store";
+            $notes = $newPositionId ? 'Assigned by Store via Quick Scan' : 'Set to TEMPORARY (Belum ada tempat) by Store';
             $wmsService->logTransaction($pallet->pallet_id, $action, $newPositionId, $notes);
 
             if ($newPositionId) {
@@ -284,7 +300,7 @@ class PalletFormIndex extends Component
             $this->dispatch('scan-success');
             $this->dispatch('focus-scan-input');
         } catch (\Exception $e) {
-            session()->flash('error', "Gagal meng-assign slot rak: " . $e->getMessage());
+            session()->flash('error', 'Gagal meng-assign slot rak: ' . $e->getMessage());
         }
     }
 
@@ -294,7 +310,7 @@ class PalletFormIndex extends Component
     public function unassignScannedPallet(?WmsService $wmsService = null)
     {
         $this->selectedPositionId = null;
-        $this->assignPositionId   = null;
+        $this->assignPositionId = null;
         $this->saveAssignSlot($wmsService);
     }
 
@@ -303,15 +319,15 @@ class PalletFormIndex extends Component
      */
     public function clearScannedPallet()
     {
-        $this->scannedPallet          = null;
-        $this->scanPalletId           = '';
-        $this->selectedPositionId     = null;
-        $this->scanRackCode           = '';
+        $this->scannedPallet = null;
+        $this->scanPalletId = '';
+        $this->selectedPositionId = null;
+        $this->scanRackCode = '';
         $this->recommendedPositionId = null;
-        $this->assignPalletId         = null;
-        $this->assignPositionId       = null;
-        $this->showAssignModal        = false;
-        $this->showBoxDetails         = false;
+        $this->assignPalletId = null;
+        $this->assignPositionId = null;
+        $this->showAssignModal = false;
+        $this->showBoxDetails = false;
         $this->dispatch('focus-scan-input');
     }
 
@@ -331,7 +347,7 @@ class PalletFormIndex extends Component
             $pallet->delete();
 
             // Log transaction
-            $wmsService->logTransaction($palletId, 'DELETE_PALLET', $positionId, "Deleted from Pallet Form Index");
+            $wmsService->logTransaction($palletId, 'DELETE_PALLET', $positionId, 'Deleted from Pallet Form Index');
 
             // Update rack status if it was in a rack
             if ($positionId) {
@@ -343,7 +359,7 @@ class PalletFormIndex extends Component
             session()->flash('success', "Pallet $palletId berhasil dihapus.");
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal menghapus pallet: " . $e->getMessage());
+            session()->flash('error', 'Gagal menghapus pallet: ' . $e->getMessage());
         }
     }
 
@@ -367,9 +383,9 @@ class PalletFormIndex extends Component
 
         // Self-healing 2: Ensure any pallet with total_pallet_qty <= 0 or status == OUT has position_id cleared
         $stalePallets = WmsPalletForm::whereNotNull('position_id')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->where('total_pallet_qty', '<=', 0)
-                  ->orWhere('status', 'OUT');
+                    ->orWhere('status', 'OUT');
             })
             ->get();
 
@@ -384,21 +400,21 @@ class PalletFormIndex extends Component
         }
 
         $palletForms = WmsPalletForm::with(['position.rack.warehouse', 'details.item.customer'])
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('pallet_id', 'like', '%' . $this->search . '%')
-                      ->orWhere('part_no', 'like', '%' . $this->search . '%')
-                      ->orWhere('model_name', 'like', '%' . $this->search . '%')
-                      ->orWhere('delivery_name', 'like', '%' . $this->search . '%');
+                    ->orWhere('part_no', 'like', '%' . $this->search . '%')
+                    ->orWhere('model_name', 'like', '%' . $this->search . '%')
+                    ->orWhere('delivery_name', 'like', '%' . $this->search . '%');
             })
-            ->when($this->filterSlot !== 'ALL', function($query) {
+            ->when($this->filterSlot !== 'ALL', function ($query) {
                 if ($this->filterSlot === 'UNASSIGNED') {
                     $query->whereNull('position_id')
-                          ->where('total_pallet_qty', '>', 0)
-                          ->where('status', '!=', 'OUT');
+                        ->where('total_pallet_qty', '>', 0)
+                        ->where('status', '!=', 'OUT');
                 } elseif ($this->filterSlot === 'ASSIGNED') {
                     $query->whereNotNull('position_id')
-                          ->where('total_pallet_qty', '>', 0)
-                          ->where('status', '!=', 'OUT');
+                        ->where('total_pallet_qty', '>', 0)
+                        ->where('status', '!=', 'OUT');
                 }
             })
             ->orderBy('created_at', 'desc')
@@ -407,8 +423,8 @@ class PalletFormIndex extends Component
         $warehouses = WmsWarehouse::orderBy('whse_code', 'asc')->get();
 
         $availablePositionsQuery = WmsPosition::with(['rack.warehouse', 'customer'])
-            ->when(!empty($this->filterWarehouseId), function($q) {
-                $q->whereHas('rack', function($rq) {
+            ->when(! empty($this->filterWarehouseId), function ($q) {
+                $q->whereHas('rack', function ($rq) {
                     $rq->where('whse_id', $this->filterWarehouseId);
                 });
             })
@@ -416,16 +432,15 @@ class PalletFormIndex extends Component
 
         $availablePositions = $availablePositionsQuery->get();
 
-        $recommendedPosition = $this->recommendedPositionId 
+        $recommendedPosition = $this->recommendedPositionId
             ? WmsPosition::with(['rack.warehouse', 'customer'])->find($this->recommendedPositionId)
             : null;
 
         return view('livewire.wms.pallet-form-index', [
-            'palletForms'          => $palletForms,
-            'availablePositions'   => $availablePositions,
-            'warehouses'           => $warehouses,
-            'recommendedPosition'  => $recommendedPosition,
+            'palletForms' => $palletForms,
+            'availablePositions' => $availablePositions,
+            'warehouses' => $warehouses,
+            'recommendedPosition' => $recommendedPosition,
         ]);
     }
 }
-

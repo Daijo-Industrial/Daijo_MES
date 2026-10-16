@@ -3,9 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductionPayable;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
-use PhpOffice\PhpSpreadsheet\IOFactory;
+use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class ProductionPayableController extends Controller
@@ -13,6 +12,7 @@ class ProductionPayableController extends Controller
     public function index()
     {
         $payables = ProductionPayable::latest('posting_date')->paginate(20);
+
         return view('production-payables.index', compact('payables'));
     }
 
@@ -36,7 +36,7 @@ class ProductionPayableController extends Controller
 
             if (empty($data)) {
                 return back()->withErrors([
-                    'file' => 'File tidak dapat dibaca atau kosong'
+                    'file' => 'File tidak dapat dibaca atau kosong',
                 ]);
             }
 
@@ -90,7 +90,7 @@ class ProductionPayableController extends Controller
 
                     ProductionPayable::updateOrCreate(
                         [
-                            'document_number' => $docNumber
+                            'document_number' => $docNumber,
                         ],
                         [
                             'document_number' => $docNumber,
@@ -120,7 +120,7 @@ class ProductionPayableController extends Controller
         } catch (\Exception $e) {
 
             return back()->withErrors([
-                'file' => $e->getMessage()
+                'file' => $e->getMessage(),
             ]);
         }
     }
@@ -156,7 +156,7 @@ class ProductionPayableController extends Controller
             if ($headerRow === null) {
 
                 $headerRow = array_map(
-                    fn($value) => strtolower(trim($value)),
+                    fn ($value) => strtolower(trim($value)),
                     $row
                 );
 
@@ -188,7 +188,7 @@ class ProductionPayableController extends Controller
     private function parseDate($date)
     {
         if (empty($date)) {
-            return null;
+            return;
         }
 
         try {
@@ -200,7 +200,7 @@ class ProductionPayableController extends Controller
                     ->format('Y-m-d');
             }
 
-            $date = trim((string)$date);
+            $date = trim((string) $date);
 
             // SAP 08.06.26
             if (preg_match('/^\d{2}\.\d{2}\.\d{2}$/', $date)) {
@@ -225,7 +225,7 @@ class ProductionPayableController extends Controller
 
         } catch (\Exception $e) {
 
-            return null;
+            return;
         }
     }
 
@@ -235,9 +235,9 @@ class ProductionPayableController extends Controller
             return 0;
         }
 
-        $qty = str_replace(',', '', (string)$qty);
+        $qty = str_replace(',', '', (string) $qty);
 
-        return (int) round((float)$qty);
+        return (int) round((float) $qty);
     }
 
     public function show($id)
@@ -259,7 +259,7 @@ class ProductionPayableController extends Controller
         $payable = ProductionPayable::findOrFail($id);
 
         $payable->update([
-            'status' => $request->status
+            'status' => $request->status,
         ]);
 
         return back()->with(

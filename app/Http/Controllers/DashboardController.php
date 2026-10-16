@@ -2,53 +2,38 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\ParentDataUpdated;
+use App\Models\AdjustMachineLog;
+use App\Models\ApiLog;
 use App\Models\DailyItemCode;
-use App\Models\ProductionOutputLog;
-use Illuminate\Support\Facades\DB;
+use App\Models\Delivery\sapInventoryFg;
+use App\Models\DicAccessoryLot;
 use App\Models\File;
+use App\Models\HourlyRemark;
 use App\Models\MachineJob;
 use App\Models\MasterListItem;
-use App\Models\Production\PRD_BillOfMaterialChild;
-use App\Models\Production\PRD_BillOfMaterialParent;
-use App\Models\Production\PRD_MaterialLog;
-use App\Models\Production\PRD_MouldingJob;
-use App\Models\Production\PRD_MouldingUserLog;
-use App\Models\ProductionReport;
-use App\Models\ProductionScannedData;
-use App\Models\Delivery\sapInventoryFg;
 use App\Models\MouldChangeLog;
-use App\Models\AdjustMachineLog;
-use App\Models\RepairMachineLog;
-use App\Models\SpkMaster;
 use App\Models\OperatorUser;
-use App\Models\User;
-use App\Models\HourlyRemark;
-use App\Models\ApiLog;
-
 use App\Models\ProductionNgDetail;
 use App\Models\ProductionNgType;
-use App\Models\DicAccessoryLot;
-
+use App\Models\ProductionOutputLog;
+use App\Models\ProductionReport;
+use App\Models\ProductionScannedData;
+use App\Models\RepairMachineLog;
+use App\Models\SpkMaster;
+use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Milon\Barcode\DNS1D;
-use Illuminate\Support\Facades\Auth;
-use Endroid\QrCode\Color\Color;
-use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Label\Label;
-use Endroid\QrCode\Logo\Logo;
-use Endroid\QrCode\RoundBlockSizeMode;
+use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
-use Endroid\QrCode\Writer\ValidationException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Milon\Barcode\DNS1D;
 
 class DashboardController extends Controller
 {
-
-    // index untuk 3 role , operator , workshop , dan gudang moulding 
+    // index untuk 3 role , operator , workshop , dan gudang moulding
     // public function index()
     // {
     //     $user = auth()->user();
@@ -65,7 +50,7 @@ class DashboardController extends Controller
     //             $temporal = $remark->dailyItemCode->temporal_cycle_time ?? null;
 
     //             if (!is_null($temporal) && is_numeric($temporal) && $temporal != 0) {
-    //                 $cavity = $remark->dailyItemCode->temporal_cavity 
+    //                 $cavity = $remark->dailyItemCode->temporal_cavity
     //                     ?? ($remark->dailyItemCode->masterItem->cavity ?? 0);
     //                 $cavity = $cavity > 0 ? $cavity : 1;
 
@@ -77,17 +62,16 @@ class DashboardController extends Controller
     //             } else {
     //                 $remark->is_achieve = 0;
     //             }
-        
-    //             $remark->save(); 
-    //         }
 
+    //             $remark->save();
+    //         }
 
     //         $files = collect();
     //         $machineJobShift = null;
     //         $itemCode = null;
     //         $uniquedata = collect();
     //         $machinejobid = MachineJob::where('user_id', $user->id)->first() ?? null;
-            
+
     //         if(count($uniquedata) > 0){
     //             $dataWithSpkNo = ProductionReport::where('spk_no', $uniquedata[0]['spk'])->first();
     //         } else {
@@ -112,7 +96,6 @@ class DashboardController extends Controller
 
     //         $pengawasProfile = $pengawasUser?->profile_picture;
 
-
     //         $datas = DailyItemCode::where('user_id', $user->id)
     //             ->whereDate('schedule_date', Carbon::today())
     //             ->with('masterItem','scannedData')
@@ -121,8 +104,7 @@ class DashboardController extends Controller
     //                 ['shift', 'asc'],         // Urutkan berdasarkan shift dulu
     //                 ['item_code', 'asc'],     // Lalu urutkan berdasarkan item_code
     //             ]);
-        
-          
+
     //          // Ambil data dari MouldChangeLog sesuai dengan user_id dan tanggal hari ini
     //         $mouldChangeLogs = MouldChangeLog::where('user_id',  $user->id)
     //         ->whereDate('created_at', Carbon::today())
@@ -173,16 +155,13 @@ class DashboardController extends Controller
     //                     $log->total_pengerjaan = null; // Jika null, beri nilai null
     //                 }
     //             });
-            
-
-
 
     //        // Awal proses
     //         $itemCollections = [];
     //         $totalQuantities = [];
     //         $files = [];
     //         $itemCode = $user->jobs->item_code ?? null;
-       
+
     //         // Helper untuk menentukan key utama (gabung ke yang lebih kecil atau yang muncul pertama)
     //         function getMainItemCode($itemCode, $pairCode) {
     //             return $itemCode ?? $pairCode;
@@ -195,7 +174,7 @@ class DashboardController extends Controller
 
     //             // Tentukan item utama
     //             $mainItemCode = getMainItemCode($itemCodeAll, $pairCode);
-                
+
     //             // Total quantity
     //             if (!isset($totalQuantities[$mainItemCode])) {
     //                 $totalQuantities[$mainItemCode] = 0;
@@ -204,8 +183,7 @@ class DashboardController extends Controller
 
     //             // Simpan file
     //             $fileData = File::where('item_code', $itemCodeAll)->get();
-                
-        
+
     //             $files[$mainItemCode] = $fileData->isEmpty() ? collect() : $fileData;
     //         }
 
@@ -240,7 +218,6 @@ class DashboardController extends Controller
     //             DailyItemCode::whereIn('id', $expiredCandidates)
     //                 ->update(['is_done' => 99]);
     //         }
-
 
     //         $hourlyRemarksActiveDIC = null;
     //         $todayDIC = DailyItemCode::where('user_id', $user->id)
@@ -281,7 +258,7 @@ class DashboardController extends Controller
     //                     $remark->save();
     //                 }
     //             }
-            
+
     //             $hourlyRemarksActiveDIC = $activeDIC->hourlyRemarks;
     //         }
 
@@ -315,7 +292,7 @@ class DashboardController extends Controller
     //              $shiftToday = Carbon::today('Asia/Jakarta')->toDateString();
     //              $shiftTomorrow = Carbon::tomorrow('Asia/Jakarta')->toDateString();
     //          }
- 
+
     //          $hourlyRemarks = HourlyRemark::with('ngDetails', 'ngDetails.ngType')->whereHas('dailyItemCode', function ($query) use ($shiftToday, $shiftTomorrow, $userId) {
     //              $query->where(function ($q) use ($shiftToday, $shiftTomorrow) {
     //                  $q->whereDate('schedule_date', $shiftToday)
@@ -329,27 +306,25 @@ class DashboardController extends Controller
     //          })
     //          ->orderBy('start_time')
     //          ->get();
-       
+
     //         $spkData = ProductionScannedData::where('dic_id', $activeID)
     //             ->with('summary')
     //             ->get();
-            
 
     //          $todayitems = DailyItemCode::where('user_id', $user->id)
     //             ->whereDate('schedule_date', Carbon::today())
     //             ->whereNull('is_done')
     //             ->orderBy('shift')
     //             ->get();
-            
-            
+
     //         $ngData = ProductionNgType::get();
-            
+
     //         $outputLogs = $activeDIC
     //             ? ProductionOutputLog::where('dic_id', $activeID)
     //                 ->orderByDesc('logged_at')
     //                 ->get()
     //             : collect();
-            
+
     //         return view('dashboards.dashboard-operator', compact('files', 'datas', 'itemCode', 'uniquedata', 'machineJobShift', 'dataWithSpkNo', 'machinejobid', 'itemCollections',  'mouldChangeLogs', 'adjustMachineLogs', 'repairMachineLogs','zone','pengawasName','pengawasProfile', 'activeDIC', 'totalScannedQuantity', 'scannedCount', 'hourlyRemarksActiveDIC', 'hourlyRemarks','spkData', 'todayitems','ngData', 'outputLogs'));
     //     } elseif ($user->role->name === 'WORKSHOP') {
     //         return view('dashboards.dashboard-workshop', compact('user'));
@@ -361,40 +336,40 @@ class DashboardController extends Controller
     // public function index()
     // {
     //     $user = auth()->user();
-    
+
     //     // ── Early returns untuk role non-OPERATOR ────────────────────────────────
     //     if ($user->role->name === 'ADMIN') {
     //         return view('dashboards.dashboard-admin');
     //     }
-    
+
     //     if ($user->role->name === 'WORKSHOP') {
     //         return view('dashboards.dashboard-workshop', compact('user'));
     //     }
-    
+
     //     if ($user->role->name !== 'OPERATOR') {
     //         return view('dashboard', compact('user'));
     //     }
-    
+
     //     // ════════════════════════════════════════════════════════════════════════
     //     //  OPERATOR
     //     // ════════════════════════════════════════════════════════════════════════
-    
+
     //     $userId   = $user->id;
     //     $now      = Carbon::now('Asia/Jakarta');
     //     $today    = Carbon::today('Asia/Jakarta');
     //     $itemCode = $user->jobs->item_code ?? null;
-    
+
     //     // ── 1. MACHINE JOB (query sekali, pakai ulang) ───────────────────────────
     //     $machineJob      = MachineJob::where('user_id', $userId)->first();
     //     $machinejobid    = $machineJob;
     //     $machineJobShift = $machineJob->shift ?? 1;
-    
+
     //     // ── 2. SHIFT DATE BOUNDARY ───────────────────────────────────────────────
     //     // Jam 00:00 - 07:29 dianggap masih shift kemarin (shift 3 belum selesai)
     //     $isEarlyMorning = $now->hour < 7 || ($now->hour === 7 && $now->minute < 30);
     //     $shiftToday     = ($isEarlyMorning ? Carbon::yesterday('Asia/Jakarta') : $today)->toDateString();
     //     $shiftTomorrow  = ($isEarlyMorning ? $today : Carbon::tomorrow('Asia/Jakarta'))->toDateString();
-    
+
     //     // ── 3. DAILY ITEM CODES ───────────────────────────────────────────────────
     //     // PENTING: kalau jam 00:00-07:29, DIC shift 3 ada di schedule_date KEMARIN
     //     // Jadi query harus include $shiftToday (bisa kemarin) dan $shiftTomorrow (bisa hari ini)
@@ -407,7 +382,7 @@ class DashboardController extends Controller
     //         ->with(['masterItem', 'scannedData', 'masterFg', 'hourlyRemarks.ngDetails.ngType'])
     //         ->get()
     //         ->sortBy([['shift', 'asc'], ['item_code', 'asc']]);
-    
+
     //     // ── 4. AUTO-EXPIRE JADWAL LAMA (dari koleksi, tanpa query baru) ──────────
     //     // Hanya expire DIC yang end_time-nya sudah lewat + 1 jam DAN tidak ada hourlyRemarks
     //     $expiredIds = $datas
@@ -417,7 +392,7 @@ class DashboardController extends Controller
     //             Carbon::parse($dic->end_date . ' ' . $dic->end_time)->addHour()->lt($now)
     //         )
     //         ->pluck('id');
-    
+
     //     if ($expiredIds->isNotEmpty()) {
     //         DailyItemCode::whereIn('id', $expiredIds)->update(['is_done' => 99]);
     //         // Update in-memory supaya tidak stale di langkah berikutnya
@@ -427,7 +402,7 @@ class DashboardController extends Controller
     //             }
     //         });
     //     }
-    
+
     //     // ── 5. UPDATE TARGET & IS_ACHIEVE (bulk, isDirty check) ──────────────────
     //     $todayRemarks = HourlyRemark::whereHas('dailyItemCode', fn($q) =>
     //             $q->where('user_id', $userId)
@@ -438,30 +413,30 @@ class DashboardController extends Controller
     //         )
     //         ->with('dailyItemCode.masterItem')
     //         ->get();
-    
+
     //     foreach ($todayRemarks as $remark) {
     //         $dic      = $remark->dailyItemCode;
     //         $temporal = $dic->temporal_cycle_time ?? null;
-    
+
     //         if (!is_null($temporal) && is_numeric($temporal) && $temporal != 0) {
     //             $cavity         = max((int)($dic->temporal_cavity ?? $dic->masterItem->cavity ?? 0), 1);
     //             $remark->target = floor(3600 / $temporal) * $cavity;
     //         }
-    
+
     //         $remark->is_achieve = (!is_null($remark->actual_production) && $remark->actual_production >= $remark->target)
     //             ? 1 : 0;
-    
+
     //         if ($remark->isDirty()) {
     //             $remark->save();
     //         }
     //     }
-    
+
     //     // ── 6. ACTIVE DIC ────────────────────────────────────────────────────────
     //     // Prioritas sama persis dengan kode asli:
     //     // 1) previousDIC: DIC sebelum shiftToday yang belum selesai (termasuk kemarin kalau jam malam)
     //     // 2) todayDIC: DIC di shiftToday/shiftTomorrow yang belum selesai
     //     // 3) Fallback: tanpa filter tanggal
-    
+
     //     $previousDIC = DailyItemCode::where('user_id', $userId)
     //         ->where('item_code', $itemCode)
     //         ->where('schedule_date', '<', $shiftToday)   // pakai $shiftToday bukan $today
@@ -469,17 +444,17 @@ class DashboardController extends Controller
     //         ->whereNull('is_done')
     //         ->orderByDesc('schedule_date')
     //         ->first();
-    
+
     //     // Cari dari $datas (sudah include shiftToday + shiftTomorrow)
     //     $todayDIC = $datas
     //         ->where('item_code', $itemCode)
     //         ->whereNull('is_done')
     //         ->sortBy('shift')
     //         ->first();
-    
+
     //     // Sama dengan kode asli: previousDIC didahulukan
     //     $activeDIC = $previousDIC ?? $todayDIC;
-    
+
     //     if (!$activeDIC) {
     //         // Fallback terakhir: tanpa filter tanggal sama sekali
     //         $activeDIC = DailyItemCode::where('user_id', $userId)
@@ -488,23 +463,23 @@ class DashboardController extends Controller
     //             ->whereNull('is_done')
     //             ->first();
     //     }
-    
+
     //     $activeID = $activeDIC?->id;
-    
+
     //     // ── 7. SCANNED DATA & HOURLY REMARKS ACTIVE DIC ──────────────────────────
     //     $hourlyRemarksActiveDIC = null;
     //     $totalScannedQuantity   = 0;
     //     $scannedCount           = 0;
-    
+
     //     if ($activeDIC) {
     //         $totalScannedQuantity = $activeDIC->scannedData->sum('quantity');
     //         $scannedCount         = $activeDIC->scannedData->count();
-    
+
     //         $hourlyRemarksActiveDIC = HourlyRemark::with('ngDetails.ngType')
     //             ->where('dic_id', $activeID)
     //             ->orderBy('start_time')
     //             ->get();
-    
+
     //         // Update is_achieve untuk remark active DIC
     //         foreach ($hourlyRemarksActiveDIC as $remark) {
     //             if (!is_null($remark->actual_production) && $remark->actual_production >= $remark->target) {
@@ -515,7 +490,7 @@ class DashboardController extends Controller
     //             }
     //         }
     //     }
-    
+
     //     // ── 8. HOURLY REMARKS WINDOW SHIFT ───────────────────────────────────────
     //     $hourlyRemarks = HourlyRemark::with('ngDetails.ngType')
     //         ->whereHas('dailyItemCode', fn($q) =>
@@ -531,41 +506,41 @@ class DashboardController extends Controller
     //         )
     //         ->orderBy('start_time')
     //         ->get();
-    
+
     //     // ── 9. LOGS (closure reusable) ────────────────────────────────────────────
     //     $calcDuration = function ($log, string $endField = 'end_time') {
     //         $log->total_pengerjaan = ($log->created_at && $log->{$endField})
     //             ? Carbon::parse($log->{$endField})->diffInMinutes(Carbon::parse($log->created_at))
     //             : null;
     //     };
-    
+
     //     // Log tetap pakai $today (tanggal kalender), bukan shift-aware
     //     $mouldChangeLogs   = MouldChangeLog::where('user_id', $userId)->whereDate('created_at', $today)->get();
     //     $adjustMachineLogs = AdjustMachineLog::where('user_id', $userId)->whereDate('created_at', $today)->get();
     //     $repairMachineLogs = RepairMachineLog::where('user_id', $userId)->whereDate('created_at', $today)->get();
-    
+
     //     $mouldChangeLogs->each(fn($log)   => $calcDuration($log, 'end_time'));
     //     $adjustMachineLogs->each(fn($log) => $calcDuration($log, 'end_time'));
     //     $repairMachineLogs->each(fn($log) => $calcDuration($log, 'finish_repair'));
-    
+
     //     // ── 10. FILES & TOTAL QUANTITIES (satu whereIn, bukan per-item query) ────
     //     $files           = [];
     //     $totalQuantities = [];
     //     $itemCollections = [];
     //     $uniquedata      = collect();   // selalu kosong, dipertahankan agar view tidak error
     //     $dataWithSpkNo   = null;
-    
+
     //     $allItemCodes = $datas->pluck('item_code')->unique()->filter()->values();
     //     $allFiles     = File::whereIn('item_code', $allItemCodes)->get()->groupBy('item_code');
-    
+
     //     foreach ($datas as $data) {
     //         $ic       = $data->item_code;
     //         $mainCode = $ic ?? ($data->masterItem->pair ?? $ic);
-    
+
     //         $totalQuantities[$mainCode] = ($totalQuantities[$mainCode] ?? 0) + $data->quantity;
     //         $files[$mainCode]           = $allFiles->get($ic, collect());
     //     }
-    
+
     //     // ── 11. ZONE / PENGAWAS ───────────────────────────────────────────────────
     //     $zone         = $user->zone;
     //     $zonePengawas = $zone?->zoneData()
@@ -574,20 +549,20 @@ class DashboardController extends Controller
     //         ->whereDate('end_date', '>=', $now)
     //         ->latest('updated_at')
     //         ->first();
-    
+
     //     $pengawasName    = $zonePengawas?->pengawas;
     //     $pengawasUser    = $pengawasName
     //         ? \App\Models\OperatorUser::where('name', $pengawasName)->first()
     //         : null;
     //     $pengawasProfile = $pengawasUser?->profile_picture;
-    
+
     //     // ── 12. MISC ──────────────────────────────────────────────────────────────
     //     $spkData = ProductionScannedData::where('dic_id', $activeID)->with('summary')->get();
-    
+
     //     // todayitems: DIC yang masih aktif dalam window shift sekarang
     //     // (dari $datas yang sudah shift-aware, tanpa query baru)
     //     $todayitems = $datas->whereNull('is_done')->sortBy('shift')->values();
-    
+
     //     $ngData = ProductionNgType::all();
 
     //      $outputLogs = $activeDIC
@@ -595,7 +570,7 @@ class DashboardController extends Controller
     //              ->orderByDesc('logged_at')
     //              ->get()
     //             : collect();
-    
+
     //     return view('dashboards.dashboard-operator', compact(
     //         'files', 'datas', 'itemCode', 'uniquedata', 'machineJobShift',
     //         'dataWithSpkNo', 'machinejobid', 'itemCollections',
@@ -618,7 +593,7 @@ class DashboardController extends Controller
         if ($user->hasRole('WORKSHOP')) {
             return view('dashboards.dashboard-workshop', compact('user'));
         }
-        if (!$user->hasRole('OPERATOR')) {
+        if (! $user->hasRole('OPERATOR')) {
             return view('dashboard', compact('user'));
         }
 
@@ -626,15 +601,15 @@ class DashboardController extends Controller
         // OPERATOR
         // ════════════════════════════════════════════════════════════════════
 
-        $userId   = $user->id;
-        $now      = Carbon::now('Asia/Jakarta');
-        $today    = Carbon::today('Asia/Jakarta');
+        $userId = $user->id;
+        $now = Carbon::now('Asia/Jakarta');
+        $today = Carbon::today('Asia/Jakarta');
         $itemCode = $user->jobs->item_code ?? null;
 
         // ── 1. MACHINE JOB ───────────────────────────────────────────────────
-        $machineJob      = MachineJob::where('user_id', $userId)->first();
-        $machinejobid    = $machineJob;
-         $machineJobShift = $machineJob->shift ?? 1;
+        $machineJob = MachineJob::where('user_id', $userId)->first();
+        $machinejobid = $machineJob;
+        $machineJobShift = $machineJob->shift ?? 1;
 
         // ── 2. SHIFT DATE BOUNDARY ───────────────────────────────────────────
         //
@@ -665,7 +640,7 @@ class DashboardController extends Controller
         // Sebelum 07:30 → tampilkan semua shift (1,2,3) dari hari kemarin.
         // Mulai 07:30   → switch ke jadwal hari ini.
         // TIDAK menarik DIC dari tanggal lain meskipun belum selesai.
-         $datas = DailyItemCode::where('user_id', $userId)
+        $datas = DailyItemCode::where('user_id', $userId)
             ->whereDate('schedule_date', $shiftDateA)
             ->with(['masterItem', 'scannedData', 'masterFg', 'hourlyRemarks.ngDetails.ngType'])
             ->get()
@@ -683,11 +658,11 @@ class DashboardController extends Controller
         //
         $expiredIds = $datas
             ->whereNull('is_done')
-            ->filter(fn ($dic) =>
-                $dic->hourlyRemarks->isEmpty()
+            ->filter(
+                fn ($dic) => $dic->hourlyRemarks->isEmpty()
                 && Carbon::parse($dic->end_date . ' ' . $dic->end_time)
-                         ->addHour()
-                         ->lt($now)
+                    ->addHour()
+                    ->lt($now)
             )
             ->pluck('id');
 
@@ -702,23 +677,24 @@ class DashboardController extends Controller
         }
 
         // ── 5. UPDATE TARGET & IS_ACHIEVE ────────────────────────────────────
-        $todayRemarks = HourlyRemark::whereHas('dailyItemCode', fn ($q) =>
-            $q->where('user_id', $userId)
-              ->whereDate('schedule_date', $shiftDateA)
+        $todayRemarks = HourlyRemark::whereHas(
+            'dailyItemCode',
+            fn ($q) => $q->where('user_id', $userId)
+                ->whereDate('schedule_date', $shiftDateA)
         )
-        ->with('dailyItemCode.masterItem')
-        ->get();
+            ->with('dailyItemCode.masterItem')
+            ->get();
 
         foreach ($todayRemarks as $remark) {
-            $dic      = $remark->dailyItemCode;
+            $dic = $remark->dailyItemCode;
             $temporal = $dic->temporal_cycle_time ?? null;
 
-            if (!is_null($temporal) && is_numeric($temporal) && $temporal != 0) {
-                $cavity        = max((int) ($dic->temporal_cavity ?? $dic->masterItem->cavity ?? 0), 1);
+            if (! is_null($temporal) && is_numeric($temporal) && $temporal != 0) {
+                $cavity = max((int) ($dic->temporal_cavity ?? $dic->masterItem->cavity ?? 0), 1);
                 $remark->target = floor(3600 / $temporal) * $cavity;
             }
 
-            $remark->is_achieve = (!is_null($remark->actual_production)
+            $remark->is_achieve = (! is_null($remark->actual_production)
                 && $remark->actual_production >= $remark->target) ? 1 : 0;
 
             if ($remark->isDirty()) {
@@ -741,7 +717,7 @@ class DashboardController extends Controller
                 ->first();
 
             // Self-healing: Jika DIC dihapus PPIC tapi dic_id masih tertinggal di machine_jobs, reset machine job
-            if (!$activeDIC) {
+            if (! $activeDIC) {
                 $machineJob->update([
                     'item_code' => null,
                     'shift' => null,
@@ -752,7 +728,7 @@ class DashboardController extends Controller
             }
         }
 
-        if (!$activeDIC) {
+        if (! $activeDIC) {
             $previousDIC = DailyItemCode::where('user_id', $userId)
                 ->where('item_code', $itemCode)
                 ->where('schedule_date', '<', $shiftDateA)
@@ -770,7 +746,7 @@ class DashboardController extends Controller
 
             $activeDIC = $previousDIC ?? $todayDIC;
 
-            if (!$activeDIC) {
+            if (! $activeDIC) {
                 $activeDIC = DailyItemCode::where('user_id', $userId)
                     ->where('item_code', $itemCode)
                     ->with(['masterItem', 'scannedData', 'masterFg', 'hourlyRemarks.ngDetails.ngType'])
@@ -783,12 +759,12 @@ class DashboardController extends Controller
 
         // ── 7. SCANNED DATA & HOURLY REMARKS ACTIVE DIC ──────────────────────
         $hourlyRemarksActiveDIC = null;
-        $totalScannedQuantity   = 0;
-        $scannedCount           = 0;
+        $totalScannedQuantity = 0;
+        $scannedCount = 0;
 
         if ($activeDIC) {
             $totalScannedQuantity = $activeDIC->scannedData->sum('quantity');
-            $scannedCount         = $activeDIC->scannedData->count();
+            $scannedCount = $activeDIC->scannedData->count();
 
             $hourlyRemarksActiveDIC = HourlyRemark::with('ngDetails.ngType')
                 ->where('dic_id', $activeID)
@@ -796,7 +772,7 @@ class DashboardController extends Controller
                 ->get();
 
             foreach ($hourlyRemarksActiveDIC as $remark) {
-                if (!is_null($remark->actual_production)
+                if (! is_null($remark->actual_production)
                     && $remark->actual_production >= $remark->target
                 ) {
                     $remark->is_achieve = 1;
@@ -818,9 +794,10 @@ class DashboardController extends Controller
                 ->get();
         } else {
             $hourlyRemarks = HourlyRemark::with('ngDetails.ngType')
-                ->whereHas('dailyItemCode', fn ($q) =>
-                    $q->where('user_id', $userId)
-                      ->whereDate('schedule_date', $shiftDateA)
+                ->whereHas(
+                    'dailyItemCode',
+                    fn ($q) => $q->where('user_id', $userId)
+                        ->whereDate('schedule_date', $shiftDateA)
                 )
                 ->orderBy('start_time')
                 ->get();
@@ -860,26 +837,26 @@ class DashboardController extends Controller
             ->where('created_at', '<', $logEnd)
             ->get();
 
-        $mouldChangeLogs->each(fn ($log)   => $calcDuration($log, 'end_time'));
+        $mouldChangeLogs->each(fn ($log) => $calcDuration($log, 'end_time'));
         $adjustMachineLogs->each(fn ($log) => $calcDuration($log, 'end_time'));
         $repairMachineLogs->each(fn ($log) => $calcDuration($log, 'finish_repair'));
 
         // ── 10. FILES & TOTAL QUANTITIES ─────────────────────────────────────
-        $files          = [];
+        $files = [];
         $totalQuantities = [];
         $itemCollections = [];
-        $uniquedata     = collect();   // dipertahankan agar view tidak error
-        $dataWithSpkNo  = null;
+        $uniquedata = collect();   // dipertahankan agar view tidak error
+        $dataWithSpkNo = null;
 
         $allItemCodes = $datas->pluck('item_code')->unique()->filter()->values();
-        $allFiles     = File::whereIn('item_code', $allItemCodes)->get()->groupBy('item_code');
+        $allFiles = File::whereIn('item_code', $allItemCodes)->get()->groupBy('item_code');
 
         foreach ($datas as $data) {
-            $ic       = $data->item_code;
+            $ic = $data->item_code;
             $mainCode = $ic ?? ($data->masterItem->pair ?? $ic);
 
             $totalQuantities[$mainCode] = ($totalQuantities[$mainCode] ?? 0) + $data->quantity;
-            $files[$mainCode]           = $allFiles->get($ic, collect());
+            $files[$mainCode] = $allFiles->get($ic, collect());
         }
 
         // ── 11. ZONE / PENGAWAS ───────────────────────────────────────────────
@@ -892,8 +869,8 @@ class DashboardController extends Controller
             ->latest('updated_at')
             ->first();
 
-        $pengawasName    = $zonePengawas?->pengawas;
-        $pengawasUser    = $pengawasName
+        $pengawasName = $zonePengawas?->pengawas;
+        $pengawasUser = $pengawasName
             ? \App\Models\OperatorUser::where('name', $pengawasName)->first()
             : null;
         $pengawasProfile = $pengawasUser?->profile_picture;
@@ -923,7 +900,7 @@ class DashboardController extends Controller
                 $defaultNextItemCode = $dailyItemsForNext[0] ?? null;
             }
 
-            if (!$defaultNextItemCode) {
+            if (! $defaultNextItemCode) {
                 $nextDay = Carbon::tomorrow()->format('Y-m-d');
                 $defaultNextItemCode = DailyItemCode::where('user_id', $userId)
                     ->where('schedule_date', $nextDay)
@@ -931,7 +908,7 @@ class DashboardController extends Controller
                     ->value('item_code');
             }
 
-            if (!$defaultNextItemCode) {
+            if (! $defaultNextItemCode) {
                 $defaultNextItemCode = DailyItemCode::where('user_id', $userId)
                     ->whereNull('is_done')
                     ->orderBy('start_time', 'asc')
@@ -939,7 +916,7 @@ class DashboardController extends Controller
             }
         }
 
-        $ngData     = ProductionNgType::all();
+        $ngData = ProductionNgType::all();
         $outputLogs = $activeDIC
             ? ProductionOutputLog::where('dic_id', $activeID)
                 ->orderByDesc('logged_at')
@@ -976,7 +953,7 @@ class DashboardController extends Controller
         $allOperators = OperatorUser::orderBy('name', 'asc')->get();
 
         $assignedOperators = [];
-        if ($machineJob && !empty($machineJob->employee_name)) {
+        if ($machineJob && ! empty($machineJob->employee_name)) {
             $assignedOperators = array_values(array_filter(array_map('trim', explode(',', $machineJob->employee_name))));
         }
 
@@ -1056,35 +1033,34 @@ class DashboardController extends Controller
         ));
     }
 
-
     // function untuk add NG (operator)
     public function addNg(Request $request, $id)
     {
         $request->validate([
             'ng_quantity' => 'required|integer|min:1',
-            'ng_type_id'  => 'required|integer',
-            'ng_remarks'  => 'nullable|string'
+            'ng_type_id' => 'required|integer',
+            'ng_remarks' => 'nullable|string',
         ]);
 
         ProductionNgDetail::create([
             'hourly_remark_id' => $id,
-            'ng_type_id'       => $request->ng_type_id,
-            'ng_quantity'      => $request->ng_quantity,
-            'ng_remarks'       => $request->ng_remarks,
+            'ng_type_id' => $request->ng_type_id,
+            'ng_quantity' => $request->ng_quantity,
+            'ng_remarks' => $request->ng_remarks,
         ]);
 
         // Hitung ulang total NG
         $totalNg = ProductionNgDetail::where('hourly_remark_id', $id)
-                                    ->sum('ng_quantity');
+            ->sum('ng_quantity');
 
         // Update kolom NG di hourly remarks
         HourlyRemark::where('id', $id)
-                    ->update(['NG' => $totalNg]);
+            ->update(['NG' => $totalNg]);
 
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'NG added successfully!'
+                'message' => 'NG added successfully!',
             ]);
         }
 
@@ -1096,6 +1072,7 @@ class DashboardController extends Controller
     {
         try {
             $ng = ProductionNgDetail::with('ngType')->findOrFail($id);
+
             return response()->json($ng);
         } catch (\Exception $e) {
             return response()->json(['error' => 'NG not found'], 404);
@@ -1109,25 +1086,25 @@ class DashboardController extends Controller
             $ng = ProductionNgDetail::findOrFail($id);
 
             $ng->update([
-                'ng_type_id'  => $request->ng_type_id,
+                'ng_type_id' => $request->ng_type_id,
                 'ng_quantity' => $request->ng_quantity,
-                'ng_remarks'  => $request->ng_remarks,
+                'ng_remarks' => $request->ng_remarks,
             ]);
 
             // Update total NG di hourly remark
             $ng->hourlyRemark->update([
-                'NG' => $ng->hourlyRemark->ngDetails()->sum('ng_quantity')
+                'NG' => $ng->hourlyRemark->ngDetails()->sum('ng_quantity'),
             ]);
 
             // Return JSON response bukan back()
             return response()->json([
                 'success' => true,
-                'message' => 'NG updated successfully'
+                'message' => 'NG updated successfully',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update NG'
+                'message' => 'Failed to update NG',
             ], 500);
         }
     }
@@ -1143,17 +1120,17 @@ class DashboardController extends Controller
 
             // Update total
             $hourly->update([
-                'NG' => $hourly->ngDetails()->sum('ng_quantity')
+                'NG' => $hourly->ngDetails()->sum('ng_quantity'),
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'NG deleted successfully'
+                'message' => 'NG deleted successfully',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete NG'
+                'message' => 'Failed to delete NG',
             ], 500);
         }
     }
@@ -1162,19 +1139,29 @@ class DashboardController extends Controller
     public function updateRemark(Request $request, $id)
     {
         $request->validate([
-            'remark'            => 'nullable|string',
+            'remark' => 'nullable|string',
             'actual_production' => 'nullable|integer|min:0',
-            'pic'               => 'nullable|string',
-            'pic_2'             => 'nullable|string',
-            'pic_3'             => 'nullable|string',
+            'pic' => 'nullable|string',
+            'pic_2' => 'nullable|string',
+            'pic_3' => 'nullable|string',
         ]);
 
         $remark = HourlyRemark::findOrFail($id);
-        if ($request->has('remark')) $remark->remark = $request->remark;
-        if ($request->has('actual_production')) $remark->actual_production = $request->actual_production;
-        if ($request->has('pic')) $remark->pic = $request->pic;
-        if ($request->has('pic_2')) $remark->pic_2 = $request->pic_2;
-        if ($request->has('pic_3')) $remark->pic_3 = $request->pic_3;
+        if ($request->has('remark')) {
+            $remark->remark = $request->remark;
+        }
+        if ($request->has('actual_production')) {
+            $remark->actual_production = $request->actual_production;
+        }
+        if ($request->has('pic')) {
+            $remark->pic = $request->pic;
+        }
+        if ($request->has('pic_2')) {
+            $remark->pic_2 = $request->pic_2;
+        }
+        if ($request->has('pic_3')) {
+            $remark->pic_3 = $request->pic_3;
+        }
         $remark->save();
 
         if ($request->ajax()) {
@@ -1188,10 +1175,11 @@ class DashboardController extends Controller
     public function updateEmployeeName(Request $request)
     {
         $machineJob = MachineJob::where('user_id', auth()->user()->id)->first();
-        if (!$machineJob) {
+        if (! $machineJob) {
             if ($request->ajax()) {
                 return response()->json(['message' => 'Machine job not found'], 404);
             }
+
             return redirect()->back()->with('error', 'Machine job not found.');
         }
 
@@ -1205,7 +1193,7 @@ class DashboardController extends Controller
         $machineJob->save();
 
         // Backfill active DIC's hourly remarks if pic_2 or pic_3 are currently missing
-        if ($machineJob->dic_id && !empty($machineJob->employee_name)) {
+        if ($machineJob->dic_id && ! empty($machineJob->employee_name)) {
             $ops = array_values(array_filter(array_map('trim', explode(',', $machineJob->employee_name))));
             $p2 = $ops[1] ?? null;
             $p3 = $ops[2] ?? null;
@@ -1299,14 +1287,14 @@ class DashboardController extends Controller
             // Fetch master item data
             $masteritem = MasterListItem::where('item_code', $item_code)->first();
 
-            if (!$masteritem) {
+            if (! $masteritem) {
                 return redirect()->back()->with('error', 'No master item found for the given item code.');
             }
 
             // Get the standard packaging list value
             $perpack = $masteritem->standart_packaging_list;
 
-            if (!$perpack || $perpack == 0) {
+            if (! $perpack || $perpack == 0) {
                 return redirect()->back()->with('error', 'Standard packaging list (per pack) is invalid or zero.');
             }
 
@@ -1424,14 +1412,14 @@ class DashboardController extends Controller
             $uniquedata = array_values($uniquedata);
 
             // Generate barcodes
-            $barcodeGenerator = new DNS1D();
-            $qrCodeWriter = new PngWriter();
+            $barcodeGenerator = new DNS1D;
+            $qrCodeWriter = new PngWriter;
             $barcodes = [];
             $qrcodes = [];
             foreach ($labels as $labelData) {
                 // First barcode with all data
                 $barcodeData1 = implode("\t", [$labelData['spk'], $labelData['item_code'], $labelData['warehouse'], $labelData['quantity'], $labelData['label']]);
-                
+
                 // Second barcode with subset of data
                 $barcodeData2 = implode("\t", [$labelData['item_code'], $labelData['warehouse'], $labelData['quantity'], $labelData['label']]);
 
@@ -1443,18 +1431,20 @@ class DashboardController extends Controller
                 ];
                 $qrCodeData = implode("\t", [$labelData['spk'], $labelData['quantity'], $labelData['warehouse'], $labelData['label']]);
                 // dd($qrCodeData);
-                $qrCode = new QrCode(data: $qrCodeData, errorCorrectionLevel: ErrorCorrectionLevel::Medium, size: 70,
-                margin: 5);
-              
-                
-    
+                $qrCode = new QrCode(
+                    data: $qrCodeData,
+                    errorCorrectionLevel: ErrorCorrectionLevel::Medium,
+                    size: 70,
+                    margin: 5
+                );
+
                 // Create the QR code image with PngWriter
-                $writer = new PngWriter();
+                $writer = new PngWriter;
                 $qrCodeResult = $writer->write($qrCode);
-              
+
                 // Get the PNG image as a string
                 $qrCodeImage = $qrCodeResult->getString();
-                
+
                 // Base64 encode the image to embed in HTML
                 $qrcodes[] = base64_encode($qrCodeImage);
 
@@ -1503,7 +1493,7 @@ class DashboardController extends Controller
 
         // Jika tidak ditemukan dic_id di machine_job (misal operator belum meng-assign job tapi langsung scan),
         // maka fallback mencari DIC aktif yang belum selesai hari ini
-        if (!$resolvedDIC) {
+        if (! $resolvedDIC) {
             $isOvernightWindow = $now->hour < 7 || ($now->hour === 7 && $now->minute < 30);
             $shiftDateA = $isOvernightWindow
                 ? Carbon::yesterday('Asia/Jakarta')->toDateString()
@@ -1523,9 +1513,10 @@ class DashboardController extends Controller
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => $errorMessage
+                    'message' => $errorMessage,
                 ], 422);
             }
+
             return redirect()->back()->withErrors(['error' => $errorMessage]);
         }
 
@@ -1542,12 +1533,12 @@ class DashboardController extends Controller
         $endTime = $base->copy()->addMinutes(($slotIndex + 1) * 60)->format('H:i:s');
 
         $cycletime = 0;
-        if (!empty($activeDIC->temporal_cycle_time)) {
+        if (! empty($activeDIC->temporal_cycle_time)) {
             $cycletime = $activeDIC->temporal_cycle_time; // sudah dalam detik
-        } elseif (!empty($activeDIC->master_fg?->cycle_time)) {
+        } elseif (! empty($activeDIC->master_fg?->cycle_time)) {
             $cycletime = $activeDIC->master_fg->cycle_time * 60; // dari menit ke detik
         }
-        
+
         if ($cycletime > 0) {
             $target = floor(3600 / $cycletime); // 1 jam = 3600 detik
         } else {
@@ -1555,8 +1546,8 @@ class DashboardController extends Controller
         }
 
         if (
-            !empty($activeDIC->master_item?->pair) || 
-            !empty($activeDIC->master_fg?->pair)
+            ! empty($activeDIC->master_item?->pair) ||
+            ! empty($activeDIC->master_fg?->pair)
         ) {
             $target *= 2;
         }
@@ -1579,7 +1570,7 @@ class DashboardController extends Controller
         $wasRecovered = false;
 
         // 1. Auto-recovery: Jika nomor label tertempel dengan kode SPK di belakangnya (misal '30026026744' dari label 300 + SPK 26026744 karena scan terlalu cepat)
-        if (!empty($spkCodeClean) && str_ends_with($rawLabel, $spkCodeClean) && strlen($rawLabel) > strlen($spkCodeClean)) {
+        if (! empty($spkCodeClean) && str_ends_with($rawLabel, $spkCodeClean) && strlen($rawLabel) > strlen($spkCodeClean)) {
             $candidateLabel = substr($rawLabel, 0, -strlen($spkCodeClean));
             if (is_numeric($candidateLabel) && (int) $candidateLabel > 0) {
                 $rawLabel = (string) (int) $candidateLabel;
@@ -1595,23 +1586,25 @@ class DashboardController extends Controller
                     'success' => false,
                     'status' => 'stutter',
                     'label' => $rawLabel,
-                    'message' => $errMsg
+                    'message' => $errMsg,
                 ], 422);
             }
+
             return redirect()->back()->withErrors(['error' => $errMsg]);
         }
 
         // 3. Validasi batas wajar: nomor urut label box harus berupa angka 1 s/d 6 digit (1 - 999999)
-        if (!preg_match('/^[1-9]\d{0,5}$/', $rawLabel)) {
+        if (! preg_match('/^[1-9]\d{0,5}$/', $rawLabel)) {
             $errMsg = "Format nomor label '{$rawLabel}' tidak valid. Nomor label harus berupa 1 s/d 6 digit angka.";
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'status' => 'invalid_format',
                     'label' => $rawLabel,
-                    'message' => $errMsg
+                    'message' => $errMsg,
                 ], 422);
             }
+
             return redirect()->back()->withErrors(['error' => $errMsg]);
         }
 
@@ -1626,7 +1619,7 @@ class DashboardController extends Controller
 
         $existingSpk = SpkMaster::where('spk_number', $spk_code)->first();
 
-        if (!$existingSpk) {
+        if (! $existingSpk) {
             $errMsg = "Kode SPK '{$spk_code}' (Label #{$label}) tidak ditemukan dalam master SPK.";
             if ($request->ajax()) {
                 return response()->json([
@@ -1634,9 +1627,10 @@ class DashboardController extends Controller
                     'status' => 'spk_not_found',
                     'label' => $label,
                     'spk_code' => $spk_code,
-                    'message' => $errMsg
+                    'message' => $errMsg,
                 ], 422);
             }
+
             return redirect()->back()->withErrors(['error' => $errMsg]);
         }
 
@@ -1657,9 +1651,10 @@ class DashboardController extends Controller
                         'status' => 'duplicate',
                         'label' => $label,
                         'spk_code' => $spk_code,
-                        'message' => $errMsg
+                        'message' => $errMsg,
                     ], 422);
                 }
+
                 return redirect()->back()->withErrors(['error' => $errMsg]);
             }
 
@@ -1682,26 +1677,27 @@ class DashboardController extends Controller
                 return response()->json([
                     'success' => false,
                     'label' => $label,
-                    'message' => 'Gagal memproses scan barcode: ' . $e->getMessage()
+                    'message' => 'Gagal memproses scan barcode: ' . $e->getMessage(),
                 ], 500);
             }
+
             return redirect()->back()->withErrors(['error' => 'Gagal memproses scan barcode: ' . $e->getMessage()]);
         }
 
         // ✅ PERBAIKAN: Hitung total actual dengan datetime range yang tepat
         $slotStart = $base->copy()->addMinutes($slotIndex * 60);
         $slotEnd = $base->copy()->addMinutes(($slotIndex + 1) * 60);
-        
+
         // Jika endTime lebih kecil dari startTime, berarti slot melewati midnight
         if ($endTime < $startTime) {
             // Contoh: startTime = 23:30:00, endTime = 00:30:00
             // Query split jadi 2 bagian: 23:30-23:59 dan 00:00-00:30
             $totalActual = ProductionScannedData::where('dic_id', $dicId)
-                ->where(function($query) use ($startTime, $endTime) {
+                ->where(function ($query) use ($startTime) {
                     $query->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) >= ?", [$startTime])
                         ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) <= '23:59:59'");
                 })
-                ->orWhere(function($query) use ($dicId, $endTime) {
+                ->orWhere(function ($query) use ($dicId, $endTime) {
                     $query->where('dic_id', $dicId)
                         ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) >= '00:00:00'")
                         ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) < ?", [$endTime]);
@@ -1737,20 +1733,24 @@ class DashboardController extends Controller
                 'is_achieve' => $isAchieve,
                 'updated_at' => now(),
             ];
-            if (!empty($pic2)) $updateData['pic_2'] = $pic2;
-            if (!empty($pic3)) $updateData['pic_3'] = $pic3;
+            if (! empty($pic2)) {
+                $updateData['pic_2'] = $pic2;
+            }
+            if (! empty($pic3)) {
+                $updateData['pic_3'] = $pic3;
+            }
             $hourlyRemark->update($updateData);
         } else {
             HourlyRemark::create([
                 'dic_id' => $dicId,
                 'start_time' => $startTime,
-                'end_time' => $endTime, 
+                'end_time' => $endTime,
                 'target' => $target,
                 'actual' => $totalActual,
                 'is_achieve' => $isAchieve,
                 'pic' => $user,
-                'pic_2' => !empty($pic2) ? $pic2 : null,
-                'pic_3' => !empty($pic3) ? $pic3 : null,
+                'pic_2' => ! empty($pic2) ? $pic2 : null,
+                'pic_3' => ! empty($pic3) ? $pic3 : null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -1771,7 +1771,7 @@ class DashboardController extends Controller
                 'quantity' => $quantity,
                 'item_code' => $trueItemcode,
                 'time' => now('Asia/Jakarta')->format('H:i:s'),
-                'message' => $successMsg
+                'message' => $successMsg,
             ]);
         }
 
@@ -1788,7 +1788,7 @@ class DashboardController extends Controller
         $loggedInUserId = auth()->user()->id;
 
         // Validasi: pastikan DIC yang disubmit adalah milik mesin yang sedang login (auth()->user()) dan belum selesai (is_done is null)
-        if (!$dic || $dic->user_id != $loggedInUserId || !is_null($dic->is_done)) {
+        if (! $dic || $dic->user_id != $loggedInUserId || ! is_null($dic->is_done)) {
             $now = Carbon::now('Asia/Jakarta');
             $isOvernightWindow = $now->hour < 7 || ($now->hour === 7 && $now->minute < 30);
             $shiftDateA = $isOvernightWindow
@@ -1801,8 +1801,8 @@ class DashboardController extends Controller
                 ->whereIn('schedule_date', [$shiftDateA, $shiftDateB])
                 ->whereNull('is_done')
                 ->first();
-                
-            if (!$resolvedDIC) {
+
+            if (! $resolvedDIC) {
                 $resolvedDIC = DailyItemCode::where('user_id', $loggedInUserId)
                     ->whereIn('schedule_date', [$shiftDateA, $shiftDateB])
                     ->orderBy('schedule_date', 'desc')
@@ -1844,7 +1844,7 @@ class DashboardController extends Controller
         $reportUpdated = false;
         $updatedSpkNo = null;
 
-        if (!empty($uniquedata)) {
+        if (! empty($uniquedata)) {
             foreach ($uniquedata as $uniquedatum) {
                 $targetQuantity = $uniquedatum['count'] ?? 0;
                 $actualProductionQuantity = $uniquedatum['scannedData'] ?? 0;
@@ -1889,7 +1889,7 @@ class DashboardController extends Controller
             return redirect()
                 ->back()
                 ->with([
-                    'success' => "Successfully updating spk number " . $updatedSpkNo,
+                    'success' => 'Successfully updating spk number ' . $updatedSpkNo,
                     'deactivateScanMode' => true,
                 ]);
         }
@@ -1909,12 +1909,11 @@ class DashboardController extends Controller
             $job->item_code = null; // Or any default value you'd like
             $job->save(); // Save the changes to the database
         }
+
         // Optionally return a message or redirect the user
         return redirect()->back()->with('success', 'Jobs have been reset successfully.');
     }
 
-
-    
     public function dashboardPlastic()
     {
         $datas = DailyItemCode::with('machinerelation', 'user', 'scannedData')->get();
@@ -1922,7 +1921,6 @@ class DashboardController extends Controller
 
         return view('dashboard_plasticinjection', compact('datas'));
     }
-
 
     public function startMouldChange(Request $request)
     {
@@ -1939,7 +1937,7 @@ class DashboardController extends Controller
 
         $nextItemCode = $request->item_code;
 
-        if (!$nextItemCode) {
+        if (! $nextItemCode) {
             // Ambil semua item hari ini (pakai schedule_date karena beda field)
             $dailyItems = DailyItemCode::where('user_id', $userId)
                 ->whereDate('schedule_date', $today)
@@ -1950,38 +1948,38 @@ class DashboardController extends Controller
             $currentIndex = array_search($currentItemCode, $dailyItems);
 
             if ($currentIndex !== false && isset($dailyItems[$currentIndex + 1])) {
-            // Masih ada item berikutnya hari ini
-            $nextItemCode = $dailyItems[$currentIndex + 1];
-        } else {
-            // Kalau current item gak ada di hari ini atau sudah di akhir
-            if ($currentIndex === false) {
-                // Coba ambil item pertama hari ini
-                $nextItemCode = $dailyItems[0] ?? null;
-            }
+                // Masih ada item berikutnya hari ini
+                $nextItemCode = $dailyItems[$currentIndex + 1];
+            } else {
+                // Kalau current item gak ada di hari ini atau sudah di akhir
+                if ($currentIndex === false) {
+                    // Coba ambil item pertama hari ini
+                    $nextItemCode = $dailyItems[0] ?? null;
+                }
 
-            // Kalau tetap null, coba ambil item pertama besok
-            if (!$nextItemCode) {
-                $nextDay = Carbon::tomorrow()->format('Y-m-d');
-                $nextDayItem = DailyItemCode::where('user_id', $userId)
-                    ->whereDate('schedule_date', $nextDay)
-                    ->orderBy('start_time', 'asc')
-                    ->value('item_code');
-                $nextItemCode = $nextDayItem ?? null;
-            }
+                // Kalau tetap null, coba ambil item pertama besok
+                if (! $nextItemCode) {
+                    $nextDay = Carbon::tomorrow()->format('Y-m-d');
+                    $nextDayItem = DailyItemCode::where('user_id', $userId)
+                        ->whereDate('schedule_date', $nextDay)
+                        ->orderBy('start_time', 'asc')
+                        ->value('item_code');
+                    $nextItemCode = $nextDayItem ?? null;
+                }
 
-            // 🔥 Fallback terakhir: cari item yang belum selesai (is_done = null)
-            if (!$nextItemCode) {
-                $undoneItem = DailyItemCode::where('user_id', $userId)
-                    ->whereNull('is_done')
-                    ->orderBy('start_time', 'asc')
-                    ->value('item_code');
-                $nextItemCode = $undoneItem ?? null;
+                // 🔥 Fallback terakhir: cari item yang belum selesai (is_done = null)
+                if (! $nextItemCode) {
+                    $undoneItem = DailyItemCode::where('user_id', $userId)
+                        ->whereNull('is_done')
+                        ->orderBy('start_time', 'asc')
+                        ->value('item_code');
+                    $nextItemCode = $undoneItem ?? null;
+                }
             }
-        }
         }
 
         // Kalau tetap gak ada, berarti belum ada job yang bisa diassign
-        if (!$nextItemCode) {
+        if (! $nextItemCode) {
             return response()->json(['message' => 'Belum ada item yang diassign atau belum ada item yang belum selesai.']);
         }
 
@@ -2040,15 +2038,15 @@ class DashboardController extends Controller
         $machineName = strtoupper(trim($user->name ?? ''));
         $isKarawangMachine = str_starts_with($machineName, 'K');
 
-        if ($isKarawangMachine && !in_array($request->pic_name, $karawangAdjusters)) {
+        if ($isKarawangMachine && ! in_array($request->pic_name, $karawangAdjusters)) {
             return response()->json([
-                'error' => 'Mesin Karawang (' . ($user->name ?? 'K') . ') hanya boleh di-adjust oleh adjuster Karawang: ' . implode(', ', $karawangAdjusters) . '.'
+                'error' => 'Mesin Karawang (' . ($user->name ?? 'K') . ') hanya boleh di-adjust oleh adjuster Karawang: ' . implode(', ', $karawangAdjusters) . '.',
             ], 422);
         }
 
-        if (!$isKarawangMachine && in_array($request->pic_name, $karawangAdjusters)) {
+        if (! $isKarawangMachine && in_array($request->pic_name, $karawangAdjusters)) {
             return response()->json([
-                'error' => 'Adjuster Karawang (' . $request->pic_name . ') tidak diizinkan melakukan adjust pada mesin KBN (' . ($user->name ?? 'KBN') . ').'
+                'error' => 'Adjuster Karawang (' . $request->pic_name . ') tidak diizinkan melakukan adjust pada mesin KBN (' . ($user->name ?? 'KBN') . ').',
             ], 422);
         }
 
@@ -2057,7 +2055,7 @@ class DashboardController extends Controller
 
         $nextItemCode = $request->item_code;
 
-        if (!$nextItemCode) {
+        if (! $nextItemCode) {
             if ($currentItemCode) {
                 $nextItemCode = $currentItemCode;
             } else {
@@ -2081,7 +2079,7 @@ class DashboardController extends Controller
                     }
 
                     // Kalau tetap null, ambil item pertama besok
-                    if (!$nextItemCode) {
+                    if (! $nextItemCode) {
                         $nextDay = Carbon::tomorrow()->format('Y-m-d');
                         $nextDayItem = DailyItemCode::where('user_id', $userId)
                             ->whereDate('start_date', $nextDay)
@@ -2091,7 +2089,7 @@ class DashboardController extends Controller
                     }
 
                     // 🔥 Fallback terakhir: ambil item_code yang belum selesai (is_done null)
-                    if (!$nextItemCode) {
+                    if (! $nextItemCode) {
                         $undoneItem = DailyItemCode::where('user_id', $userId)
                             ->whereNull('is_done')
                             ->orderBy('start_time', 'asc')
@@ -2103,7 +2101,7 @@ class DashboardController extends Controller
             }
         }
 
-        if (!$nextItemCode) {
+        if (! $nextItemCode) {
             return response()->json(['message' => 'Belum ada item yang diassign atau belum ada item yang belum selesai.']);
         }
 
@@ -2147,7 +2145,7 @@ class DashboardController extends Controller
         $today = Carbon::now()->format('Y-m-d');
 
         $request->validate([
-            'pic_name'  => 'required|string|max:255',
+            'pic_name' => 'required|string|max:255',
             'item_code' => 'nullable|string|max:255',
         ]);
 
@@ -2156,7 +2154,7 @@ class DashboardController extends Controller
 
         $nextItemCode = $request->item_code;
 
-        if (!$nextItemCode) {
+        if (! $nextItemCode) {
             if ($currentItemCode) {
                 $nextItemCode = $currentItemCode;
             } else {
@@ -2176,7 +2174,7 @@ class DashboardController extends Controller
                         $nextItemCode = $dailyItems[0] ?? null;
                     }
 
-                    if (!$nextItemCode) {
+                    if (! $nextItemCode) {
                         $nextDay = Carbon::tomorrow()->format('Y-m-d');
                         $nextDayItem = DailyItemCode::where('user_id', $userId)
                             ->whereDate('start_date', $nextDay)
@@ -2185,7 +2183,7 @@ class DashboardController extends Controller
                         $nextItemCode = $nextDayItem ?? null;
                     }
 
-                    if (!$nextItemCode) {
+                    if (! $nextItemCode) {
                         $undoneItem = DailyItemCode::where('user_id', $userId)
                             ->whereNull('is_done')
                             ->orderBy('start_time', 'asc')
@@ -2204,11 +2202,11 @@ class DashboardController extends Controller
 
         if ($activeRepairMachine) {
             return response()->json([
-                'message'   => 'Repair machine sudah berjalan',
+                'message' => 'Repair machine sudah berjalan',
                 'repair_id' => $activeRepairMachine->id,
-                'log_id'    => $activeRepairMachine->id,
-                'operator'  => [
-                    'name'         => $operatorUser ? $operatorUser->name : $activeRepairMachine->pic,
+                'log_id' => $activeRepairMachine->id,
+                'operator' => [
+                    'name' => $operatorUser ? $operatorUser->name : $activeRepairMachine->pic,
                     'profile_path' => $operatorUser && $operatorUser->profile_picture
                         ? asset('storage/' . $operatorUser->profile_picture)
                         : asset('images/default_profile.jpg'),
@@ -2218,8 +2216,8 @@ class DashboardController extends Controller
 
         // Create a new repair machine log entry
         $logData = [
-            'user_id'    => $userId,
-            'pic'        => $request->pic_name,
+            'user_id' => $userId,
+            'pic' => $request->pic_name,
             'created_at' => Carbon::now(), // Start time
         ];
 
@@ -2230,12 +2228,12 @@ class DashboardController extends Controller
         $repairmachine = RepairMachineLog::create($logData);
 
         return response()->json([
-            'message'   => 'Repair Machine started',
+            'message' => 'Repair Machine started',
             'repair_id' => $repairmachine->id,
-            'log_id'    => $repairmachine->id,
-            'operator'  => [
-                'name'         => $operatorUser ? $operatorUser->name : $request->pic_name,
-                'profile_path' => $operatorUser && $operatorUser->profile_picture 
+            'log_id' => $repairmachine->id,
+            'operator' => [
+                'name' => $operatorUser ? $operatorUser->name : $request->pic_name,
+                'profile_path' => $operatorUser && $operatorUser->profile_picture
                     ? asset('storage/' . $operatorUser->profile_picture)
                     : asset('images/default_profile.jpg'),
             ],
@@ -2258,7 +2256,7 @@ class DashboardController extends Controller
 
         if ($mouldChange) {
             $mouldChange->update(['end_time' => Carbon::now(),
-        'remark' => $request->remarks,]);
+                'remark' => $request->remarks, ]);
 
             return response()->json(['message' => 'Mould change completed']);
         }
@@ -2279,6 +2277,7 @@ class DashboardController extends Controller
     public function resetJob()
     {
         $this->resetUserJob(auth()->id());
+
         return redirect()->back()->with('success', 'Job has been resetted!');
     }
 
@@ -2307,7 +2306,7 @@ class DashboardController extends Controller
 
         return response()->json(['error' => 'No active mould change found'], 400);
     }
-    
+
     public function endRepairMachine(Request $request)
     {
         $request->validate([
@@ -2335,7 +2334,7 @@ class DashboardController extends Controller
         return response()->json(['error' => 'No active repair process found'], 400);
     }
 
-    //verify untuk login operator 
+    //verify untuk login operator
     public function verifyNIKPassword(Request $request)
     {
         $nik = $request->input('nik');
@@ -2352,16 +2351,17 @@ class DashboardController extends Controller
 
         if ($operatorUser && $password === $operatorUser->password) {
             $profilePicture = $operatorUser->profile_picture ? asset('storage/' . $operatorUser->profile_picture) : asset('default-avatar.png');
+
             // If user exists and password matches, return success
-            return response()->json(['success' => true, 'message' => 'NIK and password are verified','profile_picture' => $profilePicture,
-            'operator_name' => $operatorUser->name,]);
+            return response()->json(['success' => true, 'message' => 'NIK and password are verified', 'profile_picture' => $profilePicture,
+                'operator_name' => $operatorUser->name, ]);
         }
 
         // If the NIK or password doesn't match, return an error
         return response()->json(['success' => false, 'message' => 'Invalid NIK or Password'], 400);
     }
 
-    ////verify untuk adjuster, dan change moulder saat scan id card 
+    ////verify untuk adjuster, dan change moulder saat scan id card
     public function verifyNik(Request $request)
     {
         $request->validate([
@@ -2371,7 +2371,7 @@ class DashboardController extends Controller
 
         $user = OperatorUser::where('name', $request->nik)->first();
 
-        if (!$user || $user->password !== $request->password) { // Direct string check
+        if (! $user || $user->password !== $request->password) { // Direct string check
             return response()->json(['error' => 'Invalid NIK or password'], 401);
         }
 
@@ -2381,7 +2381,7 @@ class DashboardController extends Controller
                 'id' => $user->id,
                 'name' => $user->name, // Pass the username
                 'profile_path' => $user->profile_path, // Include profile picture
-            ]
+            ],
         ]);
     }
 
@@ -2390,14 +2390,14 @@ class DashboardController extends Controller
     {
         $request->validate([
             'created_at' => 'required|date',
-            'end_time'   => 'required|date',
-            'remark'     => 'nullable|string',
+            'end_time' => 'required|date',
+            'remark' => 'nullable|string',
         ]);
 
         $log = MouldChangeLog::findOrFail($id);
         $log->created_at = Carbon::parse($request->created_at, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
-        $log->end_time   = Carbon::parse($request->end_time, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
-        $log->remark     = $request->remark;
+        $log->end_time = Carbon::parse($request->end_time, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
+        $log->remark = $request->remark;
         $log->save();
 
         return response()->json(['success' => true, 'message' => 'Mould Change Log updated successfully']);
@@ -2408,14 +2408,14 @@ class DashboardController extends Controller
     {
         $request->validate([
             'created_at' => 'required|date',
-            'end_time'   => 'required|date',
-            'remark'     => 'nullable|string',
+            'end_time' => 'required|date',
+            'remark' => 'nullable|string',
         ]);
 
         $log = AdjustMachineLog::findOrFail($id);
         $log->created_at = Carbon::parse($request->created_at, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
-        $log->end_time   = Carbon::parse($request->end_time, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
-        $log->remark     = $request->remark;
+        $log->end_time = Carbon::parse($request->end_time, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
+        $log->remark = $request->remark;
         $log->save();
 
         return response()->json(['success' => true, 'message' => 'Adjust Machine Log updated successfully']);
@@ -2425,15 +2425,15 @@ class DashboardController extends Controller
     public function updateRepairMachineLog(Request $request, $id)
     {
         $request->validate([
-            'created_at'    => 'required|date',
+            'created_at' => 'required|date',
             'finish_repair' => 'required|date',
-            'remark'        => 'nullable|string',
+            'remark' => 'nullable|string',
         ]);
 
         $log = RepairMachineLog::findOrFail($id);
-        $log->created_at    = Carbon::parse($request->created_at, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
+        $log->created_at = Carbon::parse($request->created_at, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
         $log->finish_repair = Carbon::parse($request->finish_repair, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
-        $log->remark        = $request->remark;
+        $log->remark = $request->remark;
         $log->save();
 
         return response()->json(['success' => true, 'message' => 'Repair Machine Log updated successfully']);
@@ -2445,7 +2445,7 @@ class DashboardController extends Controller
         // Find the user in the database
         $userData = User::where('name', $user)->first();
 
-        if (!$userData) {
+        if (! $userData) {
             return redirect('/login')->with('error', 'User not found.');
         }
 
@@ -2460,7 +2460,7 @@ class DashboardController extends Controller
     public function deleteScanData($id)
     {
         $scan = ProductionScannedData::find($id);
-        if (!$scan) {
+        if (! $scan) {
             return back()->with('error', 'Data scan tidak ditemukan');
         }
 
@@ -2476,15 +2476,14 @@ class DashboardController extends Controller
             $scanTime = Carbon::parse($scan->created_at)->timezone('Asia/Jakarta');
             $scanHour = $scanTime->format('H:i:s');
             $userId = $scan->user;
-        
 
             // Cari entri hourly yang cocok
             $hourly = HourlyRemark::where('dic_id', $dicId)
                 ->where('pic', $userId)
-                ->where('start_time', '<=',  $scanHour)
-                ->where('end_time', '>',  $scanHour)
+                ->where('start_time', '<=', $scanHour)
+                ->where('end_time', '>', $scanHour)
                 ->first();
-            
+
             if ($hourly) {
                 $hourly->actual = max(0, $hourly->actual - $scan->quantity); // hindari negatif
                 // Update is_achieve jika perlu
@@ -2501,10 +2500,10 @@ class DashboardController extends Controller
             return back()->with('success', 'Scan berhasil dihapus dan actual diperbarui');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->with('error', 'Gagal menghapus data: ' . $e->getMessage());
         }
     }
-
 
     public function showROPData()
     {
@@ -2531,7 +2530,7 @@ class DashboardController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Temporal cycle time updated successfully.'
+                'message' => 'Temporal cycle time updated successfully.',
             ]);
         }
 
@@ -2564,6 +2563,7 @@ class DashboardController extends Controller
     public function getAccessoryLots($dicId)
     {
         $lots = DicAccessoryLot::where('dic_id', $dicId)->orderBy('created_at', 'asc')->get();
+
         return response()->json([
             'success' => true,
             'accessory_lots' => $lots,
@@ -2609,7 +2609,7 @@ class DashboardController extends Controller
         ]);
     }
 
-    // function untuk update actual produksi yang didapat operator perjam 
+    // function untuk update actual produksi yang didapat operator perjam
     public function updateActualProduction(Request $request, $id)
     {
         $request->validate([
@@ -2623,14 +2623,14 @@ class DashboardController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Actual Production updated successfully.'
+                'message' => 'Actual Production updated successfully.',
             ]);
         }
 
         return back()->with('success', 'Actual Production updated successfully.');
     }
 
-    // function untuk update ng produksi yang didapat operator perjam 
+    // function untuk update ng produksi yang didapat operator perjam
     public function updateNgProduction(Request $request, $id)
     {
         // dd($request->all());
@@ -2649,7 +2649,7 @@ class DashboardController extends Controller
     public function updateRemarkDIC(Request $request, $id)
     {
         $validated = $request->validate([
-            'remark' => 'nullable|string|max:255'
+            'remark' => 'nullable|string|max:255',
         ]);
 
         $item = DailyItemCode::findOrFail($id);
@@ -2659,29 +2659,27 @@ class DashboardController extends Controller
         return response()->json(['message' => 'Remark updated']);
     }
 
-    // function untuk store hourly remark perjam 
+    // function untuk store hourly remark perjam
     public function storeHourlyRemark(Request $request)
     {
         $activedic = json_decode($request->activedic, true);
         $dicId = $activedic['id'];
         $itemCode = $activedic['item_code'];
-  
-   
-    
+
         $startTime = Carbon::parse($request->start_time);
         $endTime = (clone $startTime)->addHour(); // 1 jam interval
-    
+
         // Priority 1: Get from daily_item_codes.temporal_cycle_time
         $daily = DailyItemCode::where('id', $dicId)->first();
         $temporal = $daily?->temporal_cycle_time;
-        
+
         if ($temporal && is_numeric($temporal) && $temporal > 0) {
             $target = floor(3600 / $temporal);
         } else {
             // Priority 2: Get from sap_inventory_fg
             $sap = sapInventoryFg::where('item_code', $itemCode)->first();
             $cycle = $sap?->cycle_time;
-    
+
             if ($cycle && is_numeric($cycle) && $cycle > 0) {
                 $target = floor(3600 / ($cycle * 60));
             } else {
@@ -2689,24 +2687,25 @@ class DashboardController extends Controller
             }
         }
 
-        $exists = HourlyRemark::where('dic_id',  $activedic['id'])
-        ->where('start_time', $startTime)
-        ->exists();
+        $exists = HourlyRemark::where('dic_id', $activedic['id'])
+            ->where('start_time', $startTime)
+            ->exists();
 
         if ($exists) {
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Data dengan jam tersebut sudah ada untuk DIC yang sama.'
+                    'message' => 'Data dengan jam tersebut sudah ada untuk DIC yang sama.',
                 ], 422);
             }
+
             return back()->with('error', 'Data dengan jam tersebut sudah ada untuk DIC yang sama.');
         }
-    
+
         // Resolve PICs with fallback to MachineJob assigned operators
         $machineJob = MachineJob::where('user_id', auth()->user()->id)->first();
         $assignedOps = [];
-        if ($machineJob && !empty($machineJob->employee_name)) {
+        if ($machineJob && ! empty($machineJob->employee_name)) {
             $assignedOps = array_values(array_filter(array_map('trim', explode(',', $machineJob->employee_name))));
         }
 
@@ -2729,35 +2728,36 @@ class DashboardController extends Controller
             'actual' => (int) $totalActual,
             'is_achieve' => ($target > 0 && $totalActual >= $target) ? 1 : 0,
             'pic' => $pic1,
-            'pic_2' => !empty($pic2) ? $pic2 : null,
-            'pic_3' => !empty($pic3) ? $pic3 : null,
+            'pic_2' => ! empty($pic2) ? $pic2 : null,
+            'pic_3' => ! empty($pic3) ? $pic3 : null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    
+
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Hourly Remark berhasil ditambahkan!'
+                'message' => 'Hourly Remark berhasil ditambahkan!',
             ]);
         }
 
         return back()->with('success', 'Hourly Remark berhasil ditambahkan!');
     }
 
-    // view untuk lihat log api yang berjalan di website 
+    // view untuk lihat log api yang berjalan di website
     public function apiLog()
     {
-        $logs = ApiLog::latest()->take(150)->get(); 
+        $logs = ApiLog::latest()->take(150)->get();
+
         return view('Log.api_logs', compact('logs'));
     }
 
-    // function untuk melihat semua operator 
+    // function untuk melihat semua operator
     public function operatoradmin()
     {
         $user = auth()->user();
 
-        if (!$user->hasRole('OPERATOR')) {
+        if (! $user->hasRole('OPERATOR')) {
             return redirect()->back()->with('error', 'Akses ditolak: hanya operator yang bisa membuka halaman ini.');
         }
 
@@ -2765,19 +2765,19 @@ class DashboardController extends Controller
         $yesterday = now()->subDay()->toDateString();
         $tomorrow = now()->addDay()->toDateString();
 
-         $datas = DailyItemCode::where('user_id', $user->id)
-                ->whereIn('start_date', [$yesterday, $today, $tomorrow])
-                ->with('hourlyRemarks','scannedData')
-                ->orderBy('start_date', 'desc')
-                ->orderBy('start_time', 'desc')
-                ->get();
-        
+        $datas = DailyItemCode::where('user_id', $user->id)
+            ->whereIn('start_date', [$yesterday, $today, $tomorrow])
+            ->with('hourlyRemarks', 'scannedData')
+            ->orderBy('start_date', 'desc')
+            ->orderBy('start_time', 'desc')
+            ->get();
+
         // lanjut kalau operator
         // dd($datas);
         return view('dashboards.adminoperator', compact('datas')); // atau halaman kamu
     }
 
-    // function untuk membuat data operator baru 
+    // function untuk membuat data operator baru
     public function createFromAdmin(Request $request)
     {
         $validated = $request->validate([
@@ -2792,13 +2792,13 @@ class DashboardController extends Controller
         ]);
 
         // Masukin ke tabel DailyItemCode
-        $daily = new DailyItemCode();
+        $daily = new DailyItemCode;
         $daily->user_id = $validated['user_id'];
         $daily->item_code = $validated['item_code'];
         $daily->quantity = $validated['quantity'];
-        $daily->final_quantity = null; 
+        $daily->final_quantity = null;
         // $cavity = $remark->dailyItemCode->masterItem->cavity;
-                    // dd($cavity);
+        // dd($cavity);
         $daily->loss_package_quantity = null;
         $daily->actual_quantity = 0;
         $daily->shift = $validated['shift'];
@@ -2815,8 +2815,7 @@ class DashboardController extends Controller
         return redirect()->back()->with('message', 'Daily Item Code berhasil ditambahkan!');
     }
 
-
-    // function untuk menghapus remark dic 
+    // function untuk menghapus remark dic
     public function deleteremark($id)
     {
         //works
@@ -2825,13 +2824,13 @@ class DashboardController extends Controller
 
         // Ambil range waktu
         $start = Carbon::parse($remark->start_time);
-        $end   = Carbon::parse($remark->end_time);
+        $end = Carbon::parse($remark->end_time);
 
         // Cek apakah sudah ada yang diproses
         $hasProcessed = ProductionScannedData::where('dic_id', $remark->dic_id)
-             ->whereRaw('CONVERT_TZ(created_at, "+00:00", "+07:00") BETWEEN ? AND ?', [$start, $end])
-             ->where('processed', true)
-             ->exists();
+            ->whereRaw('CONVERT_TZ(created_at, "+00:00", "+07:00") BETWEEN ? AND ?', [$start, $end])
+            ->where('processed', true)
+            ->exists();
 
         if ($hasProcessed) {
             return redirect()->back()->with('error', 'Hourly Remark tidak bisa dihapus karena sebagian/seluruh data scan di jam ini sudah diproses ke Summary / SAP.');
@@ -2839,7 +2838,7 @@ class DashboardController extends Controller
 
         // Hapus scanned data dalam rentang waktu itu
         $test = ProductionScannedData::where('dic_id', $remark->dic_id)
-             ->whereRaw('CONVERT_TZ(created_at, "+00:00", "+07:00") BETWEEN ? AND ?', [$start, $end])
+            ->whereRaw('CONVERT_TZ(created_at, "+00:00", "+07:00") BETWEEN ? AND ?', [$start, $end])
             // ->get();
             ->delete();
         // dd($test);
@@ -2869,7 +2868,7 @@ class DashboardController extends Controller
         return redirect()->back()->with('message', 'Daily Item Code dan data terkait berhasil dihapus.');
     }
 
-    // function untuk update temporal cavity oleh operator per shift per itemcode 
+    // function untuk update temporal cavity oleh operator per shift per itemcode
     public function updateTemporalCavity(Request $request, $id)
     {
         // Validasi input
@@ -2879,7 +2878,7 @@ class DashboardController extends Controller
 
         // Ambil record
         $dailyItemCode = DailyItemCode::findOrFail($id);
-        
+
         // Update field temporal_cavity
         $dailyItemCode->temporal_cavity = $validated['temporal_cavity'];
         $dailyItemCode->save();
@@ -2887,7 +2886,7 @@ class DashboardController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Temporal cavity berhasil diperbarui.'
+                'message' => 'Temporal cavity berhasil diperbarui.',
             ]);
         }
 
@@ -2904,7 +2903,7 @@ class DashboardController extends Controller
 
         // Ambil record
         $dailyItemCode = DailyItemCode::findOrFail($id);
-        
+
         // Update field resin_usage
         $dailyItemCode->resin_usage = $validated['resin_usage'];
         $dailyItemCode->save();
@@ -2912,7 +2911,7 @@ class DashboardController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Resin usage berhasil diperbarui.'
+                'message' => 'Resin usage berhasil diperbarui.',
             ]);
         }
 
@@ -2922,9 +2921,9 @@ class DashboardController extends Controller
     public function storeOutputLog(Request $request)
     {
         $user = auth()->user();
-        
+
         $itemCode = $user->jobs->item_code ?? null;
-        
+
         $todayDIC = DailyItemCode::where('user_id', $user->id)
             ->whereDate('schedule_date', Carbon::today())
             ->where('item_code', $itemCode)
@@ -2943,7 +2942,7 @@ class DashboardController extends Controller
 
         $activeDIC = $previousDIC ?? $todayDIC;
 
-        if (!$activeDIC) {
+        if (! $activeDIC) {
             $activeDIC = DailyItemCode::where('user_id', $user->id)
                 ->where('item_code', $itemCode)
                 ->with('masterItem')
@@ -2951,14 +2950,14 @@ class DashboardController extends Controller
                 ->first();
         }
 
-        if (!$activeDIC) {
+        if (! $activeDIC) {
             return redirect()->back()->with('error', 'Tidak ada Daily Item Code aktif untuk mesin/user ini.');
         }
 
         $quantity = 1;
-        if (!empty($activeDIC->temporal_cavity) && $activeDIC->temporal_cavity > 0) {
+        if (! empty($activeDIC->temporal_cavity) && $activeDIC->temporal_cavity > 0) {
             $quantity = $activeDIC->temporal_cavity;
-        } elseif ($activeDIC->masterItem && !empty($activeDIC->masterItem->cavity) && $activeDIC->masterItem->cavity > 0) {
+        } elseif ($activeDIC->masterItem && ! empty($activeDIC->masterItem->cavity) && $activeDIC->masterItem->cavity > 0) {
             $quantity = $activeDIC->masterItem->cavity;
         }
 
@@ -2980,8 +2979,8 @@ class DashboardController extends Controller
                     'id' => $log->id,
                     'time' => $log->logged_at->format('H:i:s'),
                     'operator_name' => $log->operator_name,
-                    'quantity' => $log->quantity
-                ]
+                    'quantity' => $log->quantity,
+                ],
             ]);
         }
 
@@ -2993,7 +2992,7 @@ class DashboardController extends Controller
     // public function printOutputLog($id)
     // {
     //     $log = ProductionOutputLog::with('dailyItemCode.masterItem')->findOrFail($id);
-        
+
     //     // QR Code content: [Item Code] \t [Operator Name] \t [Logged At]
     //     $qrData = implode("\t", [
     //         $log->dailyItemCode->item_code,
@@ -3007,7 +3006,7 @@ class DashboardController extends Controller
     //         size: 60,
     //         margin: 0
     //     );
-        
+
     //     $writer = new PngWriter();
     //     $qrCodeResult = $writer->write($qrCode);
     //     $qrCodeBase64 = base64_encode($qrCodeResult->getString());
@@ -3108,7 +3107,7 @@ class DashboardController extends Controller
 
         $itemCodes = [];
 
-        $pair = trim((string)($masterItem->pair ?? ''));
+        $pair = trim((string) ($masterItem->pair ?? ''));
 
         $hasPair = (
             $pair !== '' &&
@@ -3122,7 +3121,7 @@ class DashboardController extends Controller
 
         } else {
 
-            $cavity = (int)$temporalCavity;
+            $cavity = (int) $temporalCavity;
 
             if ($cavity < 1) {
                 $cavity = 1;
@@ -3151,7 +3150,7 @@ class DashboardController extends Controller
             $qrData = implode("\t", [
                 $itemCode,
                 $log->operator_name,
-                $log->logged_at->format('Y-m-d H:i:s')
+                $log->logged_at->format('Y-m-d H:i:s'),
             ]);
 
             $qrCode = new QrCode(
@@ -3161,7 +3160,7 @@ class DashboardController extends Controller
                 margin: 0
             );
 
-            $writer = new PngWriter();
+            $writer = new PngWriter;
 
             $result = $writer->write($qrCode);
 
@@ -3169,13 +3168,10 @@ class DashboardController extends Controller
                 'item_code' => $itemCode,
                 'qrCodeBase64' => base64_encode(
                     $result->getString()
-                )
+                ),
             ];
 
-  
         }
-
-
 
         // =========================
         // TOTAL
@@ -3189,5 +3185,4 @@ class DashboardController extends Controller
             )
         );
     }
-
 }

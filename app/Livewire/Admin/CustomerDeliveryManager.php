@@ -12,14 +12,17 @@ class CustomerDeliveryManager extends Component
     use WithPagination;
 
     public $search = '';
-    
+
     // Add customer form fields
     public $newCustomerCode = '';
+
     public $newCustomerName = '';
 
     // Inline edit state
     public $editingItemId = null;
+
     public $editingField = null;
+
     public $editingValue = '';
 
     protected $paginationTheme = 'tailwind';
@@ -52,7 +55,7 @@ class CustomerDeliveryManager extends Component
     {
         $customer = MasterCustomerDelivery::findOrFail($this->editingItemId);
         $field = $this->editingField;
-        
+
         $rules = [
             'customer_code' => 'required|string|max:255',
             'customer_name' => 'required|string|max:255',
@@ -60,7 +63,7 @@ class CustomerDeliveryManager extends Component
 
         // Validasi
         $this->validate([
-            'editingValue' => $rules[$field]
+            'editingValue' => $rules[$field],
         ]);
 
         $oldValue = $customer->$field;
@@ -71,10 +74,11 @@ class CustomerDeliveryManager extends Component
             $exists = MasterCustomerDelivery::where('customer_code', $newValue)
                 ->where('id', '!=', $customer->id)
                 ->exists();
-                
+
             if ($exists) {
                 session()->flash('error', "Customer Code '{$newValue}' sudah terdaftar untuk customer lain.");
                 $this->cancelEdit();
+
                 return;
             }
         }
@@ -153,14 +157,14 @@ class CustomerDeliveryManager extends Component
     public function render()
     {
         $customers = MasterCustomerDelivery::where(function ($query) {
-                $query->where('customer_code', 'like', '%' . $this->search . '%')
-                    ->orWhere('customer_name', 'like', '%' . $this->search . '%');
-            })
+            $query->where('customer_code', 'like', '%' . $this->search . '%')
+                ->orWhere('customer_name', 'like', '%' . $this->search . '%');
+        })
             ->orderBy('id', 'desc')
             ->paginate(15);
 
         return view('livewire.admin.customer-delivery-manager', [
-            'customers' => $customers
+            'customers' => $customers,
         ]);
     }
 }

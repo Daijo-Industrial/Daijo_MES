@@ -4,17 +4,16 @@ namespace App\Exports;
 
 use App\Models\Delivery\DeliveryScheduleNew;
 use Illuminate\Support\Facades\DB;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
-use Carbon\Carbon;
 
 class DeliveryScheduleExport implements WithMultipleSheets
 {
     protected $selectedYear;
+
     protected $selectedMonth;
+
     protected $customerCode;
+
     protected $deliveries;
 
     public function __construct($selectedYear, $selectedMonth, $customerCode)
@@ -44,9 +43,7 @@ class DeliveryScheduleExport implements WithMultipleSheets
 
         return [
             $sheet1,
-            $sheet2
+            $sheet2,
         ];
     }
 }
-
-

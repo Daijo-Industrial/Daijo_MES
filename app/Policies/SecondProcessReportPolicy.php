@@ -92,6 +92,7 @@ class SecondProcessReportPolicy
 
         if (! $isAdmin && ! $user->canSign('second_process', $slot)) {
             $userRoleName = $user->role ? $user->role->name : 'No Role';
+
             return Response::deny("Role '{$userRoleName}' is not authorized to sign as " . ucfirst($slot) . '.');
         }
 
@@ -158,4 +159,3 @@ class SecondProcessReportPolicy
             : Response::deny('You are not authorized to reject reports.');
     }
 }
-

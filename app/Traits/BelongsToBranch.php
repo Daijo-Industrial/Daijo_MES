@@ -23,7 +23,7 @@ trait BelongsToBranch
                 $builder->where(function (Builder $q) use ($effectiveBranchId) {
                     $table = $q->getModel()->getTable();
                     $q->where($table . '.branch_id', $effectiveBranchId)
-                      ->orWhereNull($table . '.branch_id');
+                        ->orWhereNull($table . '.branch_id');
                 });
             }
         });
@@ -34,7 +34,7 @@ trait BelongsToBranch
                 $service = app(PlantContextService::class);
                 $branchId = $service->getEffectiveBranchId();
 
-                if (!$branchId && auth()->check() && auth()->user()->branch_id) {
+                if (! $branchId && auth()->check() && auth()->user()->branch_id) {
                     $branchId = auth()->user()->branch_id;
                 }
 
@@ -73,7 +73,7 @@ trait BelongsToBranch
         return $builder->where(function (Builder $q) use ($branchId) {
             $table = $q->getModel()->getTable();
             $q->where($table . '.branch_id', $branchId)
-              ->orWhereNull($table . '.branch_id');
+                ->orWhereNull($table . '.branch_id');
         });
     }
 }

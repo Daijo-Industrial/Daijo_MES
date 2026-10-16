@@ -7,7 +7,6 @@ use App\Models\MwhPosition;
 use App\Models\MwhRack;
 use App\Models\MwhWarehouse;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 

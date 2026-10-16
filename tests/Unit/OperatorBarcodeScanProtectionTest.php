@@ -14,10 +14,10 @@ class OperatorBarcodeScanProtectionTest extends TestCase
         $rawLabel = '30026026744';
         $spkCode = '26026744';
 
-        if (!empty($spkCode) && str_ends_with($rawLabel, $spkCode) && strlen($rawLabel) > strlen($spkCode)) {
+        if (! empty($spkCode) && str_ends_with($rawLabel, $spkCode) && strlen($rawLabel) > strlen($spkCode)) {
             $candidate = substr($rawLabel, 0, -strlen($spkCode));
-            if (is_numeric($candidate) && (int)$candidate > 0) {
-                $rawLabel = (string)(int)$candidate;
+            if (is_numeric($candidate) && (int) $candidate > 0) {
+                $rawLabel = (string) (int) $candidate;
             }
         }
 
@@ -35,7 +35,7 @@ class OperatorBarcodeScanProtectionTest extends TestCase
         $this->assertTrue($isStutter);
 
         $validLabel = '360';
-        $isValid = !preg_match('/(\d)\1{4,}/', $validLabel) && preg_match('/^[1-9]\d{0,5}$/', $validLabel);
+        $isValid = ! preg_match('/(\d)\1{4,}/', $validLabel) && preg_match('/^[1-9]\d{0,5}$/', $validLabel);
         $this->assertTrue($isValid);
     }
 
@@ -66,10 +66,10 @@ class OperatorBarcodeScanProtectionTest extends TestCase
         $originalRawLabel = $rawLabel;
         $wasRecovered = false;
 
-        if (!empty($spkCode) && str_ends_with($rawLabel, $spkCode) && strlen($rawLabel) > strlen($spkCode)) {
+        if (! empty($spkCode) && str_ends_with($rawLabel, $spkCode) && strlen($rawLabel) > strlen($spkCode)) {
             $candidate = substr($rawLabel, 0, -strlen($spkCode));
-            if (is_numeric($candidate) && (int)$candidate > 0) {
-                $rawLabel = (string)(int)$candidate;
+            if (is_numeric($candidate) && (int) $candidate > 0) {
+                $rawLabel = (string) (int) $candidate;
                 $wasRecovered = true;
             }
         }
@@ -82,10 +82,10 @@ class OperatorBarcodeScanProtectionTest extends TestCase
         $originalRawLabel = $rawLabel;
         $wasRecovered = false;
 
-        if (!empty($spkCode) && str_ends_with($rawLabel, $spkCode) && strlen($rawLabel) > strlen($spkCode)) {
+        if (! empty($spkCode) && str_ends_with($rawLabel, $spkCode) && strlen($rawLabel) > strlen($spkCode)) {
             $candidate = substr($rawLabel, 0, -strlen($spkCode));
-            if (is_numeric($candidate) && (int)$candidate > 0) {
-                $rawLabel = (string)(int)$candidate;
+            if (is_numeric($candidate) && (int) $candidate > 0) {
+                $rawLabel = (string) (int) $candidate;
                 $wasRecovered = true;
             }
         }

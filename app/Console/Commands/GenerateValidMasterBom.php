@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Services\MasterBomSyncService;
+use Illuminate\Console\Command;
 
 class GenerateValidMasterBom extends Command
 {
@@ -34,6 +34,7 @@ class GenerateValidMasterBom extends Command
 
         if ($result['status'] === 'empty') {
             $this->warn($result['message']);
+
             return Command::FAILURE;
         }
 

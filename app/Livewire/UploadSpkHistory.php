@@ -2,21 +2,24 @@
 
 namespace App\Livewire;
 
+use App\Imports\SpkItemHistoryImport;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\SpkItemHistoryImport;
-
-use Illuminate\Support\Facades\Cache;
 
 class UploadSpkHistory extends Component
 {
     use WithFileUploads;
 
     public $file;
+
     public $progress = 0;
+
     public $isUploading = false;
+
     public $uploadStatus = '';
+
     public $jobId;
 
     public function uploadFile()
@@ -38,7 +41,7 @@ class UploadSpkHistory extends Component
             $extension = strtolower($this->file->getClientOriginalExtension());
             $readerType = null;
             $delimiter = ',';
-            
+
             if ($extension === 'csv') {
                 $readerType = \Maatwebsite\Excel\Excel::CSV;
                 $delimiter = ',';
@@ -62,7 +65,7 @@ class UploadSpkHistory extends Component
             $this->isUploading = true;
             $this->progress = 0;
             $this->uploadStatus = 'Mempersiapkan data...';
-            
+
             $this->reset('file');
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan saat mengantri proses upload: ' . $e->getMessage());
@@ -71,7 +74,9 @@ class UploadSpkHistory extends Component
 
     public function checkProgress()
     {
-        if (!$this->isUploading) return;
+        if (! $this->isUploading) {
+            return;
+        }
 
         $status = Cache::get($this->jobId . '_status');
         $processed = Cache::get($this->jobId . '_processed', 0);

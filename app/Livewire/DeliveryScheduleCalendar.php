@@ -10,18 +10,31 @@ use Livewire\Component;
 class DeliveryScheduleCalendar extends Component
 {
     public $customerSearch = '';
+
     public $selectedCustomer = null;
+
     public $itemSearch = '';
+
     public $selectedItemCode = null;
+
     public $selectedMonth;
+
     public $selectedYear;
+
     public $showCustomerDropdown = false;
+
     public $showItemDropdown = false;
+
     public $calendarData = [];
+
     public $selectedDate = null;
+
     public $selectedDateSchedules = [];
+
     public $showModal = false;
+
     public $editingScheduleId = null;
+
     public $editingQuantity = 0;
 
     public function mount()
@@ -33,12 +46,12 @@ class DeliveryScheduleCalendar extends Component
 
     public function updatedCustomerSearch()
     {
-        $this->showCustomerDropdown = !empty($this->customerSearch);
+        $this->showCustomerDropdown = ! empty($this->customerSearch);
     }
 
     public function updatedItemSearch()
     {
-        $this->showItemDropdown = !empty($this->itemSearch);
+        $this->showItemDropdown = ! empty($this->itemSearch);
     }
 
     public function selectCustomer($customerId)
@@ -92,31 +105,31 @@ class DeliveryScheduleCalendar extends Component
 
         // Build query dengan filter yang ada
         $query = MasterDeliverySchedule::whereBetween('tanggal', [$startDate, $endDate]);
-        
+
         // Filter by customer jika dipilih
         if ($this->selectedCustomer) {
             $query->where('customer_code', $this->selectedCustomer->customer_code);
         }
-        
+
         // Filter by item code jika dipilih
         if ($this->selectedItemCode) {
             $query->where('item_code', $this->selectedItemCode);
         }
-        
+
         $schedules = $query->orderBy('tanggal')
             ->get()
-            ->groupBy(function($item) {
+            ->groupBy(function ($item) {
                 return Carbon::parse($item->tanggal)->day;
             });
 
         // Build calendar data
         $this->calendarData = [];
         $daysInMonth = $startDate->daysInMonth;
-        
+
         for ($day = 1; $day <= $daysInMonth; $day++) {
             $date = Carbon::createFromDate($this->selectedYear, $this->selectedMonth, $day);
             $daySchedules = $schedules->get($day, collect());
-            
+
             $this->calendarData[$day] = [
                 'date' => $date,
                 'day_name' => $date->format('D'),
@@ -124,7 +137,7 @@ class DeliveryScheduleCalendar extends Component
                 'total_items' => $daySchedules->count(),
                 'total_quantity' => $daySchedules->sum('quantity'),
                 'is_today' => $date->isToday(),
-                'is_past' => $date->isPast() && !$date->isToday(),
+                'is_past' => $date->isPast() && ! $date->isToday(),
             ];
         }
     }
@@ -170,12 +183,12 @@ class DeliveryScheduleCalendar extends Component
 
             $this->editingScheduleId = null;
             $this->loadCalendarData();
-            
+
             // Refresh modal data
             if ($this->selectedDate) {
                 $this->selectedDateSchedules = $this->calendarData[$this->selectedDate]['schedules'] ?? [];
             }
-            
+
             session()->flash('modal_success', 'Schedule updated successfully!');
         }
     }

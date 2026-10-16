@@ -27,7 +27,7 @@ class WmsPalletFormDetail extends Model
 
     protected $casts = [
         'is_no_label' => 'boolean',
-        'qty'         => 'float',
+        'qty' => 'float',
         'sap_sync_at' => 'datetime',
     ];
 

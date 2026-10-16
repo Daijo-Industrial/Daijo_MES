@@ -11,17 +11,21 @@ use Maatwebsite\Excel\Facades\Excel;
 class DailyDeliveryRecap extends Component
 {
     public string $selectedDate = '';
+
     public string $shiftFilter = 'ALL';
+
     public string $deliveryFilter = 'ALL';
+
     public string $search = '';
+
     public string $activeTab = 'items'; // 'items' | 'pallets' | 'box_logs'
 
     protected $queryString = [
-        'selectedDate'   => ['except' => ''],
-        'shiftFilter'    => ['except' => 'ALL'],
+        'selectedDate' => ['except' => ''],
+        'shiftFilter' => ['except' => 'ALL'],
         'deliveryFilter' => ['except' => 'ALL'],
-        'search'         => ['except' => ''],
-        'activeTab'      => ['except' => 'items'],
+        'search' => ['except' => ''],
+        'activeTab' => ['except' => 'items'],
     ];
 
     public function mount(): void
@@ -49,7 +53,7 @@ class DailyDeliveryRecap extends Component
     public function exportExcel()
     {
         $cleanDate = Carbon::parse($this->selectedDate)->format('Ymd');
-        $fileName  = "Rekap_Delivery_{$cleanDate}.xlsx";
+        $fileName = "Rekap_Delivery_{$cleanDate}.xlsx";
 
         return Excel::download(
             new DailyDeliveryRecapExport(

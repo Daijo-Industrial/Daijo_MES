@@ -9,7 +9,9 @@ use Livewire\Component;
 class PlantSwitcher extends Component
 {
     public $activeBranchId;
+
     public $canSwitch = false;
+
     public $activePlantLabel = '';
 
     public function mount(PlantContextService $service)
@@ -26,7 +28,7 @@ class PlantSwitcher extends Component
 
     public function switchPlant($branchId, PlantContextService $service)
     {
-        if (!$this->canSwitch) {
+        if (! $this->canSwitch) {
             return;
         }
 

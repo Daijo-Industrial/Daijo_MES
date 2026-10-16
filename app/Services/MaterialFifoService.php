@@ -2,13 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\MasterListMaterial;
-use App\Models\MwhIncomingHeader;
 use App\Models\MwhOutgoing;
 use App\Models\MwhPallet;
-use App\Models\MwhWarehouse;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class MaterialFifoService
@@ -33,17 +29,17 @@ class MaterialFifoService
         }
 
         $totalOutgoingsCount = (int) $outgoingQuery->count();
-        $totalOutgoingQty    = (float) $outgoingQuery->sum('mwh_outgoings.qty_taken');
+        $totalOutgoingQty = (float) $outgoingQuery->sum('mwh_outgoings.qty_taken');
 
         // 2. FIFO Deviations
-        $deviations = $preloadedDeviations !== null 
-            ? $preloadedDeviations 
+        $deviations = $preloadedDeviations !== null
+            ? $preloadedDeviations
             : $this->detectFifoDeviations($whseId, $fromDate, $toDate, 1000);
         $deviationCount = count($deviations);
 
         $compliantCount = max(0, $totalOutgoingsCount - $deviationCount);
-        $complianceRate = $totalOutgoingsCount > 0 
-            ? round(($compliantCount / $totalOutgoingsCount) * 100, 1) 
+        $complianceRate = $totalOutgoingsCount > 0
+            ? round(($compliantCount / $totalOutgoingsCount) * 100, 1)
             : 100.0;
 
         // 3. Current active warehouse inventory
@@ -64,7 +60,7 @@ class MaterialFifoService
             $qcHoldQuery->where('mwh_pallets.whse_id', $whseId);
         }
         $qcHoldPalletsCount = (int) $qcHoldQuery->count();
-        $qcHoldQtyKg        = (float) $qcHoldQuery->sum('mwh_pallets.current_qty');
+        $qcHoldQtyKg = (float) $qcHoldQuery->sum('mwh_pallets.current_qty');
 
         // 5. Overaged active inventory (>60 days) - Database-agnostic fast SQL
         $sixtyDaysAgo = now()->subDays(60)->format('Y-m-d');
@@ -74,10 +70,10 @@ class MaterialFifoService
             ->whereIn('mwh_pallets.status', ['STORED', 'PARTIAL'])
             ->where(function ($q) use ($sixtyDaysAgo) {
                 $q->where('mwh_incoming_headers.arrival_date', '<=', $sixtyDaysAgo)
-                  ->orWhere(function ($sub) use ($sixtyDaysAgo) {
-                      $sub->whereNull('mwh_incoming_headers.arrival_date')
-                          ->whereDate('mwh_pallets.created_at', '<=', $sixtyDaysAgo);
-                  });
+                    ->orWhere(function ($sub) use ($sixtyDaysAgo) {
+                        $sub->whereNull('mwh_incoming_headers.arrival_date')
+                            ->whereDate('mwh_pallets.created_at', '<=', $sixtyDaysAgo);
+                    });
             });
 
         if ($whseId) {
@@ -112,20 +108,20 @@ class MaterialFifoService
         }
 
         return [
-            'compliance_rate'        => $complianceRate,
-            'grade'                  => $grade,
-            'grade_color'            => $gradeColor,
-            'total_outgoings_count'  => $totalOutgoingsCount,
-            'total_outgoing_qty'     => $totalOutgoingQty,
-            'compliant_count'        => $compliantCount,
-            'deviation_count'        => $deviationCount,
-            'total_active_pallets'   => $totalActivePallets,
-            'total_active_stock_kg'  => $totalActiveStockKg,
-            'overaged_stock_kg'      => $overagedStockKg,
+            'compliance_rate' => $complianceRate,
+            'grade' => $grade,
+            'grade_color' => $gradeColor,
+            'total_outgoings_count' => $totalOutgoingsCount,
+            'total_outgoing_qty' => $totalOutgoingQty,
+            'compliant_count' => $compliantCount,
+            'deviation_count' => $deviationCount,
+            'total_active_pallets' => $totalActivePallets,
+            'total_active_stock_kg' => $totalActiveStockKg,
+            'overaged_stock_kg' => $overagedStockKg,
             'overaged_pallets_count' => $overagedPalletsCount,
-            'qc_hold_pallets_count'  => $qcHoldPalletsCount,
-            'qc_hold_qty_kg'         => $qcHoldQtyKg,
-            'avg_lead_days'          => $avgLeadDays,
+            'qc_hold_pallets_count' => $qcHoldPalletsCount,
+            'qc_hold_qty_kg' => $qcHoldQtyKg,
+            'avg_lead_days' => $avgLeadDays,
         ];
     }
 
@@ -141,9 +137,9 @@ class MaterialFifoService
             'pallet.position.rack',
             'material',
             'warehouse',
-            'position.rack'
+            'position.rack',
         ])->orderBy('mwh_outgoings.outgoing_date', 'desc')
-          ->orderBy('mwh_outgoings.id', 'desc');
+            ->orderBy('mwh_outgoings.id', 'desc');
 
         if ($whseId) {
             $outgoingsQuery->where('mwh_outgoings.whse_id', $whseId);
@@ -165,7 +161,7 @@ class MaterialFifoService
         $candidatePalletsGrouped = MwhPallet::with(['incomingHeader', 'position.rack', 'initialPosition.rack', 'outgoings'])
             ->whereIn('item_code', $itemCodes)
             ->where('is_qc_hold', false)
-            ->when($whseId, fn($q) => $q->where('whse_id', $whseId))
+            ->when($whseId, fn ($q) => $q->where('whse_id', $whseId))
             ->get()
             ->groupBy('item_code');
 
@@ -173,7 +169,7 @@ class MaterialFifoService
 
         foreach ($outgoings as $out) {
             $pickedPallet = $out->pallet;
-            if (!$pickedPallet) {
+            if (! $pickedPallet) {
                 continue;
             }
 
@@ -203,8 +199,8 @@ class MaterialFifoService
                 }
 
                 // Calculate historical stock of $older at the moment of this outgoing
-                $initialQty = (float) $older->initial_qty > 0 
-                    ? (float) $older->initial_qty 
+                $initialQty = (float) $older->initial_qty > 0
+                    ? (float) $older->initial_qty
                     : ((float) $older->current_qty + (float) $older->outgoings->sum('qty_taken'));
 
                 $consumedBeforeOrAt = (float) $older->outgoings->filter(function ($o) use ($out, $outgoingTimestamp) {
@@ -221,6 +217,7 @@ class MaterialFifoService
                     if ($oDate->eq($outgoingTimestamp) && $o->id < $out->id) {
                         return true;
                     }
+
                     return false;
                 })->sum('qty_taken');
 
@@ -232,49 +229,49 @@ class MaterialFifoService
                 }
 
                 $skippedOlderPallets[] = [
-                    'pallet'        => $older,
-                    'arrival_date'  => $olderArrival,
+                    'pallet' => $older,
+                    'arrival_date' => $olderArrival,
                     'stock_at_time' => $stockAtTime,
                 ];
             }
 
-            if (!empty($skippedOlderPallets)) {
+            if (! empty($skippedOlderPallets)) {
                 // Find the oldest skipped pallet (sorted by arrival_date ascending)
                 usort($skippedOlderPallets, function ($a, $b) {
                     return strcmp($a['arrival_date'], $b['arrival_date']);
                 });
 
-                $oldestEntry   = $skippedOlderPallets[0];
+                $oldestEntry = $skippedOlderPallets[0];
                 $oldestSkipped = $oldestEntry['pallet'];
                 $oldestArrival = $oldestEntry['arrival_date'];
-                $stockAtTime   = $oldestEntry['stock_at_time'];
+                $stockAtTime = $oldestEntry['stock_at_time'];
 
                 $deltaDays = Carbon::parse($oldestArrival)->diffInDays(Carbon::parse($pickedArrivalDate));
 
                 // Only count as significant deviation if delta is >= 1 day
                 if ($deltaDays >= 1) {
                     $deviations[] = [
-                        'outgoing_id'           => $out->id,
-                        'outgoing_code'         => $out->outgoing_code,
-                        'outgoing_date'         => $out->outgoing_date ? Carbon::parse($out->outgoing_date)->format('d/m/Y') : '-',
-                        'item_code'             => $out->item_code,
-                        'item_description'      => $out->material?->item_description ?: 'Material ' . $out->item_code,
-                        'qty_taken'             => (float) $out->qty_taken,
-                        'uom'                   => $out->uom ?: 'KG',
-                        'issued_to'             => $out->issued_to ?: 'Production',
-                        'warehouse_name'        => $out->warehouse?->whse_name ?: 'Main Warehouse',
-                        'picked_pallet_id'      => $pickedPallet->pallet_id,
-                        'picked_lot_no'         => $pickedPallet->lot_no ?: '-',
-                        'picked_arrival_date'   => Carbon::parse($pickedArrivalDate)->format('d/m/Y'),
-                        'picked_position_code'  => $out->position?->position_code ?: ($pickedPallet->position?->position_code ?: 'Non-Rak'),
-                        'skipped_pallet_id'     => $oldestSkipped->pallet_id,
-                        'skipped_lot_no'        => $oldestSkipped->lot_no ?: '-',
-                        'skipped_arrival_date'  => Carbon::parse($oldestArrival)->format('d/m/Y'),
+                        'outgoing_id' => $out->id,
+                        'outgoing_code' => $out->outgoing_code,
+                        'outgoing_date' => $out->outgoing_date ? Carbon::parse($out->outgoing_date)->format('d/m/Y') : '-',
+                        'item_code' => $out->item_code,
+                        'item_description' => $out->material?->item_description ?: 'Material ' . $out->item_code,
+                        'qty_taken' => (float) $out->qty_taken,
+                        'uom' => $out->uom ?: 'KG',
+                        'issued_to' => $out->issued_to ?: 'Production',
+                        'warehouse_name' => $out->warehouse?->whse_name ?: 'Main Warehouse',
+                        'picked_pallet_id' => $pickedPallet->pallet_id,
+                        'picked_lot_no' => $pickedPallet->lot_no ?: '-',
+                        'picked_arrival_date' => Carbon::parse($pickedArrivalDate)->format('d/m/Y'),
+                        'picked_position_code' => $out->position?->position_code ?: ($pickedPallet->position?->position_code ?: 'Non-Rak'),
+                        'skipped_pallet_id' => $oldestSkipped->pallet_id,
+                        'skipped_lot_no' => $oldestSkipped->lot_no ?: '-',
+                        'skipped_arrival_date' => Carbon::parse($oldestArrival)->format('d/m/Y'),
                         'skipped_position_code' => $oldestSkipped->position?->position_code ?: ($oldestSkipped->initialPosition?->position_code ?: 'Non-Rak'),
-                        'skipped_current_qty'   => (float) $oldestSkipped->current_qty,
+                        'skipped_current_qty' => (float) $oldestSkipped->current_qty,
                         'skipped_stock_at_time' => (float) $stockAtTime,
-                        'delta_days'            => (int) $deltaDays,
-                        'severity'              => $deltaDays >= 30 ? 'HIGH' : ($deltaDays >= 7 ? 'MEDIUM' : 'LOW'),
+                        'delta_days' => (int) $deltaDays,
+                        'severity' => $deltaDays >= 30 ? 'HIGH' : ($deltaDays >= 7 ? 'MEDIUM' : 'LOW'),
                     ];
                 }
             }
@@ -301,9 +298,9 @@ class MaterialFifoService
         $pallets = $palletsQuery->get();
         $totalQty = (float) $pallets->sum('current_qty');
 
-        $tierFresh    = ['count' => 0, 'qty' => 0.0, 'label' => '0 - 30 Hari (Fresh)', 'color' => 'emerald', 'pallets' => []];
-        $tierNormal   = ['count' => 0, 'qty' => 0.0, 'label' => '31 - 60 Hari (Normal)', 'color' => 'blue', 'pallets' => []];
-        $tierWarning  = ['count' => 0, 'qty' => 0.0, 'label' => '61 - 90 Hari (Warning)', 'color' => 'amber', 'pallets' => []];
+        $tierFresh = ['count' => 0, 'qty' => 0.0, 'label' => '0 - 30 Hari (Fresh)', 'color' => 'emerald', 'pallets' => []];
+        $tierNormal = ['count' => 0, 'qty' => 0.0, 'label' => '31 - 60 Hari (Normal)', 'color' => 'blue', 'pallets' => []];
+        $tierWarning = ['count' => 0, 'qty' => 0.0, 'label' => '61 - 90 Hari (Warning)', 'color' => 'amber', 'pallets' => []];
         $tierCritical = ['count' => 0, 'qty' => 0.0, 'label' => '> 90 Hari (Stagnant)', 'color' => 'rose', 'pallets' => []];
 
         $now = now();
@@ -318,16 +315,16 @@ class MaterialFifoService
             $qty = (float) $p->current_qty;
 
             $palletItem = [
-                'pallet_id'        => $p->pallet_id,
-                'item_code'        => $p->item_code,
+                'pallet_id' => $p->pallet_id,
+                'item_code' => $p->item_code,
                 'item_description' => $p->material?->item_description ?: $p->item_code,
-                'lot_no'           => $p->lot_no ?: '-',
-                'position_code'    => $p->position?->position_code ?: 'Non-Rak',
-                'current_qty'      => $qty,
-                'uom'              => $p->uom ?: 'KG',
-                'age_days'         => $ageDays,
-                'arrival_date'     => $refDate->format('d/m/Y'),
-                'is_qc_hold'       => (bool) $p->is_qc_hold,
+                'lot_no' => $p->lot_no ?: '-',
+                'position_code' => $p->position?->position_code ?: 'Non-Rak',
+                'current_qty' => $qty,
+                'uom' => $p->uom ?: 'KG',
+                'age_days' => $ageDays,
+                'arrival_date' => $refDate->format('d/m/Y'),
+                'is_qc_hold' => (bool) $p->is_qc_hold,
             ];
 
             $palletAgeList[] = $palletItem;
@@ -347,22 +344,22 @@ class MaterialFifoService
             }
         }
 
-        $tierFresh['percent']    = $totalQty > 0 ? round(($tierFresh['qty'] / $totalQty) * 100, 1) : 0;
-        $tierNormal['percent']   = $totalQty > 0 ? round(($tierNormal['qty'] / $totalQty) * 100, 1) : 0;
-        $tierWarning['percent']  = $totalQty > 0 ? round(($tierWarning['qty'] / $totalQty) * 100, 1) : 0;
+        $tierFresh['percent'] = $totalQty > 0 ? round(($tierFresh['qty'] / $totalQty) * 100, 1) : 0;
+        $tierNormal['percent'] = $totalQty > 0 ? round(($tierNormal['qty'] / $totalQty) * 100, 1) : 0;
+        $tierWarning['percent'] = $totalQty > 0 ? round(($tierWarning['qty'] / $totalQty) * 100, 1) : 0;
         $tierCritical['percent'] = $totalQty > 0 ? round(($tierCritical['qty'] / $totalQty) * 100, 1) : 0;
 
         // Top 5 oldest stagnant pallets
-        usort($palletAgeList, fn($a, $b) => $b['age_days'] <=> $a['age_days']);
+        usort($palletAgeList, fn ($a, $b) => $b['age_days'] <=> $a['age_days']);
         $oldestPallets = array_slice($palletAgeList, 0, 8);
 
         return [
-            'total_qty'      => $totalQty,
-            'total_pallets'  => count($pallets),
-            'tiers'          => [
-                'fresh'    => $tierFresh,
-                'normal'   => $tierNormal,
-                'warning'  => $tierWarning,
+            'total_qty' => $totalQty,
+            'total_pallets' => count($pallets),
+            'tiers' => [
+                'fresh' => $tierFresh,
+                'normal' => $tierNormal,
+                'warning' => $tierWarning,
                 'critical' => $tierCritical,
             ],
             'oldest_pallets' => $oldestPallets,
@@ -384,13 +381,13 @@ class MaterialFifoService
             $palletsQuery->where('mwh_pallets.whse_id', $whseId);
         }
 
-        if (!empty(trim($search))) {
+        if (! empty(trim($search))) {
             $term = '%' . trim($search) . '%';
             $palletsQuery->where(function ($q) use ($term) {
                 $q->where('mwh_pallets.item_code', 'like', $term)
-                  ->orWhere('mwh_pallets.lot_no', 'like', $term)
-                  ->orWhere('mwh_pallets.pallet_id', 'like', $term)
-                  ->orWhereHas('material', fn($mq) => $mq->where('item_description', 'like', $term));
+                    ->orWhere('mwh_pallets.lot_no', 'like', $term)
+                    ->orWhere('mwh_pallets.pallet_id', 'like', $term)
+                    ->orWhereHas('material', fn ($mq) => $mq->where('item_description', 'like', $term));
             });
         }
 
@@ -418,12 +415,13 @@ class MaterialFifoService
             // Next in line (Rank 2 & Rank 3)
             $nextPallets = $sorted->slice(1, 2)->map(function ($p) use ($now) {
                 $ref = $p->incomingHeader?->arrival_date ? Carbon::parse($p->incomingHeader->arrival_date) : $p->created_at;
+
                 return [
-                    'pallet_id'     => $p->pallet_id,
-                    'lot_no'        => $p->lot_no ?: '-',
-                    'qty'           => (float) $p->current_qty,
+                    'pallet_id' => $p->pallet_id,
+                    'lot_no' => $p->lot_no ?: '-',
+                    'qty' => (float) $p->current_qty,
                     'position_code' => $p->position?->position_code ?: 'Non-Rak',
-                    'age_days'      => max(0, (int) $ref->diffInDays($now)),
+                    'age_days' => max(0, (int) $ref->diffInDays($now)),
                 ];
             })->values()->toArray();
 
@@ -441,28 +439,28 @@ class MaterialFifoService
             }
 
             $queue[] = [
-                'item_code'        => $itemCode,
+                'item_code' => $itemCode,
                 'item_description' => $materialName,
-                'total_stock_kg'   => $totalStock,
-                'pallet_count'     => $palletCount,
-                'uom'              => $first->uom ?: 'KG',
-                'status_tier'      => $statusTier,
-                'status_color'     => $statusColor,
-                'rank_1'           => [
-                    'pallet_id'     => $first->pallet_id,
-                    'lot_no'        => $first->lot_no ?: '-',
-                    'arrival_date'  => $firstRefDate->format('d/m/Y'),
-                    'age_days'      => $ageDays,
-                    'qty'           => (float) $first->current_qty,
+                'total_stock_kg' => $totalStock,
+                'pallet_count' => $palletCount,
+                'uom' => $first->uom ?: 'KG',
+                'status_tier' => $statusTier,
+                'status_color' => $statusColor,
+                'rank_1' => [
+                    'pallet_id' => $first->pallet_id,
+                    'lot_no' => $first->lot_no ?: '-',
+                    'arrival_date' => $firstRefDate->format('d/m/Y'),
+                    'age_days' => $ageDays,
+                    'qty' => (float) $first->current_qty,
                     'position_code' => $first->position?->position_code ?: 'Non-Rak',
-                    'is_qc_hold'    => (bool) $first->is_qc_hold,
+                    'is_qc_hold' => (bool) $first->is_qc_hold,
                 ],
-                'next_in_line'     => $nextPallets,
+                'next_in_line' => $nextPallets,
             ];
         }
 
         // Sort queue by oldest Rank 1 age descending (items that have been sitting the longest at the top)
-        usort($queue, fn($a, $b) => $b['rank_1']['age_days'] <=> $a['rank_1']['age_days']);
+        usort($queue, fn ($a, $b) => $b['rank_1']['age_days'] <=> $a['rank_1']['age_days']);
 
         return array_slice($queue, 0, $limit);
     }
@@ -475,7 +473,7 @@ class MaterialFifoService
         $whseId = ($whseId && is_numeric($whseId)) ? (int) $whseId : null;
 
         $start = $fromDate ? Carbon::parse($fromDate) : now()->subDays(14);
-        $end   = $toDate   ? Carbon::parse($toDate)   : now();
+        $end = $toDate ? Carbon::parse($toDate) : now();
 
         if ($start->diffInDays($end) > 60) {
             $start = (clone $end)->subDays(60);
@@ -517,13 +515,13 @@ class MaterialFifoService
         $outData = [];
 
         foreach ($dates as $d) {
-            $labels[]  = Carbon::parse($d)->format('d M');
-            $inData[]  = round((float) ($incomings[$d] ?? 0), 1);
+            $labels[] = Carbon::parse($d)->format('d M');
+            $inData[] = round((float) ($incomings[$d] ?? 0), 1);
             $outData[] = round((float) ($outgoings[$d] ?? 0), 1);
         }
 
         return [
-            'labels'   => $labels,
+            'labels' => $labels,
             'incoming' => $inData,
             'outgoing' => $outData,
         ];

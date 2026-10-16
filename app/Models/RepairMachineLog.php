@@ -30,6 +30,4 @@ class RepairMachineLog extends Model
     {
         return $this->belongsTo(MasterListItem::class, 'item_code', 'item_code');
     }
-
-
 }

@@ -2,27 +2,33 @@
 
 namespace App\Livewire\Maintenance;
 
-use Livewire\Component;
 use App\Models\MaintenanceMachine;
 use App\Models\MaintenanceMould;
 use Carbon\Carbon;
+use Livewire\Component;
 
 class MaintenanceDashboard extends Component
 {
     public $showMachineModal = false;
+
     public $showMouldModal = false;
 
     public $selectedMachine = null;
+
     public $selectedMould = null;
 
     // Separate filters for Machine and Mould
     public $filterMachineType = '';
+
     public $filterMachinePIC = '';
+
     public $filterMouldType = '';
+
     public $filterMouldPIC = '';
-    
+
     // Global date filters
     public $filterDateFrom = '';
+
     public $filterDateTo = '';
 
     public function mount()
@@ -60,30 +66,46 @@ class MaintenanceDashboard extends Component
     public function getFilteredMachinesProperty()
     {
         $query = MaintenanceMachine::query();
-        
+
         // Machine specific filters
-        if ($this->filterMachineType) $query->where('tipe', $this->filterMachineType);
-        if ($this->filterMachinePIC) $query->where('pic', $this->filterMachinePIC);
-        
+        if ($this->filterMachineType) {
+            $query->where('tipe', $this->filterMachineType);
+        }
+        if ($this->filterMachinePIC) {
+            $query->where('pic', $this->filterMachinePIC);
+        }
+
         // Global date filters
-        if ($this->filterDateFrom) $query->where('tanggal', '>=', $this->filterDateFrom);
-        if ($this->filterDateTo) $query->where('tanggal', '<=', $this->filterDateTo);
-        
+        if ($this->filterDateFrom) {
+            $query->where('tanggal', '>=', $this->filterDateFrom);
+        }
+        if ($this->filterDateTo) {
+            $query->where('tanggal', '<=', $this->filterDateTo);
+        }
+
         return $query->latest()->get();
     }
 
     public function getFilteredMouldsProperty()
     {
         $query = MaintenanceMould::query();
-        
+
         // Mould specific filters
-        if ($this->filterMouldType) $query->where('tipe', $this->filterMouldType);
-        if ($this->filterMouldPIC) $query->where('pic', $this->filterMouldPIC);
-        
+        if ($this->filterMouldType) {
+            $query->where('tipe', $this->filterMouldType);
+        }
+        if ($this->filterMouldPIC) {
+            $query->where('pic', $this->filterMouldPIC);
+        }
+
         // Global date filters
-        if ($this->filterDateFrom) $query->where('tanggal', '>=', $this->filterDateFrom);
-        if ($this->filterDateTo) $query->where('tanggal', '<=', $this->filterDateTo);
-        
+        if ($this->filterDateFrom) {
+            $query->where('tanggal', '>=', $this->filterDateFrom);
+        }
+        if ($this->filterDateTo) {
+            $query->where('tanggal', '<=', $this->filterDateTo);
+        }
+
         return $query->latest()->get();
     }
 
@@ -94,22 +116,23 @@ class MaintenanceDashboard extends Component
 
         // Summary from filtered
         $machineTotal = $filteredMachines->count();
-        $machineFinished = $filteredMachines->where('status',1)->count();
+        $machineFinished = $filteredMachines->where('status', 1)->count();
         $machineOngoing = $machineTotal - $machineFinished;
 
         $machineAvgTime = $filteredMachines
-            ->filter(fn($m) => $m->lama_pengerjaan)
-            ->map(function($m){
+            ->filter(fn ($m) => $m->lama_pengerjaan)
+            ->map(function ($m) {
                 // convert "2h 31m" => total minutes
                 preg_match('/(?:(\d+)h)? ?(?:(\d+)m)?/', $m->lama_pengerjaan, $matches);
                 $hours = $matches[1] ?? 0;
                 $minutes = $matches[2] ?? 0;
-                return $hours*60 + $minutes;
+
+                return $hours * 60 + $minutes;
             })
             ->avg();
 
         if ($machineAvgTime) {
-            $hours = floor($machineAvgTime/60);
+            $hours = floor($machineAvgTime / 60);
             $minutes = round($machineAvgTime % 60);
             $machineAvgTime = "{$hours}h {$minutes}m";
         } else {
@@ -117,7 +140,7 @@ class MaintenanceDashboard extends Component
         }
 
         $mouldTotal = $filteredMoulds->count();
-        $mouldFinished = $filteredMoulds->where('status',1)->count();
+        $mouldFinished = $filteredMoulds->where('status', 1)->count();
         $mouldOngoing = $mouldTotal - $mouldFinished;
 
         $pics = array_unique(array_merge(
@@ -126,8 +149,14 @@ class MaintenanceDashboard extends Component
         ));
 
         return view('livewire.maintenance.maintenance-dashboard', compact(
-            'machineTotal','machineFinished','machineOngoing','machineAvgTime',
-            'mouldTotal','mouldFinished','mouldOngoing','pics'
+            'machineTotal',
+            'machineFinished',
+            'machineOngoing',
+            'machineAvgTime',
+            'mouldTotal',
+            'mouldFinished',
+            'mouldOngoing',
+            'pics'
         ));
     }
 }

@@ -3,18 +3,18 @@
 namespace App\Exports;
 
 use App\Models\DailyItemCode;
-use App\Models\HourlyRemark;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Maatwebsite\Excel\Concerns\FromView;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class PpicDailyProductionExport implements FromView, WithTitle, ShouldAutoSize, WithStyles
+class PpicDailyProductionExport implements FromView, ShouldAutoSize, WithStyles, WithTitle
 {
     protected string $date;
+
     protected ?int $machineId;
 
     public function __construct(string $date, ?int $machineId = null)
@@ -26,6 +26,7 @@ class PpicDailyProductionExport implements FromView, WithTitle, ShouldAutoSize, 
     public function title(): string
     {
         $formattedDate = Carbon::parse($this->date)->format('d-M-Y');
+
         return "Prod_Daily_{$formattedDate}";
     }
 
@@ -39,7 +40,7 @@ class PpicDailyProductionExport implements FromView, WithTitle, ShouldAutoSize, 
             $query->where('user_id', $this->machineId);
         }
 
-        $dailyPlans = $query->get()->sortBy(function($plan) {
+        $dailyPlans = $query->get()->sortBy(function ($plan) {
             return $plan->user?->name ?? 'ZZZ';
         });
 
@@ -49,14 +50,14 @@ class PpicDailyProductionExport implements FromView, WithTitle, ShouldAutoSize, 
 
         foreach ($dailyPlans as $plan) {
             $machineCode = $plan->user?->name ?? 'MC-UNK';
-            $masterItem  = $plan->masterItem;
-            $customer    = $masterItem?->customer?->customer_name ?? $masterItem?->customer_code ?? '-';
-            $partNo      = $masterItem?->part_no ?? $plan->item_code;
-            $partName    = $masterItem?->part_name ?? $masterItem?->item_name ?? '-';
+            $masterItem = $plan->masterItem;
+            $customer = $masterItem?->customer?->customer_name ?? $masterItem?->customer_code ?? '-';
+            $partNo = $masterItem?->part_no ?? $plan->item_code;
+            $partName = $masterItem?->part_name ?? $masterItem?->item_name ?? '-';
 
             // Extract Machine Tonage (MCT) e.g. "110A" -> "110T", "150C" -> "150T", "300A" -> "300T"
             preg_match('/(\d+)/', $machineCode, $matches);
-            $mct = !empty($matches[1]) ? $matches[1] . 'T' : '100T';
+            $mct = ! empty($matches[1]) ? $matches[1] . 'T' : '100T';
 
             // Find distinct item_codes from ProductionScannedData for this DIC
             $scannedItemCodes = \App\Models\ProductionScannedData::where('dic_id', $plan->id)
@@ -87,10 +88,10 @@ class PpicDailyProductionExport implements FromView, WithTitle, ShouldAutoSize, 
 
                 // Extract Cycle Time for this item
                 $itemCycleTimeSec = $isPrimary
-                    ? ((!empty($plan->temporal_cycle_time) && $plan->temporal_cycle_time > 0)
+                    ? ((! empty($plan->temporal_cycle_time) && $plan->temporal_cycle_time > 0)
                         ? (float) $plan->temporal_cycle_time
-                        : (!empty($itemMaster?->cycle_time) && $itemMaster->cycle_time > 0 ? (float) $itemMaster->cycle_time : null))
-                    : (!empty($itemMaster?->cycle_time) && $itemMaster->cycle_time > 0 ? (float) $itemMaster->cycle_time : null);
+                        : (! empty($itemMaster?->cycle_time) && $itemMaster->cycle_time > 0 ? (float) $itemMaster->cycle_time : null))
+                    : (! empty($itemMaster?->cycle_time) && $itemMaster->cycle_time > 0 ? (float) $itemMaster->cycle_time : null);
 
                 // Target per hour
                 if ($itemCycleTimeSec && $itemCycleTimeSec > 0) {
@@ -106,7 +107,7 @@ class PpicDailyProductionExport implements FromView, WithTitle, ShouldAutoSize, 
                 $hourlySum = (int) $plan->hourlyRemarks->sum('actual_production');
                 if ($hourlySum > 0) {
                     $dicActualTotal = $hourlySum;
-                } elseif (!empty($plan->actual_quantity) && $plan->actual_quantity > 0) {
+                } elseif (! empty($plan->actual_quantity) && $plan->actual_quantity > 0) {
                     $dicActualTotal = (int) $plan->actual_quantity;
                 } else {
                     $dicActualTotal = 0;
@@ -137,7 +138,7 @@ class PpicDailyProductionExport implements FromView, WithTitle, ShouldAutoSize, 
                     if ($itemTargetPerHour > 0 && $totalShift > 0) {
                         $rowActualHours = round($totalShift / $itemTargetPerHour, 2);
                     } else {
-                        $rowActualHours = (float) $plan->hourlyRemarks->filter(fn($r) => $r->actual_production > 0)->count();
+                        $rowActualHours = (float) $plan->hourlyRemarks->filter(fn ($r) => $r->actual_production > 0)->count();
                     }
 
                     $rowDowntimeHours = round(max(0, $rowPlanHours - $rowActualHours), 2);
@@ -148,29 +149,29 @@ class PpicDailyProductionExport implements FromView, WithTitle, ShouldAutoSize, 
                 }
 
                 $reportData[] = [
-                    'no'           => $isPrimary ? $primaryNo : '',
-                    'date'         => Carbon::parse($plan->schedule_date)->format('d-M-y'),
-                    'customer'     => strtoupper($custName),
-                    'mc'           => $machineCode,
-                    'part_no'      => $itemPartNo,
-                    'part_name'    => $itemPartName,
-                    'shift_1'      => $shift1Qty,
-                    'shift_2'      => $shift2Qty,
-                    'shift_3'      => $shift3Qty,
-                    'total_shift'  => $totalShift,
-                    'mct'          => $mct,
-                    'cycle_time'   => $itemCycleTimeSec ? round($itemCycleTimeSec, 1) : '-',
-                    'target_h'     => $itemTargetPerHour,
-                    'plan'         => $rowPlanHours,
-                    'actual'       => $rowActualHours,
-                    'downtime'     => $rowDowntimeHours,
-                    'is_pair_sub'  => !$isPrimary,
+                    'no' => $isPrimary ? $primaryNo : '',
+                    'date' => Carbon::parse($plan->schedule_date)->format('d-M-y'),
+                    'customer' => strtoupper($custName),
+                    'mc' => $machineCode,
+                    'part_no' => $itemPartNo,
+                    'part_name' => $itemPartName,
+                    'shift_1' => $shift1Qty,
+                    'shift_2' => $shift2Qty,
+                    'shift_3' => $shift3Qty,
+                    'total_shift' => $totalShift,
+                    'mct' => $mct,
+                    'cycle_time' => $itemCycleTimeSec ? round($itemCycleTimeSec, 1) : '-',
+                    'target_h' => $itemTargetPerHour,
+                    'plan' => $rowPlanHours,
+                    'actual' => $rowActualHours,
+                    'downtime' => $rowDowntimeHours,
+                    'is_pair_sub' => ! $isPrimary,
                 ];
             }
         }
 
         return view('exports.ppic_daily_production', [
-            'date'       => Carbon::parse($this->date)->format('d-M-Y'),
+            'date' => Carbon::parse($this->date)->format('d-M-Y'),
             'reportData' => $reportData,
         ]);
     }

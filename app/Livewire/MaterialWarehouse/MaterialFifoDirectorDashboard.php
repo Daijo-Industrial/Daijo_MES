@@ -24,7 +24,9 @@ class MaterialFifoDirectorDashboard extends Component
     public ?string $toDate = null;
 
     public string $search = '';
+
     public int $autoRefreshInterval = 30; // in seconds, 0 = disabled
+
     public string $activeTab = 'overview'; // overview, deviations, queue, aging
 
     public array $warehouses = [];
@@ -73,28 +75,32 @@ class MaterialFifoDirectorDashboard extends Component
         switch ($this->preset) {
             case 'today':
                 $this->fromDate = $now->format('Y-m-d');
-                $this->toDate   = $now->format('Y-m-d');
+                $this->toDate = $now->format('Y-m-d');
                 break;
             case '7_days':
                 $this->fromDate = $now->copy()->subDays(6)->format('Y-m-d');
-                $this->toDate   = $now->format('Y-m-d');
+                $this->toDate = $now->format('Y-m-d');
                 break;
             case '30_days':
                 $this->fromDate = $now->copy()->subDays(29)->format('Y-m-d');
-                $this->toDate   = $now->format('Y-m-d');
+                $this->toDate = $now->format('Y-m-d');
                 break;
             case 'this_month':
                 $this->fromDate = $now->copy()->startOfMonth()->format('Y-m-d');
-                $this->toDate   = $now->format('Y-m-d');
+                $this->toDate = $now->format('Y-m-d');
                 break;
             case 'this_year':
                 $this->fromDate = $now->copy()->startOfYear()->format('Y-m-d');
-                $this->toDate   = $now->format('Y-m-d');
+                $this->toDate = $now->format('Y-m-d');
                 break;
             case 'custom':
                 // retain fromDate and toDate
-                if (!$this->fromDate) $this->fromDate = $now->copy()->subDays(30)->format('Y-m-d');
-                if (!$this->toDate) $this->toDate = $now->format('Y-m-d');
+                if (! $this->fromDate) {
+                    $this->fromDate = $now->copy()->subDays(30)->format('Y-m-d');
+                }
+                if (! $this->toDate) {
+                    $this->toDate = $now->format('Y-m-d');
+                }
                 break;
         }
     }
@@ -119,12 +125,12 @@ class MaterialFifoDirectorDashboard extends Component
         }
 
         return view('livewire.material-warehouse.material-fifo-director-dashboard', [
-            'kpis'            => $kpis,
-            'deviations'      => $deviations,
-            'agingSummary'    => $agingSummary,
-            'priorityQueue'   => $priorityQueue,
+            'kpis' => $kpis,
+            'deviations' => $deviations,
+            'agingSummary' => $agingSummary,
+            'priorityQueue' => $priorityQueue,
             'throughputTrend' => $throughputTrend,
-            'whseLabel'       => $whseLabel,
+            'whseLabel' => $whseLabel,
         ]);
     }
 }

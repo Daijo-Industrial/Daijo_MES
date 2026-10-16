@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\WmsPosition;
 use App\Models\WmsPalletForm;
+use App\Models\WmsPosition;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class WmsService
 {
@@ -16,7 +15,7 @@ class WmsService
     {
         $date = Carbon::now()->format('Ymd');
         $prefix = 'PLT-' . $date . '-';
-        
+
         $lastPallet = WmsPalletForm::withTrashed()
             ->where('pallet_id', 'LIKE', $prefix . '%')
             ->orderBy('pallet_id', 'desc')
@@ -59,7 +58,7 @@ class WmsService
             '273PFM650A', '273PNM650A', '273PNM650A..', '273PNM652A', '273PNM652A..',
             '273SYM650A', '274PHN240A', '275PXM650A', '275PXM650A..', '275PXM651A', '275PXM651A..',
             '27750M650A', '27750M651A', '27750M660A', '27750M661A',
-            '277SGM650A', '277SGM650A..', '277SGM652A', '277SGM652A..'
+            '277SGM650A', '277SGM650A..', '277SGM652A', '277SGM652A..',
         ];
     }
 
@@ -67,29 +66,29 @@ class WmsService
      * Recommend a position for the given customer codes and primary part no.
      * Supports multi-item pallets (mixed customer codes).
      *
-     * @param  array   $customerCodes  All customer codes from scanned items
-     * @param  string  $primaryPartNo  First/primary item code (for consolidation)
-     * @param  string|null $warehouseId Optional warehouse ID to scope slot recommendations
+     * @param array $customerCodes All customer codes from scanned items
+     * @param string $primaryPartNo First/primary item code (for consolidation)
+     * @param string|null $warehouseId Optional warehouse ID to scope slot recommendations
      */
     public function recommendPosition(array $customerCodes, string $primaryPartNo, ?string $warehouseId = null): ?WmsPosition
     {
         $uniqueCustomers = array_unique(array_filter($customerCodes));
-        $isMixed         = count($uniqueCustomers) > 1;
+        $isMixed = count($uniqueCustomers) > 1;
 
         // Check if item is in the priority list
         $priorityItems = $this->getPriorityItems();
         $cleanPartNo = str_replace('..', '', $primaryPartNo);
         $isPriority = in_array($primaryPartNo, $priorityItems) || in_array($cleanPartNo, $priorityItems) || in_array($cleanPartNo . '..', $priorityItems);
 
-        $applyWarehouseFilter = function($query) use ($warehouseId) {
-            if (!empty($warehouseId)) {
-                $query->whereHas('rack', function($rq) use ($warehouseId) {
+        $applyWarehouseFilter = function ($query) use ($warehouseId) {
+            if (! empty($warehouseId)) {
+                $query->whereHas('rack', function ($rq) use ($warehouseId) {
                     $rq->where('whse_id', $warehouseId);
                 });
             }
         };
 
-        if (!$isMixed && count($uniqueCustomers) === 1) {
+        if (! $isMixed && count($uniqueCustomers) === 1) {
             $customerCode = $uniqueCustomers[0];
 
             // 1. Try PARTIAL slot with same item for consolidation
@@ -97,7 +96,7 @@ class WmsService
                 ->where('customer_code', $customerCode)
                 ->where('last_item_code', $primaryPartNo)
                 ->where('status', 'PARTIAL');
-                
+
             $applyWarehouseFilter($partialSlotQuery);
 
             if ($isPriority) {
@@ -107,7 +106,7 @@ class WmsService
             }
 
             $partialSlot = $partialSlotQuery->orderBy('level_no')->orderBy('id')->get()
-                ->filter(fn($pos) => $pos->pallet_forms_count < $pos->max_capacity)
+                ->filter(fn ($pos) => $pos->pallet_forms_count < $pos->max_capacity)
                 ->first();
 
             if ($partialSlot) {
@@ -141,7 +140,7 @@ class WmsService
         } else {
             $fallbackQuery->where('level_no', '!=', 1);
         }
-        
+
         return $fallbackQuery->orderBy('level_no')->orderBy('id')->first();
     }
 
@@ -152,21 +151,23 @@ class WmsService
     {
         // Automatically detach any pallet forms from this position that have total_pallet_qty <= 0 or status OUT
         \App\Models\WmsPalletForm::where('position_id', $positionId)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->where('total_pallet_qty', '<=', 0)
-                  ->orWhere('status', 'OUT');
+                    ->orWhere('status', 'OUT');
             })
             ->update(['position_id' => null]);
 
-        $pos = WmsPosition::with(['palletForms' => function($q) {
+        $pos = WmsPosition::with(['palletForms' => function ($q) {
             $q->where('status', 'STORED')->where('total_pallet_qty', '>', 0);
         }])->find($positionId);
-        
-        if (!$pos) return;
+
+        if (! $pos) {
+            return;
+        }
 
         $totalQtySum = (float) $pos->palletForms->sum('total_pallet_qty');
         $palletCount = $pos->palletForms->count();
-        
+
         if ($palletCount <= 0 || $totalQtySum <= 0) {
             $pos->update(['status' => 'EMPTY', 'last_item_code' => null]);
         } elseif ($palletCount >= $pos->max_capacity) {
@@ -186,7 +187,7 @@ class WmsService
             'transaction_type' => $type,
             'position_id' => $positionId,
             'user_id' => auth()->id(),
-            'notes' => $notes
+            'notes' => $notes,
         ]);
     }
 
@@ -203,15 +204,15 @@ class WmsService
             ->whereNotNull('position_id')
             ->where('status', 'STORED')
             ->where('total_pallet_qty', '>', 0)
-            ->where(function($q) use ($partNo) {
+            ->where(function ($q) use ($partNo) {
                 $q->where('part_no', $partNo)
-                  ->orWhereHas('details', function($dq) use ($partNo) {
-                      $dq->where('part_no', $partNo)->where('qty', '>', 0);
-                  });
+                    ->orWhereHas('details', function ($dq) use ($partNo) {
+                        $dq->where('part_no', $partNo)->where('qty', '>', 0);
+                    });
             })
             ->get();
 
-        $sorted = $pallets->sortBy(function($plt) {
+        $sorted = $pallets->sortBy(function ($plt) {
             return $plt->position?->distance_score ?? 99999;
         })->values();
 

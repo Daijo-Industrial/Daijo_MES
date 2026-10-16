@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\BelongsToBranch;
 
 class MachineJob extends Model
 {
-    use HasFactory;
     use BelongsToBranch;
+    use HasFactory;
 
     public $timestamps = false;
 
@@ -48,7 +48,7 @@ class MachineJob extends Model
         return $this->hasMany(AdjustMachineLog::class, 'user_id', 'user_id');
     }
 
-    public function repairMachineLogs ()
+    public function repairMachineLogs()
     {
         return $this->hasMany(RepairMachineLog::class, 'user_id', 'user_id');
     }

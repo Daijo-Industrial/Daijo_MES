@@ -15,19 +15,28 @@ class MaterialOutgoingCreator extends Component
 
     // Form Picking Fields
     public ?int $whse_id = null;
+
     public array $warehouses = [];
+
     public string $selected_item_code = '';
+
     public string $selected_item_description = '';
+
     public string $selected_pallet_id = '';
+
     public ?MwhPallet $selectedPallet = null;
 
     public string $qty_taken = '';
+
     public string $outgoing_date = '';
+
     public string $issued_to = '';
+
     public string $remarks = '';
 
     // Autocomplete & FIFO State
     public array $materialSearchResults = [];
+
     public array $fifoRecommendations = [];
 
     protected $queryString = ['selected_item_code', 'whse_id'];
@@ -41,7 +50,7 @@ class MaterialOutgoingCreator extends Component
             $this->warehouses = \App\Models\MwhWarehouse::orderBy('id', 'asc')->get()->toArray();
         }
 
-        if (!$this->whse_id) {
+        if (! $this->whse_id) {
             $this->whse_id = $this->warehouses[0]['id'] ?? 1;
         }
 
@@ -75,15 +84,15 @@ class MaterialOutgoingCreator extends Component
         }
     }
 
-    public function selectMaterial(string $itemCode, MaterialWarehouseService $mwhService = null): void
+    public function selectMaterial(string $itemCode, ?MaterialWarehouseService $mwhService = null): void
     {
         $mwhService = $mwhService ?: app(MaterialWarehouseService::class);
 
         $mat = MasterListMaterial::where('item_code', $itemCode)->first();
         if ($mat) {
-            $this->selected_item_code        = $mat->item_code;
+            $this->selected_item_code = $mat->item_code;
             $this->selected_item_description = $mat->item_description ?? '';
-            $this->materialSearchResults     = [];
+            $this->materialSearchResults = [];
 
             // Get FIFO recommendations filtered by selected warehouse
             $this->fifoRecommendations = $mwhService->getFifoRecommendations($mat->item_code, $this->whse_id)->toArray();
@@ -125,7 +134,7 @@ class MaterialOutgoingCreator extends Component
 
         if ($pallet) {
             $this->selected_pallet_id = $pallet->pallet_id;
-            $this->selectedPallet     = $pallet;
+            $this->selectedPallet = $pallet;
             $this->selected_item_code = $pallet->item_code;
             $this->selected_item_description = $pallet->material ? $pallet->material->item_description : '';
         }
@@ -135,14 +144,14 @@ class MaterialOutgoingCreator extends Component
     {
         $this->validate([
             'selected_pallet_id' => 'required|string|exists:mwh_pallets,pallet_id',
-            'qty_taken'          => 'required|numeric|min:0.01',
-            'outgoing_date'      => 'required|date',
-            'issued_to'          => 'nullable|string|max:255',
-            'remarks'            => 'nullable|string',
+            'qty_taken' => 'required|numeric|min:0.01',
+            'outgoing_date' => 'required|date',
+            'issued_to' => 'nullable|string|max:255',
+            'remarks' => 'nullable|string',
         ], [
             'selected_pallet_id.required' => 'Pilih Pallet ID material yang akan diambil.',
-            'qty_taken.required'          => 'Jumlah KG yang diambil harus diisi.',
-            'qty_taken.min'               => 'Jumlah KG harus lebih besar dari 0.',
+            'qty_taken.required' => 'Jumlah KG yang diambil harus diisi.',
+            'qty_taken.min' => 'Jumlah KG harus lebih besar dari 0.',
         ]);
 
         try {
@@ -171,9 +180,9 @@ class MaterialOutgoingCreator extends Component
         $query = MwhOutgoing::with(['position.rack', 'material', 'pallet', 'warehouse']);
 
         if ($this->whse_id) {
-            $query->where(function($q) {
+            $query->where(function ($q) {
                 $q->where('whse_id', $this->whse_id)
-                  ->orWhereHas('position.rack', fn($rq) => $rq->where('whse_id', $this->whse_id));
+                    ->orWhereHas('position.rack', fn ($rq) => $rq->where('whse_id', $this->whse_id));
             });
         }
 
@@ -183,7 +192,7 @@ class MaterialOutgoingCreator extends Component
 
         return view('livewire.material-warehouse.material-outgoing-creator', [
             'warehouses' => $this->warehouses,
-            'outgoings'  => $outgoings,
+            'outgoings' => $outgoings,
         ]);
     }
 }

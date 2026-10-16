@@ -2,6 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Models\Delivery\delsched_delfilter;
+use App\Models\Delivery\delsched_delsum;
+use App\Models\Delivery\delsched_solist;
+use App\Models\Delivery\DelschedFinal;
+use App\Models\MasterListItem;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -9,18 +15,13 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Delivery\DelschedFinal;
-use App\Models\MasterListItem;
-use App\Models\Delivery\delsched_solist;
-use App\Models\Delivery\delsched_delfilter;
-use App\Models\Delivery\delsched_delsum;
-use Carbon\Carbon;
 
 class ProcessDelschedStep1 implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 600;
+
     public $tries = 1;
 
     public function handle()
@@ -47,10 +48,10 @@ class ProcessDelschedStep1 implements ShouldQueue
                 ->get();
 
             foreach ($tab_sap_delsched as $sap_delsched) {
-                $val_item_code_i     = $sap_delsched->item_code;
+                $val_item_code_i = $sap_delsched->item_code;
                 $val_delivery_date_i = $sap_delsched->delivery_date;
-                $val_delivery_qty_i  = $sap_delsched->delivery_qty;
-                $val_so_number_i     = $sap_delsched->so_number;
+                $val_delivery_qty_i = $sap_delsched->delivery_qty;
+                $val_so_number_i = $sap_delsched->so_number;
 
                 $tab_sap_inventoryfg = DB::table('sap_inventory_fg')->where('item_code', $val_item_code_i)->first();
                 if (is_null($tab_sap_inventoryfg)) {
@@ -58,10 +59,10 @@ class ProcessDelschedStep1 implements ShouldQueue
                     continue;
                 }
 
-                $val_item_name         = $tab_sap_inventoryfg->item_name;
-                $val_packaging         = $tab_sap_inventoryfg->packaging;
+                $val_item_name = $tab_sap_inventoryfg->item_name;
+                $val_packaging = $tab_sap_inventoryfg->packaging;
                 $val_standar_packaging = $tab_sap_inventoryfg->standar_packing;
-                $val_process_owner     = $tab_sap_inventoryfg->process_owner;
+                $val_process_owner = $tab_sap_inventoryfg->process_owner;
 
                 if ($val_process_owner == 'INJ') {
                     $val_departement = 390;
@@ -84,17 +85,17 @@ class ProcessDelschedStep1 implements ShouldQueue
                 }
 
                 DelschedFinal::insert([
-                    'delivery_date'  => $val_delivery_date_i,
-                    'item_code'      => $val_item_code_i,
-                    'item_name'      => $val_item_name,
-                    'delivery_qty'   => $val_delivery_qty_i,
-                    'so_number'      => $val_so_number_i,
-                    'doc_status'     => 'O',
+                    'delivery_date' => $val_delivery_date_i,
+                    'item_code' => $val_item_code_i,
+                    'item_name' => $val_item_name,
+                    'delivery_qty' => $val_delivery_qty_i,
+                    'so_number' => $val_so_number_i,
+                    'doc_status' => 'O',
                     'packaging_code' => $val_packaging,
-                    'standar_pack'   => $val_standar_packaging,
-                    'customer_code'  => $val_customer_code,
-                    'customer_name'  => $val_customer_name,
-                    'departement'    => $val_departement,
+                    'standar_pack' => $val_standar_packaging,
+                    'customer_code' => $val_customer_code,
+                    'customer_name' => $val_customer_name,
+                    'departement' => $val_departement,
                 ]);
             }
 
@@ -108,12 +109,12 @@ class ProcessDelschedStep1 implements ShouldQueue
 
             foreach ($tab_sap_delso as $sap_delso) {
                 delsched_solist::insert([
-                    'so_number'    => $sap_delso->doc_num,
-                    'so_status'    => $sap_delso->doc_status,
-                    'item_code'    => $sap_delso->item_no,
-                    'so_qty'       => $sap_delso->quantity,
-                    'delivered_qty'=> $sap_delso->delivered_qty,
-                    'row_status'   => $sap_delso->row_status,
+                    'so_number' => $sap_delso->doc_num,
+                    'so_status' => $sap_delso->doc_status,
+                    'item_code' => $sap_delso->item_no,
+                    'so_qty' => $sap_delso->quantity,
+                    'delivered_qty' => $sap_delso->delivered_qty,
+                    'row_status' => $sap_delso->row_status,
                 ]);
             }
 
@@ -128,16 +129,16 @@ class ProcessDelschedStep1 implements ShouldQueue
                 $tab_delsched_solist_iii = DB::table('delsched_solist')->where('so_number', $val_so_num_iii)->first();
 
                 $rcd_status = 'O';
-                if (!empty($tab_delsched_solist_iii->so_status) && $tab_delsched_solist_iii->so_status != 'O') {
+                if (! empty($tab_delsched_solist_iii->so_status) && $tab_delsched_solist_iii->so_status != 'O') {
                     $rcd_status = 'C';
                 }
 
                 if ($rcd_status == 'O') {
                     delsched_delfilter::insert([
-                        'item_code'     => $sap_delactual->item_no,
+                        'item_code' => $sap_delactual->item_no,
                         'delivery_date' => $sap_delactual->delivery_date,
-                        'quantity'      => $sap_delactual->quantity,
-                        'so_number'     => $val_so_num_iii,
+                        'quantity' => $sap_delactual->quantity,
+                        'so_number' => $val_so_num_iii,
                     ]);
                 }
             }
@@ -152,13 +153,12 @@ class ProcessDelschedStep1 implements ShouldQueue
                 $sum_qty = DB::table('delsched_delfilter')->where('item_code', $val_item_code_iv)->sum('quantity');
 
                 delsched_delsum::insert([
-                    'item_code'   => $val_item_code_iv,
-                    'quantity'    => $sum_qty,
+                    'item_code' => $val_item_code_iv,
+                    'quantity' => $sum_qty,
                     'total_after' => $sum_qty,
                 ]);
             }
 
-            
             $this->updateLog('delsched_main', 'step1', 'running', 'Step 1 selesai, Step 2 dijadwalkan...');
 
         } catch (\Exception $e) {

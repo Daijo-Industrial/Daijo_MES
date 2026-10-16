@@ -2,16 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SpDowntimeEntry;
-use App\Models\SpInputEntry;
-use App\Models\SpProductionEntry;
-use App\Models\SpProductionSession;
-use App\Models\SpRejectEntry;
-use App\Models\SpReworkEntry;
-use App\Models\SpSessionMaterial;
-use App\Models\SpWorkOrder;
 use App\Models\FirstPieceInspection;
-use App\Services\SecondProcessReportSyncBridge;
+use App\Models\SpDowntimeEntry;
+use App\Models\SpProductionSession;
+use App\Models\SpWorkOrder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,10 +44,10 @@ class SpProductionSessionController extends Controller
             // Validate QC-Approved First Piece Inspection before starting session (latest for part)
             $firstPiece = FirstPieceInspection::latestForPart($workOrder->part_number)->first();
 
-            if (!$firstPiece || !$firstPiece->isApproved()) {
-                $reason = !$firstPiece 
-                    ? "No First Piece Inspection record found." 
-                    : ($firstPiece->overall_judgement !== 'OK' ? "Overall judgement is {$firstPiece->overall_judgement}." : "Pending QC signature.");
+            if (! $firstPiece || ! $firstPiece->isApproved()) {
+                $reason = ! $firstPiece
+                    ? 'No First Piece Inspection record found.'
+                    : ($firstPiece->overall_judgement !== 'OK' ? "Overall judgement is {$firstPiece->overall_judgement}." : 'Pending QC signature.');
 
                 return redirect()->back()
                     ->with('error', "Cannot start production: First Piece Inspection for Part {$workOrder->part_number} is not approved by QC ({$reason}).");
@@ -75,7 +69,7 @@ class SpProductionSessionController extends Controller
 
         $workOrder->update(['status' => 'in_progress']);
 
-        $message = $isBypassed 
+        $message = $isBypassed
             ? "Production started with Emergency QC Bypass for Work Order {$workOrder->wo_number}."
             : "Production started for Work Order {$workOrder->wo_number}.";
 
@@ -91,12 +85,12 @@ class SpProductionSessionController extends Controller
         $session->load([
             'workOrder',
             'operator',
-            'productionEntries' => fn($q) => $q->orderBy('recorded_at', 'desc'),
-            'rejectEntries' => fn($q) => $q->orderBy('created_at', 'desc'),
-            'reworkEntries' => fn($q) => $q->orderBy('created_at', 'desc'),
-            'downtimeEntries' => fn($q) => $q->orderBy('created_at', 'desc'),
-            'inputEntries' => fn($q) => $q->orderBy('created_at', 'desc'),
-            'manpowerEntries' => fn($q) => $q->orderBy('created_at', 'desc'),
+            'productionEntries' => fn ($q) => $q->orderBy('recorded_at', 'desc'),
+            'rejectEntries' => fn ($q) => $q->orderBy('created_at', 'desc'),
+            'reworkEntries' => fn ($q) => $q->orderBy('created_at', 'desc'),
+            'downtimeEntries' => fn ($q) => $q->orderBy('created_at', 'desc'),
+            'inputEntries' => fn ($q) => $q->orderBy('created_at', 'desc'),
+            'manpowerEntries' => fn ($q) => $q->orderBy('created_at', 'desc'),
         ]);
 
         $defectTypes = [
@@ -146,8 +140,9 @@ class SpProductionSessionController extends Controller
         $currentOutput = $session->total_good + $session->total_reject;
         if (($currentOutput + $newOutput) > $session->total_input) {
             $availableWip = max(0, $session->total_input - $currentOutput);
+
             return response()->json([
-                'error' => "Total output cannot exceed available Input WIP ({$availableWip} Pcs available out of {$session->total_input} Pcs total). Please log Input WIP first."
+                'error' => "Total output cannot exceed available Input WIP ({$availableWip} Pcs available out of {$session->total_input} Pcs total). Please log Input WIP first.",
             ], 422);
         }
 
@@ -164,7 +159,7 @@ class SpProductionSessionController extends Controller
                 'success' => true,
                 'message' => 'Production recorded successfully.',
                 'entry' => $entry,
-                'totals' => $this->getSessionTotalsArray($session)
+                'totals' => $this->getSessionTotalsArray($session),
             ]);
         }
 
@@ -197,8 +192,9 @@ class SpProductionSessionController extends Controller
 
             if (($currentOutput + $totalRequestedQty) > $session->total_input) {
                 $availableWip = max(0, $session->total_input - $currentOutput);
+
                 return response()->json([
-                    'error' => "Total output cannot exceed available Input WIP ({$availableWip} Pcs available out of {$session->total_input} Pcs total). Please log Input WIP first."
+                    'error' => "Total output cannot exceed available Input WIP ({$availableWip} Pcs available out of {$session->total_input} Pcs total). Please log Input WIP first.",
                 ], 422);
             }
 
@@ -220,7 +216,7 @@ class SpProductionSessionController extends Controller
                 'message' => count($createdEntries) . ' defect record(s) logged successfully.',
                 'entries' => $createdEntries,
                 'entry' => $createdEntries[0] ?? null,
-                'totals' => $this->getSessionTotalsArray($session)
+                'totals' => $this->getSessionTotalsArray($session),
             ]);
         }
 
@@ -237,9 +233,10 @@ class SpProductionSessionController extends Controller
             $availableWip = max(0, $session->total_input - $currentOutput);
             if ($isAjax) {
                 return response()->json([
-                    'error' => "Total output cannot exceed available Input WIP ({$availableWip} Pcs available out of {$session->total_input} Pcs total). Please log Input WIP first."
+                    'error' => "Total output cannot exceed available Input WIP ({$availableWip} Pcs available out of {$session->total_input} Pcs total). Please log Input WIP first.",
                 ], 422);
             }
+
             return redirect()->back()->with('error', "Total output cannot exceed available Input WIP ({$availableWip} Pcs available).");
         }
 
@@ -251,7 +248,7 @@ class SpProductionSessionController extends Controller
                 'success' => true,
                 'message' => 'Defect recorded successfully.',
                 'entry' => $entry,
-                'totals' => $this->getSessionTotalsArray($session)
+                'totals' => $this->getSessionTotalsArray($session),
             ]);
         }
 
@@ -269,7 +266,7 @@ class SpProductionSessionController extends Controller
         $isAjax = $request->expectsJson() || $request->ajax() || $request->wantsJson();
 
         // Mode A: Issue to Rework Bench (Cycle 1)
-        if ($request->has('issue_qty') || ($request->has('input_qty') && !$request->has('recovered_qty') && !$request->has('scrapped_qty'))) {
+        if ($request->has('issue_qty') || ($request->has('input_qty') && ! $request->has('recovered_qty') && ! $request->has('scrapped_qty'))) {
             $validated = $request->validate([
                 'issue_qty' => 'nullable|integer|min:1',
                 'input_qty' => 'nullable|integer|min:1',
@@ -288,7 +285,7 @@ class SpProductionSessionController extends Controller
 
             if ($qty > $availableDefectStock) {
                 return response()->json([
-                    'error' => "Cannot issue more than available defect stock ({$availableDefectStock} Pcs available out of {$rawReject} Pcs total logged defects)."
+                    'error' => "Cannot issue more than available defect stock ({$availableDefectStock} Pcs available out of {$rawReject} Pcs total logged defects).",
                 ], 422);
             }
 
@@ -305,9 +302,10 @@ class SpProductionSessionController extends Controller
                     'success' => true,
                     'message' => "{$qty} Pcs issued to Rework Bench successfully.",
                     'entry' => $entry,
-                    'totals' => $this->getSessionTotalsArray($session)
+                    'totals' => $this->getSessionTotalsArray($session),
                 ]);
             }
+
             return redirect()->back()->with('success', "{$qty} Pcs issued to Rework Bench.");
         }
 
@@ -324,7 +322,7 @@ class SpProductionSessionController extends Controller
             return response()->json(['error' => 'Please enter at least 1 recovered or scrapped piece.'], 422);
         }
 
-        $pendingReworkWip = max(0, $session->total_rework_in - ($session->total_rework_recovered + (int)$session->total_scrap));
+        $pendingReworkWip = max(0, $session->total_rework_in - ($session->total_rework_recovered + (int) $session->total_scrap));
 
         $inputQty = (int) ($validated['input_qty'] ?? 0);
         if ($inputQty > 0) {
@@ -363,7 +361,7 @@ class SpProductionSessionController extends Controller
                 'success' => true,
                 'message' => 'Rework outcome recorded successfully.',
                 'entry' => $entry,
-                'totals' => $this->getSessionTotalsArray($session)
+                'totals' => $this->getSessionTotalsArray($session),
             ]);
         }
 
@@ -412,8 +410,8 @@ class SpProductionSessionController extends Controller
                 'entry' => $entry,
                 'totals' => [
                     'downtime_minutes' => $session->downtimeEntries()->sum('duration_minutes'),
-                    'downtime_count' => $session->downtimeEntries()->count()
-                ]
+                    'downtime_count' => $session->downtimeEntries()->count(),
+                ],
             ]);
         }
 
@@ -450,7 +448,7 @@ class SpProductionSessionController extends Controller
                 'input_qty' => $validated['quantity'],
                 'recovered_qty' => 0,
                 'scrapped_qty' => 0,
-                'remarks' => "From Reworkable Input #{$entry->id}" . (!empty($validated['pallet_number']) ? " ({$validated['pallet_number']})" : ''),
+                'remarks' => "From Reworkable Input #{$entry->id}" . (! empty($validated['pallet_number']) ? " ({$validated['pallet_number']})" : ''),
             ]);
         }
 
@@ -464,7 +462,7 @@ class SpProductionSessionController extends Controller
                 'message' => "{$entryLabel} quantity recorded successfully.",
                 'entry' => $entry,
                 'rework_entry' => $reworkEntry,
-                'totals' => $this->getSessionTotalsArray($session)
+                'totals' => $this->getSessionTotalsArray($session),
             ]);
         }
 
@@ -492,7 +490,7 @@ class SpProductionSessionController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Team member added successfully.',
-                'entry' => $entry
+                'entry' => $entry,
             ]);
         }
 
@@ -513,7 +511,7 @@ class SpProductionSessionController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Team member removed successfully.'
+                'message' => 'Team member removed successfully.',
             ]);
         }
 
@@ -542,7 +540,7 @@ class SpProductionSessionController extends Controller
             'materials',
             'downtimeEntries',
             'manpowerEntries',
-            'inputEntries' => fn($q) => $q->orderBy('created_at', 'asc')->orderBy('id', 'asc'),
+            'inputEntries' => fn ($q) => $q->orderBy('created_at', 'asc')->orderBy('id', 'asc'),
         ]);
 
         $troubleCategories = ['Man', 'Mesin', 'Part', 'PPS', 'Lingkungan'];
@@ -559,10 +557,10 @@ class SpProductionSessionController extends Controller
         $cleanedSchedule = null;
         if (is_array($rawSchedule)) {
             $filtered = array_values(array_filter(
-                array_map(fn($item) => is_string($item) ? trim($item) : $item, $rawSchedule),
-                fn($item) => !empty($item)
+                array_map(fn ($item) => is_string($item) ? trim($item) : $item, $rawSchedule),
+                fn ($item) => ! empty($item)
             ));
-            $cleanedSchedule = !empty($filtered) ? $filtered : null;
+            $cleanedSchedule = ! empty($filtered) ? $filtered : null;
         }
 
         // Pre-filter materials: discard untouched preset rows where lot_number, qty, visco, and mixing_ratio are all empty/null
@@ -570,13 +568,13 @@ class SpProductionSessionController extends Controller
         $filteredMaterials = [];
         if (is_array($rawMaterials)) {
             foreach ($rawMaterials as $mat) {
-                if (!is_array($mat)) {
+                if (! is_array($mat)) {
                     continue;
                 }
-                $hasLot = !empty(trim((string) ($mat['lot_number'] ?? '')));
+                $hasLot = ! empty(trim((string) ($mat['lot_number'] ?? '')));
                 $hasQty = isset($mat['qty']) && $mat['qty'] !== '' && (float) $mat['qty'] > 0;
-                $hasVisco = !empty(trim((string) ($mat['visco'] ?? '')));
-                $hasRatio = !empty(trim((string) ($mat['mixing_ratio'] ?? '')));
+                $hasVisco = ! empty(trim((string) ($mat['visco'] ?? '')));
+                $hasRatio = ! empty(trim((string) ($mat['mixing_ratio'] ?? '')));
 
                 // Keep row if any operational consumption data is provided
                 if ($hasLot || $hasQty || $hasVisco || $hasRatio) {
@@ -587,7 +585,7 @@ class SpProductionSessionController extends Controller
 
         $request->merge([
             'next_production_schedule' => $cleanedSchedule,
-            'materials' => !empty($filteredMaterials) ? $filteredMaterials : null,
+            'materials' => ! empty($filteredMaterials) ? $filteredMaterials : null,
         ]);
 
         $troubleCategories = ['Man', 'Mesin', 'Part', 'PPS', 'Lingkungan'];
@@ -652,14 +650,14 @@ class SpProductionSessionController extends Controller
             // Save materials
             $session->materials()->delete();
             foreach (($validated['materials'] ?? []) as $mat) {
-                if (!empty($mat['item_name'])) {
+                if (! empty($mat['item_name'])) {
                     $session->materials()->create($mat);
                 }
             }
 
             // Enrich downtime entries with category + countermeasure
             foreach (($validated['troubles'] ?? []) as $trouble) {
-                if (!empty($trouble['downtime_id'])) {
+                if (! empty($trouble['downtime_id'])) {
                     SpDowntimeEntry::where('id', $trouble['downtime_id'])
                         ->where('session_id', $session->id)
                         ->update([
@@ -715,7 +713,7 @@ class SpProductionSessionController extends Controller
 
         $line = $spLines[$lineSlug] ?? null;
 
-        if (!$line) {
+        if (! $line) {
             // Fallback check if user passed exact line name (e.g. Line A)
             $foundSlug = array_search($lineSlug, $spLines);
             if ($foundSlug !== false) {
@@ -734,12 +732,12 @@ class SpProductionSessionController extends Controller
         $currentShiftConfig = config("mes.sp_shifts.{$shift}", config("mes.shifts.{$shift}", []));
 
         // Work Orders for this line (active planned or in_progress only; draft and completed excluded)
-        $workOrdersQuery = SpWorkOrder::with(['sessions' => fn($q) => $q->orderByDesc('started_at')])
+        $workOrdersQuery = SpWorkOrder::with(['sessions' => fn ($q) => $q->orderByDesc('started_at')])
             ->where('unit_line', $line)
             ->whereIn('status', ['planned', 'in_progress'])
             ->where(function ($q) use ($date) {
                 $q->whereDate('planned_date', $date)
-                    ->orWhereHas('sessions', fn($s) => $s->where('status', 'running'));
+                    ->orWhereHas('sessions', fn ($s) => $s->where('status', 'running'));
             });
 
         $workOrders = $workOrdersQuery->orderByDesc('id')->get();
@@ -768,8 +766,17 @@ class SpProductionSessionController extends Controller
         $quickBypassReasons = $defaultBypassPresets->merge($historicalBypassReasons)->filter()->unique()->values();
 
         return view('sp_production.line_gateway', compact(
-            'line', 'lineSlug', 'date', 'shift', 'selectedShift', 'currentShiftConfig', 'currentShift',
-            'workOrders', 'firstPieceMap', 'spLines', 'quickBypassReasons'
+            'line',
+            'lineSlug',
+            'date',
+            'shift',
+            'selectedShift',
+            'currentShiftConfig',
+            'currentShift',
+            'workOrders',
+            'firstPieceMap',
+            'spLines',
+            'quickBypassReasons'
         ));
     }
 
@@ -792,6 +799,7 @@ class SpProductionSessionController extends Controller
                 }
             }
         }
+
         return 1;
     }
 
@@ -803,7 +811,7 @@ class SpProductionSessionController extends Controller
             return response()->json(['error' => 'Only running sessions can be paused.'], 422);
         }
 
-        if (!\Illuminate\Support\Facades\Schema::hasColumn('sp_production_sessions', 'paused_at')) {
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('sp_production_sessions', 'paused_at')) {
             return response()->json(['error' => 'The database column "paused_at" is missing. Please run php artisan migrate on your server.'], 422);
         }
 
@@ -821,11 +829,11 @@ class SpProductionSessionController extends Controller
     {
         $session = SpProductionSession::findOrFail($id);
 
-        if (!\Illuminate\Support\Facades\Schema::hasColumn('sp_production_sessions', 'paused_at')) {
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('sp_production_sessions', 'paused_at')) {
             return response()->json(['error' => 'The database column "paused_at" is missing. Please run php artisan migrate on your server.'], 422);
         }
 
-        if (!$session->paused_at) {
+        if (! $session->paused_at) {
             return response()->json(['error' => 'Session is not currently paused.'], 422);
         }
 
@@ -854,7 +862,7 @@ class SpProductionSessionController extends Controller
             'success' => true,
             'message' => "Line resumed. Logged {$durationMinutes}m downtime for '{$downtime->reason}'.",
             'downtime' => $downtime,
-            'totals' => $this->getSessionTotalsArray($session)
+            'totals' => $this->getSessionTotalsArray($session),
         ]);
     }
 
@@ -872,7 +880,7 @@ class SpProductionSessionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Production entry removed successfully.',
-            'totals' => $this->getSessionTotalsArray($session)
+            'totals' => $this->getSessionTotalsArray($session),
         ]);
     }
 
@@ -890,7 +898,7 @@ class SpProductionSessionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Defect entry removed successfully.',
-            'totals' => $this->getSessionTotalsArray($session)
+            'totals' => $this->getSessionTotalsArray($session),
         ]);
     }
 
@@ -908,7 +916,7 @@ class SpProductionSessionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Downtime entry removed successfully.',
-            'totals' => $this->getSessionTotalsArray($session)
+            'totals' => $this->getSessionTotalsArray($session),
         ]);
     }
 
@@ -926,7 +934,7 @@ class SpProductionSessionController extends Controller
             $remainingReworkIn = $session->total_rework_in - $entry->input_qty;
             if ($processedRework > $remainingReworkIn) {
                 return response()->json([
-                    'error' => 'Cannot delete rework entry: parts have already been processed or recovered on the rework bench.'
+                    'error' => 'Cannot delete rework entry: parts have already been processed or recovered on the rework bench.',
                 ], 422);
             }
         }
@@ -941,7 +949,7 @@ class SpProductionSessionController extends Controller
                 $remainingInput = $session->total_input - $linkedInput->quantity;
                 if ($totalOutput > $remainingInput) {
                     return response()->json([
-                        'error' => "Cannot delete entry: {$totalOutput} Pcs of output have already been produced, which exceeds remaining input ({$remainingInput} Pcs)."
+                        'error' => "Cannot delete entry: {$totalOutput} Pcs of output have already been produced, which exceeds remaining input ({$remainingInput} Pcs).",
                     ], 422);
                 }
 
@@ -957,7 +965,7 @@ class SpProductionSessionController extends Controller
             'success' => true,
             'message' => 'Rework entry removed successfully.',
             'deleted_input_id' => $deletedInputEntryId,
-            'totals' => $this->getSessionTotalsArray($session)
+            'totals' => $this->getSessionTotalsArray($session),
         ]);
     }
 
@@ -974,7 +982,7 @@ class SpProductionSessionController extends Controller
         $remainingInput = $session->total_input - $entry->quantity;
         if ($totalOutput > $remainingInput) {
             return response()->json([
-                'error' => "Cannot delete input: {$totalOutput} Pcs of output have already been produced, which exceeds remaining input ({$remainingInput} Pcs)."
+                'error' => "Cannot delete input: {$totalOutput} Pcs of output have already been produced, which exceeds remaining input ({$remainingInput} Pcs).",
             ], 422);
         }
 
@@ -990,7 +998,7 @@ class SpProductionSessionController extends Controller
                 $remainingReworkIn = $session->total_rework_in - $linkedRework->input_qty;
                 if ($processedRework > $remainingReworkIn) {
                     return response()->json([
-                        'error' => 'Cannot delete reworkable input: parts have already been processed or recovered on the rework bench.'
+                        'error' => 'Cannot delete reworkable input: parts have already been processed or recovered on the rework bench.',
                     ], 422);
                 }
                 $deletedReworkEntryId = $linkedRework->id;
@@ -1005,7 +1013,7 @@ class SpProductionSessionController extends Controller
             'success' => true,
             'message' => 'Input entry removed successfully.',
             'deleted_rework_id' => $deletedReworkEntryId,
-            'totals' => $this->getSessionTotalsArray($session)
+            'totals' => $this->getSessionTotalsArray($session),
         ]);
     }
 

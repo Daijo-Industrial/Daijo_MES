@@ -1,27 +1,31 @@
 <?php
+
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Models\Role;
+use App\Jobs\SyncPalletToSapJob;
 use App\Models\MasterListItem;
+use App\Models\Role;
 use App\Models\SpkItemHistory;
-use App\Models\WmsWarehouse;
-use App\Models\WmsRack;
-use App\Models\WmsPosition;
+use App\Models\User;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
-use App\Jobs\SyncPalletToSapJob;
-use Livewire\Livewire;
-use Illuminate\Support\Facades\Schema;
+use App\Models\WmsPosition;
+use App\Models\WmsRack;
+use App\Models\WmsWarehouse;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class WmsPalletSortingTest extends TestCase
 {
     protected Role $adminRole;
+
     protected User $adminUser;
+
     protected WmsPosition $position1;
+
     protected WmsPosition $position2;
 
     protected function setUp(): void
@@ -41,7 +45,7 @@ class WmsPalletSortingTest extends TestCase
         $this->createTestSchema();
 
         $this->adminRole = Role::create(['name' => 'ADMIN']);
-        
+
         $this->adminUser = new User([
             'name' => 'Admin User',
             'email' => 'admin@test.com',
@@ -237,7 +241,7 @@ class WmsPalletSortingTest extends TestCase
             'prod_date' => now()->format('Y-m-d'),
             'box_qty' => 2,
             'total_pallet_qty' => 100,
-            'status' => 'STORED'
+            'status' => 'STORED',
         ]);
 
         $detailA1 = WmsPalletFormDetail::create([
@@ -269,7 +273,7 @@ class WmsPalletSortingTest extends TestCase
             'prod_date' => now()->format('Y-m-d'),
             'box_qty' => 1,
             'total_pallet_qty' => 50,
-            'status' => 'STORED'
+            'status' => 'STORED',
         ]);
 
         $detailB1 = WmsPalletFormDetail::create([
@@ -293,7 +297,7 @@ class WmsPalletSortingTest extends TestCase
         // Check if both pallets are loaded in memory
         $workspace = $component->get('workspacePallets');
         $this->assertCount(2, $workspace);
-        
+
         // Find LBL-002 (SPK-B from PLT-A)
         $lbl002Cid = null;
         foreach ($workspace[0]['boxes'] as $box) {
@@ -322,13 +326,13 @@ class WmsPalletSortingTest extends TestCase
             'pallet_id' => 'PLT-A',
             'part_no' => 'PART-A',
             'box_qty' => 1,
-            'total_pallet_qty' => 40
+            'total_pallet_qty' => 40,
         ]);
 
         // The moved box (LBL-002) should be assigned to the new pallet
         $this->assertDatabaseHas('wms_pallet_form_details', [
             'label' => 'LBL-002',
-            'pallet_form_id' => $newPalletId
+            'pallet_form_id' => $newPalletId,
         ]);
 
         // The new pallet should exist with 1 box and correct summary
@@ -336,7 +340,7 @@ class WmsPalletSortingTest extends TestCase
             'pallet_id' => $newPalletId,
             'part_no' => 'PART-B',
             'box_qty' => 1,
-            'total_pallet_qty' => 60
+            'total_pallet_qty' => 60,
         ]);
 
         // Assert SAP sync jobs were dispatched for all 3 pallets
@@ -356,7 +360,7 @@ class WmsPalletSortingTest extends TestCase
             'prod_date' => now()->format('Y-m-d'),
             'box_qty' => 1,
             'total_pallet_qty' => 50,
-            'status' => 'STORED'
+            'status' => 'STORED',
         ]);
 
         WmsPalletFormDetail::create([
@@ -375,7 +379,7 @@ class WmsPalletSortingTest extends TestCase
             'prod_date' => now()->format('Y-m-d'),
             'box_qty' => 1,
             'total_pallet_qty' => 60,
-            'status' => 'STORED'
+            'status' => 'STORED',
         ]);
 
         WmsPalletFormDetail::create([
@@ -412,11 +416,11 @@ class WmsPalletSortingTest extends TestCase
         // Assert database reflects updated positions
         $this->assertDatabaseHas('wms_pallet_forms', [
             'pallet_id' => 'PLT-A',
-            'position_id' => $this->position2->id
+            'position_id' => $this->position2->id,
         ]);
         $this->assertDatabaseHas('wms_pallet_forms', [
             'pallet_id' => 'PLT-B',
-            'position_id' => $this->position1->id
+            'position_id' => $this->position1->id,
         ]);
     }
 }

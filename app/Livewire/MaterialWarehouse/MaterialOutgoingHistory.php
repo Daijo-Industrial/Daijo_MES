@@ -14,30 +14,41 @@ class MaterialOutgoingHistory extends Component
 
     // Filter & Search State
     public string $search = '';
+
     public $whse_id = 'ALL';
+
     public array $warehouses = [];
+
     public ?string $fromDate = null;
+
     public ?string $toDate = null;
+
     public string $selectedItemCode = '';
+
     public string $selectedIssuedTo = '';
+
     public string $sortDirection = 'DESC'; // DESC, ASC
+
     public int $perPage = 25;
 
     // Detail & Delete Modal State
     public ?int $selectedOutgoingId = null;
+
     public bool $showDetailModal = false;
+
     public ?int $confirmDeleteId = null;
+
     public bool $showDeleteModal = false;
 
     protected $queryString = [
-        'search'           => ['except' => ''],
-        'whse_id'          => ['except' => 'ALL'],
-        'fromDate'         => ['except' => ''],
-        'toDate'           => ['except' => ''],
+        'search' => ['except' => ''],
+        'whse_id' => ['except' => 'ALL'],
+        'fromDate' => ['except' => ''],
+        'toDate' => ['except' => ''],
         'selectedItemCode' => ['except' => ''],
         'selectedIssuedTo' => ['except' => ''],
-        'sortDirection'    => ['except' => 'DESC'],
-        'perPage'          => ['except' => 25],
+        'sortDirection' => ['except' => 'DESC'],
+        'perPage' => ['except' => 25],
     ];
 
     public function mount(): void
@@ -57,33 +68,64 @@ class MaterialOutgoingHistory extends Component
         }
     }
 
-    public function updatedSearch(): void { $this->resetPage(); }
-    public function updatedWhseId(): void { $this->resetPage(); }
-    public function updatedFromDate(): void { $this->resetPage(); }
-    public function updatedToDate(): void { $this->resetPage(); }
-    public function updatedSelectedItemCode(): void { $this->resetPage(); }
-    public function updatedSelectedIssuedTo(): void { $this->resetPage(); }
-    public function updatedSortDirection(): void { $this->resetPage(); }
-    public function updatedPerPage(): void { $this->resetPage(); }
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedWhseId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFromDate(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedToDate(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSelectedItemCode(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSelectedIssuedTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSortDirection(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
 
     public function setFilterPreset(string $preset): void
     {
         switch ($preset) {
             case 'today':
                 $this->fromDate = now()->format('Y-m-d');
-                $this->toDate   = now()->format('Y-m-d');
+                $this->toDate = now()->format('Y-m-d');
                 break;
             case 'this_week':
                 $this->fromDate = now()->startOfWeek()->format('Y-m-d');
-                $this->toDate   = now()->format('Y-m-d');
+                $this->toDate = now()->format('Y-m-d');
                 break;
             case 'this_month':
                 $this->fromDate = now()->startOfMonth()->format('Y-m-d');
-                $this->toDate   = now()->format('Y-m-d');
+                $this->toDate = now()->format('Y-m-d');
                 break;
             case 'all':
                 $this->fromDate = null;
-                $this->toDate   = null;
+                $this->toDate = null;
                 break;
         }
         $this->resetPage();
@@ -99,7 +141,7 @@ class MaterialOutgoingHistory extends Component
     {
         $this->reset(['search', 'selectedItemCode', 'selectedIssuedTo', 'sortDirection', 'perPage']);
         $this->fromDate = now()->startOfMonth()->format('Y-m-d');
-        $this->toDate   = now()->format('Y-m-d');
+        $this->toDate = now()->format('Y-m-d');
         $this->resetPage();
     }
 
@@ -129,7 +171,9 @@ class MaterialOutgoingHistory extends Component
 
     public function deleteOutgoing(MaterialWarehouseService $mwhService): void
     {
-        if (!$this->confirmDeleteId) return;
+        if (! $this->confirmDeleteId) {
+            return;
+        }
 
         try {
             $mwhService->cancelOutgoingPicking($this->confirmDeleteId);
@@ -150,10 +194,10 @@ class MaterialOutgoingHistory extends Component
 
         // Filter Warehouse Branch
         if ($this->whse_id && $this->whse_id !== 'ALL') {
-            $whseId = (int)$this->whse_id;
-            $query->where(function($q) use ($whseId) {
+            $whseId = (int) $this->whse_id;
+            $query->where(function ($q) use ($whseId) {
                 $q->where('whse_id', $whseId)
-                  ->orWhereHas('position.rack', fn($rq) => $rq->where('whse_id', $whseId));
+                    ->orWhereHas('position.rack', fn ($rq) => $rq->where('whse_id', $whseId));
             });
         }
 
@@ -166,46 +210,46 @@ class MaterialOutgoingHistory extends Component
         }
 
         // Filter Material
-        if (!empty($this->selectedItemCode)) {
+        if (! empty($this->selectedItemCode)) {
             $query->where('item_code', $this->selectedItemCode);
         }
 
         // Filter Issued To
-        if (!empty($this->selectedIssuedTo)) {
+        if (! empty($this->selectedIssuedTo)) {
             $query->where('issued_to', $this->selectedIssuedTo);
         }
 
         // Search Term
-        if (!empty($this->search)) {
+        if (! empty($this->search)) {
             $st = '%' . trim($this->search) . '%';
             $query->where(function ($q) use ($st) {
                 $q->where('outgoing_code', 'like', $st)
-                  ->orWhere('pallet_id', 'like', $st)
-                  ->orWhere('item_code', 'like', $st)
-                  ->orWhere('issued_to', 'like', $st)
-                  ->orWhere('remarks', 'like', $st)
-                  ->orWhereHas('material', function ($mq) use ($st) {
-                      $mq->where('item_description', 'like', $st);
-                  })
-                  ->orWhereHas('position', function ($pq) use ($st) {
-                      $pq->where('position_code', 'like', $st)
-                         ->orWhereHas('rack', function ($rq) use ($st) {
-                             $rq->where('rack_code', 'like', $st);
-                         });
-                  });
+                    ->orWhere('pallet_id', 'like', $st)
+                    ->orWhere('item_code', 'like', $st)
+                    ->orWhere('issued_to', 'like', $st)
+                    ->orWhere('remarks', 'like', $st)
+                    ->orWhereHas('material', function ($mq) use ($st) {
+                        $mq->where('item_description', 'like', $st);
+                    })
+                    ->orWhereHas('position', function ($pq) use ($st) {
+                        $pq->where('position_code', 'like', $st)
+                            ->orWhereHas('rack', function ($rq) use ($st) {
+                                $rq->where('rack_code', 'like', $st);
+                            });
+                    });
             });
         }
 
         // Sorting
         $query->orderBy('outgoing_date', $this->sortDirection)
-              ->orderBy('id', $this->sortDirection);
+            ->orderBy('id', $this->sortDirection);
 
         // Stats calculation
         $statsQuery = clone $query;
         $statsData = [
-            'total_qty'        => (float) $statsQuery->sum('qty_taken'),
-            'total_count'      => $statsQuery->count(),
-            'today_qty'        => (float) MwhOutgoing::whereDate('outgoing_date', now()->format('Y-m-d'))->sum('qty_taken'),
+            'total_qty' => (float) $statsQuery->sum('qty_taken'),
+            'total_count' => $statsQuery->count(),
+            'today_qty' => (float) MwhOutgoing::whereDate('outgoing_date', now()->format('Y-m-d'))->sum('qty_taken'),
             'unique_materials' => (clone $query)->distinct()->count('item_code'),
         ];
 
@@ -226,12 +270,12 @@ class MaterialOutgoingHistory extends Component
             ->pluck('issued_to');
 
         return view('livewire.material-warehouse.material-outgoing-history', [
-            'warehouses'         => $this->warehouses,
-            'outgoings'          => $outgoings,
-            'stats'              => $statsData,
-            'selectedOutgoing'   => $selectedOutgoing,
+            'warehouses' => $this->warehouses,
+            'outgoings' => $outgoings,
+            'stats' => $statsData,
+            'selectedOutgoing' => $selectedOutgoing,
             'availableMaterials' => $availableMaterials,
-            'availableIssuedTo'  => $availableIssuedTo,
+            'availableIssuedTo' => $availableIssuedTo,
         ]);
     }
 }

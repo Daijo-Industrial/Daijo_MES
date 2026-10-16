@@ -6,7 +6,6 @@ use App\Models\Role;
 use App\Models\SecondProcessReport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
 
 class SecondProcessReportPolicyTest extends TestCase
@@ -14,9 +13,13 @@ class SecondProcessReportPolicyTest extends TestCase
     use RefreshDatabase;
 
     protected User $adminUser;
+
     protected User $supervisorUser;
+
     protected User $leaderUser;
+
     protected User $checkerUser;
+
     protected User $operatorUser;
 
     protected function setUp(): void

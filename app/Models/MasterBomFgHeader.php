@@ -33,10 +33,10 @@ class MasterBomFgHeader extends Model
         'total_wip_count' => 'integer',
         'total_raw_count' => 'integer',
         'max_depth_level' => 'integer',
-        'has_packaging'   => 'boolean',
-        'is_verified'     => 'boolean',
-        'verified_at'     => 'datetime',
-        'is_active'       => 'boolean',
+        'has_packaging' => 'boolean',
+        'is_verified' => 'boolean',
+        'verified_at' => 'datetime',
+        'is_active' => 'boolean',
     ];
 
     /**

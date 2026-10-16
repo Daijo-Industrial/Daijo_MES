@@ -18,9 +18,12 @@ class ProductionDashboardService
      */
     private static function parseHourSlot($rawTime): int
     {
-        if ($rawTime === null || $rawTime === '') return 0;
+        if ($rawTime === null || $rawTime === '') {
+            return 0;
+        }
         if (is_numeric($rawTime)) {
-            $h = (int)$rawTime;
+            $h = (int) $rawTime;
+
             return ($h >= 0 && $h < 24) ? $h : 0;
         }
 
@@ -33,10 +36,10 @@ class ProductionDashboardService
         // If format is '08:00' or '08:00:00'
         $colonPos = strpos($rawTime, ':');
         if ($colonPos !== false) {
-            return (int)substr($rawTime, 0, $colonPos);
+            return (int) substr($rawTime, 0, $colonPos);
         }
 
-        return (int)$rawTime;
+        return (int) $rawTime;
     }
 
     /**
@@ -47,6 +50,7 @@ class ProductionDashboardService
         if ($rawTime instanceof Carbon) {
             return $rawTime->copy()->setTimezone('Asia/Jakarta');
         }
+
         return Carbon::parse($rawTime, 'UTC')->setTimezone('Asia/Jakarta');
     }
 
@@ -99,9 +103,9 @@ class ProductionDashboardService
         } elseif ($isHalfDay === false) {
             $halfDayActive = false;
         } elseif (is_array($isHalfDay)) {
-            $halfDayActive = ($targetDate->isSaturday() && !empty($isHalfDay['saturday']))
-                || ($targetDate->isSunday() && !empty($isHalfDay['sunday']))
-                || (!empty($isHalfDay[$prodDate]))
+            $halfDayActive = ($targetDate->isSaturday() && ! empty($isHalfDay['saturday']))
+                || ($targetDate->isSunday() && ! empty($isHalfDay['sunday']))
+                || (! empty($isHalfDay[$prodDate]))
                 || self::isDateHalfDay($targetDate, $preloadedHalfDayDates);
         } else {
             $halfDayActive = self::isDateHalfDay($targetDate, $preloadedHalfDayDates);
@@ -132,18 +136,12 @@ class ProductionDashboardService
     public static function getShiftFromTimeStr(string $timeStr): int
     {
         $localTime = self::getLocalCarbon($timeStr);
+
         return self::getProductionDateAndShift($localTime)['shift'];
     }
 
     /**
      * Get all dashboard data in a single unified, ultra-fast pass.
-     *
-     * @param Carbon $startDate
-     * @param Carbon $endDate
-     * @param string|null $itemCode
-     * @param string|null $machineUserId
-     * @param string|null $plant
-     * @return array
      */
     public function getAllDashboardData(
         Carbon $startDate,
@@ -162,7 +160,7 @@ class ProductionDashboardService
             $preloadedHalfDayDates = \App\Models\Setting\HolidaySchedule::whereBetween('date', [$startDateStr, $endDateStr])
                 ->where('half_day', 1)
                 ->pluck('date')
-                ->map(fn($d) => Carbon::parse($d)->format('Y-m-d'))
+                ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
                 ->flip()
                 ->toArray();
         } catch (\Throwable $e) {
@@ -172,11 +170,11 @@ class ProductionDashboardService
         // Pre-fetch machine IDs for the selected plant for instant indexed queries (no slow whereHas subqueries)
         $plantMachineIds = null;
         if ($plant === 'karawang') {
-            $plantMachineIds = User::where(function($q) {
+            $plantMachineIds = User::where(function ($q) {
                 $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%');
             })->pluck('id')->toArray();
         } elseif ($plant === 'kbn') {
-            $plantMachineIds = User::where(function($q) {
+            $plantMachineIds = User::where(function ($q) {
                 $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%');
             })->pluck('id')->toArray();
         }
@@ -185,7 +183,7 @@ class ProductionDashboardService
         $dicQuery = DailyItemCode::query()
             ->with([
                 'hourlyRemarks.ngDetails.ngType',
-                'user:id,name'
+                'user:id,name',
             ])
             ->whereBetween('start_date', [$startDateStr, $endDateStr]);
 
@@ -203,7 +201,7 @@ class ProductionDashboardService
 
         // 2. Fetch Master Items mapped by item_code
         $neededItemCodes = $dailyData->pluck('item_code')->filter()->unique()->values()->toArray();
-        $masterItems = !empty($neededItemCodes)
+        $masterItems = ! empty($neededItemCodes)
             ? MasterListItem::whereIn('item_code', $neededItemCodes)->get()->keyBy('item_code')
             : collect();
 
@@ -214,7 +212,7 @@ class ProductionDashboardService
 
         // Strict plant filtering for Adjust and Mould Change logs
         $effectivePlant = $plant;
-        if (!$effectivePlant && $machineUserId) {
+        if (! $effectivePlant && $machineUserId) {
             $targetUser = User::find($machineUserId);
             if ($targetUser) {
                 $effectivePlant = str_starts_with(strtoupper($targetUser->name), 'K') ? 'karawang' : 'kbn';
@@ -248,14 +246,14 @@ class ProductionDashboardService
             $repairQuery->where('user_id', $machineUserId);
         } elseif ($effectivePlant === 'karawang') {
             $krwMachineIds = ($plant === 'karawang' && $plantMachineIds !== null) ? $plantMachineIds : User::where(function ($q) {
-                $q->where('name', 'LIKE', 'K%')->orWhereHas('branch', fn($b) => $b->where('code', 'KRW'));
+                $q->where('name', 'LIKE', 'K%')->orWhereHas('branch', fn ($b) => $b->where('code', 'KRW'));
             })->pluck('id')->toArray();
             $adjustQuery->whereIn('user_id', $krwMachineIds);
             $mouldQuery->whereIn('user_id', $krwMachineIds);
             $repairQuery->whereIn('user_id', $krwMachineIds);
         } elseif ($effectivePlant === 'kbn') {
             $kbnMachineIds = ($plant === 'kbn' && $plantMachineIds !== null) ? $plantMachineIds : User::where(function ($q) {
-                $q->where('name', 'NOT LIKE', 'K%')->whereDoesntHave('branch', fn($b) => $b->where('code', 'KRW'));
+                $q->where('name', 'NOT LIKE', 'K%')->whereDoesntHave('branch', fn ($b) => $b->where('code', 'KRW'));
             })->pluck('id')->toArray();
             $adjustQuery->whereIn('user_id', $kbnMachineIds);
             $mouldQuery->whereIn('user_id', $kbnMachineIds);
@@ -292,15 +290,15 @@ class ProductionDashboardService
         );
 
         return [
-            'chart_data'               => $productionResult['chart_data'] ?? [],
-            'summary'                  => $productionResult['summary'] ?? [],
-            'purging_details'          => $productionResult['purging_details'] ?? [],
-            'ng_breakdown'             => $ngBreakdown,
-            'downtime_analysis'        => $downtimeAnalysis,
-            'top_remarks'              => $topRemarks,
-            'machine_working_hours'    => $machineWorkingHours,
+            'chart_data' => $productionResult['chart_data'] ?? [],
+            'summary' => $productionResult['summary'] ?? [],
+            'purging_details' => $productionResult['purging_details'] ?? [],
+            'ng_breakdown' => $ngBreakdown,
+            'downtime_analysis' => $downtimeAnalysis,
+            'top_remarks' => $topRemarks,
+            'machine_working_hours' => $machineWorkingHours,
             'shift_personnel_analysis' => $shiftPersonnelAnalysis,
-            'adjuster_ng_trend'        => $adjusterNgTrend,
+            'adjuster_ng_trend' => $adjusterNgTrend,
         ];
     }
 
@@ -318,10 +316,17 @@ class ProductionDashboardService
             ->with(['hourlyRemarks.ngDetails.ngType', 'user:id,name'])
             ->whereBetween('start_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
 
-        if ($itemCode) $query->where('item_code', $itemCode);
-        if ($machineUserId) $query->where('user_id', $machineUserId);
-        if ($plant === 'karawang') $query->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
-        elseif ($plant === 'kbn') $query->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        if ($itemCode) {
+            $query->where('item_code', $itemCode);
+        }
+        if ($machineUserId) {
+            $query->where('user_id', $machineUserId);
+        }
+        if ($plant === 'karawang') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+        } elseif ($plant === 'kbn') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        }
 
         return $this->processProductionData($query->get(), $startDate, $endDate);
     }
@@ -333,10 +338,10 @@ class ProductionDashboardService
     {
         $chartData = [];
         $summary = [
-            'total_target'     => 0,
-            'total_actual'     => 0,
-            'total_ng'         => 0,
-            'ng_rate'          => 0,
+            'total_target' => 0,
+            'total_actual' => 0,
+            'total_ng' => 0,
+            'ng_rate' => 0,
             'achievement_rate' => 0,
         ];
 
@@ -350,15 +355,17 @@ class ProductionDashboardService
 
                 foreach ($daily->hourlyRemarks as $hourly) {
                     $hourSlot = self::parseHourSlot($hourly->start_time);
-                    if ($hourSlot < 0 || $hourSlot > 23) $hourSlot = 0;
+                    if ($hourSlot < 0 || $hourSlot > 23) {
+                        $hourSlot = 0;
+                    }
 
-                    $target = (int)($hourly->target ?? 0);
-                    $actual = (int)($hourly->actual_production ?? 0);
+                    $target = (int) ($hourly->target ?? 0);
+                    $actual = (int) ($hourly->actual_production ?? 0);
                     $ng = 0;
 
                     if ($hourly->ngDetails && $hourly->ngDetails->count() > 0) {
                         foreach ($hourly->ngDetails as $ngDetail) {
-                            $ng += (int)($ngDetail->ng_quantity ?? 0);
+                            $ng += (int) ($ngDetail->ng_quantity ?? 0);
                         }
                     }
 
@@ -366,7 +373,7 @@ class ProductionDashboardService
                     $hourlyBuckets[$hourSlot]['actual'] += $actual;
                     $hourlyBuckets[$hourSlot]['ng'] += $ng;
 
-                    if ($machineId && !in_array($machineId, $hourlyBuckets[$hourSlot]['machines'])) {
+                    if ($machineId && ! in_array($machineId, $hourlyBuckets[$hourSlot]['machines'])) {
                         $hourlyBuckets[$hourSlot]['machines'][] = $machineId;
                     }
                 }
@@ -380,19 +387,19 @@ class ProductionDashboardService
                 $totalProd = $actual + $ng;
 
                 $chartData[] = [
-                    'date'          => sprintf('%02d:00', $hour),
-                    'full_date'     => sprintf('%s %02d:00', $dateStr, $hour),
-                    'target'        => $target,
-                    'actual'        => $actual,
-                    'ng'            => $ng,
-                    'ng_rate'       => $totalProd > 0 ? round(($ng / $totalProd) * 100, 2) : 0,
-                    'achievement'   => $target > 0 ? round(($actual / $target) * 100, 2) : 0,
+                    'date' => sprintf('%02d:00', $hour),
+                    'full_date' => sprintf('%s %02d:00', $dateStr, $hour),
+                    'target' => $target,
+                    'actual' => $actual,
+                    'ng' => $ng,
+                    'ng_rate' => $totalProd > 0 ? round(($ng / $totalProd) * 100, 2) : 0,
+                    'achievement' => $target > 0 ? round(($actual / $target) * 100, 2) : 0,
                     'working_hours' => count($b['machines']),
                 ];
 
                 $summary['total_target'] += $target;
                 $summary['total_actual'] += $actual;
-                $summary['total_ng']     += $ng;
+                $summary['total_ng'] += $ng;
             }
         } else {
             // Monthly / Weekly View: Pre-group by start_date for O(1) lookups
@@ -414,21 +421,23 @@ class ProductionDashboardService
 
                 foreach ($dayData as $daily) {
                     $machineId = $daily->user_id;
-                    if (!$machineId) continue;
+                    if (! $machineId) {
+                        continue;
+                    }
 
                     foreach ($daily->hourlyRemarks as $hourly) {
                         $hourSlot = self::parseHourSlot($hourly->start_time);
                         $slotKey = $machineId . '_' . $hourSlot;
-                        if (!isset($dayUniqueSlots[$slotKey])) {
+                        if (! isset($dayUniqueSlots[$slotKey])) {
                             $dayUniqueSlots[$slotKey] = true;
                         }
 
-                        $target += (int)($hourly->target ?? 0);
-                        $actual += (int)($hourly->actual_production ?? 0);
+                        $target += (int) ($hourly->target ?? 0);
+                        $actual += (int) ($hourly->actual_production ?? 0);
 
                         if ($hourly->ngDetails && $hourly->ngDetails->count() > 0) {
                             foreach ($hourly->ngDetails as $ngDetail) {
-                                $ng += (int)($ngDetail->ng_quantity ?? 0);
+                                $ng += (int) ($ngDetail->ng_quantity ?? 0);
                             }
                         }
                     }
@@ -437,19 +446,19 @@ class ProductionDashboardService
                 $totalProd = $actual + $ng;
 
                 $chartData[] = [
-                    'date'          => $date->format('d M'),
-                    'full_date'     => $dateStr,
-                    'target'        => $target,
-                    'actual'        => $actual,
-                    'ng'            => $ng,
-                    'ng_rate'       => $totalProd > 0 ? round(($ng / $totalProd) * 100, 2) : 0,
-                    'achievement'   => $target > 0 ? round(($actual / $target) * 100, 2) : 0,
+                    'date' => $date->format('d M'),
+                    'full_date' => $dateStr,
+                    'target' => $target,
+                    'actual' => $actual,
+                    'ng' => $ng,
+                    'ng_rate' => $totalProd > 0 ? round(($ng / $totalProd) * 100, 2) : 0,
+                    'achievement' => $target > 0 ? round(($actual / $target) * 100, 2) : 0,
                     'working_hours' => count($dayUniqueSlots),
                 ];
 
                 $summary['total_target'] += $target;
                 $summary['total_actual'] += $actual;
-                $summary['total_ng']     += $ng;
+                $summary['total_ng'] += $ng;
             }
         }
 
@@ -462,24 +471,24 @@ class ProductionDashboardService
             ? round(($summary['total_actual'] / $summary['total_target']) * 100, 2)
             : 0;
 
-        $summary['total_purging'] = (float)$dailyData->sum('resin_usage');
+        $summary['total_purging'] = (float) $dailyData->sum('resin_usage');
 
-        $purgingDetails = $dailyData->filter(function($dic) {
+        $purgingDetails = $dailyData->filter(function ($dic) {
             return $dic->resin_usage !== null && $dic->resin_usage > 0;
-        })->map(function($dic) {
+        })->map(function ($dic) {
             return [
-                'dic_id'       => $dic->id,
-                'date'         => $dic->start_date ?? $dic->schedule_date,
-                'shift'        => $dic->shift,
+                'dic_id' => $dic->id,
+                'date' => $dic->start_date ?? $dic->schedule_date,
+                'shift' => $dic->shift,
                 'machine_name' => $dic->user->name ?? 'Unknown',
-                'item_code'    => $dic->item_code,
-                'resin_usage'  => (float)$dic->resin_usage,
+                'item_code' => $dic->item_code,
+                'resin_usage' => (float) $dic->resin_usage,
             ];
         })->values()->toArray();
 
         return [
-            'chart_data'      => $chartData,
-            'summary'         => $summary,
+            'chart_data' => $chartData,
+            'summary' => $summary,
             'purging_details' => $purgingDetails,
         ];
     }
@@ -493,7 +502,7 @@ class ProductionDashboardService
 
         if ($masterItems === null) {
             $neededCodes = collect($dailyData)->pluck('item_code')->filter()->unique()->values()->toArray();
-            $masterItems = !empty($neededCodes)
+            $masterItems = ! empty($neededCodes)
                 ? MasterListItem::whereIn('item_code', $neededCodes)->get()->keyBy('item_code')
                 : collect();
         }
@@ -513,16 +522,20 @@ class ProductionDashboardService
                     $hourLabel = ($hourly->start_time && $hourly->end_time)
                         ? substr($hourly->start_time, 0, 5) . ' - ' . substr($hourly->end_time, 0, 5)
                         : '-';
-                    $hourlyRemarkText = trim((string)($hourly->remark ?? ''));
+                    $hourlyRemarkText = trim((string) ($hourly->remark ?? ''));
 
                     foreach ($hourly->ngDetails as $ngDetail) {
-                        $qty = (int)($ngDetail->ng_quantity ?? 0);
-                        if ($qty <= 0) continue;
+                        $qty = (int) ($ngDetail->ng_quantity ?? 0);
+                        if ($qty <= 0) {
+                            continue;
+                        }
 
-                        $ngTypeName = trim((string)($ngDetail->ngType->ng_type ?? 'Unknown'));
-                        if ($ngTypeName === '') $ngTypeName = 'Unknown';
+                        $ngTypeName = trim((string) ($ngDetail->ngType->ng_type ?? 'Unknown'));
+                        if ($ngTypeName === '') {
+                            $ngTypeName = 'Unknown';
+                        }
 
-                        $ngRemarkText = trim((string)($ngDetail->ng_remarks ?? ''));
+                        $ngRemarkText = trim((string) ($ngDetail->ng_remarks ?? ''));
 
                         // Tentukan format remark tampilan
                         if ($ngRemarkText !== '' && $hourlyRemarkText !== '' && $ngRemarkText !== $hourlyRemarkText) {
@@ -535,34 +548,34 @@ class ProductionDashboardService
                             $displayRemark = '-';
                         }
 
-                        if (!isset($ngBreakdown[$ngTypeName])) {
+                        if (! isset($ngBreakdown[$ngTypeName])) {
                             $ngBreakdown[$ngTypeName] = [
-                                'name'   => $ngTypeName,
-                                'total'  => 0,
+                                'name' => $ngTypeName,
+                                'total' => 0,
                                 'models' => [],
                             ];
                         }
 
                         $ngBreakdown[$ngTypeName]['total'] += $qty;
 
-                        if (!isset($ngBreakdown[$ngTypeName]['models'][$itemCode])) {
+                        if (! isset($ngBreakdown[$ngTypeName]['models'][$itemCode])) {
                             $ngBreakdown[$ngTypeName]['models'][$itemCode] = [
                                 'item_code' => $itemCode,
                                 'item_name' => $itemName,
-                                'total'     => 0,
-                                'records'   => [],
+                                'total' => 0,
+                                'records' => [],
                             ];
                         }
 
                         $ngBreakdown[$ngTypeName]['models'][$itemCode]['total'] += $qty;
                         $ngBreakdown[$ngTypeName]['models'][$itemCode]['records'][] = [
-                            'date'          => $dateStr,
-                            'shift'         => $shift,
-                            'hour'          => $hourLabel,
-                            'machine'       => $machineName,
-                            'quantity'      => $qty,
-                            'remark'        => $displayRemark,
-                            'ng_remark'     => $ngRemarkText ?: null,
+                            'date' => $dateStr,
+                            'shift' => $shift,
+                            'hour' => $hourLabel,
+                            'machine' => $machineName,
+                            'quantity' => $qty,
+                            'remark' => $displayRemark,
+                            'ng_remark' => $ngRemarkText ?: null,
                             'hourly_remark' => $hourlyRemarkText ?: null,
                         ];
                     }
@@ -573,13 +586,14 @@ class ProductionDashboardService
         // Urutkan models di dalam setiap defect type berdasarkan total desc
         foreach ($ngBreakdown as &$typeData) {
             $models = array_values($typeData['models']);
-            usort($models, fn($a, $b) => $b['total'] <=> $a['total']);
+            usort($models, fn ($a, $b) => $b['total'] <=> $a['total']);
             $typeData['models'] = $models;
             $typeData['models_count'] = count($models);
         }
         unset($typeData);
 
-        usort($ngBreakdown, fn($a, $b) => $b['total'] <=> $a['total']);
+        usort($ngBreakdown, fn ($a, $b) => $b['total'] <=> $a['total']);
+
         return array_values($ngBreakdown);
     }
 
@@ -597,10 +611,17 @@ class ProductionDashboardService
             ->with(['hourlyRemarks.ngDetails.ngType', 'user:id,name'])
             ->whereBetween('start_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
 
-        if ($itemCode) $query->where('item_code', $itemCode);
-        if ($machineUserId) $query->where('user_id', $machineUserId);
-        if ($plant === 'karawang') $query->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
-        elseif ($plant === 'kbn') $query->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        if ($itemCode) {
+            $query->where('item_code', $itemCode);
+        }
+        if ($machineUserId) {
+            $query->where('user_id', $machineUserId);
+        }
+        if ($plant === 'karawang') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+        } elseif ($plant === 'kbn') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        }
 
         return $this->processNgBreakdown($query->get());
     }
@@ -610,10 +631,10 @@ class ProductionDashboardService
      */
     public function processDowntimeAnalysis($dailyData, $masterItems): array
     {
-        $totalDowntime  = 0;
+        $totalDowntime = 0;
         $downtimeByHour = [];
-        $problemHours   = [];
-        $mergedHours    = [];
+        $problemHours = [];
+        $mergedHours = [];
 
         foreach ($dailyData as $daily) {
             $hourlyByHour = [];
@@ -625,7 +646,7 @@ class ProductionDashboardService
 
                 if (isset($hourlyByHour[$hour])) {
                     $existingActual = $hourlyByHour[$hour]->actual_production ?? 0;
-                    $newActual      = $hourly->actual_production ?? 0;
+                    $newActual = $hourly->actual_production ?? 0;
                     if ($newActual > $existingActual) {
                         $hourlyByHour[$hour] = $hourly;
                     }
@@ -635,66 +656,72 @@ class ProductionDashboardService
             }
 
             foreach ($hourlyByHour as $hour => $hourly) {
-                $target = (int)($hourly->target ?? 0);
-                $actual = (int)($hourly->actual_production ?? 0);
+                $target = (int) ($hourly->target ?? 0);
+                $actual = (int) ($hourly->actual_production ?? 0);
 
-                if ($target <= 0 || $actual >= $target) continue;
+                if ($target <= 0 || $actual >= $target) {
+                    continue;
+                }
 
                 $cycleTimeSec = ($daily->temporal_cycle_time && $daily->temporal_cycle_time > 0)
                     ? $daily->temporal_cycle_time
                     : ($masterItems instanceof \Illuminate\Support\Collection ? $masterItems->get($daily->item_code)?->cycle_time : ($masterItems[$daily->item_code] ?? null));
 
-                if (!$cycleTimeSec || $cycleTimeSec <= 0) continue;
+                if (! $cycleTimeSec || $cycleTimeSec <= 0) {
+                    continue;
+                }
 
                 $cycleTimeMinutes = $cycleTimeSec / 60;
-                $actualMinutes    = $actual * $cycleTimeMinutes;
+                $actualMinutes = $actual * $cycleTimeMinutes;
 
                 $key = ($daily->user_id ?? 'unknown') . '_' . $daily->start_date . '_' . $hour;
 
-                if (!isset($mergedHours[$key])) {
+                if (! isset($mergedHours[$key])) {
                     $startLabel = sprintf('%02d:00', $hour);
-                    $endLabel   = sprintf('%02d:00', ($hour + 1) % 24);
+                    $endLabel = sprintf('%02d:00', ($hour + 1) % 24);
 
                     $mergedHours[$key] = [
-                        'machine'        => $daily->user_id ?? 'unknown',
-                        'date'           => $daily->start_date,
-                        'hour'           => $hour,
-                        'hour_label'     => $startLabel . ' - ' . $endLabel,
+                        'machine' => $daily->user_id ?? 'unknown',
+                        'date' => $daily->start_date,
+                        'hour' => $hour,
+                        'hour_label' => $startLabel . ' - ' . $endLabel,
                         'total_prod_min' => 0,
-                        'remarks'        => [],
-                        'items'          => [],
+                        'remarks' => [],
+                        'items' => [],
                     ];
                 }
 
                 $mergedHours[$key]['total_prod_min'] += $actualMinutes;
-                if (!empty($hourly->remark)) {
+                if (! empty($hourly->remark)) {
                     $mergedHours[$key]['remarks'][] = $hourly->remark;
                 }
                 $mergedHours[$key]['items'][] = [
-                    'id'           => $hourly->id,
-                    'item_code'    => $daily->item_code,
-                    'target'       => $target,
-                    'actual'       => $actual,
-                    'cycle_time'   => $cycleTimeSec,
+                    'id' => $hourly->id,
+                    'item_code' => $daily->item_code,
+                    'target' => $target,
+                    'actual' => $actual,
+                    'cycle_time' => $cycleTimeSec,
                     'prod_minutes' => round($actualMinutes, 2),
                 ];
             }
         }
 
         foreach ($mergedHours as $merged) {
-            $hour      = $merged['hour'];
+            $hour = $merged['hour'];
             $hourLabel = $merged['hour_label'];
 
             $finalDowntime = max(0, 60 - $merged['total_prod_min']);
-            if ($finalDowntime <= 0) continue;
+            if ($finalDowntime <= 0) {
+                continue;
+            }
 
             $totalDowntime += $finalDowntime;
 
-            if (!isset($downtimeByHour[$hour])) {
+            if (! isset($downtimeByHour[$hour])) {
                 $downtimeByHour[$hour] = [
-                    'hour'           => $hourLabel,
+                    'hour' => $hourLabel,
                     'total_downtime' => 0,
-                    'occurrences'    => 0,
+                    'occurrences' => 0,
                 ];
             }
 
@@ -702,23 +729,23 @@ class ProductionDashboardService
             $downtimeByHour[$hour]['occurrences']++;
 
             $problemHours[] = [
-                'id'             => $merged['items'][0]['id'] ?? null,
-                'date'           => $merged['date'],
-                'hour'           => $hourLabel,
+                'id' => $merged['items'][0]['id'] ?? null,
+                'date' => $merged['date'],
+                'hour' => $hourLabel,
                 'total_prod_min' => round($merged['total_prod_min'], 2),
-                'downtime'       => round($finalDowntime, 2),
-                'remark'         => implode(' | ', array_filter($merged['remarks'])),
-                'items'          => $merged['items'],
+                'downtime' => round($finalDowntime, 2),
+                'remark' => implode(' | ', array_filter($merged['remarks'])),
+                'items' => $merged['items'],
             ];
         }
 
-        uasort($downtimeByHour, fn($a, $b) => $b['occurrences'] <=> $a['occurrences']);
+        uasort($downtimeByHour, fn ($a, $b) => $b['occurrences'] <=> $a['occurrences']);
 
         return [
             'total_downtime_minutes' => round($totalDowntime, 2),
-            'total_downtime_hours'   => round($totalDowntime / 60, 2),
-            'downtime_by_hour'       => array_values($downtimeByHour),
-            'problem_hours_count'    => count($problemHours),
+            'total_downtime_hours' => round($totalDowntime / 60, 2),
+            'downtime_by_hour' => array_values($downtimeByHour),
+            'problem_hours_count' => count($problemHours),
         ];
     }
 
@@ -736,10 +763,17 @@ class ProductionDashboardService
             ->with(['hourlyRemarks.ngDetails'])
             ->whereBetween('start_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
 
-        if ($itemCode) $query->where('item_code', $itemCode);
-        if ($machineUserId) $query->where('user_id', $machineUserId);
-        if ($plant === 'karawang') $query->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
-        elseif ($plant === 'kbn') $query->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        if ($itemCode) {
+            $query->where('item_code', $itemCode);
+        }
+        if ($machineUserId) {
+            $query->where('user_id', $machineUserId);
+        }
+        if ($plant === 'karawang') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+        } elseif ($plant === 'kbn') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        }
 
         $dailyData = $query->get();
         $masterItems = MasterListItem::whereIn('item_code', $dailyData->pluck('item_code')->unique())
@@ -763,7 +797,7 @@ class ProductionDashboardService
 
                 if (isset($hourlyByHour[$hour])) {
                     $existingActual = $hourlyByHour[$hour]->actual_production ?? 0;
-                    $newActual      = $hourly->actual_production ?? 0;
+                    $newActual = $hourly->actual_production ?? 0;
                     if ($newActual > $existingActual) {
                         $hourlyByHour[$hour] = $hourly;
                     }
@@ -773,44 +807,50 @@ class ProductionDashboardService
             }
 
             foreach ($hourlyByHour as $hour => $hourly) {
-                $target = (int)($hourly->target ?? 0);
-                $actual = (int)($hourly->actual_production ?? 0);
+                $target = (int) ($hourly->target ?? 0);
+                $actual = (int) ($hourly->actual_production ?? 0);
 
-                if ($target <= 0 || $actual >= $target) continue;
-                if (empty($hourly->remark)) continue;
+                if ($target <= 0 || $actual >= $target) {
+                    continue;
+                }
+                if (empty($hourly->remark)) {
+                    continue;
+                }
 
                 $cycleTimeSec = ($daily->temporal_cycle_time && $daily->temporal_cycle_time > 0)
                     ? $daily->temporal_cycle_time
                     : ($masterItems instanceof \Illuminate\Support\Collection ? $masterItems->get($daily->item_code)?->cycle_time : ($masterItems[$daily->item_code] ?? null));
 
-                if (!$cycleTimeSec || $cycleTimeSec <= 0) continue;
+                if (! $cycleTimeSec || $cycleTimeSec <= 0) {
+                    continue;
+                }
 
                 $cycleTimeMinutes = $cycleTimeSec / 60;
-                $actualMinutes    = $actual * $cycleTimeMinutes;
+                $actualMinutes = $actual * $cycleTimeMinutes;
 
                 $key = ($daily->user_id ?? 'unknown') . '_' . $daily->start_date . '_' . $hour;
 
-                if (!isset($mergedHours[$key])) {
+                if (! isset($mergedHours[$key])) {
                     $startLabel = sprintf('%02d:00', $hour);
-                    $endLabel   = sprintf('%02d:00', ($hour + 1) % 24);
+                    $endLabel = sprintf('%02d:00', ($hour + 1) % 24);
 
                     $mergedHours[$key] = [
-                        'date'           => $daily->start_date,
-                        'hour'           => $hour,
-                        'hour_label'     => $startLabel . ' - ' . $endLabel,
-                        'machine'        => $daily->user->name ?? 'Unknown',
+                        'date' => $daily->start_date,
+                        'hour' => $hour,
+                        'hour_label' => $startLabel . ' - ' . $endLabel,
+                        'machine' => $daily->user->name ?? 'Unknown',
                         'total_prod_min' => 0,
-                        'remarks'        => [],
-                        'items'          => [],
+                        'remarks' => [],
+                        'items' => [],
                     ];
                 }
 
                 $mergedHours[$key]['total_prod_min'] += $actualMinutes;
-                $mergedHours[$key]['remarks'][]       = $hourly->remark;
-                $mergedHours[$key]['items'][]         = [
-                    'item_code'  => $daily->item_code,
-                    'target'     => $target,
-                    'actual'     => $actual,
+                $mergedHours[$key]['remarks'][] = $hourly->remark;
+                $mergedHours[$key]['items'][] = [
+                    'item_code' => $daily->item_code,
+                    'target' => $target,
+                    'actual' => $actual,
                     'cycle_time' => $cycleTimeSec,
                 ];
             }
@@ -820,27 +860,30 @@ class ProductionDashboardService
 
         foreach ($mergedHours as $merged) {
             $finalDowntime = max(0, 60 - $merged['total_prod_min']);
-            if ($finalDowntime <= 0) continue;
+            if ($finalDowntime <= 0) {
+                continue;
+            }
 
             $totalTarget = collect($merged['items'])->sum('target');
             $totalActual = collect($merged['items'])->sum('actual');
-            $gap         = $totalTarget - $totalActual;
+            $gap = $totalTarget - $totalActual;
 
             $problemRemarks[] = [
-                'date'             => $merged['date'],
-                'hour'             => $merged['hour_label'],
-                'machine'          => $merged['machine'],
-                'item_code'        => collect($merged['items'])->pluck('item_code')->unique()->implode(', '),
-                'target'           => $totalTarget,
-                'actual'           => $totalActual,
-                'gap'              => $gap,
+                'date' => $merged['date'],
+                'hour' => $merged['hour_label'],
+                'machine' => $merged['machine'],
+                'item_code' => collect($merged['items'])->pluck('item_code')->unique()->implode(', '),
+                'target' => $totalTarget,
+                'actual' => $totalActual,
+                'gap' => $gap,
                 'downtime_minutes' => round($finalDowntime, 2),
-                'remark'           => implode(' | ', array_filter($merged['remarks'])),
-                'severity'         => $this->calculateSeverity($gap, $totalTarget),
+                'remark' => implode(' | ', array_filter($merged['remarks'])),
+                'severity' => $this->calculateSeverity($gap, $totalTarget),
             ];
         }
 
-        usort($problemRemarks, fn($a, $b) => $b['gap'] - $a['gap']);
+        usort($problemRemarks, fn ($a, $b) => $b['gap'] - $a['gap']);
+
         return array_slice($problemRemarks, 0, 20);
     }
 
@@ -858,10 +901,17 @@ class ProductionDashboardService
             ->with(['hourlyRemarks.ngDetails', 'user'])
             ->whereBetween('start_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
 
-        if ($itemCode) $query->where('item_code', $itemCode);
-        if ($machineUserId) $query->where('user_id', $machineUserId);
-        if ($plant === 'karawang') $query->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
-        elseif ($plant === 'kbn') $query->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        if ($itemCode) {
+            $query->where('item_code', $itemCode);
+        }
+        if ($machineUserId) {
+            $query->where('user_id', $machineUserId);
+        }
+        if ($plant === 'karawang') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+        } elseif ($plant === 'kbn') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        }
 
         $dailyData = $query->get();
         $masterItems = MasterListItem::whereIn('item_code', $dailyData->pluck('item_code')->unique())
@@ -872,11 +922,20 @@ class ProductionDashboardService
 
     private function calculateSeverity(int $gap, int $target): string
     {
-        if ($target == 0) return 'low';
+        if ($target == 0) {
+            return 'low';
+        }
         $percentage = ($gap / $target) * 100;
-        if ($percentage >= 50) return 'critical';
-        if ($percentage >= 30) return 'high';
-        if ($percentage >= 15) return 'medium';
+        if ($percentage >= 50) {
+            return 'critical';
+        }
+        if ($percentage >= 30) {
+            return 'high';
+        }
+        if ($percentage >= 15) {
+            return 'medium';
+        }
+
         return 'low';
     }
 
@@ -891,13 +950,15 @@ class ProductionDashboardService
             $machineId = $daily->user_id;
             $machineName = $daily->user->name ?? 'Unknown';
 
-            if (!$machineId) continue;
+            if (! $machineId) {
+                continue;
+            }
 
-            if (!isset($machineHours[$machineId])) {
+            if (! isset($machineHours[$machineId])) {
                 $machineHours[$machineId] = [
-                    'id'           => $machineId,
-                    'name'         => $machineName,
-                    'hours'        => 0,
+                    'id' => $machineId,
+                    'name' => $machineName,
+                    'hours' => 0,
                     'unique_slots' => [],
                 ];
             }
@@ -906,17 +967,18 @@ class ProductionDashboardService
                 $hourSlot = self::parseHourSlot($hourly->start_time);
                 $slotKey = $daily->start_date . '_' . $hourSlot;
 
-                if (!isset($machineHours[$machineId]['unique_slots'][$slotKey])) {
+                if (! isset($machineHours[$machineId]['unique_slots'][$slotKey])) {
                     $machineHours[$machineId]['unique_slots'][$slotKey] = true;
                     $machineHours[$machineId]['hours'] += 1;
                 }
             }
         }
 
-        uasort($machineHours, fn($a, $b) => $b['hours'] <=> $a['hours']);
+        uasort($machineHours, fn ($a, $b) => $b['hours'] <=> $a['hours']);
 
-        return array_map(function($item) {
+        return array_map(function ($item) {
             unset($item['unique_slots']);
+
             return $item;
         }, array_values($machineHours));
     }
@@ -935,10 +997,17 @@ class ProductionDashboardService
             ->with(['hourlyRemarks', 'user:id,name'])
             ->whereBetween('start_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
 
-        if ($itemCode) $query->where('item_code', $itemCode);
-        if ($machineUserId) $query->where('user_id', $machineUserId);
-        if ($plant === 'karawang') $query->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
-        elseif ($plant === 'kbn') $query->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        if ($itemCode) {
+            $query->where('item_code', $itemCode);
+        }
+        if ($machineUserId) {
+            $query->where('user_id', $machineUserId);
+        }
+        if ($plant === 'karawang') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+        } elseif ($plant === 'kbn') {
+            $query->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        }
 
         return $this->processMachineWorkingHours($query->get());
     }
@@ -963,9 +1032,9 @@ class ProductionDashboardService
             if ($isHalfDay === true) {
                 $isHalfDaySingleDay = true;
             } elseif (is_array($isHalfDay)) {
-                $isHalfDaySingleDay = ($startDate->isSaturday() && !empty($isHalfDay['saturday']))
-                    || ($startDate->isSunday() && !empty($isHalfDay['sunday']))
-                    || (!empty($isHalfDay[$startDate->format('Y-m-d')]))
+                $isHalfDaySingleDay = ($startDate->isSaturday() && ! empty($isHalfDay['saturday']))
+                    || ($startDate->isSunday() && ! empty($isHalfDay['sunday']))
+                    || (! empty($isHalfDay[$startDate->format('Y-m-d')]))
                     || self::isDateHalfDay($startDate, $preloadedHalfDayDates);
             } else {
                 $isHalfDaySingleDay = self::isDateHalfDay($startDate, $preloadedHalfDayDates);
@@ -974,22 +1043,22 @@ class ProductionDashboardService
 
         $shiftDefs = [
             1 => [
-                'name'  => 'Shift 1 (Pagi)',
-                'time'  => !$isSingleDay
+                'name' => 'Shift 1 (Pagi)',
+                'time' => ! $isSingleDay
                     ? '07:30 - 15:30 (Setengah Hari: 07:30 - 12:30)'
                     : ($isHalfDaySingleDay ? '07:30 - 12:30' : '07:30 - 15:30'),
                 'theme' => 'amber',
             ],
             2 => [
-                'name'  => 'Shift 2 (Sore)',
-                'time'  => !$isSingleDay
+                'name' => 'Shift 2 (Sore)',
+                'time' => ! $isSingleDay
                     ? '15:30 - 23:30 (Setengah Hari: 12:30 - 17:30)'
                     : ($isHalfDaySingleDay ? '12:30 - 17:30' : '15:30 - 23:30'),
                 'theme' => 'emerald',
             ],
             3 => [
-                'name'  => 'Shift 3 (Malam)',
-                'time'  => !$isSingleDay
+                'name' => 'Shift 3 (Malam)',
+                'time' => ! $isSingleDay
                     ? '23:30 - 07:30 (Setengah Hari: 17:30 - 22:30)'
                     : ($isHalfDaySingleDay ? '17:30 - 22:30' : '23:30 - 07:30'),
                 'theme' => 'indigo',
@@ -1006,8 +1075,8 @@ class ProductionDashboardService
 
             $durationMin = 0;
             if ($log->end_time) {
-                $startSec = strtotime((string)$log->created_at);
-                $endSec = strtotime((string)$log->end_time);
+                $startSec = strtotime((string) $log->created_at);
+                $endSec = strtotime((string) $log->end_time);
                 $durationMin = max(0, round(($endSec - $startSec) / 60, 1));
             }
 
@@ -1019,21 +1088,21 @@ class ProductionDashboardService
             $localEnd = $log->end_time ? self::getLocalCarbon($log->end_time) : null;
 
             $entry = [
-                'id'               => $log->id,
-                'type'             => 'adjust',
-                'type_label'       => 'Adjust Machine',
-                'shift'            => $shiftNum,
-                'machine_name'     => $log->user->name ?? 'Unknown',
-                'item_code'        => $log->item_code ?? '-',
-                'pic'              => trim($log->pic ?? '') ?: 'Unknown',
-                'start_time'       => $localCreated->format('d M H:i'),
-                'end_time'         => $localEnd ? $localEnd->format('H:i') : 'In Progress',
+                'id' => $log->id,
+                'type' => 'adjust',
+                'type_label' => 'Adjust Machine',
+                'shift' => $shiftNum,
+                'machine_name' => $log->user->name ?? 'Unknown',
+                'item_code' => $log->item_code ?? '-',
+                'pic' => trim($log->pic ?? '') ?: 'Unknown',
+                'start_time' => $localCreated->format('d M H:i'),
+                'end_time' => $localEnd ? $localEnd->format('H:i') : 'In Progress',
                 'duration_minutes' => $durationMin,
-                'target_minutes'   => $targetSetupMin,
-                'is_overtime'      => ($durationMin > $targetSetupMin && $targetSetupMin > 0),
-                'remark'           => $log->remark ?? '',
-                'created_at'       => $localCreated->format('Y-m-d H:i:s'),
-                'prod_date'        => $shiftInfo['date'],
+                'target_minutes' => $targetSetupMin,
+                'is_overtime' => ($durationMin > $targetSetupMin && $targetSetupMin > 0),
+                'remark' => $log->remark ?? '',
+                'created_at' => $localCreated->format('Y-m-d H:i:s'),
+                'prod_date' => $shiftInfo['date'],
             ];
             $processedAdjustLogs[] = $entry;
             $allActivityLogs[] = $entry;
@@ -1048,8 +1117,8 @@ class ProductionDashboardService
 
             $durationMin = 0;
             if ($log->end_time) {
-                $startSec = strtotime((string)$log->created_at);
-                $endSec = strtotime((string)$log->end_time);
+                $startSec = strtotime((string) $log->created_at);
+                $endSec = strtotime((string) $log->end_time);
                 $durationMin = max(0, round(($endSec - $startSec) / 60, 1));
             }
 
@@ -1061,21 +1130,21 @@ class ProductionDashboardService
             $localEnd = $log->end_time ? self::getLocalCarbon($log->end_time) : null;
 
             $entry = [
-                'id'               => $log->id,
-                'type'             => 'mould_change',
-                'type_label'       => 'Mould Change',
-                'shift'            => $shiftNum,
-                'machine_name'     => $log->user->name ?? 'Unknown',
-                'item_code'        => $log->item_code ?? '-',
-                'pic'              => trim($log->pic ?? '') ?: 'Unknown',
-                'start_time'       => $localCreated->format('d M H:i'),
-                'end_time'         => $localEnd ? $localEnd->format('H:i') : 'In Progress',
+                'id' => $log->id,
+                'type' => 'mould_change',
+                'type_label' => 'Mould Change',
+                'shift' => $shiftNum,
+                'machine_name' => $log->user->name ?? 'Unknown',
+                'item_code' => $log->item_code ?? '-',
+                'pic' => trim($log->pic ?? '') ?: 'Unknown',
+                'start_time' => $localCreated->format('d M H:i'),
+                'end_time' => $localEnd ? $localEnd->format('H:i') : 'In Progress',
                 'duration_minutes' => $durationMin,
-                'target_minutes'   => $targetSetupMin,
-                'is_overtime'      => ($durationMin > $targetSetupMin && $targetSetupMin > 0),
-                'remark'           => $log->remark ?? '',
-                'created_at'       => $localCreated->format('Y-m-d H:i:s'),
-                'prod_date'        => $shiftInfo['date'],
+                'target_minutes' => $targetSetupMin,
+                'is_overtime' => ($durationMin > $targetSetupMin && $targetSetupMin > 0),
+                'remark' => $log->remark ?? '',
+                'created_at' => $localCreated->format('Y-m-d H:i:s'),
+                'prod_date' => $shiftInfo['date'],
             ];
             $processedMouldLogs[] = $entry;
             $allActivityLogs[] = $entry;
@@ -1083,7 +1152,7 @@ class ProductionDashboardService
 
         // Format and categorize Repair Machine Logs fast
         $processedRepairLogs = [];
-        if (!empty($repairLogsRaw)) {
+        if (! empty($repairLogsRaw)) {
             foreach ($repairLogsRaw as $log) {
                 $localCreated = self::getLocalCarbon($log->created_at);
                 $shiftInfo = self::getProductionDateAndShift($localCreated, $isHalfDay, $preloadedHalfDayDates);
@@ -1091,8 +1160,8 @@ class ProductionDashboardService
 
                 $durationMin = 0;
                 if ($log->finish_repair) {
-                    $startSec = strtotime((string)$log->created_at);
-                    $endSec = strtotime((string)$log->finish_repair);
+                    $startSec = strtotime((string) $log->created_at);
+                    $endSec = strtotime((string) $log->finish_repair);
                     $durationMin = max(0, round(($endSec - $startSec) / 60, 1));
                 }
 
@@ -1100,40 +1169,40 @@ class ProductionDashboardService
 
                 $problemStr = trim($log->problem ?? '');
                 $remarkStr = trim($log->remark ?? '');
-                $fullRemark = $problemStr !== '' 
+                $fullRemark = $problemStr !== ''
                     ? ($remarkStr !== '' ? "[{$problemStr}] {$remarkStr}" : "[{$problemStr}]")
                     : ($remarkStr !== '' ? $remarkStr : '');
 
                 $entry = [
-                    'id'               => $log->id,
-                    'type'             => 'repair',
-                    'type_label'       => 'Repair Machine',
-                    'shift'            => $shiftNum,
-                    'machine_name'     => $log->user->name ?? 'Unknown',
-                    'item_code'        => $log->item_code ?? '-',
-                    'pic'              => trim($log->pic ?? '') ?: 'Unknown',
-                    'start_time'       => $localCreated->format('d M H:i'),
-                    'end_time'         => $localEnd ? $localEnd->format('H:i') : 'In Progress',
+                    'id' => $log->id,
+                    'type' => 'repair',
+                    'type_label' => 'Repair Machine',
+                    'shift' => $shiftNum,
+                    'machine_name' => $log->user->name ?? 'Unknown',
+                    'item_code' => $log->item_code ?? '-',
+                    'pic' => trim($log->pic ?? '') ?: 'Unknown',
+                    'start_time' => $localCreated->format('d M H:i'),
+                    'end_time' => $localEnd ? $localEnd->format('H:i') : 'In Progress',
                     'duration_minutes' => $durationMin,
-                    'target_minutes'   => 0,
-                    'is_overtime'      => false,
-                    'problem'          => $problemStr,
-                    'remark'           => $fullRemark,
-                    'created_at'       => $localCreated->format('Y-m-d H:i:s'),
-                    'prod_date'        => $shiftInfo['date'],
+                    'target_minutes' => 0,
+                    'is_overtime' => false,
+                    'problem' => $problemStr,
+                    'remark' => $fullRemark,
+                    'created_at' => $localCreated->format('Y-m-d H:i:s'),
+                    'prod_date' => $shiftInfo['date'],
                 ];
                 $processedRepairLogs[] = $entry;
                 $allActivityLogs[] = $entry;
             }
         }
 
-        usort($allActivityLogs, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
+        usort($allActivityLogs, fn ($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
         // Aggregate by Shift (1, 2, 3)
         $shiftResults = [];
         $dicsByShift = [1 => [], 2 => [], 3 => []];
         foreach ($dailyData as $dic) {
-            $s = (int)$dic->shift;
+            $s = (int) $dic->shift;
             if ($s >= 1 && $s <= 3) {
                 $dicsByShift[$s][] = $dic;
             }
@@ -1141,9 +1210,9 @@ class ProductionDashboardService
 
         for ($s = 1; $s <= 3; $s++) {
             $shiftDics = $dicsByShift[$s];
-            $shiftAdjusts = array_values(array_filter($processedAdjustLogs, fn($l) => $l['shift'] === $s));
-            $shiftMoulds = array_values(array_filter($processedMouldLogs, fn($l) => $l['shift'] === $s));
-            $shiftRepairs = array_values(array_filter($processedRepairLogs, fn($l) => $l['shift'] === $s));
+            $shiftAdjusts = array_values(array_filter($processedAdjustLogs, fn ($l) => $l['shift'] === $s));
+            $shiftMoulds = array_values(array_filter($processedMouldLogs, fn ($l) => $l['shift'] === $s));
+            $shiftRepairs = array_values(array_filter($processedRepairLogs, fn ($l) => $l['shift'] === $s));
 
             $target = 0;
             $actual = 0;
@@ -1152,12 +1221,12 @@ class ProductionDashboardService
 
             foreach ($shiftDics as $daily) {
                 foreach ($daily->hourlyRemarks as $hourly) {
-                    $target += (int)($hourly->target ?? 0);
-                    $actual += (int)($hourly->actual_production ?? 0);
+                    $target += (int) ($hourly->target ?? 0);
+                    $actual += (int) ($hourly->actual_production ?? 0);
 
                     if ($hourly->ngDetails && $hourly->ngDetails->count() > 0) {
                         foreach ($hourly->ngDetails as $ngDetail) {
-                            $ngQty = (int)($ngDetail->ng_quantity ?? 0);
+                            $ngQty = (int) ($ngDetail->ng_quantity ?? 0);
                             $ng += $ngQty;
                             $typeName = $ngDetail->ngType->ng_type ?? 'Unknown';
                             $ngBreakdownShift[$typeName] = ($ngBreakdownShift[$typeName] ?? 0) + $ngQty;
@@ -1170,9 +1239,9 @@ class ProductionDashboardService
             $topNgTypes = [];
             foreach (array_slice($ngBreakdownShift, 0, 4, true) as $tName => $tQty) {
                 $topNgTypes[] = [
-                    'name'     => $tName,
+                    'name' => $tName,
                     'quantity' => $tQty,
-                    'percent'  => $ng > 0 ? round(($tQty / $ng) * 100, 1) : 0,
+                    'percent' => $ng > 0 ? round(($tQty / $ng) * 100, 1) : 0,
                 ];
             }
 
@@ -1190,42 +1259,42 @@ class ProductionDashboardService
             $totalRepairDuration = array_sum(array_column($shiftRepairs, 'duration_minutes'));
 
             $shiftResults[$s] = [
-                'shift_number'                  => $s,
-                'name'                          => $shiftDefs[$s]['name'],
-                'time_range'                    => $shiftDefs[$s]['time'],
-                'theme'                         => $shiftDefs[$s]['theme'],
-                'adjusters'                     => $distinctAdjusters,
-                'adjusters_str'                 => !empty($distinctAdjusters) ? implode(', ', $distinctAdjusters) : 'No Adjuster Logged',
-                'mould_changers'                => $distinctMouldChangers,
-                'mould_changers_str'            => !empty($distinctMouldChangers) ? implode(', ', $distinctMouldChangers) : 'No Mould Changer Logged',
-                'repairers'                     => $distinctRepairers,
-                'repairers_str'                 => !empty($distinctRepairers) ? implode(', ', $distinctRepairers) : 'No Repair Logged',
-                'adjust_count'                  => count($shiftAdjusts),
-                'adjust_duration_minutes'       => $totalAdjustDuration,
-                'mould_change_count'            => count($shiftMoulds),
+                'shift_number' => $s,
+                'name' => $shiftDefs[$s]['name'],
+                'time_range' => $shiftDefs[$s]['time'],
+                'theme' => $shiftDefs[$s]['theme'],
+                'adjusters' => $distinctAdjusters,
+                'adjusters_str' => ! empty($distinctAdjusters) ? implode(', ', $distinctAdjusters) : 'No Adjuster Logged',
+                'mould_changers' => $distinctMouldChangers,
+                'mould_changers_str' => ! empty($distinctMouldChangers) ? implode(', ', $distinctMouldChangers) : 'No Mould Changer Logged',
+                'repairers' => $distinctRepairers,
+                'repairers_str' => ! empty($distinctRepairers) ? implode(', ', $distinctRepairers) : 'No Repair Logged',
+                'adjust_count' => count($shiftAdjusts),
+                'adjust_duration_minutes' => $totalAdjustDuration,
+                'mould_change_count' => count($shiftMoulds),
                 'mould_change_duration_minutes' => $totalMouldDuration,
-                'repair_count'                  => count($shiftRepairs),
-                'repair_duration_minutes'       => $totalRepairDuration,
-                'total_setup_minutes'           => $totalAdjustDuration + $totalMouldDuration,
-                'total_target'                  => $target,
-                'total_actual'                  => $actual,
-                'total_ng'                      => $ng,
-                'ng_rate'                       => $ngRate,
-                'achievement_rate'              => $achievementRate,
-                'top_ng_types'                  => $topNgTypes,
-                'adjust_logs'                   => $shiftAdjusts,
-                'mould_change_logs'             => $shiftMoulds,
-                'repair_logs'                   => $shiftRepairs,
+                'repair_count' => count($shiftRepairs),
+                'repair_duration_minutes' => $totalRepairDuration,
+                'total_setup_minutes' => $totalAdjustDuration + $totalMouldDuration,
+                'total_target' => $target,
+                'total_actual' => $actual,
+                'total_ng' => $ng,
+                'ng_rate' => $ngRate,
+                'achievement_rate' => $achievementRate,
+                'top_ng_types' => $topNgTypes,
+                'adjust_logs' => $shiftAdjusts,
+                'mould_change_logs' => $shiftMoulds,
+                'repair_logs' => $shiftRepairs,
             ];
         }
 
         return [
-            'shifts'                    => $shiftResults,
-            'all_logs'                  => array_slice($allActivityLogs, 0, 100), // Limit payload size to 100 recent
-            'total_adjust_count'        => count($processedAdjustLogs),
-            'total_mould_change_count'  => count($processedMouldLogs),
-            'total_repair_count'        => count($processedRepairLogs),
-            'total_setup_time_minutes'  => array_sum(array_column($processedAdjustLogs, 'duration_minutes')) + array_sum(array_column($processedMouldLogs, 'duration_minutes')),
+            'shifts' => $shiftResults,
+            'all_logs' => array_slice($allActivityLogs, 0, 100), // Limit payload size to 100 recent
+            'total_adjust_count' => count($processedAdjustLogs),
+            'total_mould_change_count' => count($processedMouldLogs),
+            'total_repair_count' => count($processedRepairLogs),
+            'total_setup_time_minutes' => array_sum(array_column($processedAdjustLogs, 'duration_minutes')) + array_sum(array_column($processedMouldLogs, 'duration_minutes')),
             'total_repair_time_minutes' => array_sum(array_column($processedRepairLogs, 'duration_minutes')),
         ];
     }
@@ -1249,7 +1318,7 @@ class ProductionDashboardService
         $masterItems = MasterListItem::pluck('setup_time_minute', 'item_code');
 
         $effectivePlant = $plant;
-        if (!$effectivePlant && $machineUserId) {
+        if (! $effectivePlant && $machineUserId) {
             $targetUser = User::find($machineUserId);
             if ($targetUser) {
                 $effectivePlant = str_starts_with(strtoupper($targetUser->name), 'K') ? 'karawang' : 'kbn';
@@ -1282,13 +1351,13 @@ class ProductionDashboardService
             $mouldQuery->where('user_id', $machineUserId);
             $repairQuery->where('user_id', $machineUserId);
         } elseif ($effectivePlant === 'karawang') {
-            $adjustQuery->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
-            $mouldQuery->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
-            $repairQuery->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+            $adjustQuery->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+            $mouldQuery->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+            $repairQuery->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
         } elseif ($effectivePlant === 'kbn') {
-            $adjustQuery->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
-            $mouldQuery->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
-            $repairQuery->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+            $adjustQuery->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+            $mouldQuery->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+            $repairQuery->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
         }
         $adjustLogsRaw = $adjustQuery->get();
         $mouldLogsRaw = $mouldQuery->get();
@@ -1298,10 +1367,17 @@ class ProductionDashboardService
             ->with(['hourlyRemarks.ngDetails.ngType', 'user:id,name'])
             ->whereBetween('start_date', [$startDateStr, $endDateStr]);
 
-        if ($itemCode) $dicQuery->where('item_code', $itemCode);
-        if ($machineUserId) $dicQuery->where('user_id', $machineUserId);
-        if ($plant === 'karawang') $dicQuery->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
-        elseif ($plant === 'kbn') $dicQuery->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        if ($itemCode) {
+            $dicQuery->where('item_code', $itemCode);
+        }
+        if ($machineUserId) {
+            $dicQuery->where('user_id', $machineUserId);
+        }
+        if ($plant === 'karawang') {
+            $dicQuery->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+        } elseif ($plant === 'kbn') {
+            $dicQuery->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        }
 
         return $this->processShiftPersonnelAndNgAnalysis(
             $dicQuery->get(),
@@ -1343,34 +1419,36 @@ class ProductionDashboardService
 
         foreach ($adjustLogsRaw as $log) {
             $pic = trim($log->pic ?? '');
-            if (empty($pic)) continue;
+            if (empty($pic)) {
+                continue;
+            }
 
             $localCreated = self::getLocalCarbon($log->created_at);
             $shiftInfo = self::getProductionDateAndShift($localCreated, $isHalfDay, $preloadedHalfDayDates);
             $shift = $shiftInfo['shift'];
             $prodDate = $shiftInfo['date'];
 
-            if (!isset($shiftAdjustersMap[$prodDate][$shift])) {
+            if (! isset($shiftAdjustersMap[$prodDate][$shift])) {
                 $shiftAdjustersMap[$prodDate][$shift] = [];
             }
-            if (!in_array($pic, $shiftAdjustersMap[$prodDate][$shift])) {
+            if (! in_array($pic, $shiftAdjustersMap[$prodDate][$shift])) {
                 $shiftAdjustersMap[$prodDate][$shift][] = $pic;
             }
 
-            if (!in_array($pic, $allAdjusterNames)) {
+            if (! in_array($pic, $allAdjusterNames)) {
                 $allAdjusterNames[] = $pic;
             }
 
-            if (!isset($adjusterStats[$pic])) {
+            if (! isset($adjusterStats[$pic])) {
                 $adjusterStats[$pic] = [
-                    'adjust_count'   => 0,
+                    'adjust_count' => 0,
                     'adjust_minutes' => 0,
                 ];
             }
             $adjusterStats[$pic]['adjust_count']++;
             if ($log->end_time) {
-                $startSec = strtotime((string)$log->created_at);
-                $endSec = strtotime((string)$log->end_time);
+                $startSec = strtotime((string) $log->created_at);
+                $endSec = strtotime((string) $log->end_time);
                 $adjusterStats[$pic]['adjust_minutes'] += max(0, ($endSec - $startSec) / 60);
             }
         }
@@ -1379,18 +1457,20 @@ class ProductionDashboardService
         $shiftProductionMap = [];
         foreach ($dailyData as $dic) {
             $dStr = $dic->start_date;
-            $s = (int)$dic->shift;
-            if (!$s) $s = 1;
+            $s = (int) $dic->shift;
+            if (! $s) {
+                $s = 1;
+            }
 
-            if (!isset($shiftProductionMap[$dStr][$s])) {
+            if (! isset($shiftProductionMap[$dStr][$s])) {
                 $shiftProductionMap[$dStr][$s] = ['actual' => 0, 'ng' => 0];
             }
 
             foreach ($dic->hourlyRemarks as $hourly) {
-                $shiftProductionMap[$dStr][$s]['actual'] += (int)($hourly->actual_production ?? 0);
+                $shiftProductionMap[$dStr][$s]['actual'] += (int) ($hourly->actual_production ?? 0);
                 if ($hourly->ngDetails && $hourly->ngDetails->count() > 0) {
                     foreach ($hourly->ngDetails as $ngDetail) {
-                        $shiftProductionMap[$dStr][$s]['ng'] += (int)($ngDetail->ng_quantity ?? 0);
+                        $shiftProductionMap[$dStr][$s]['ng'] += (int) ($ngDetail->ng_quantity ?? 0);
                     }
                 }
             }
@@ -1406,14 +1486,16 @@ class ProductionDashboardService
         }
 
         foreach ($shiftProductionMap as $dStr => $shifts) {
-            if (!isset($shiftAdjustersMap[$dStr])) continue;
+            if (! isset($shiftAdjustersMap[$dStr])) {
+                continue;
+            }
 
             foreach ($shifts as $sNum => $prod) {
                 $shiftNg = $prod['ng'];
                 $shiftActual = $prod['actual'];
                 $adjustersInShift = $shiftAdjustersMap[$dStr][$sNum] ?? [];
 
-                if (!empty($adjustersInShift)) {
+                if (! empty($adjustersInShift)) {
                     $count = count($adjustersInShift);
                     $baseNg = intdiv($shiftNg, $count);
                     $remainderNg = $shiftNg % $count;
@@ -1437,7 +1519,7 @@ class ProductionDashboardService
         // Build Datasets for Chart.js
         $palette = [
             '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
-            '#06b6d4', '#f97316', '#14b8a6', '#6366f1', '#84cc16'
+            '#06b6d4', '#f97316', '#14b8a6', '#6366f1', '#84cc16',
         ];
 
         $datasets = [];
@@ -1455,37 +1537,37 @@ class ProductionDashboardService
             $ngRate = $totalProd > 0 ? round(($totalNg / $totalProd) * 100, 2) : 0;
 
             $datasets[] = [
-                'label'            => $adj,
-                'data'             => $ngValues,
-                'borderColor'      => $color,
-                'backgroundColor'  => $color,
-                'fill'             => false,
-                'tension'          => 0.3,
-                'borderWidth'      => 2.5,
-                'pointRadius'      => 3,
+                'label' => $adj,
+                'data' => $ngValues,
+                'borderColor' => $color,
+                'backgroundColor' => $color,
+                'fill' => false,
+                'tension' => 0.3,
+                'borderWidth' => 2.5,
+                'pointRadius' => 3,
                 'pointHoverRadius' => 6,
             ];
 
             $adjusterSummaries[] = [
-                'name'           => $adj,
-                'color'          => $color,
-                'total_ng'       => $totalNg,
-                'total_actual'   => $totalActual,
-                'ng_rate'        => $ngRate,
-                'adjust_count'   => $adjusterStats[$adj]['adjust_count'] ?? 0,
+                'name' => $adj,
+                'color' => $color,
+                'total_ng' => $totalNg,
+                'total_actual' => $totalActual,
+                'ng_rate' => $ngRate,
+                'adjust_count' => $adjusterStats[$adj]['adjust_count'] ?? 0,
                 'adjust_minutes' => round($adjusterStats[$adj]['adjust_minutes'] ?? 0, 1),
             ];
 
             $colorIdx++;
         }
 
-        usort($adjusterSummaries, fn($a, $b) => $b['total_ng'] <=> $a['total_ng']);
+        usort($adjusterSummaries, fn ($a, $b) => $b['total_ng'] <=> $a['total_ng']);
 
         return [
-            'labels'             => $dateLabels,
-            'datasets'           => $datasets,
+            'labels' => $dateLabels,
+            'datasets' => $datasets,
             'adjuster_summaries' => $adjusterSummaries,
-            'has_data'           => count($datasets) > 0,
+            'has_data' => count($datasets) > 0,
         ];
     }
 
@@ -1507,7 +1589,7 @@ class ProductionDashboardService
         $windowEndUtc = Carbon::parse($endDateStr . ' 07:30:00', 'Asia/Jakarta')->addDay()->setTimezone('UTC');
 
         $effectivePlant = $plant;
-        if (!$effectivePlant && $machineUserId) {
+        if (! $effectivePlant && $machineUserId) {
             $targetUser = User::find($machineUserId);
             if ($targetUser) {
                 $effectivePlant = str_starts_with(strtoupper($targetUser->name), 'K') ? 'karawang' : 'kbn';
@@ -1526,9 +1608,9 @@ class ProductionDashboardService
         if ($machineUserId) {
             $adjustQuery->where('user_id', $machineUserId);
         } elseif ($effectivePlant === 'karawang') {
-            $adjustQuery->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+            $adjustQuery->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
         } elseif ($effectivePlant === 'kbn') {
-            $adjustQuery->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+            $adjustQuery->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
         }
         $adjustLogs = $adjustQuery->get();
 
@@ -1536,10 +1618,17 @@ class ProductionDashboardService
             ->with(['hourlyRemarks.ngDetails'])
             ->whereBetween('start_date', [$startDateStr, $endDateStr]);
 
-        if ($itemCode) $dicQuery->where('item_code', $itemCode);
-        if ($machineUserId) $dicQuery->where('user_id', $machineUserId);
-        if ($plant === 'karawang') $dicQuery->whereHas('user', fn($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
-        elseif ($plant === 'kbn') $dicQuery->whereHas('user', fn($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        if ($itemCode) {
+            $dicQuery->where('item_code', $itemCode);
+        }
+        if ($machineUserId) {
+            $dicQuery->where('user_id', $machineUserId);
+        }
+        if ($plant === 'karawang') {
+            $dicQuery->whereHas('user', fn ($q) => $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%'));
+        } elseif ($plant === 'kbn') {
+            $dicQuery->whereHas('user', fn ($q) => $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%'));
+        }
 
         return $this->processAdjusterNgTrend($dicQuery->get(), $adjustLogs, $startDate, $endDate, $isHalfDay);
     }
@@ -1566,12 +1655,12 @@ class ProductionDashboardService
         }
 
         if ($plant === 'karawang') {
-            $krwIds = User::where(function($q) {
+            $krwIds = User::where(function ($q) {
                 $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%');
             })->pluck('id')->toArray();
             $query->whereIn('user_id', $krwIds);
         } elseif ($plant === 'kbn') {
-            $kbnIds = User::where(function($q) {
+            $kbnIds = User::where(function ($q) {
                 $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%');
             })->pluck('id')->toArray();
             $query->whereIn('user_id', $kbnIds);
@@ -1609,9 +1698,9 @@ class ProductionDashboardService
 
             $weeks[] = [
                 'number' => $weekNumber,
-                'label'  => "Week {$weekNumber} ({$weekStart->format('d')} - {$weekEnd->format('d')})",
-                'start'  => $weekStart->format('Y-m-d'),
-                'end'    => $weekEnd->format('Y-m-d'),
+                'label' => "Week {$weekNumber} ({$weekStart->format('d')} - {$weekEnd->format('d')})",
+                'start' => $weekStart->format('Y-m-d'),
+                'end' => $weekEnd->format('Y-m-d'),
             ];
 
             $date->addWeek()->startOfWeek();

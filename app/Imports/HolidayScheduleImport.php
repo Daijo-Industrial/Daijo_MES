@@ -11,14 +11,13 @@ class HolidayScheduleImport implements ToModel, WithHeadingRow
     /**
      * Define the logic for each row being imported.
      *
-     * @param array $row
      * @return \Illuminate\Database\Eloquent\Model|null
      */
     public function model(array $row)
     {
-       
-       $cleanDate = rtrim($row['date'], "'");
-        
+
+        $cleanDate = rtrim($row['date'], "'");
+
         return new HolidaySchedule([
             'date' => \Carbon\Carbon::createFromFormat('d/m/Y', $cleanDate)->format('Y-m-d'),
             'description' => $row['description'],

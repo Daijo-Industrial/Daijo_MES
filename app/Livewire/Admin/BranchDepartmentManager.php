@@ -17,19 +17,30 @@ class BranchDepartmentManager extends Component
 
     // Branch Form properties
     public $branchId = null;
+
     public $branchCode = '';
+
     public $branchName = '';
+
     public $branchAddress = '';
+
     public $branchIsMain = false;
+
     public $branchIsActive = true;
+
     public $isEditingBranch = false;
 
     // Department Form properties
     public $departmentId = null;
+
     public $departmentCode = '';
+
     public $departmentName = '';
+
     public $departmentDescription = '';
+
     public $departmentIsActive = true;
+
     public $isEditingDepartment = false;
 
     private function authorizeAccess(): void
@@ -107,7 +118,7 @@ class BranchDepartmentManager extends Component
         $this->authorizeAccess();
 
         $branch = Branch::findOrFail($branchId);
-        $branch->is_active = !$branch->is_active;
+        $branch->is_active = ! $branch->is_active;
         $branch->save();
 
         session()->flash('message', "Branch {$branch->name} status updated.");
@@ -165,7 +176,7 @@ class BranchDepartmentManager extends Component
         $this->authorizeAccess();
 
         $dept = Department::findOrFail($departmentId);
-        $dept->is_active = !$dept->is_active;
+        $dept->is_active = ! $dept->is_active;
         $dept->save();
 
         session()->flash('message', "Department {$dept->name} status updated.");

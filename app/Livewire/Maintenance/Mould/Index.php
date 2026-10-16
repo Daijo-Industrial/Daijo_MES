@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Maintenance\Mould;
 
-use Livewire\Component;
 use App\Models\MaintenanceMould;
+use Livewire\Component;
 
 class Index extends Component
 {
@@ -11,13 +11,21 @@ class Index extends Component
 
     // Form input
     public $tanggal;
+
     public $part_no;
+
     public $part_name;
+
     public $jenis_kerusakan;
+
     public $perbaikan;
+
     public $remark;
+
     public $tipe;
+
     public $pic; // <--- tambahin ini
+
     public $remarkInput;
 
     public $showModal = false;
@@ -85,6 +93,7 @@ class Index extends Component
 
     // Detail Modal
     public $selectedMould;
+
     public $showDetailModal = false;
 
     public function openDetailModal($id)
@@ -103,7 +112,7 @@ class Index extends Component
     public function finishMaintenance()
     {
         if ($this->selectedMould) {
-             $this->selectedMould->remark = $this->remarkInput;
+            $this->selectedMould->remark = $this->remarkInput;
             $this->selectedMould->finished_at = now();
             $created = $this->selectedMould->created_at;
             $finished = $this->selectedMould->finished_at;

@@ -2,21 +2,19 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Yajra\DataTables\Html\Builder;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Http\Request;
-
-// DDD — Inventory feature bindings
 use App\Domain\Inventory\Contracts\FgInventoryRepositoryInterface;
 use App\Domain\Inventory\Contracts\RejectRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\EloquentFgInventoryRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentRejectRepository;
-
 use App\Models\SecondProcessReport;
+// DDD — Inventory feature bindings
 use App\Policies\SecondProcessReportPolicy;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\ServiceProvider;
+use Yajra\DataTables\Html\Builder;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Inventory — Stock Health Dashboard
         $this->app->bind(FgInventoryRepositoryInterface::class, EloquentFgInventoryRepository::class);
-        $this->app->bind(RejectRepositoryInterface::class,      EloquentRejectRepository::class);
+        $this->app->bind(RejectRepositoryInterface::class, EloquentRejectRepository::class);
     }
 
     /**

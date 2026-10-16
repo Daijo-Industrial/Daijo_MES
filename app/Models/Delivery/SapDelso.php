@@ -2,16 +2,18 @@
 
 namespace App\Models\Delivery;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SapDelso extends Model
 {
     protected $table = 'sap_delso';
+
     public $timestamps = false;
+
     public $incrementing = false;
+
     protected $primaryKey = null;
-    
+
     protected $fillable = [
         'doc_num',
         'doc_status',

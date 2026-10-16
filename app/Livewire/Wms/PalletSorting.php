@@ -6,23 +6,27 @@ use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
 use App\Models\WmsPosition;
 use App\Services\WmsService;
-use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Livewire\Component;
 
 class PalletSorting extends Component
 {
     // Search fields
     public string $palletSearchInput = '';
+
     public string $boxScanInput = '';
 
     // Workspace state
     public array $workspacePallets = []; // Holds arrays representing pallets in the workspace
-    
+
     // UI states
     public ?string $highlightedBoxCid = null;
+
     public string $selectedBoxCid = '';
+
     public string $selectedBoxLabel = '';
+
     public string $selectedBoxSourcePalletId = '';
 
     public function mount(): void
@@ -41,6 +45,7 @@ class PalletSorting extends Component
 
         if (empty($palletId)) {
             session()->flash('error', 'Pallet ID tidak boleh kosong.');
+
             return;
         }
 
@@ -48,16 +53,18 @@ class PalletSorting extends Component
         foreach ($this->workspacePallets as $wp) {
             if ($wp['pallet_id'] === $palletId) {
                 session()->flash('error', "Pallet {$palletId} sudah ada di dalam workspace.");
+
                 return;
             }
         }
 
-        $pallet = WmsPalletForm::with(['details' => function($q) {
+        $pallet = WmsPalletForm::with(['details' => function ($q) {
             $q->whereNull('deleted_at');
         }, 'position'])->where('pallet_id', $palletId)->first();
 
-        if (!$pallet) {
+        if (! $pallet) {
             session()->flash('error', "Pallet ID \"{$palletId}\" tidak ditemukan.");
+
             return;
         }
 
@@ -69,10 +76,10 @@ class PalletSorting extends Component
                 'spk_no' => $detail->spk_no,
                 'part_no' => $detail->part_no,
                 'model_name' => $detail->model_name,
-                'qty' => (float)$detail->qty,
+                'qty' => (float) $detail->qty,
                 'warehouse' => $detail->warehouse,
                 'label' => $detail->label,
-                'is_no_label' => (bool)$detail->is_no_label,
+                'is_no_label' => (bool) $detail->is_no_label,
                 'no_label_reason' => $detail->no_label_reason,
             ];
         }
@@ -121,7 +128,7 @@ class PalletSorting extends Component
      */
     public function removePalletFromWorkspace(string $palletId): void
     {
-        $this->workspacePallets = array_values(array_filter($this->workspacePallets, function($wp) use ($palletId) {
+        $this->workspacePallets = array_values(array_filter($this->workspacePallets, function ($wp) use ($palletId) {
             return $wp['pallet_id'] !== $palletId;
         }));
     }
@@ -147,7 +154,9 @@ class PalletSorting extends Component
             }
         }
 
-        if (!$boxToMove) return;
+        if (! $boxToMove) {
+            return;
+        }
 
         // Remove from source
         array_splice($this->workspacePallets[$sourcePalletIdx]['boxes'], $boxIdx, 1);
@@ -181,7 +190,9 @@ class PalletSorting extends Component
             }
         }
 
-        if ($sourceIdx === -1) return;
+        if ($sourceIdx === -1) {
+            return;
+        }
 
         // Extract matching boxes
         $remainingBoxes = [];
@@ -212,7 +223,9 @@ class PalletSorting extends Component
         $label = trim($this->boxScanInput);
         $this->boxScanInput = '';
 
-        if (empty($label)) return;
+        if (empty($label)) {
+            return;
+        }
 
         // Find in workspace
         foreach ($this->workspacePallets as $pallet) {
@@ -223,6 +236,7 @@ class PalletSorting extends Component
                     $this->selectedBoxLabel = $box['label'];
                     $this->selectedBoxSourcePalletId = $pallet['pallet_id'];
                     $this->dispatch('box-selected');
+
                     return;
                 }
             }
@@ -255,7 +269,9 @@ class PalletSorting extends Component
     public function changePalletPosition(string $palletId, $positionId): void
     {
         $position = WmsPosition::find($positionId);
-        if (!$position) return;
+        if (! $position) {
+            return;
+        }
 
         // Find old position code of target pallet
         $oldPositionId = null;
@@ -306,6 +322,7 @@ class PalletSorting extends Component
     {
         if (empty($this->workspacePallets)) {
             session()->flash('error', 'Workspace kosong. Silakan muat pallet terlebih dahulu.');
+
             return;
         }
 
@@ -316,17 +333,17 @@ class PalletSorting extends Component
 
             foreach ($this->workspacePallets as $pallet) {
                 $palletId = $pallet['pallet_id'];
-                $isNew = (bool)$pallet['is_new'];
+                $isNew = (bool) $pallet['is_new'];
                 $boxesCount = count($pallet['boxes']);
 
                 // 1. Check if pallet is completely empty
                 if ($boxesCount === 0) {
-                    if (!$isNew) {
+                    if (! $isNew) {
                         // Soft delete / clean up existing empty pallet
                         $pModel = WmsPalletForm::find($palletId);
                         if ($pModel) {
                             $posId = $pModel->position_id;
-                            
+
                             // Delete details
                             WmsPalletFormDetail::where('pallet_form_id', $palletId)->delete();
                             // Delete header
@@ -334,7 +351,7 @@ class PalletSorting extends Component
 
                             // Log Transaction OUT
                             $wmsService->logTransaction($palletId, 'OUT', $posId, 'Pallet emptied during sorting');
-                            
+
                             // Update rack level/capacity
                             if ($posId) {
                                 $wmsService->updatePositionStatus($posId);
@@ -349,7 +366,7 @@ class PalletSorting extends Component
                 $allPartNos = array_unique(array_filter(array_column($pallet['boxes'], 'part_no')));
                 $isMixed = count($allPartNos) > 1;
                 $headerPartNo = $isMixed ? 'MIXED' : ($allPartNos[0] ?? null);
-                
+
                 // Get model name from first box
                 $firstBox = $pallet['boxes'][0];
                 $headerModelName = $isMixed ? 'MULTI-ITEM' : ($firstBox['model_name'] ?? null);
@@ -358,13 +375,14 @@ class PalletSorting extends Component
 
                 // 3. Position recommendation for new pallets
                 if ($isNew) {
-                    $customerCodes = array_map(function($box) {
+                    $customerCodes = array_map(function ($box) {
                         $item = \App\Models\MasterListItem::where('item_code', $box['part_no'])->first();
+
                         return $item ? $item->customer_code : '';
                     }, $pallet['boxes']);
 
                     $posRecommendation = $wmsService->recommendPosition($customerCodes, $headerPartNo ?: '');
-                    if (!$posRecommendation) {
+                    if (! $posRecommendation) {
                         throw new \Exception("Gagal merekomendasikan posisi rak untuk Pallet Baru {$palletId}. Warehouse Penuh.");
                     }
                     $positionId = $posRecommendation->id;
@@ -386,7 +404,7 @@ class PalletSorting extends Component
                         'total_pallet_qty' => $qtySum,
                         'remarks' => $pallet['remarks'],
                         'status' => 'STORED',
-                        'sap_sync_status' => 0
+                        'sap_sync_status' => 0,
                     ]);
 
                     // Log IN Transaction
@@ -401,7 +419,7 @@ class PalletSorting extends Component
                         'box_qty' => $boxesCount,
                         'total_pallet_qty' => $qtySum,
                         'sap_sync_status' => 0, // Reset to re-sync updated pallet
-                        'sap_error_msg' => null
+                        'sap_error_msg' => null,
                     ]);
                 }
 
@@ -412,7 +430,7 @@ class PalletSorting extends Component
                         WmsPalletFormDetail::where('id', $box['id'])->update([
                             'pallet_form_id' => $palletId,
                             'sap_sync_status' => 0, // Mark for re-sync
-                            'sap_error_msg' => null
+                            'sap_error_msg' => null,
                         ]);
                     } else {
                         // Create brand new box if manually added
@@ -426,7 +444,7 @@ class PalletSorting extends Component
                             'label' => $box['label'],
                             'is_no_label' => $box['is_no_label'],
                             'no_label_reason' => $box['no_label_reason'],
-                            'sap_sync_status' => 0
+                            'sap_sync_status' => 0,
                         ]);
                     }
                 }
@@ -453,7 +471,7 @@ class PalletSorting extends Component
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("Gagal menerapkan sorting: " . $e->getMessage());
+            Log::error('Gagal menerapkan sorting: ' . $e->getMessage());
             session()->flash('error', 'Gagal menerapkan sorting: ' . $e->getMessage());
         }
     }

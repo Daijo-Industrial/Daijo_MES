@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Admin\UserRoleManager;
 use App\Models\Role;
 use App\Models\User;
-use App\Livewire\Admin\UserRoleManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
@@ -15,10 +15,15 @@ class UserRoleManagerTest extends TestCase
     use RefreshDatabase;
 
     protected Role $superAdminRole;
+
     protected Role $adminRole;
+
     protected User $superAdmin;
+
     protected User $admin;
+
     protected User $operatorUser;
+
     protected User $targetUser;
 
     protected function setUp(): void

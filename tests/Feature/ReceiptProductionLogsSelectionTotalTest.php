@@ -18,9 +18,9 @@ class ReceiptProductionLogsSelectionTotalTest extends TestCase
 
         config(['database.default' => 'sqlite']);
         config(['database.connections.sqlite' => [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]]);
 
         $this->createTestSchema();
@@ -59,50 +59,50 @@ class ReceiptProductionLogsSelectionTotalTest extends TestCase
         $today = now()->timezone('Asia/Jakarta')->format('Y-m-d');
 
         $id1 = DB::table('production_summary')->insertGetId([
-            'spk_code'       => 'SPK-001',
+            'spk_code' => 'SPK-001',
             'total_quantity' => 120,
-            'warehouse'      => 'FFI',
-            'label'          => 'L1',
-            'created_date'   => $today,
-            'sap_sent'       => 0,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'warehouse' => 'FFI',
+            'label' => 'L1',
+            'created_date' => $today,
+            'sap_sent' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $id2 = DB::table('production_summary')->insertGetId([
-            'spk_code'       => 'SPK-002',
+            'spk_code' => 'SPK-002',
             'total_quantity' => 380,
-            'warehouse'      => 'FFI',
-            'label'          => 'L2',
-            'created_date'   => $today,
-            'sap_sent'       => 0,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'warehouse' => 'FFI',
+            'label' => 'L2',
+            'created_date' => $today,
+            'sap_sent' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $id3 = DB::table('production_summary')->insertGetId([
-            'spk_code'       => 'SPK-003',
+            'spk_code' => 'SPK-003',
             'total_quantity' => 500,
-            'warehouse'      => 'FFI',
-            'label'          => 'L3',
-            'created_date'   => $today,
-            'sap_sent'       => 0,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'warehouse' => 'FFI',
+            'label' => 'L3',
+            'created_date' => $today,
+            'sap_sent' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         Livewire::test(ReceiptProductionLogs::class)
             ->assertSet('selectedSummary.count', 0)
             ->assertSet('selectedSummary.total_qty', 0)
             // Select SPK 1 and SPK 2 -> 120 + 380 = 500 pcs
-            ->set('selectedLogs', [(string)$id1, (string)$id2])
+            ->set('selectedLogs', [(string) $id1, (string) $id2])
             ->assertSet('selectedSummary.count', 2)
             ->assertSet('selectedSummary.total_qty', 500)
             ->assertSee('2')
             ->assertSee('500 pcs')
             ->assertSee('Total Akan Dikirim:')
             // Add SPK 3 -> 500 + 500 = 1,000 pcs
-            ->set('selectedLogs', [(string)$id1, (string)$id2, (string)$id3])
+            ->set('selectedLogs', [(string) $id1, (string) $id2, (string) $id3])
             ->assertSet('selectedSummary.count', 3)
             ->assertSet('selectedSummary.total_qty', 1000)
             ->assertSee('1,000 pcs')

@@ -11,7 +11,7 @@ class LogApiWebhooks
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response) $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -35,12 +35,12 @@ class LogApiWebhooks
 
         activity($logName)
             ->withProperties([
-                'ip'          => $request->ip(),
-                'method'      => $request->method(),
-                'endpoint'    => '/' . ltrim($request->path(), '/'),
+                'ip' => $request->ip(),
+                'method' => $request->method(),
+                'endpoint' => '/' . ltrim($request->path(), '/'),
                 'status_code' => $response->getStatusCode(),
                 'duration_ms' => $durationMs,
-                'payload'     => $payload,
+                'payload' => $payload,
             ])
             ->log("Incoming {$request->method()} /" . ltrim($request->path(), '/') . " ({$response->getStatusCode()})");
 

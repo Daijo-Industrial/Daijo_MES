@@ -8,9 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class InvLineList extends Model
 {
     use HasFactory;
+
     protected $table = 'inv_line_list';
+
     public $timestamps = false;
-    
 
     protected $fillable = [
         'line_code',

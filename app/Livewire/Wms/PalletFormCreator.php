@@ -2,14 +2,14 @@
 
 namespace App\Livewire\Wms;
 
+use App\Models\MasterListItem;
+use App\Models\SpkItemHistory;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
-use App\Models\SpkItemHistory;
-use App\Models\MasterListItem;
 use App\Services\WmsService;
-use Livewire\Component;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class PalletFormCreator extends Component
 {
@@ -17,36 +17,52 @@ class PalletFormCreator extends Component
 
     // ─── Header Form Fields ────────────────────────────────────────────────────
     public $prod_date;
+
     public $lot_no;
+
     public $delivery_name;
+
     public $delivery_shift;
+
     public $remarks;
-    public $total_box        = 0;
+
+    public $total_box = 0;
+
     public $total_pallet_qty = 0;
 
     // ─── Success Modal State ───────────────────────────────────────────────────
     public $showSuccessModal = false;
+
     public $lastGeneratedPalletId = null;
+
     public $isProcessing = false;
 
     // SAP Sync Feedback
     public $sapSyncStatus = 'pending'; // 'pending', 'completed'
+
     public $failedSapItems = [];
 
     // ─── Scan Fields ───────────────────────────────────────────────────────────
-    public string $scan_spk   = '';
-    public string $scan_qty   = '';
-    public string $scan_whse  = '';
+    public string $scan_spk = '';
+
+    public string $scan_qty = '';
+
+    public string $scan_whse = '';
+
     public string $scan_label = '';
+
     public int $scan_box_count = 1; // Default to 1 box
 
     // Auto-filled from SPK lookup (read-only display)
-    public string $scan_part_no       = '';
-    public string $scan_model_name    = '';
+    public string $scan_part_no = '';
+
+    public string $scan_model_name = '';
+
     public string $scan_customer_code = '';
 
     // No-Label mode state
-    public string $label_mode      = 'SCAN'; // 'SCAN' | 'NO_LABEL'
+    public string $label_mode = 'SCAN'; // 'SCAN' | 'NO_LABEL'
+
     public string $no_label_reason = '';
 
     // Accumulated scan list
@@ -54,19 +70,17 @@ class PalletFormCreator extends Component
 
     // ─── Validation ────────────────────────────────────────────────────────────
     protected $rules = [
-        'prod_date'     => 'required|date',
+        'prod_date' => 'required|date',
         'delivery_name' => 'required',
-        'delivery_shift'=> 'required',
+        'delivery_shift' => 'required',
     ];
 
-    public function mount(bool $isDelivery = null): void
+    public function mount(?bool $isDelivery = null): void
     {
-        $this->prod_date      = \App\Services\WmsDeliveryRecapService::getCurrentProductionDate();
-        $this->isDelivery     = $isDelivery ?? true;
+        $this->prod_date = \App\Services\WmsDeliveryRecapService::getCurrentProductionDate();
+        $this->isDelivery = $isDelivery ?? true;
         $this->delivery_shift = (string) \App\Services\WmsDeliveryRecapService::determineShiftFromTime(now());
     }
-
-
 
     // ─── No-Label Toggle ───────────────────────────────────────────────────────
 
@@ -77,16 +91,16 @@ class PalletFormCreator extends Component
     {
         if ($this->label_mode === 'SCAN') {
             // Aktifkan no-label mode
-            $this->label_mode        = 'NO_LABEL';
-            $this->scan_spk          = '';
-            $this->scan_label        = '';
-            $this->scan_part_no      = '';
-            $this->scan_model_name   = '';
+            $this->label_mode = 'NO_LABEL';
+            $this->scan_spk = '';
+            $this->scan_label = '';
+            $this->scan_part_no = '';
+            $this->scan_model_name = '';
             $this->scan_customer_code = '';
             $this->dispatch('focus-qty');
         } else {
             // Kembali ke mode scan normal
-            $this->label_mode      = 'SCAN';
+            $this->label_mode = 'SCAN';
             $this->no_label_reason = '';
             $this->dispatch('focus-spk');
         }
@@ -96,27 +110,27 @@ class PalletFormCreator extends Component
 
     public function resetScanner(): void
     {
-        $this->scan_spk          = '';
-        $this->scan_qty          = '';
-        $this->scan_whse         = '';
-        $this->scan_label        = '';
-        $this->scan_box_count    = 1;
-        $this->scan_part_no      = '';
-        $this->scan_model_name   = '';
+        $this->scan_spk = '';
+        $this->scan_qty = '';
+        $this->scan_whse = '';
+        $this->scan_label = '';
+        $this->scan_box_count = 1;
+        $this->scan_part_no = '';
+        $this->scan_model_name = '';
         $this->scan_customer_code = '';
-        $this->no_label_reason   = '';
+        $this->no_label_reason = '';
         $this->dispatch('focus-spk');
     }
 
     public function resetWholeForm(): void
     {
-        $this->lot_no            = '';
-        $this->remarks           = '';
+        $this->lot_no = '';
+        $this->remarks = '';
         // Note: delivery_name, delivery_shift, and prod_date are kept for bulk scanning UX
-        $this->total_box         = 0;
-        $this->total_pallet_qty  = 0;
-        $this->scanned_items     = [];
-        $this->showSuccessModal  = false;
+        $this->total_box = 0;
+        $this->total_pallet_qty = 0;
+        $this->scanned_items = [];
+        $this->showSuccessModal = false;
         $this->lastGeneratedPalletId = null;
         $this->resetScanner();
     }
@@ -127,16 +141,25 @@ class PalletFormCreator extends Component
      */
     public function addItem($directLabel = null, $directSpk = null, $directQty = null, $directWhse = null, $cid = null): void
     {
-        if ($directLabel) $this->scan_label = trim($directLabel);
-        if ($directSpk)   $this->scan_spk   = trim($directSpk);
-        if ($directQty)   $this->scan_qty   = $directQty;
-        if ($directWhse)  $this->scan_whse  = trim($directWhse);
+        if ($directLabel) {
+            $this->scan_label = trim($directLabel);
+        }
+        if ($directSpk) {
+            $this->scan_spk = trim($directSpk);
+        }
+        if ($directQty) {
+            $this->scan_qty = $directQty;
+        }
+        if ($directWhse) {
+            $this->scan_whse = trim($directWhse);
+        }
 
         // ─── Case 2: No-Label Mode ─────────────────────────────────────────────
         if ($this->label_mode === 'NO_LABEL') {
             if (empty(trim($this->scan_qty))) {
                 session()->flash('scan_error', 'Qty per box harus diisi.');
                 $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'Qty kosong']);
+
                 return;
             }
 
@@ -144,15 +167,15 @@ class PalletFormCreator extends Component
 
             for ($i = 0; $i < $count; $i++) {
                 $this->scanned_items[] = [
-                    'cid'             => $cid ? $cid . '_' . $i : uniqid(),
-                    'part_no'         => null,
-                    'model_name'      => null,
-                    'customer_code'   => null,
-                    'spk_no'          => null,
-                    'qty'             => (float) $this->scan_qty,
-                    'warehouse'       => $this->scan_whse ?: null,
-                    'label'           => null,
-                    'is_no_label'     => true,
+                    'cid' => $cid ? $cid . '_' . $i : uniqid(),
+                    'part_no' => null,
+                    'model_name' => null,
+                    'customer_code' => null,
+                    'spk_no' => null,
+                    'qty' => (float) $this->scan_qty,
+                    'warehouse' => $this->scan_whse ?: null,
+                    'label' => null,
+                    'is_no_label' => true,
                     'no_label_reason' => $this->no_label_reason ?: null,
                 ];
             }
@@ -161,10 +184,11 @@ class PalletFormCreator extends Component
             $this->resetScanner();
             $this->calculateTotals();
             $this->dispatch('scan-success', [
-                'cid'        => $cid,
-                'part_no'    => null,
+                'cid' => $cid,
+                'part_no' => null,
                 'model_name' => 'No Label Box',
             ]);
+
             return;
         }
 
@@ -175,6 +199,7 @@ class PalletFormCreator extends Component
             $this->resetScanner();
             session()->flash('scan_error', 'SPK harus di-scan terlebih dahulu.');
             $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'SPK kosong']);
+
             return;
         }
 
@@ -185,6 +210,7 @@ class PalletFormCreator extends Component
             $this->resetScanner();
             session()->flash('scan_error', 'SPK "' . $failedSpk . '" tidak ditemukan di sistem. Pastikan SPK sudah terdaftar.');
             $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'SPK tidak valid']);
+
             return;
         }
 
@@ -197,6 +223,7 @@ class PalletFormCreator extends Component
         if (empty(trim($this->scan_label))) {
             session()->flash('scan_error', 'Label harus di-scan, atau tekan "Tanpa Label" jika box tidak memiliki label.');
             $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'Label kosong']);
+
             return;
         }
 
@@ -211,34 +238,35 @@ class PalletFormCreator extends Component
                 $this->resetScanner();
                 session()->flash('scan_error', 'Label "' . $failedLabel . '" dengan SPK ini sudah ada di daftar scan saat ini.');
                 $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'Label duplikat']);
+
                 return;
             }
         }
 
         // Tambahkan ke list
         $this->scanned_items[] = [
-            'cid'             => $cid ?: uniqid(),
-            'part_no'         => $partNo,
-            'model_name'      => $modelName,
-            'customer_code'   => $customerCode,
-            'spk_no'          => trim($this->scan_spk),
-            'qty'             => (float) ($this->scan_qty ?: 0),
-            'warehouse'       => $this->scan_whse ?: null,
-            'label'           => trim($this->scan_label),
-            'is_no_label'     => false,
+            'cid' => $cid ?: uniqid(),
+            'part_no' => $partNo,
+            'model_name' => $modelName,
+            'customer_code' => $customerCode,
+            'spk_no' => trim($this->scan_spk),
+            'qty' => (float) ($this->scan_qty ?: 0),
+            'warehouse' => $this->scan_whse ?: null,
+            'label' => trim($this->scan_label),
+            'is_no_label' => false,
             'no_label_reason' => null,
         ];
 
         // Update local helper states agar UI Livewire sinkron
-        $this->scan_part_no       = $partNo;
-        $this->scan_model_name    = $modelName;
+        $this->scan_part_no = $partNo;
+        $this->scan_model_name = $modelName;
         $this->scan_customer_code = $customerCode;
 
         $this->resetScanner();
         $this->calculateTotals();
         $this->dispatch('scan-success', [
-            'cid'        => $cid,
-            'part_no'    => $partNo,
+            'cid' => $cid,
+            'part_no' => $partNo,
             'model_name' => $modelName,
         ]);
     }
@@ -257,7 +285,7 @@ class PalletFormCreator extends Component
 
     public function removeItemByCid($cid): void
     {
-        $this->scanned_items = array_values(array_filter($this->scanned_items, function($item) use ($cid) {
+        $this->scanned_items = array_values(array_filter($this->scanned_items, function ($item) use ($cid) {
             return ($item['cid'] ?? null) !== $cid;
         }));
         $this->calculateTotals();
@@ -301,8 +329,8 @@ class PalletFormCreator extends Component
 
     private function calculateTotals(): void
     {
-        $this->total_box        = count($this->scanned_items);
-        $this->total_pallet_qty = array_sum(array_map(function($item) {
+        $this->total_box = count($this->scanned_items);
+        $this->total_pallet_qty = array_sum(array_map(function ($item) {
             return (float) ($item['qty'] ?? 0);
         }, $this->scanned_items));
     }
@@ -315,6 +343,7 @@ class PalletFormCreator extends Component
 
         if (count($this->scanned_items) === 0) {
             session()->flash('error', 'Minimal harus ada 1 box yang di-scan.');
+
             return;
         }
 
@@ -323,7 +352,9 @@ class PalletFormCreator extends Component
             return;
         }
 
-        if ($this->isProcessing) return;
+        if ($this->isProcessing) {
+            return;
+        }
         $this->isProcessing = true;
 
         // ─── 1. Atomic Lock per User/Session ──────────────────────────────────────
@@ -337,16 +368,16 @@ class PalletFormCreator extends Component
         try {
             // ─── 2. Idempotency Fingerprint Hash ──────────────────────────────────
             $fingerprint = md5(json_encode([
-                'date'           => $this->prod_date,
-                'lot_no'         => $this->lot_no,
-                'delivery_name'  => $this->delivery_name,
+                'date' => $this->prod_date,
+                'lot_no' => $this->lot_no,
+                'delivery_name' => $this->delivery_name,
                 'delivery_shift' => $this->delivery_shift,
-                'items'          => collect($this->scanned_items)->map(fn($item) => [
-                    'spk'         => $item['spk_no'] ?? null,
-                    'label'       => $item['label'] ?? null,
-                    'qty'         => (float)($item['qty'] ?? 0),
-                    'part_no'     => $item['part_no'] ?? null,
-                    'is_no_label' => (bool)($item['is_no_label'] ?? false),
+                'items' => collect($this->scanned_items)->map(fn ($item) => [
+                    'spk' => $item['spk_no'] ?? null,
+                    'label' => $item['label'] ?? null,
+                    'qty' => (float) ($item['qty'] ?? 0),
+                    'part_no' => $item['part_no'] ?? null,
+                    'is_no_label' => (bool) ($item['is_no_label'] ?? false),
                 ])->values()->all(),
             ]));
 
@@ -354,6 +385,7 @@ class PalletFormCreator extends Component
             if ($existingPalletId = Cache::get($idempotencyKey)) {
                 $this->lastGeneratedPalletId = $existingPalletId;
                 $this->showSuccessModal = true;
+
                 return;
             }
 
@@ -376,6 +408,7 @@ class PalletFormCreator extends Component
                     $this->lastGeneratedPalletId = $recentDuplicateDetail->pallet_form_id;
                     $this->showSuccessModal = true;
                     Cache::put($idempotencyKey, $recentDuplicateDetail->pallet_form_id, now()->addMinutes(5));
+
                     return;
                 }
             }
@@ -388,7 +421,7 @@ class PalletFormCreator extends Component
             );
             $isMixed = count($allPartNos) > 1;
 
-            $headerPartNo    = $isMixed ? 'MIXED' : ($allPartNos[0] ?? null);
+            $headerPartNo = $isMixed ? 'MIXED' : ($allPartNos[0] ?? null);
             $headerModelName = $isMixed ? 'MULTI-ITEM' : ($this->scanned_items[0]['model_name'] ?? null);
 
             // Position ID is NULL when created (Temporary - Slot rak diisi manual oleh orang Store)
@@ -399,30 +432,30 @@ class PalletFormCreator extends Component
 
             // --- Create Header ---
             WmsPalletForm::create([
-                'pallet_id'        => $palletId,
-                'position_id'      => null,
-                'part_no'          => $headerPartNo,
-                'model_name'       => $headerModelName,
-                'prod_date'        => $this->prod_date,
-                'lot_no'           => $this->lot_no,
-                'delivery_name'    => $this->delivery_name,
-                'delivery_shift'   => $this->delivery_shift,
-                'box_qty'          => $this->total_box,
+                'pallet_id' => $palletId,
+                'position_id' => null,
+                'part_no' => $headerPartNo,
+                'model_name' => $headerModelName,
+                'prod_date' => $this->prod_date,
+                'lot_no' => $this->lot_no,
+                'delivery_name' => $this->delivery_name,
+                'delivery_shift' => $this->delivery_shift,
+                'box_qty' => $this->total_box,
                 'total_pallet_qty' => $this->total_pallet_qty,
-                'remarks'          => $this->remarks,
+                'remarks' => $this->remarks,
             ]);
 
             // --- Create Details ---
             foreach ($this->scanned_items as $boxItem) {
                 WmsPalletFormDetail::create([
-                    'pallet_form_id'  => $palletId,
-                    'part_no'         => $boxItem['part_no'],
-                    'model_name'      => $boxItem['model_name'],
-                    'spk_no'          => $boxItem['spk_no'],
-                    'qty'             => $boxItem['qty'],
-                    'warehouse'       => $this->isDelivery ? 'FG' : $boxItem['warehouse'],
-                    'label'           => $boxItem['label'],
-                    'is_no_label'     => $boxItem['is_no_label'],
+                    'pallet_form_id' => $palletId,
+                    'part_no' => $boxItem['part_no'],
+                    'model_name' => $boxItem['model_name'],
+                    'spk_no' => $boxItem['spk_no'],
+                    'qty' => $boxItem['qty'],
+                    'warehouse' => $this->isDelivery ? 'FG' : $boxItem['warehouse'],
+                    'label' => $boxItem['label'],
+                    'is_no_label' => $boxItem['is_no_label'],
                     'no_label_reason' => $boxItem['no_label_reason'],
                 ]);
             }
@@ -458,15 +491,15 @@ class PalletFormCreator extends Component
     public function checkSapSyncStatus()
     {
         $pallet = WmsPalletForm::find($this->lastGeneratedPalletId);
-        
+
         if ($pallet) {
             $freshPallet = $pallet->fresh();
-            $status = (int)$freshPallet->sap_sync_status;
+            $status = (int) $freshPallet->sap_sync_status;
 
             // Jika status sudah 1 (Success) atau 2 (Failed), berarti proses sinkronisasi selesai
             if ($status === 1 || $status === 2) {
                 $this->sapSyncStatus = 'completed';
-                
+
                 // Ambil detail yang gagal
                 $this->failedSapItems = WmsPalletFormDetail::where('pallet_form_id', $this->lastGeneratedPalletId)
                     ->where('sap_sync_status', 2)
@@ -481,17 +514,19 @@ class PalletFormCreator extends Component
      */
     public function retrySapSync()
     {
-        if (!$this->lastGeneratedPalletId) return;
-        
+        if (! $this->lastGeneratedPalletId) {
+            return;
+        }
+
         $this->sapSyncStatus = 'pending';
-        
+
         // Reset status in DB cuma buat yang BELUM sukses
         WmsPalletForm::where('pallet_id', $this->lastGeneratedPalletId)->update(['sap_sync_status' => 0]);
         WmsPalletFormDetail::where('pallet_form_id', $this->lastGeneratedPalletId)
             ->where('sap_sync_status', '!=', 1)
             ->update([
                 'sap_sync_status' => 0,
-                'sap_error_msg'   => null
+                'sap_error_msg' => null,
             ]);
 
         \App\Jobs\SyncPalletToSapJob::dispatch($this->lastGeneratedPalletId);

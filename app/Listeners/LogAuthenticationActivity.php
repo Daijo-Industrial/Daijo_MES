@@ -24,9 +24,9 @@ class LogAuthenticationActivity
             activity('auth')
                 ->causedBy($user)
                 ->withProperties([
-                    'ip'         => request()->ip(),
+                    'ip' => request()->ip(),
                     'user_agent' => request()->userAgent(),
-                    'guard'      => $event->guard,
+                    'guard' => $event->guard,
                 ])
                 ->log("User logged in ({$user->name})");
         }
@@ -43,7 +43,7 @@ class LogAuthenticationActivity
             activity('auth')
                 ->causedBy($user)
                 ->withProperties([
-                    'ip'         => request()->ip(),
+                    'ip' => request()->ip(),
                     'user_agent' => request()->userAgent(),
                 ])
                 ->log("User logged out ({$user->name})");
@@ -63,8 +63,8 @@ class LogAuthenticationActivity
 
         activity('auth')
             ->withProperties([
-                'ip'          => request()->ip(),
-                'user_agent'  => request()->userAgent(),
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
                 'credentials' => $credentials,
             ])
             ->log("Failed login attempt for {$identifier}");
@@ -77,11 +77,11 @@ class LogAuthenticationActivity
     {
         activity('auth')
             ->withProperties([
-                'ip'         => request()->ip(),
+                'ip' => request()->ip(),
                 'user_agent' => request()->userAgent(),
-                'email'      => request()->input('email', request()->input('form.email')),
+                'email' => request()->input('email', request()->input('form.email')),
             ])
-            ->log("Login lockout triggered");
+            ->log('Login lockout triggered');
     }
 
     /**
@@ -90,9 +90,9 @@ class LogAuthenticationActivity
     public function subscribe(Dispatcher $events): array
     {
         return [
-            Login::class   => 'handleUserLogin',
-            Logout::class  => 'handleUserLogout',
-            Failed::class  => 'handleUserFailed',
+            Login::class => 'handleUserLogin',
+            Logout::class => 'handleUserLogout',
+            Failed::class => 'handleUserFailed',
             Lockout::class => 'handleUserLockout',
         ];
     }

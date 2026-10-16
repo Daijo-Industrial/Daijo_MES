@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class PRD_BillOfMaterialParent extends Model
 {
-    use HasFactory, BroadcastsDashboardModelUpdates;
+    use BroadcastsDashboardModelUpdates, HasFactory;
+
     protected $table = 'prd_bill_of_material_parents';
 
     protected $fillable = [
@@ -22,5 +23,4 @@ class PRD_BillOfMaterialParent extends Model
     {
         return $this->hasMany(PRD_BillOfMaterialChild::class, 'parent_id');
     }
-
 }

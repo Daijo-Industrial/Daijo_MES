@@ -88,7 +88,9 @@ class MaterialWarehouseService
     public function updatePositionStatus(int $positionId): void
     {
         $position = MwhPosition::find($positionId);
-        if (!$position) return;
+        if (! $position) {
+            return;
+        }
 
         // Automatically detach any material pallets from this slot position that have current_qty <= 0
         MwhPallet::where('position_id', $positionId)
@@ -133,7 +135,7 @@ class MaterialWarehouseService
         if ($whseId) {
             $query->where(function ($q) use ($whseId) {
                 $q->where('mwh_pallets.whse_id', $whseId)
-                  ->orWhere('mwh_racks.whse_id', $whseId);
+                    ->orWhere('mwh_racks.whse_id', $whseId);
             });
         }
 
@@ -168,21 +170,21 @@ class MaterialWarehouseService
 
             $pallet->update([
                 'current_qty' => $newQty,
-                'status'      => $newStatus,
+                'status' => $newStatus,
                 'position_id' => $newQty <= 0 ? null : $pallet->position_id,
             ]);
 
             $outgoing = MwhOutgoing::create([
-                'whse_id'       => $palletWhseId,
+                'whse_id' => $palletWhseId,
                 'outgoing_code' => $this->generateOutgoingCode(),
-                'pallet_id'     => $pallet->pallet_id,
-                'position_id'   => $oldPositionId,
-                'item_code'     => $pallet->item_code,
-                'qty_taken'     => $qtyTaken,
-                'uom'           => $pallet->uom ?? 'KG',
+                'pallet_id' => $pallet->pallet_id,
+                'position_id' => $oldPositionId,
+                'item_code' => $pallet->item_code,
+                'qty_taken' => $qtyTaken,
+                'uom' => $pallet->uom ?? 'KG',
                 'outgoing_date' => $outgoingDate,
-                'issued_to'     => $issuedTo,
-                'remarks'       => $remarks,
+                'issued_to' => $issuedTo,
+                'remarks' => $remarks,
             ]);
 
             if ($oldPositionId) {
@@ -208,7 +210,7 @@ class MaterialWarehouseService
 
                 $pallet->update([
                     'current_qty' => $newQty,
-                    'status'      => 'PARTIAL',
+                    'status' => 'PARTIAL',
                     'position_id' => $targetPositionId,
                 ]);
 

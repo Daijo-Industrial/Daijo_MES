@@ -27,7 +27,7 @@ class ProductionScannedData extends Model
     {
         return $this->hasOne(DailyItemCode::class, 'id', 'dic_id');
     }
-    
+
     public function summary()
     {
         return $this->belongsTo(ProductionSummary::class, 'summary_id', 'id');

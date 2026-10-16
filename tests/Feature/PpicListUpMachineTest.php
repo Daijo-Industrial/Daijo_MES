@@ -11,7 +11,6 @@ use App\Models\Role;
 use App\Models\SpkMaster;
 use App\Models\User;
 use App\Services\PpicListUpService;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -20,13 +19,14 @@ use Tests\TestCase;
 class PpicListUpMachineTest extends TestCase
 {
     use DatabaseTransactions;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         // Ensure roles & operator user exists
         $operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
-        
+
         $user = User::firstOrCreate(
             ['username' => '0350F'],
             [
@@ -352,7 +352,7 @@ class PpicListUpMachineTest extends TestCase
 
         $initialDics = DailyItemCode::where('schedule_date', $date)->where('user_id', $machineUser->id)->get();
         $this->assertCount(3, $initialDics);
-        $this->assertTrue($initialDics->every(fn($d) => $d->item_code === 'PART-A'));
+        $this->assertTrue($initialDics->every(fn ($d) => $d->item_code === 'PART-A'));
 
         // 2. Revision: Item A now only runs Shift 1 (200 pcs), Item B runs Shift 2 (200 pcs), Item C runs Shift 3 (500 pcs)
         $itemA->update([

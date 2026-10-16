@@ -1,31 +1,25 @@
 <?php
 
 namespace App\Http\Controllers\Store;
- 
-use Carbon\Carbon;
+
+use App\Exports\SoDataExport;
 use App\Http\Controllers\Controller;
+use App\Imports\SoImport;
+use App\Models\ApiLog;
+use App\Models\BarcodePackagingDetail;
+use App\Models\BarcodePackagingMaster;
+use App\Models\MasterItemPhoto;
 use App\Models\ScannedData;
 use App\Models\SoData;
-use App\Models\BarcodePackagingMaster;
-use App\Models\BarcodePackagingDetail;
-use App\Models\UpdateLog;
 use App\Models\SpkItemHistory;
 use App\Models\SpkMaster;
-use App\Models\MasterItemPhoto;
-use App\Models\ApiLog;
+use App\Models\UpdateLog;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\SoImport;
-use App\Exports\SoDataExport;
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use Illuminate\Support\Facades\Storage;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
-
-
-
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class SOController extends Controller
 {
@@ -33,22 +27,22 @@ class SOController extends Controller
     {
         $isDone = $request->query('is_done', 'all');
         $docNum = $request->query('doc_num', '');
-    
+
         // Build the query based on filter
         $query = SoData::select('doc_num', 'is_done', 'create_date')->distinct();
-    
-        if (!empty($docNum)) {
+
+        if (! empty($docNum)) {
             $query->where('doc_num', $docNum);
         }
-    
+
         // Apply filter for `is_done` if specified
         if ($isDone !== 'all') {
             $query->where('is_done', $isDone);
         }
-    
+
         // Paginate the results
         $docNums = $query->orderBy('doc_num', 'desc')->paginate(10);
-    
+
         return view('store.soindex', compact('docNums'));
     }
 
@@ -66,11 +60,11 @@ class SOController extends Controller
         BarcodePackagingMaster::firstOrCreate(
             ['so_number' => $docNum],
             [
-                'noDokumen'  => 'OUT/SO/' . $docNum,
-                'customer'   => $soCustomer ?? 'UNKNOWN',
-                'dateScan'   => now(),
+                'noDokumen' => 'OUT/SO/' . $docNum,
+                'customer' => $soCustomer ?? 'UNKNOWN',
+                'dateScan' => now(),
                 'tipeBarcode' => 'out',
-                'location'   => 'Jakarta',
+                'location' => 'Jakarta',
             ]
         );
 
@@ -81,7 +75,7 @@ class SOController extends Controller
                 'data' => collect(),
                 'docNum' => $docNum,
                 'allFinished' => false,
-                'allDone' => false
+                'allDone' => false,
             ]);
         }
 
@@ -99,7 +93,7 @@ class SOController extends Controller
 
         // 2. Evaluasi status finish tiap item berdasarkan jumlah scan
         $data = $rawItems->groupBy('item_code')
-            ->map(function ($group) use ($docNum, $scanSummaries) {
+            ->map(function ($group) use ($scanSummaries) {
                 $itemCode = $group->first()->item_code;
                 $totalQuantity = $group->sum('quantity');
                 $entry = $group->first();
@@ -109,15 +103,15 @@ class SOController extends Controller
                 $summary = $scanSummaries->get($itemCode);
                 $scannedCount = $summary ? $summary->ctn_count : 0;
                 $scannedTotalQty = $summary ? $summary->total_qty : 0;
-                
+
                 $entry->scannedCount = $scannedCount;
                 $entry->scannedTotalQuantity = $scannedTotalQty; // Field baru untuk dipakai di view
                 $packagingQuantity = $entry->packaging_quantity;
-               
+
                 // Logika penentuan item selesai (is_finish)
-                $requiredBoxes = ($packagingQuantity > 0) ? (int)ceil($totalQuantity / $packagingQuantity) : 0;
+                $requiredBoxes = ($packagingQuantity > 0) ? (int) ceil($totalQuantity / $packagingQuantity) : 0;
                 $statusFinish = ($scannedCount >= $requiredBoxes && $requiredBoxes > 0) ? 1 : 0;
-                
+
                 // Hanya set jika berbeda agar tidak membebani memori/DB nanti
                 $entry->is_finish = $statusFinish;
 
@@ -186,6 +180,7 @@ class SOController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg]);
             }
+
             return redirect()->back()->withErrors(['error' => $msg]);
         }
 
@@ -207,12 +202,13 @@ class SOController extends Controller
         $item = SoData::where('item_code', $item_code)
             ->where('doc_num', $doc_num)
             ->first(['quantity', 'packaging_quantity', 'item_code', 'doc_num']);
-        
+
         if (! $item) {
             $msg = 'Item not found for SPK ' . $spk_code;
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg]);
             }
+
             return redirect()->back()->withErrors(['error' => $msg]);
         }
 
@@ -223,15 +219,16 @@ class SOController extends Controller
 
         $totalNewQty = count($labels) * $quantity;
         $scannedTotalQuantity = $currentScannedQty + $totalNewQty;
-    
+
         if ($scannedTotalQuantity > $item->quantity) {
             $msg = 'All required CTN have been scanned / Quantity exceeds SO required quantity (' . $item->quantity . ')';
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg]);
             }
+
             return redirect()->back()->withErrors(['error' => $msg]);
         }
-        
+
         // Tentukan dulu ini Step 1 atau Step 2 sebelum cek duplikat
         $packagingName = $request->input('packaging_name');
         $packagingLabel = $request->input('packaging_label');
@@ -250,6 +247,7 @@ class SOController extends Controller
                 if ($request->ajax() || $request->wantsJson()) {
                     return response()->json(['success' => false, 'message' => $msg]);
                 }
+
                 return redirect()->back()->withErrors(['error' => $msg]);
             }
         }
@@ -272,7 +270,7 @@ class SOController extends Controller
                     // Deduct from WMS Pallet if the box label exists in a pallet for this part and SPK
                     $wmsDetail = \App\Models\WmsPalletFormDetail::where('part_no', $item_code)
                         ->where('label', $label)
-                        ->when(!empty($spk_code), fn($q) => $q->where('spk_no', $spk_code))
+                        ->when(! empty($spk_code), fn ($q) => $q->where('spk_no', $spk_code))
                         ->first();
                     if ($wmsDetail) {
                         $pallet = \App\Models\WmsPalletForm::lockForUpdate()->find($wmsDetail->pallet_form_id);
@@ -315,13 +313,13 @@ class SOController extends Controller
                     $header = BarcodePackagingMaster::where('so_number', $doc_num)->first();
                     if ($header) {
                         $detail = BarcodePackagingDetail::create([
-                            'masterId'  => $header->id,
+                            'masterId' => $header->id,
                             'noDokumen' => $header->noDokumen,
-                            'partNo'    => $packagingName,
-                            'quantity'  => null,
-                            'label'     => $packagingLabel ?? $label,
-                            'position'  => $packagingWhse,
-                            'scantime'  => now(),
+                            'partNo' => $packagingName,
+                            'quantity' => null,
+                            'label' => $packagingLabel ?? $label,
+                            'position' => $packagingWhse,
+                            'scantime' => now(),
                         ]);
                         $detail->update(['noDokumen' => $header->noDokumen . '/' . $detail->id]);
                     }
@@ -334,6 +332,7 @@ class SOController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg]);
             }
+
             return redirect()->back()->withErrors(['error' => $msg]);
         }
 
@@ -363,12 +362,13 @@ class SOController extends Controller
                 ->groupBy('item_code')
                 ->pluck('count', 'item_code');
 
-            $allFinished = $rawItems->groupBy('item_code')->every(function($group) use ($scanSummaries) {
+            $allFinished = $rawItems->groupBy('item_code')->every(function ($group) use ($scanSummaries) {
                 $item = $group->first();
                 $totalQtyPerItem = $group->sum('quantity');
-                $reqBoxes = $item->packaging_quantity > 0 ? (int)ceil($totalQtyPerItem / $item->packaging_quantity) : 0;
+                $reqBoxes = $item->packaging_quantity > 0 ? (int) ceil($totalQtyPerItem / $item->packaging_quantity) : 0;
                 $currentBoxes = $scanSummaries->get($item->item_code, 0);
-                return ($currentBoxes >= $reqBoxes && $reqBoxes > 0);
+
+                return $currentBoxes >= $reqBoxes && $reqBoxes > 0;
             });
 
             $formattedNewScans = [];
@@ -378,24 +378,24 @@ class SOController extends Controller
                     'quantity' => $ns->quantity,
                     'warehouse' => $ns->warehouse,
                     'label' => $ns->label,
-                    'created_at' => $ns->created_at->format('Y-m-d H:i:s')
+                    'created_at' => $ns->created_at->format('Y-m-d H:i:s'),
                 ];
             }
 
             return response()->json([
                 'success' => true,
-                'message' => count($labels) > 1 
+                'message' => count($labels) > 1
                     ? 'Bulk barcodes scanned successfully.'
-                    : (!empty($packagingName) 
-                        ? 'Packaging Berhasil Disimpan.' 
+                    : (! empty($packagingName)
+                        ? 'Packaging Berhasil Disimpan.'
                         : ($scanMode === 'ON' ? 'SPK Terverifikasi. Silakan scan packaging.' : 'SPK/Label berhasil discan.')),
                 'item_code' => $item_code,
                 'scannedCount' => $count,
                 'scannedTotalQuantity' => $totalQty,
-                'newScan' => !empty($formattedNewScans) ? $formattedNewScans[0] : null,
+                'newScan' => ! empty($formattedNewScans) ? $formattedNewScans[0] : null,
                 'newScans' => $formattedNewScans,
                 'next_step' => $nextStep,
-                'allFinished' => $allFinished
+                'allFinished' => $allFinished,
             ]);
         }
 
@@ -403,10 +403,9 @@ class SOController extends Controller
 
         return redirect()->back()->with([
             'success' => 'Barcode scanned successfully',
-            'photo'   => $photo ? $photo->photo_path : null,
+            'photo' => $photo ? $photo->photo_path : null,
         ]);
     }
-
 
     public function updateSoData($docNum)
     {
@@ -420,30 +419,30 @@ class SOController extends Controller
 
     public function import(Request $request)
     {
-        set_time_limit(3000);       
+        set_time_limit(3000);
         // dd($request->file('import_file'));
 
         // $file = $request->file('import_file')->store('temp'); // Store temporarily
-        
+
         // $filePath = $uploadedFile->getRealPath();
 
-            // Store the uploaded file temporarily
+        // Store the uploaded file temporarily
         $uploadedFile = $request->file('import_file')->store('temp');
         $filePath = storage_path('app/' . $uploadedFile);
 
         // Read the Excel file and process the data
         $data = Excel::toArray([], $filePath)[0];
-        
+
         // Remove the first row (header)
         array_shift($data);
-    
+
         $uniqueRows = [];
-       
+
         // Loop through the data to check for duplicates
         foreach ($data as &$row) {
             array_shift($row);
             // Format the date in column 3 (index 2) to yyyy-mm-dd
-            if (isset($row[2]) && !empty($row[2])) {
+            if (isset($row[2]) && ! empty($row[2])) {
                 $row[2] = \Carbon\Carbon::createFromFormat('d/m/Y', $row[2])->format('Y-m-d');
             }
 
@@ -451,7 +450,7 @@ class SOController extends Controller
             if (isset($row[5])) {
                 // Remove any commas and decimals, then convert to integer
                 $deliveryQuantity = str_replace(',', '', $row[5]); // Remove commas
-                $deliveryQuantity = (int)number_format((float)$deliveryQuantity, 0, '.', ''); // Convert to integer
+                $deliveryQuantity = (int) number_format((float) $deliveryQuantity, 0, '.', ''); // Convert to integer
                 $row[5] = $deliveryQuantity; // Update the row
             } else {
                 $row[5] = 0; // Set to a default value if it's not a number
@@ -461,22 +460,22 @@ class SOController extends Controller
             if (isset($row[7])) {
                 // Remove any commas and decimals, then convert to integer
                 $packagingQuantity = str_replace(',', '', $row[7]); // Remove commas
-                $packagingQuantity = (int)number_format((float)$packagingQuantity, 0, '.', ''); // Convert to integer
+                $packagingQuantity = (int) number_format((float) $packagingQuantity, 0, '.', ''); // Convert to integer
                 $row[7] = $packagingQuantity; // Update the row
             } else {
                 $row[7] = 0; // Set to a default value if it's not a number
             }
 
-            if (isset($row[9]) && !empty($row[9])) {
+            if (isset($row[9]) && ! empty($row[9])) {
                 $row[9] = \Carbon\Carbon::createFromFormat('d/m/Y', $row[9])->format('Y-m-d');
             }
 
-            if (isset($row[10]) && !empty($row[10])) {
+            if (isset($row[10]) && ! empty($row[10])) {
                 $row[10] = \Carbon\Carbon::createFromFormat('d/m/Y', $row[10])->format('Y-m-d');
             }
-           
+
             // Create a unique key based on columns 1 and 4 (doc_num and item_code)
-            $uniqueKey = $row[0] . '-' . $row[3]; 
+            $uniqueKey = $row[0] . '-' . $row[3];
 
             // Check if this unique key already exists in the $uniqueRows array
             if (isset($uniqueRows[$uniqueKey])) {
@@ -488,16 +487,15 @@ class SOController extends Controller
                 $uniqueRows[$uniqueKey] = $row;
             }
         }
-        
 
         // After processing, $uniqueRows will contain only unique rows with summed quantities and packaging quantities
         $data = array_values($uniqueRows);
-        
+
         // Store the processed file data into a CSV
         $excelFileName = 'sodata.csv';
         $excelFilePath = 'public/' . $excelFileName;
 
-        $import = new SoImport();
+        $import = new SoImport;
 
         // Delete old data where is_finish and is_done are 0
         $import->deleteOldData();
@@ -510,7 +508,7 @@ class SOController extends Controller
             [], // Empty array to match all records
             ['last_upload_time' => now()] // Set the current time
         );
-    
+
         // Flash a success message to the session
         session()->flash('success', 'Excel file processed and imported successfully.');
 
@@ -520,7 +518,7 @@ class SOController extends Controller
         return redirect()->route('so.index');
     }
 
-     public function update(Request $request, $id)
+    public function update(Request $request, $id)
     {
         $request->validate([
             'quantity' => 'required|integer|min:1',
@@ -543,9 +541,9 @@ class SOController extends Controller
 
     public function storeFromSap(Request $request)
     {
-        if (!is_array($request->all())) {
+        if (! is_array($request->all())) {
             return response()->json([
-                'message' => 'Invalid payload format'
+                'message' => 'Invalid payload format',
             ], 422);
         }
 
@@ -610,7 +608,7 @@ class SOController extends Controller
                 $soData->update_fulltime = $row['update_fulltime'];
 
                 // Hanya set 0 saat insert baru
-                if (!$soData->exists) {
+                if (! $soData->exists) {
                     $soData->is_finish = 0;
                     $soData->is_done = 0;
                 }
@@ -622,7 +620,7 @@ class SOController extends Controller
 
             $responseData = [
                 'message' => 'DO data processed successfully',
-                'total' => count($request->all())
+                'total' => count($request->all()),
             ];
 
             ApiLog::create([
@@ -633,7 +631,7 @@ class SOController extends Controller
                 'response_payload' => $responseData,
                 'status_code' => 200,
                 'status' => 'success',
-                'message' => 'DO data processed successfully'
+                'message' => 'DO data processed successfully',
             ]);
 
             return response()->json($responseData, 200);
@@ -643,7 +641,7 @@ class SOController extends Controller
 
             $errorResponse = [
                 'message' => 'Failed to process data',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
 
             ApiLog::create([
@@ -654,19 +652,18 @@ class SOController extends Controller
                 'response_payload' => $errorResponse,
                 'status_code' => 500,
                 'status' => 'failed',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ]);
 
             return response()->json($errorResponse, 500);
         }
     }
 
-
     public function storeSpkNew(Request $request)
     {
-        if (!is_array($request->all())) {
+        if (! is_array($request->all())) {
             return response()->json([
-                'message' => 'Invalid payload format'
+                'message' => 'Invalid payload format',
             ], 422);
         }
 
@@ -677,7 +674,7 @@ class SOController extends Controller
 
                 $validator = Validator::make($row, [
                     'spk_number' => 'required|string',
-                    'item_code'       => 'required|string',
+                    'item_code' => 'required|string',
                 ]);
 
                 if ($validator->fails()) {
@@ -687,7 +684,7 @@ class SOController extends Controller
                 SpkItemHistory::updateOrCreate(
                     [
                         'spk_number' => $row['spk_number'],
-                        'item_code'  => $row['item_code'],
+                        'item_code' => $row['item_code'],
                     ],
                     [
                         'updated_at' => now(),
@@ -699,7 +696,7 @@ class SOController extends Controller
 
             $responseData = [
                 'message' => 'SPK data inserted successfully',
-                'total'   => count($request->all())
+                'total' => count($request->all()),
             ];
 
             ApiLog::create([
@@ -710,7 +707,7 @@ class SOController extends Controller
                 'response_payload' => $responseData,
                 'status_code' => 200,
                 'status' => 'success',
-                'message' => 'SPK data inserted successfully'
+                'message' => 'SPK data inserted successfully',
             ]);
 
             return response()->json($responseData, 200);
@@ -720,7 +717,7 @@ class SOController extends Controller
 
             $errorResponse = [
                 'message' => 'Failed to insert SPK data',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
 
             ApiLog::create([
@@ -731,7 +728,7 @@ class SOController extends Controller
                 'response_payload' => $errorResponse,
                 'status_code' => 500,
                 'status' => 'failed',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ]);
 
             return response()->json($errorResponse, 500);
@@ -742,15 +739,15 @@ class SOController extends Controller
     {
         $selectedDate = $request->input('date', Carbon::today()->toDateString());
         $date = Carbon::parse($selectedDate);
-        
+
         // --- WEEKLY HIGHLIGHTS ---
-        $startOfWeek = Carbon::now()->startOfWeek(); 
+        $startOfWeek = Carbon::now()->startOfWeek();
         $endOfWeek = Carbon::now()->endOfWeek();
 
         $weeklyScans = ScannedData::whereBetween('created_at', [$startOfWeek, $endOfWeek])->get();
         $weeklyTotalScans = $weeklyScans->count();
         $weeklyActiveDocsCount = $weeklyScans->pluck('doc_num')->unique()->count();
-        
+
         // Hitung SO yang selesai minggu ini (status is_finish=1)
         $weeklyFinishedItems = SoData::where('is_finish', 1)
             ->whereBetween('update_date', [$startOfWeek, $endOfWeek])
@@ -772,21 +769,23 @@ class SOController extends Controller
         $soProgress = [];
         foreach ($activeDocNums as $docNum) {
             $items = SoData::where('doc_num', $docNum)->get();
-            if ($items->isEmpty()) continue;
+            if ($items->isEmpty()) {
+                continue;
+            }
 
             $totalItems = $items->count();
-            
+
             // Hitung total label yang seharusnya di-scan untuk seluruh SO ini
-            $totalLabelsRequired = $items->sum(function($item) {
-                return $item->packaging_quantity > 0 ? (int)ceil($item->quantity / $item->packaging_quantity) : 0;
+            $totalLabelsRequired = $items->sum(function ($item) {
+                return $item->packaging_quantity > 0 ? (int) ceil($item->quantity / $item->packaging_quantity) : 0;
             });
 
             // Hitung total label yang sudah benar-benar di-scan (akumulatif s/d sekarang)
             $totalLabelsScanned = ScannedData::where('doc_num', $docNum)->count();
 
             // Persentase progress
-            $progressPercent = $totalLabelsRequired > 0 
-                ? round(($totalLabelsScanned / $totalLabelsRequired) * 100, 1) 
+            $progressPercent = $totalLabelsRequired > 0
+                ? round(($totalLabelsScanned / $totalLabelsRequired) * 100, 1)
                 : 0;
 
             // Jumlah item yang statusnya sudah 'is_finish'
@@ -804,8 +803,8 @@ class SOController extends Controller
         }
 
         return view('store.sodashboard', compact(
-            'selectedDateScans', 
-            'soProgress', 
+            'selectedDateScans',
+            'soProgress',
             'selectedDate',
             'weeklyTotalScans',
             'weeklyActiveDocsCount',
@@ -813,4 +812,3 @@ class SOController extends Controller
         ));
     }
 }
-

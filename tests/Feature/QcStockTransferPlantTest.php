@@ -27,6 +27,7 @@ class QcStockTransferPlantTest extends TestCase
     private function getQualityUser()
     {
         $role = Role::firstOrCreate(['name' => 'QUALITY']);
+
         return User::firstOrCreate(
             ['email' => 'qc_test@daijo.co.id'],
             [

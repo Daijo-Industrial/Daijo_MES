@@ -2,16 +2,19 @@
 
 namespace App\Exports;
 
+use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use Carbon\Carbon;
 
 class DeliveryScheduleSheet2 implements FromCollection, WithHeadings, WithTitle
 {
     protected $selectedYear;
+
     protected $selectedMonth;
+
     protected $customerCode;
+
     protected $deliveries;
 
     public function __construct($selectedYear, $selectedMonth, $customerCode, $deliveries)
@@ -33,7 +36,7 @@ class DeliveryScheduleSheet2 implements FromCollection, WithHeadings, WithTitle
             $itemCode = $delivery->item_code;
 
             // Set up rows for each item_code
-            if (!isset($data[$itemCode])) {
+            if (! isset($data[$itemCode])) {
                 $data[$itemCode] = array_fill(1, $daysInMonth, 0); // Default to 0 for each day
             }
 
@@ -55,6 +58,7 @@ class DeliveryScheduleSheet2 implements FromCollection, WithHeadings, WithTitle
     {
         $days = range(1, Carbon::create($this->selectedYear, $this->selectedMonth)->daysInMonth);
         array_unshift($days, 'Item Code'); // Add 'Item Code' as the first column
+
         return $days;
     }
 

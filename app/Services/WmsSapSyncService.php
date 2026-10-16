@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\SpkItemHistory;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
-use App\Models\SpkItemHistory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -23,20 +23,24 @@ class WmsSapSyncService extends BaseSapService
             ->whereIn('sap_sync_status', [0, 2])
             ->update([
                 'sap_sync_status' => 3, // Status 3 = PROCESSING
-                'sap_error_msg'   => 'Syncing in progress...',
-                'updated_at'      => now()
+                'sap_error_msg' => 'Syncing in progress...',
+                'updated_at' => now(),
             ]);
 
-        if (!$locked) {
+        if (! $locked) {
             Log::warning("Pallet {$palletId} skipped: Already synced or processing by another thread.");
+
             return ['status' => false, 'message' => 'Already synced or processing'];
         }
 
         $pallet = WmsPalletForm::with('details')->find($palletId);
-        if (!$pallet) return ['status' => false, 'message' => 'Pallet not found'];
+        if (! $pallet) {
+            return ['status' => false, 'message' => 'Pallet not found'];
+        }
 
         if ($pallet->details->isEmpty()) {
             $pallet->update(['sap_sync_status' => 2, 'sap_error_msg' => 'No items']);
+
             return ['status' => false, 'message' => 'Pallet has no items to sync'];
         }
 
@@ -47,15 +51,15 @@ class WmsSapSyncService extends BaseSapService
 
         if ($freshItemsToSync->isEmpty()) {
             $hasPending = WmsPalletFormDetail::where('pallet_form_id', $palletId)->whereIn('sap_sync_status', [0, 3])->exists();
-            $hasError   = WmsPalletFormDetail::where('pallet_form_id', $palletId)->where('sap_sync_status', 2)->exists();
-            $allSynced  = !WmsPalletFormDetail::where('pallet_form_id', $palletId)->whereNotIn('sap_sync_status', [1, 4])->exists();
+            $hasError = WmsPalletFormDetail::where('pallet_form_id', $palletId)->where('sap_sync_status', 2)->exists();
+            $allSynced = ! WmsPalletFormDetail::where('pallet_form_id', $palletId)->whereNotIn('sap_sync_status', [1, 4])->exists();
 
             if ($allSynced) {
                 $pallet->sap_sync_status = 1;
                 $pallet->sap_error_msg = null;
             } elseif ($hasError) {
                 $pallet->sap_sync_status = 2;
-                $pallet->sap_error_msg = "Beberapa item gagal sinkron.";
+                $pallet->sap_error_msg = 'Beberapa item gagal sinkron.';
             } elseif ($hasPending) {
                 $pallet->sap_sync_status = 0;
             }
@@ -63,8 +67,8 @@ class WmsSapSyncService extends BaseSapService
             $pallet->save();
 
             $logStatus = $allSynced ? 'success' : ($hasError ? 'failed' : 'pending');
-            $logMsg    = $allSynced 
-                ? "Pallet {$palletId} is fully synced (All items verified)" 
+            $logMsg = $allSynced
+                ? "Pallet {$palletId} is fully synced (All items verified)"
                 : ($hasError ? "Pallet {$palletId} has failed items" : "Pallet {$palletId} sync pending");
 
             $this->saveApiLog(
@@ -79,6 +83,7 @@ class WmsSapSyncService extends BaseSapService
             );
 
             Log::info("Pallet {$palletId} skipped: All items are already synced or ignored. Updated header status to {$pallet->sap_sync_status}");
+
             return ['status' => $allSynced, 'message' => $allSynced ? 'Success' : 'Already synced or ignored'];
         }
 
@@ -93,40 +98,40 @@ class WmsSapSyncService extends BaseSapService
             $actualItemCode = $spkHistory ? $spkHistory->item_code : '';
 
             $lines[] = [
-                'itemCode'      => $actualItemCode,
-                'quantity'      => (float)$items->sum('qty'),
+                'itemCode' => $actualItemCode,
+                'quantity' => (float) $items->sum('qty'),
                 'fromWarehouse' => 'FFI',
-                'toWarehouse'   => 'FG', 
-                'u_NUMPR'       => (string)$spkNo,
+                'toWarehouse' => 'FG',
+                'u_NUMPR' => (string) $spkNo,
             ];
         }
 
         $payload = [
             'docDate' => $pallet->prod_date ? date('Y-m-d', strtotime($pallet->prod_date)) : now()->format('Y-m-d'),
             'remarks' => "Inventory Transfer created from {$pallet->pallet_id}",
-            'lines'   => $lines,
+            'lines' => $lines,
         ];
 
         try {
             Log::info("SAP Sync (Inventory Transfer) Payload for Pallet {$palletId}: " . json_encode($payload));
-            
+
             $response = $this->post($endpoint, $payload);
             $rawBody = $response->body();
             $json = $response->json();
             $statusCode = $response->status();
-            
+
             Log::info("SAP Sync (Inventory Transfer) Response for Pallet {$palletId} [HTTP {$statusCode}]: " . $rawBody);
 
             // 1. Success check: HTTP 2xx and not explicitly flagged as failure
             $hasExplicitFailure = (isset($json['status']) && ($json['status'] === false || $json['status'] === 'failed' || $json['status'] === 'error')) ||
                                   (isset($json['success']) && $json['success'] === false);
 
-            $success = $response->successful() && !$hasExplicitFailure;
+            $success = $response->successful() && ! $hasExplicitFailure;
 
             // 2. Comprehensive Idempotency & Duplicate Detection:
             // Extract error message from various SAP response schemas
             $errorMsg = $json['message'] ?? ($json['error']['message']['value'] ?? ($json['error']['message'] ?? ($rawBody ?: "SAP HTTP {$statusCode} error for Pallet {$palletId}")));
-            
+
             $duplicateKeywords = [
                 'already exist',
                 'already exists',
@@ -162,12 +167,12 @@ class WmsSapSyncService extends BaseSapService
                     ->whereNotIn('sap_sync_status', [1, 4])
                     ->update([
                         'sap_sync_status' => 1,
-                        'sap_error_msg'   => $isDuplicate ? "SAP: " . $errorMsg : null,
-                        'sap_sync_at'     => now(),
+                        'sap_error_msg' => $isDuplicate ? 'SAP: ' . $errorMsg : null,
+                        'sap_sync_at' => now(),
                     ]);
-                
+
                 $logMsg = $isDuplicate ? "Pallet {$palletId} marked as success (Duplicate/Already Exists in SAP)" : "Pallet {$palletId} synced successfully to SAP";
-                Log::info("[WMS-SAP-TRANSFER] Pallet {$palletId} | IDs: " . implode(',', $currentItemIds) . " | " . $logMsg);
+                Log::info("[WMS-SAP-TRANSFER] Pallet {$palletId} | IDs: " . implode(',', $currentItemIds) . ' | ' . $logMsg);
                 $this->saveApiLog('InventoryTransfer', 'POST', $endpoint, $payload, $json ?? ['body' => $rawBody], $statusCode, 'success', $logMsg);
             } else {
                 $displayError = "SAP API Error [{$statusCode}]: " . $errorMsg;
@@ -175,8 +180,8 @@ class WmsSapSyncService extends BaseSapService
                     ->whereNotIn('sap_sync_status', [1, 4])
                     ->update([
                         'sap_sync_status' => 2,
-                        'sap_error_msg'   => $displayError,
-                        'sap_sync_at'     => now(),
+                        'sap_error_msg' => $displayError,
+                        'sap_sync_at' => now(),
                     ]);
 
                 Log::warning("[WMS-SAP-TRANSFER] Pallet {$palletId} | IDs: " . implode(',', $currentItemIds) . " | FAILED [HTTP {$statusCode}]: " . $errorMsg);
@@ -187,8 +192,8 @@ class WmsSapSyncService extends BaseSapService
                 ->whereNotIn('sap_sync_status', [1, 4])
                 ->update([
                     'sap_sync_status' => 2,
-                    'sap_error_msg'   => 'Exception: ' . $e->getMessage(),
-                    'sap_sync_at'     => now(),
+                    'sap_error_msg' => 'Exception: ' . $e->getMessage(),
+                    'sap_sync_at' => now(),
                 ]);
             Log::error("[WMS-SAP-TRANSFER] Pallet {$palletId} | EXCEPTION: " . $e->getMessage());
             $this->saveApiLog('InventoryTransfer', 'POST', $endpoint, $payload, [], 500, 'failed', 'Exception: ' . $e->getMessage());
@@ -196,19 +201,19 @@ class WmsSapSyncService extends BaseSapService
 
         // 3. GROUND TRUTH CHECK
         $hasPending = WmsPalletFormDetail::where('pallet_form_id', $palletId)->whereIn('sap_sync_status', [0, 3])->exists();
-        $hasError   = WmsPalletFormDetail::where('pallet_form_id', $palletId)->where('sap_sync_status', 2)->exists();
-        $allSynced  = !WmsPalletFormDetail::where('pallet_form_id', $palletId)->whereNotIn('sap_sync_status', [1, 4])->exists();
+        $hasError = WmsPalletFormDetail::where('pallet_form_id', $palletId)->where('sap_sync_status', 2)->exists();
+        $allSynced = ! WmsPalletFormDetail::where('pallet_form_id', $palletId)->whereNotIn('sap_sync_status', [1, 4])->exists();
 
         if ($allSynced) {
             $pallet->sap_sync_status = 1; // All Success
             $pallet->sap_error_msg = null;
         } elseif ($hasError) {
             $pallet->sap_sync_status = 2; // Partial or Total Error
-            $pallet->sap_error_msg = "Beberapa item gagal sinkron. Silakan cek detail.";
+            $pallet->sap_error_msg = 'Beberapa item gagal sinkron. Silakan cek detail.';
         } elseif ($hasPending) {
             $pallet->sap_sync_status = 0; // Masih ada yang antri
         }
-        
+
         $duration = round(microtime(true) - $startTime, 2);
         $pallet->sap_sync_duration = $duration;
         $pallet->sap_sync_at = now();
@@ -229,17 +234,18 @@ class WmsSapSyncService extends BaseSapService
             $token = $this->getToken();
             if ($token) {
                 return [
-                    'status'  => true,
+                    'status' => true,
                     'message' => 'Koneksi ke SAP API Berhasil (Token terverifikasi).',
                 ];
             }
+
             return [
-                'status'  => false,
+                'status' => false,
                 'message' => 'Koneksi ke SAP API Gagal: Token tidak ditemukan.',
             ];
         } catch (\Exception $e) {
             return [
-                'status'  => false,
+                'status' => false,
                 'message' => 'Error Koneksi SAP API: ' . $e->getMessage(),
             ];
         }

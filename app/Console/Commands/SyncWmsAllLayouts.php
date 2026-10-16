@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 class SyncWmsAllLayouts extends Command
 {
     protected $signature = 'wms:sync-all-layouts';
+
     protected $description = 'Sync all physical layouts and rack coordinates for all warehouses (GUB, GUA, J06)';
 
     public function handle()

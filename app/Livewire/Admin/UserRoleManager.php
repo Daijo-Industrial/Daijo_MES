@@ -112,7 +112,7 @@ class UserRoleManager extends Component
         $user->is_active = ! $user->is_active;
         $user->save();
 
-        session()->flash('message', 'User status updated to '.($user->is_active ? 'Active' : 'Inactive').'.');
+        session()->flash('message', 'User status updated to ' . ($user->is_active ? 'Active' : 'Inactive') . '.');
     }
 
     public function changeRole($userId, $roleId)
@@ -135,7 +135,7 @@ class UserRoleManager extends Component
     public function changeBranch($userId, $branchId)
     {
         $user = User::withTrashed()->findOrFail($userId);
-        $user->branch_id = !empty($branchId) ? $branchId : null;
+        $user->branch_id = ! empty($branchId) ? $branchId : null;
         $user->save();
 
         session()->flash('message', 'User branch updated successfully.');
@@ -144,7 +144,7 @@ class UserRoleManager extends Component
     public function changeDepartment($userId, $departmentId)
     {
         $user = User::withTrashed()->findOrFail($userId);
-        $user->department_id = !empty($departmentId) ? $departmentId : null;
+        $user->department_id = ! empty($departmentId) ? $departmentId : null;
         $user->save();
 
         session()->flash('message', 'User department updated successfully.');
@@ -225,9 +225,9 @@ class UserRoleManager extends Component
 
         if (! empty($this->search)) {
             $query->where(function ($q) {
-                $q->where('name', 'like', '%'.$this->search.'%')
-                    ->orWhere('email', 'like', '%'.$this->search.'%')
-                    ->orWhere('username', 'like', '%'.$this->search.'%');
+                $q->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('email', 'like', '%' . $this->search . '%')
+                    ->orWhere('username', 'like', '%' . $this->search . '%');
             });
         }
 

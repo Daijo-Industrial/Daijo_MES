@@ -5,14 +5,12 @@ namespace Tests\Feature;
 use App\Livewire\MaterialWarehouse\MaterialDailyAudit;
 use App\Models\MasterListMaterial;
 use App\Models\MwhDailyAudit;
-use App\Models\MwhDailyAuditItem;
 use App\Models\MwhPallet;
 use App\Models\MwhPosition;
 use App\Models\MwhRack;
 use App\Models\MwhWarehouse;
 use App\Models\Role;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -22,11 +20,17 @@ class MaterialDailyAuditTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private MwhWarehouse $warehouse;
+
     private MwhRack $rack;
+
     private MwhPosition $pos1;
+
     private MwhPosition $pos2;
+
     private MwhPallet $pallet1;
+
     private MwhPallet $pallet2;
 
     protected function setUp(): void

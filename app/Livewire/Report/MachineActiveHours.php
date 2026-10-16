@@ -2,16 +2,16 @@
 
 namespace App\Livewire\Report;
 
-use Livewire\Component;
 use App\Models\HourlyRemark;
-use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class MachineActiveHours extends Component
 {
     public $startMonth;
+
     public $endMonth;
+
     public $reportData = [];
 
     public function mount()
@@ -43,6 +43,7 @@ class MachineActiveHours extends Component
             // Group by Date and Time Range
             $byDateAndHour = $items->groupBy(function ($item) {
                 $timeRange = Carbon::parse($item->start_time)->format('H:i') . '-' . Carbon::parse($item->end_time)->format('H:i');
+
                 return $item->schedule_date . '|' . $timeRange;
             });
 
@@ -60,7 +61,7 @@ class MachineActiveHours extends Component
 
             return [
                 'total' => $totalHours,
-                'days'  => $dailyBreakdown
+                'days' => $dailyBreakdown,
             ];
         });
 
@@ -70,19 +71,19 @@ class MachineActiveHours extends Component
     public function exportExcel()
     {
         $this->calculate();
-        
+
         $exportData = [];
         foreach ($this->reportData as $name => $data) {
             $exportData[] = [
                 'machine_name' => $name,
-                'hours'        => $data['total']
+                'hours' => $data['total'],
             ];
         }
 
         $filename = "Machine_Active_Hours_{$this->startMonth}_to_{$this->endMonth}.xlsx";
-        
+
         return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\MachineActiveHoursExport($exportData), 
+            new \App\Exports\MachineActiveHoursExport($exportData),
             $filename
         );
     }

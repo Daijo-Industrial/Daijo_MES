@@ -14,8 +14,8 @@ namespace App\Domain\Inventory\ValueObjects;
  */
 enum StockStatus: string
 {
-    case Healthy  = 'healthy';
-    case AtRisk   = 'at_risk';
+    case Healthy = 'healthy';
+    case AtRisk = 'at_risk';
     case Critical = 'critical';
 
     /**
@@ -27,12 +27,12 @@ enum StockStatus: string
     /**
      * Classify an item given its current stock and configured safety stock.
      *
-     * @param  int|null  $stock        Current on-hand quantity.
-     * @param  int|null  $safetyStock  Minimum desired quantity.
+     * @param int|null $stock Current on-hand quantity.
+     * @param int|null $safetyStock Minimum desired quantity.
      */
     public static function fromStock(?int $stock, ?int $safetyStock): self
     {
-        $stock       = $stock       ?? 0;
+        $stock = $stock ?? 0;
         $safetyStock = $safetyStock ?? 0;
 
         // When safety stock is not configured, treat any stock as healthy.
@@ -55,8 +55,8 @@ enum StockStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Healthy  => 'Healthy',
-            self::AtRisk   => 'At Risk',
+            self::Healthy => 'Healthy',
+            self::AtRisk => 'At Risk',
             self::Critical => 'Critical',
         };
     }
@@ -65,8 +65,8 @@ enum StockStatus: string
     public function badgeClasses(): string
     {
         return match ($this) {
-            self::Healthy  => 'bg-green-100 text-green-800',
-            self::AtRisk   => 'bg-yellow-100 text-yellow-800',
+            self::Healthy => 'bg-green-100 text-green-800',
+            self::AtRisk => 'bg-yellow-100 text-yellow-800',
             self::Critical => 'bg-red-100 text-red-800',
         };
     }

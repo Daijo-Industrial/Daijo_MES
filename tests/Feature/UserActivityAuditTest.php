@@ -26,8 +26,11 @@ class UserActivityAuditTest extends TestCase
     use RefreshDatabase;
 
     protected Role $superAdminRole;
+
     protected Role $operatorRole;
+
     protected User $superAdmin;
+
     protected User $operatorUser;
 
     protected function setUp(): void
@@ -38,21 +41,21 @@ class UserActivityAuditTest extends TestCase
         $this->operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
 
         $this->superAdmin = User::create([
-            'name'       => 'Super Admin',
-            'email'      => 'superadmin@daijo.com',
-            'username'   => 'superadmin',
-            'password'   => Hash::make('password123'),
-            'role_id'    => $this->superAdminRole->id,
-            'is_active'  => true,
+            'name' => 'Super Admin',
+            'email' => 'superadmin@daijo.com',
+            'username' => 'superadmin',
+            'password' => Hash::make('password123'),
+            'role_id' => $this->superAdminRole->id,
+            'is_active' => true,
         ]);
 
         $this->operatorUser = User::create([
-            'name'       => 'Operator Test',
-            'email'      => 'operator@daijo.com',
-            'username'   => 'operator',
-            'password'   => Hash::make('password123'),
-            'role_id'    => $this->operatorRole->id,
-            'is_active'  => true,
+            'name' => 'Operator Test',
+            'email' => 'operator@daijo.com',
+            'username' => 'operator',
+            'password' => Hash::make('password123'),
+            'role_id' => $this->operatorRole->id,
+            'is_active' => true,
         ]);
     }
 
@@ -94,7 +97,7 @@ class UserActivityAuditTest extends TestCase
     public function test_failed_login_creates_activity_log_without_exposing_password(): void
     {
         event(new Failed('web', null, [
-            'email'    => 'unknown@daijo.com',
+            'email' => 'unknown@daijo.com',
             'password' => 'SuperSecret123!',
         ]));
 
@@ -128,7 +131,7 @@ class UserActivityAuditTest extends TestCase
         $this->actingAs($this->operatorUser);
         Cache::flush();
 
-        $middleware = new UpdateUserActivity();
+        $middleware = new UpdateUserActivity;
         $request = Request::create('/dashboard', 'GET');
 
         // First request: should update last_activity_at and set cache
@@ -159,34 +162,34 @@ class UserActivityAuditTest extends TestCase
     {
         // 1. User active yesterday (not inactive)
         $activeUser = User::create([
-            'name'             => 'Active User',
-            'email'            => 'active@daijo.com',
-            'username'         => 'activeuser',
-            'password'         => Hash::make('password'),
-            'role_id'          => $this->operatorRole->id,
-            'is_active'        => true,
+            'name' => 'Active User',
+            'email' => 'active@daijo.com',
+            'username' => 'activeuser',
+            'password' => Hash::make('password'),
+            'role_id' => $this->operatorRole->id,
+            'is_active' => true,
             'last_activity_at' => now()->subDay(),
         ]);
 
         // 2. User inactive 35 days ago
         $inactive35d = User::create([
-            'name'             => 'Inactive 35d',
-            'email'            => 'inactive35@daijo.com',
-            'username'         => 'inactive35',
-            'password'         => Hash::make('password'),
-            'role_id'          => $this->operatorRole->id,
-            'is_active'        => true,
+            'name' => 'Inactive 35d',
+            'email' => 'inactive35@daijo.com',
+            'username' => 'inactive35',
+            'password' => Hash::make('password'),
+            'role_id' => $this->operatorRole->id,
+            'is_active' => true,
             'last_activity_at' => now()->subDays(35),
         ]);
 
         // 3. User with null last_activity_at (never logged in)
         $neverActive = User::create([
-            'name'             => 'Never Active',
-            'email'            => 'never@daijo.com',
-            'username'         => 'neveractive',
-            'password'         => Hash::make('password'),
-            'role_id'          => $this->operatorRole->id,
-            'is_active'        => true,
+            'name' => 'Never Active',
+            'email' => 'never@daijo.com',
+            'username' => 'neveractive',
+            'password' => Hash::make('password'),
+            'role_id' => $this->operatorRole->id,
+            'is_active' => true,
             'last_activity_at' => null,
         ]);
 
@@ -202,12 +205,12 @@ class UserActivityAuditTest extends TestCase
     public function test_superadmin_can_manually_deactivate_inactive_user(): void
     {
         $inactiveUser = User::create([
-            'name'             => 'Target Inactive',
-            'email'            => 'targetinactive@daijo.com',
-            'username'         => 'targetinactive',
-            'password'         => Hash::make('password'),
-            'role_id'          => $this->operatorRole->id,
-            'is_active'        => true,
+            'name' => 'Target Inactive',
+            'email' => 'targetinactive@daijo.com',
+            'username' => 'targetinactive',
+            'password' => Hash::make('password'),
+            'role_id' => $this->operatorRole->id,
+            'is_active' => true,
             'last_activity_at' => now()->subDays(40),
         ]);
 
@@ -236,22 +239,22 @@ class UserActivityAuditTest extends TestCase
     public function test_superadmin_can_bulk_deactivate_inactive_users(): void
     {
         $user1 = User::create([
-            'name'             => 'Bulk User 1',
-            'email'            => 'bulk1@daijo.com',
-            'username'         => 'bulk1',
-            'password'         => Hash::make('password'),
-            'role_id'          => $this->operatorRole->id,
-            'is_active'        => true,
+            'name' => 'Bulk User 1',
+            'email' => 'bulk1@daijo.com',
+            'username' => 'bulk1',
+            'password' => Hash::make('password'),
+            'role_id' => $this->operatorRole->id,
+            'is_active' => true,
             'last_activity_at' => now()->subDays(35),
         ]);
 
         $user2 = User::create([
-            'name'             => 'Bulk User 2',
-            'email'            => 'bulk2@daijo.com',
-            'username'         => 'bulk2',
-            'password'         => Hash::make('password'),
-            'role_id'          => $this->operatorRole->id,
-            'is_active'        => true,
+            'name' => 'Bulk User 2',
+            'email' => 'bulk2@daijo.com',
+            'username' => 'bulk2',
+            'password' => Hash::make('password'),
+            'role_id' => $this->operatorRole->id,
+            'is_active' => true,
             'last_activity_at' => now()->subDays(45),
         ]);
 
@@ -259,7 +262,7 @@ class UserActivityAuditTest extends TestCase
 
         Livewire::test(UserActivityDashboard::class)
             ->call('setTab', 'inactive')
-            ->set('selectedUsers', [(string)$user1->id, (string)$user2->id])
+            ->set('selectedUsers', [(string) $user1->id, (string) $user2->id])
             ->call('confirmBulkDeactivate')
             ->assertSet('showBulkDeactivateModal', true)
             ->call('bulkDeactivate')
@@ -274,12 +277,12 @@ class UserActivityAuditTest extends TestCase
         $this->actingAs($this->superAdmin);
 
         $user = User::create([
-            'name'       => 'Audit Model User',
-            'email'      => 'audituser@daijo.com',
-            'username'   => 'audituser',
-            'password'   => Hash::make('sensitive_password_123'),
-            'role_id'    => $this->operatorRole->id,
-            'is_active'  => true,
+            'name' => 'Audit Model User',
+            'email' => 'audituser@daijo.com',
+            'username' => 'audituser',
+            'password' => Hash::make('sensitive_password_123'),
+            'role_id' => $this->operatorRole->id,
+            'is_active' => true,
         ]);
 
         $userActivity = Activity::where('subject_id', $user->id)
@@ -292,15 +295,15 @@ class UserActivityAuditTest extends TestCase
 
         // Test SecondProcessReport audit logging
         $report = SecondProcessReport::create([
-            'date'            => '2026-10-16',
-            'unit_line'       => 'Line 1',
-            'shift'           => 1,
-            'process_prod'    => 'Painting',
-            'status'          => 'draft',
-            'part_number'     => 'PART-TEST-001',
-            'customer'        => 'N/A',
-            'jumlah_ok'       => 100,
-            'jumlah_ng'       => 5,
+            'date' => '2026-10-16',
+            'unit_line' => 'Line 1',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'status' => 'draft',
+            'part_number' => 'PART-TEST-001',
+            'customer' => 'N/A',
+            'jumlah_ok' => 100,
+            'jumlah_ng' => 5,
             'created_by_name' => 'Operator Test',
         ]);
 
@@ -314,10 +317,10 @@ class UserActivityAuditTest extends TestCase
 
     public function test_inbound_api_logger_middleware_records_activity_log(): void
     {
-        $middleware = new LogApiWebhooks();
+        $middleware = new LogApiWebhooks;
         $request = Request::create('/api/sap/do', 'POST', [
             'doc_num' => 'DO-2026-001',
-            'token'   => 'secret_api_token_123',
+            'token' => 'secret_api_token_123',
         ]);
 
         $middleware->handle($request, function () {

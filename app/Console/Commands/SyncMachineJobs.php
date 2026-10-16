@@ -52,12 +52,13 @@ class SyncMachineJobs extends Command
 
         if ($users->isEmpty()) {
             $this->info("✅ Semua user dengan role_id {$roleId} sudah memiliki machine_jobs. Tidak ada data yang perlu dibuat.");
+
             return Command::SUCCESS;
         }
 
         $this->warn("Ditemukan {$users->count()} user (role_id {$roleId}) yang belum memiliki machine_jobs:");
 
-        $tableData = $users->map(fn($u) => [
+        $tableData = $users->map(fn ($u) => [
             'ID' => $u->id,
             'Name' => $u->name,
             'Email' => $u->email,
@@ -68,6 +69,7 @@ class SyncMachineJobs extends Command
 
         if ($isDryRun) {
             $this->comment('Mode --dry-run aktif. Tidak ada perubahan yang disimpan ke database.');
+
             return Command::SUCCESS;
         }
 

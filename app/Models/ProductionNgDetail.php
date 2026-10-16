@@ -28,5 +28,4 @@ class ProductionNgDetail extends Model
     {
         return $this->belongsTo(ProductionNgType::class, 'ng_type_id');
     }
-
 }

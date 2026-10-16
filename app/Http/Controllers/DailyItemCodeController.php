@@ -4,14 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreDailyItemCodeRequest;
 use App\Models\DailyItemCode;
-use App\Models\MasterListItem;
 use App\Models\delivery\sapInventoryFg;
 use App\Models\delivery\sapLineProduction;
-use App\Models\SpkMaster;
+use App\Models\MasterListItem;
 use App\Models\ProductionScannedData;
+use App\Models\SpkMaster;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DailyItemCodeController extends Controller
 {
@@ -21,7 +21,7 @@ class DailyItemCodeController extends Controller
         $users = User::all();
         $dailyItemCodes = DailyItemCode::all();
         $itemCodes = sapInventoryFg::all()->pluck('item_code');
-        
+
         return view('daily-item-codes.index', compact('dailyItemCodes', 'users', 'itemCodes'));
     }
 
@@ -29,7 +29,7 @@ class DailyItemCodeController extends Controller
     public function create(Request $request)
     {
         // dd('test');
-        $machines = User::whereHas('role', function ($query){
+        $machines = User::whereHas('role', function ($query) {
             $query->where('name', 'OPERATOR');
         })
             ->with([
@@ -63,27 +63,28 @@ class DailyItemCodeController extends Controller
     {
         $search = $request->get('search', '');
         $limit = $request->get('limit', 100); // Limit hasil pencarian
-        
+
         $query = MasterListItem::select('item_code');
-        
+
         if ($search) {
             $query->where('item_code', 'LIKE', '%' . $search . '%');
         }
-        
+
         $items = $query->limit($limit)->get();
-        
+
         return response()->json([
-            'items' => $items->map(function($item) {
+            'items' => $items->map(function ($item) {
                 return [
                     'value' => $item->item_code,
-                    'text' => $item->item_code
+                    'text' => $item->item_code,
                 ];
-            })
+            }),
         ]);
     }
-    
-    //function untuk transform username mesin 
-    private function transformUsername($username) {
+
+    //function untuk transform username mesin
+    private function transformUsername($username)
+    {
         // Use regular expression to match the numeric part and the alphabetic part separately
         if (preg_match('/^0*(\d+)([A-Z])$/', $username, $matches)) {
             // $matches[1] will have the numeric part without leading zeros
@@ -107,7 +108,7 @@ class DailyItemCodeController extends Controller
         $datas = SpkMaster::where('item_code', $itemCode)->get();
         $master = MasterListItem::where('item_code', $itemCode)->first();
 
-        if (!$master) {
+        if (! $master) {
             return response()->json(['error' => 'Invalid item code'], 400);
         }
 
@@ -132,7 +133,7 @@ class DailyItemCodeController extends Controller
         ]);
     }
 
-    //store data yang diinput oleh ppic seperti item code dan quantity ke mesin yang diassign 
+    //store data yang diinput oleh ppic seperti item code dan quantity ke mesin yang diassign
     public function store(StoreDailyItemCodeRequest $request)
     {
 
@@ -189,7 +190,7 @@ class DailyItemCodeController extends Controller
                 $endDate = $validatedData['end_dates'][$shift][$key];
                 $startTime = $validatedData['start_times'][$shift][$key];
                 $endTime = $validatedData['end_times'][$shift][$key];
-                 $remark = $validatedData['remarks'][$shift][$key] ?? null;
+                $remark = $validatedData['remarks'][$shift][$key] ?? null;
                 // Fetch SPK and Master Item Data
                 $datas = SpkMaster::where('item_code', $itemCode)->get();
                 $master = MasterListItem::where('item_code', $itemCode)->first();
@@ -228,8 +229,6 @@ class DailyItemCodeController extends Controller
                     $adjustedQuantity = $quantity - $previousDailyItemCode->loss_package_quantity;
                 }
 
-
-
                 // Store the new DailyItemCode entry
                 DailyItemCode::create([
                     'schedule_date' => $validatedData['schedule_date'],
@@ -256,7 +255,7 @@ class DailyItemCodeController extends Controller
     public function daily(Request $request)
     {
         $selectedDate = $request->query('date'); // Get the date from the query parameter
-        $machines = User::whereHas('role', function ($query){
+        $machines = User::whereHas('role', function ($query) {
             $query->where('name', 'OPERATOR');
         })
             ->with([
@@ -267,11 +266,13 @@ class DailyItemCodeController extends Controller
                 },
             ])
             ->get();
+
         return view('daily-item-codes.daily', compact('selectedDate', 'machines'));
     }
 
-    //update data yang diinput oleh ppic seperti item code dan quantity ke mesin yang diassign (revisi per shift) 
-    public function update(Request $request, $id){
+    //update data yang diinput oleh ppic seperti item code dan quantity ke mesin yang diassign (revisi per shift)
+    public function update(Request $request, $id)
+    {
         // dd($request->all());
         $validatedData = $request->validate([
             'item_code' => 'required|string|max:255',
@@ -289,21 +290,20 @@ class DailyItemCodeController extends Controller
         return redirect()->back()->with('success', 'Daily Item Code updated successfully.');
     }
 
-    //hold | unused| function untuk push data scan operator ke table untuk dikirim ke SAP pakai API 
+    //hold | unused| function untuk push data scan operator ke table untuk dikirim ke SAP pakai API
     public function generateDataForSap()
     {
-   
+
         // $startOfDay = Carbon::create(2025, 3, 17)->startOfDay();
         // $endOfDay = Carbon::create(2025, 3, 17)->endOfDay();
         $startOfDay = Carbon::now()->startOfDay();
         $endOfDay = Carbon::now()->endOfDay();
 
-        
         // Query untuk mendapatkan data berdasarkan waktu yang dikonversi ke zona waktu Indonesia
         $rawData = ProductionScannedData::with(['parentDailyItemCode.user'])
-        ->whereBetween('created_at', [$startOfDay, $endOfDay])
-        ->where('processed', 0)
-        ->selectRaw("
+            ->whereBetween('created_at', [$startOfDay, $endOfDay])
+            ->where('processed', 0)
+            ->selectRaw("
             dic_id,
             spk_code,
             item_code,
@@ -311,9 +311,9 @@ class DailyItemCodeController extends Controller
             COUNT(*) as numbox,
             FLOOR(UNIX_TIMESTAMP(CONVERT_TZ(created_at, '+00:00', '+07:00')) / 900) AS interval_group
         ")
-        ->groupBy('interval_group', 'spk_code', 'item_code', 'dic_id')
-        ->orderBy('interval_group')
-        ->get();
+            ->groupBy('interval_group', 'spk_code', 'item_code', 'dic_id')
+            ->orderBy('interval_group')
+            ->get();
         // dd($rawData);
 
         // Menyusun data dengan interval waktu yang terbaca
@@ -342,19 +342,18 @@ class DailyItemCodeController extends Controller
         return view('send-api-table', compact('data'));
     }
 
-    // function untuk menghapus jadwal yang sudah dibuat oleh PPIC 
+    // function untuk menghapus jadwal yang sudah dibuat oleh PPIC
     public function destroy($id)
     {
         $item = DailyItemCode::find($id);
-    
-        if (!$item) {
+
+        if (! $item) {
             return redirect()->back()->with('error', 'Item not found.');
         }
-    
+
         $item->forceDelete();
-    
+
         // return redirect()->back()->with('success', 'Daily Item Code deleted successfully!');
         return response()->json(['message' => 'Daily Item Code deleted successfully!']);
     }
-    
 }

@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\MasterBom;
 use App\Livewire\MasterBomView;
-use Livewire\Livewire;
+use App\Models\MasterBom;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Tests\TestCase;
 
 class MasterBomTest extends TestCase
 {
@@ -34,31 +34,31 @@ class MasterBomTest extends TestCase
     {
         // Level 0 -> Level 1 (WIP) and Chemical
         MasterBom::create([
-            'parent_item'           => '1-31000266345',
-            'parent_description'    => 'PRINT HANDLE PANEL VP6915',
-            'component_item'        => '0-31000266065',
+            'parent_item' => '1-31000266345',
+            'parent_description' => 'PRINT HANDLE PANEL VP6915',
+            'component_item' => '0-31000266065',
             'component_description' => 'HANDLE-PANEL (WHITE)',
-            'quantity'              => 1.0,
-            'uom'                   => 'PCS',
+            'quantity' => 1.0,
+            'uom' => 'PCS',
         ]);
 
         MasterBom::create([
-            'parent_item'           => '1-31000266345',
-            'parent_description'    => 'PRINT HANDLE PANEL VP6915',
-            'component_item'        => '440-DPPU-1010ABS',
+            'parent_item' => '1-31000266345',
+            'parent_description' => 'PRINT HANDLE PANEL VP6915',
+            'component_item' => '440-DPPU-1010ABS',
             'component_description' => 'PAINT METALLIC SILVER ABS',
-            'quantity'              => 0.00097,
-            'uom'                   => 'KG',
+            'quantity' => 0.00097,
+            'uom' => 'KG',
         ]);
 
         // Level 1 (WIP) -> Level 2 (Raw Material)
         MasterBom::create([
-            'parent_item'           => '0-31000266065',
-            'parent_description'    => 'HANDLE-PANEL (WHITE)',
-            'component_item'        => '400-XR404-BK',
+            'parent_item' => '0-31000266065',
+            'parent_description' => 'HANDLE-PANEL (WHITE)',
+            'component_item' => '400-XR404-BK',
             'component_description' => 'ABS XR404 RESIN',
-            'quantity'              => 0.07945,
-            'uom'                   => 'KG',
+            'quantity' => 0.07945,
+            'uom' => 'KG',
         ]);
 
         // Explode for 500 PCS of FG
@@ -84,31 +84,31 @@ class MasterBomTest extends TestCase
 
         // Create FG Header
         $fg = \App\Models\MasterBomFgHeader::create([
-            'fg_item_code'    => 'D0B29100.',
-            'fg_description'  => 'TOP CASE SH29',
-            'project_code'    => 'SHAD TOP CASE',
-            'customer_name'   => 'SHAD',
-            'uom'             => 'PCS',
+            'fg_item_code' => 'D0B29100.',
+            'fg_description' => 'TOP CASE SH29',
+            'project_code' => 'SHAD TOP CASE',
+            'customer_name' => 'SHAD',
+            'uom' => 'PCS',
             'total_wip_count' => 2,
             'total_raw_count' => 5,
             'max_depth_level' => 3,
-            'has_packaging'   => true,
-            'is_active'       => true,
+            'has_packaging' => true,
+            'is_active' => true,
         ]);
 
         // Create Multilevel Component
         \App\Models\MasterBomComponent::create([
-            'fg_id'                 => $fg->id,
-            'parent_item'           => 'D0B29100.',
-            'component_item'        => '301-304127',
+            'fg_id' => $fg->id,
+            'parent_item' => 'D0B29100.',
+            'component_item' => '301-304127',
             'component_description' => 'SCREW 3.5X13 DIN 7982',
-            'depth_level'           => 1,
-            'item_type'             => 'RAW_MATERIAL',
-            'is_wip'                => false,
-            'unit_qty'              => 9.0,
-            'total_qty_per_fg'      => 9.0,
-            'uom'                   => 'PCS',
-            'lineage_path'          => 'D0B29100. > 301-304127',
+            'depth_level' => 1,
+            'item_type' => 'RAW_MATERIAL',
+            'is_wip' => false,
+            'unit_qty' => 9.0,
+            'total_qty_per_fg' => 9.0,
+            'uom' => 'PCS',
+            'lineage_path' => 'D0B29100. > 301-304127',
         ]);
 
         Livewire::test(MasterBomView::class)
@@ -126,4 +126,3 @@ class MasterBomTest extends TestCase
             ->assertSee('Hasil Where-Used untuk');
     }
 }
-

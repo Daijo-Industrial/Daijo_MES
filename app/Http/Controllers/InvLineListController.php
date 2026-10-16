@@ -2,28 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route; 
-
-use App\Models\InvLineList;
 use App\DataTables\InvLineListDataTable;
+use App\Models\InvLineList;
+use Illuminate\Http\Request;
 
 class InvLineListController extends Controller
 {
     public function index(InvLineListDataTable $dataTable)
-    {   
-        
-        $datas = InvLineList::get();
-        // dd($datas);
-        return $dataTable->render("sap.linelist", compact('datas'));
-    }
+    {
 
+        $datas = InvLineList::get();
+
+        // dd($datas);
+        return $dataTable->render('sap.linelist', compact('datas'));
+    }
 
     public function addline(Request $request)
     {
-         // Validate the incoming request data
-         $validatedData = $request->validate([
+        // Validate the incoming request data
+        $validatedData = $request->validate([
             'line_code' => 'required',
             'line_name' => 'required',
             'category' => 'required',
@@ -33,8 +30,8 @@ class InvLineListController extends Controller
         ]);
 
         // Create a new InvLineList instance with the validated data
-         // Create a new InvLineList instance with the validated data
-         $line = InvLineList::create([
+        // Create a new InvLineList instance with the validated data
+        $line = InvLineList::create([
             'line_code' => $validatedData['line_code'],
             'line_name' => $validatedData['line_name'],
             'category' => $validatedData['category'],
@@ -46,20 +43,20 @@ class InvLineListController extends Controller
         // Optionally, you can return a response indicating success
         return redirect()->route('invlinelist')->with('success', 'Line added successfully');
     }
-    
+
     public function editline(Request $request, $linecode)
     {
         $newlines = InvLineList::where('line_code', $linecode)->get();
 
-        foreach($newlines as $newline){
-        // dd($newline)
-        $newline->where('line_code', $request->line_code)->update([
-            'line_name' => $request->line_name,
-            'category' => $request->category,
-            'area' => $request->area,
-            'departement' => $request->departement,
-            'daily_minutes' => $request->daily_minutes,
-        ]);
+        foreach ($newlines as $newline) {
+            // dd($newline)
+            $newline->where('line_code', $request->line_code)->update([
+                'line_name' => $request->line_name,
+                'category' => $request->category,
+                'area' => $request->area,
+                'departement' => $request->departement,
+                'daily_minutes' => $request->daily_minutes,
+            ]);
         }
 
         return redirect()->route('invlinelist')->with(['success' => 'User updated successfully!']);
@@ -69,6 +66,7 @@ class InvLineListController extends Controller
     public function deleteline($linecode)
     {
         InvLineList::where('line_code', $linecode)->delete();
+
         return redirect()->back()->with(['success' => 'User deleted successfully!']);
 
     }

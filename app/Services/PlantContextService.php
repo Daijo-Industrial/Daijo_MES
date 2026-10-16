@@ -17,11 +17,11 @@ class PlantContextService
     {
         $user = $user ?? Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
-        return $user->hasRole('SUPER-ADMIN') 
+        return $user->hasRole('SUPER-ADMIN')
             || $user->hasRoleAccess('SUPER-ADMIN');
     }
 
@@ -34,7 +34,7 @@ class PlantContextService
     {
         $user = $user ?? Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
@@ -62,7 +62,7 @@ class PlantContextService
     {
         $user = $user ?? Auth::user();
 
-        if (!$user || !$this->canSwitchBranch($user)) {
+        if (! $user || ! $this->canSwitchBranch($user)) {
             return false;
         }
 
@@ -80,18 +80,20 @@ class PlantContextService
     {
         $user = $user ?? Auth::user();
 
-        if (!$user || !$this->canSwitchBranch($user)) {
+        if (! $user || ! $this->canSwitchBranch($user)) {
             return false;
         }
 
         if ($branchId === self::ALL_PLANTS || empty($branchId)) {
             session(['active_branch_id' => self::ALL_PLANTS]);
+
             return true;
         }
 
         $branch = Branch::where('id', $branchId)->where('is_active', true)->first();
         if ($branch) {
             session(['active_branch_id' => (int) $branch->id]);
+
             return true;
         }
 
@@ -105,7 +107,7 @@ class PlantContextService
     {
         $branchId = $this->getEffectiveBranchId($user);
 
-        if (!$branchId) {
+        if (! $branchId) {
             return null;
         }
 
@@ -119,7 +121,7 @@ class PlantContextService
     {
         $user = $user ?? Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return 'Guest';
         }
 

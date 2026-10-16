@@ -16,7 +16,9 @@ class MasterListItemViewTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected MasterCustomerDelivery $customerA;
+
     protected MasterCustomerDelivery $customerB;
 
     protected function setUp(): void

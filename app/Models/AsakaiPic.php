@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class AsakaiPic extends Model
 {
     protected $table = 'asakai_pic';
-    
+
     protected $fillable = [
         'asakai_id',
         'pic_name',
-        'order_no'
+        'order_no',
     ];
 
     public function asakai()

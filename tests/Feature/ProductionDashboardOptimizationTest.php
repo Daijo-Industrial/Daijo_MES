@@ -27,9 +27,9 @@ class ProductionDashboardOptimizationTest extends TestCase
 
         config(['database.default' => 'sqlite']);
         config(['database.connections.sqlite' => [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]]);
 
         $this->createTestSchema();
@@ -141,9 +141,9 @@ class ProductionDashboardOptimizationTest extends TestCase
     {
         $role = Role::create(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Admin User',
-            'email'    => 'admin@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -151,58 +151,58 @@ class ProductionDashboardOptimizationTest extends TestCase
         $machine2 = User::create(['name' => 'K0650A', 'email' => 'k650@example.com', 'password' => 'secret']);
 
         MasterListItem::create([
-            'item_code'         => 'PART-001',
-            'cycle_time'        => 30.0,
+            'item_code' => 'PART-001',
+            'cycle_time' => 30.0,
             'setup_time_minute' => 25.0,
         ]);
 
         // Machine 1 running on 2026-08-15 Shift 1
         $dic1 = DailyItemCode::create([
-            'user_id'    => $machine1->id,
-            'item_code'  => 'PART-001',
+            'user_id' => $machine1->id,
+            'item_code' => 'PART-001',
             'start_date' => '2026-08-15',
-            'shift'      => 1,
+            'shift' => 1,
         ]);
         $hr1 = HourlyRemark::create([
-            'dic_id'            => $dic1->id,
-            'start_time'        => '08:00',
-            'target'            => 120,
+            'dic_id' => $dic1->id,
+            'start_time' => '08:00',
+            'target' => 120,
             'actual_production' => 100,
-            'remark'            => 'Minor nozzle clog',
+            'remark' => 'Minor nozzle clog',
         ]);
         $ngType = ProductionNgType::create(['ng_type' => 'SCRATCH']);
         ProductionNgDetail::create([
             'hourly_remark_id' => $hr1->id,
-            'ng_type_id'       => $ngType->id,
-            'ng_quantity'      => 10,
+            'ng_type_id' => $ngType->id,
+            'ng_quantity' => 10,
         ]);
 
         // Machine 2 running on 2026-08-15 Shift 1 (NO adjust log on Machine 2)
         $dic2 = DailyItemCode::create([
-            'user_id'    => $machine2->id,
-            'item_code'  => 'PART-001',
+            'user_id' => $machine2->id,
+            'item_code' => 'PART-001',
             'start_date' => '2026-08-15',
-            'shift'      => 1,
+            'shift' => 1,
         ]);
         $hr2 = HourlyRemark::create([
-            'dic_id'            => $dic2->id,
-            'start_time'        => '09:00',
-            'target'            => 100,
+            'dic_id' => $dic2->id,
+            'start_time' => '09:00',
+            'target' => 100,
             'actual_production' => 90,
-            'remark'            => 'Normal run',
+            'remark' => 'Normal run',
         ]);
         ProductionNgDetail::create([
             'hourly_remark_id' => $hr2->id,
-            'ng_type_id'       => $ngType->id,
-            'ng_quantity'      => 15,
+            'ng_type_id' => $ngType->id,
+            'ng_quantity' => 15,
         ]);
 
         // Adjuster logged on Machine 1 only for Shift 1 (08:15 WIB = 01:15 UTC)
         $adjLog = AdjustMachineLog::create([
-            'user_id'    => $machine1->id,
-            'item_code'  => 'PART-001',
-            'pic'        => 'Budi (Adjuster)',
-            'end_time'   => '2026-08-15 01:35:00',
+            'user_id' => $machine1->id,
+            'item_code' => 'PART-001',
+            'pic' => 'Budi (Adjuster)',
+            'end_time' => '2026-08-15 01:35:00',
         ]);
         $adjLog->created_at = '2026-08-15 01:15:00';
         $adjLog->save();
@@ -239,13 +239,13 @@ class ProductionDashboardOptimizationTest extends TestCase
             ->assertSet('summary.total_actual', 190);
 
         // Test filtering by Machine 1 (K0450A) which had the adjust log
-        $machine1Data = $service->getAllDashboardData($start, $end, null, (string)$machine1->id, 'karawang');
+        $machine1Data = $service->getAllDashboardData($start, $end, null, (string) $machine1->id, 'karawang');
         $this->assertEquals(10, $machine1Data['summary']['total_ng']);
         $this->assertEquals(100, $machine1Data['summary']['total_actual']);
         $this->assertContains('Budi (Adjuster)', $machine1Data['shift_personnel_analysis']['shifts'][1]['adjusters']);
 
         // Test filtering by Machine 2 (K0650A) which had no direct adjust log
-        $machine2Data = $service->getAllDashboardData($start, $end, null, (string)$machine2->id, 'karawang');
+        $machine2Data = $service->getAllDashboardData($start, $end, null, (string) $machine2->id, 'karawang');
         $this->assertEquals(15, $machine2Data['summary']['total_ng']);
         $this->assertEquals(90, $machine2Data['summary']['total_actual']);
         $this->assertEmpty($machine2Data['shift_personnel_analysis']['shifts'][1]['adjusters']);
@@ -254,22 +254,22 @@ class ProductionDashboardOptimizationTest extends TestCase
     public function test_production_dashboard_daily_view()
     {
         $user = User::create([
-            'name'     => 'Admin User 2',
-            'email'    => 'admin2@example.com',
+            'name' => 'Admin User 2',
+            'email' => 'admin2@example.com',
             'password' => bcrypt('password'),
         ]);
 
         $machine = User::create(['name' => 'K0450A', 'email' => 'k450_2@example.com', 'password' => 'secret']);
         $dic = DailyItemCode::create([
-            'user_id'    => $machine->id,
-            'item_code'  => 'PART-DAILY',
+            'user_id' => $machine->id,
+            'item_code' => 'PART-DAILY',
             'start_date' => '2026-08-15',
-            'shift'      => 1,
+            'shift' => 1,
         ]);
         HourlyRemark::create([
-            'dic_id'            => $dic->id,
-            'start_time'        => '08:00',
-            'target'            => 100,
+            'dic_id' => $dic->id,
+            'start_time' => '08:00',
+            'target' => 100,
             'actual_production' => 95,
         ]);
 
@@ -288,67 +288,67 @@ class ProductionDashboardOptimizationTest extends TestCase
         $otherMachine = User::create(['name' => 'K0650A', 'email' => 'k0650a@example.com', 'password' => 'secret']);
 
         MasterListItem::create([
-            'item_code'         => 'K-847F1-I6RA0',
-            'cycle_time'        => 30.0,
+            'item_code' => 'K-847F1-I6RA0',
+            'cycle_time' => 30.0,
             'setup_time_minute' => 20.0,
         ]);
 
         // Adjust log 1: Rudi Siswanto at 10:32 WIB (03:32 UTC) -> Shift 1 (07:30 - 15:30)
         $adj1 = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'K-847F1-I6RA0',
-            'pic'       => 'Rudi Siswanto',
-            'end_time'  => '2026-09-03 03:42:00',
+            'pic' => 'Rudi Siswanto',
+            'end_time' => '2026-09-03 03:42:00',
         ]);
         $adj1->created_at = '2026-09-03 03:32:00';
         $adj1->save();
 
         // Adjust log 2: Haerul Anwar at 19:03 WIB (12:03 UTC) -> Shift 2 (15:30 - 23:30)
         $adj2 = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'K-84715-I7AA0NNB',
-            'pic'       => 'Haerul Anwar',
-            'end_time'  => '2026-09-03 12:10:00',
+            'pic' => 'Haerul Anwar',
+            'end_time' => '2026-09-03 12:10:00',
         ]);
         $adj2->created_at = '2026-09-03 12:03:00';
         $adj2->save();
 
         // Adjust log 3: Rodi Khayrudin at 23:40 WIB (16:40 UTC) -> Shift 3 (23:30 - 07:30)
         $adj3 = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'K-84780-I7000NNB-PE',
-            'pic'       => 'Rodi Khayrudin',
-            'end_time'  => '2026-09-03 16:52:00',
+            'pic' => 'Rodi Khayrudin',
+            'end_time' => '2026-09-03 16:52:00',
         ]);
         $adj3->created_at = '2026-09-03 16:40:00';
         $adj3->save();
 
         // Mould change log 1: Wahyu Eko Prawito at 16:35 WIB (09:35 UTC) -> Shift 2
         $mould1 = MouldChangeLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'K-847F1-I6RA0',
-            'pic'       => 'Wahyu Eko Prawito',
-            'end_time'  => '2026-09-03 09:50:00',
+            'pic' => 'Wahyu Eko Prawito',
+            'end_time' => '2026-09-03 09:50:00',
         ]);
         $mould1->created_at = '2026-09-03 09:35:00';
         $mould1->save();
 
         // Mould change log 2: Wahyu Eko Prawito at 23:15 WIB (16:15 UTC) -> Shift 2
         $mould2 = MouldChangeLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'K-84715-I7AA0NNB',
-            'pic'       => 'Wahyu Eko Prawito',
-            'end_time'  => '2026-09-03 16:30:00',
+            'pic' => 'Wahyu Eko Prawito',
+            'end_time' => '2026-09-03 16:30:00',
         ]);
         $mould2->created_at = '2026-09-03 16:15:00';
         $mould2->save();
 
         // An adjust log on ANOTHER machine: Other Person at 10:00 WIB (03:00 UTC) on K0650A
         $adjOther = AdjustMachineLog::create([
-            'user_id'   => $otherMachine->id,
+            'user_id' => $otherMachine->id,
             'item_code' => 'OTHER-ITEM',
-            'pic'       => 'Other Person',
-            'end_time'  => '2026-09-03 03:30:00',
+            'pic' => 'Other Person',
+            'end_time' => '2026-09-03 03:30:00',
         ]);
         $adjOther->created_at = '2026-09-03 03:00:00';
         $adjOther->save();
@@ -357,7 +357,7 @@ class ProductionDashboardOptimizationTest extends TestCase
         $selectedDate = Carbon::parse('2026-09-03');
 
         // Query filtered strictly to Machine K0450A
-        $data = $service->getAllDashboardData($selectedDate, $selectedDate, null, (string)$machine->id, 'karawang');
+        $data = $service->getAllDashboardData($selectedDate, $selectedDate, null, (string) $machine->id, 'karawang');
         $shifts = $data['shift_personnel_analysis']['shifts'];
 
         // Shift 1: Only Rudi Siswanto (10:32 WIB)
@@ -416,91 +416,91 @@ class ProductionDashboardOptimizationTest extends TestCase
 
         // Shift 1 DIC (10 NG)
         $dic1 = DailyItemCode::create([
-            'user_id'    => $machine->id,
-            'item_code'  => 'ITEM-HALF-DAY',
+            'user_id' => $machine->id,
+            'item_code' => 'ITEM-HALF-DAY',
             'start_date' => '2026-09-12',
-            'shift'      => 1,
-            'target'     => 1000,
+            'shift' => 1,
+            'target' => 1000,
         ]);
         $hr1 = HourlyRemark::create([
-            'dic_id'            => $dic1->id,
-            'target'            => 1000,
+            'dic_id' => $dic1->id,
+            'target' => 1000,
             'actual_production' => 900,
         ]);
         $ngType = ProductionNgType::firstOrCreate(['ng_type' => 'SCRATCH']);
         ProductionNgDetail::create([
             'hourly_remark_id' => $hr1->id,
-            'ng_type_id'       => $ngType->id,
-            'ng_quantity'      => 10,
+            'ng_type_id' => $ngType->id,
+            'ng_quantity' => 10,
         ]);
 
         // Shift 2 DIC (20 NG)
         $dic2 = DailyItemCode::create([
-            'user_id'    => $machine->id,
-            'item_code'  => 'ITEM-HALF-DAY',
+            'user_id' => $machine->id,
+            'item_code' => 'ITEM-HALF-DAY',
             'start_date' => '2026-09-12',
-            'shift'      => 2,
-            'target'     => 1000,
+            'shift' => 2,
+            'target' => 1000,
         ]);
         $hr2 = HourlyRemark::create([
-            'dic_id'            => $dic2->id,
-            'target'            => 1000,
+            'dic_id' => $dic2->id,
+            'target' => 1000,
             'actual_production' => 900,
         ]);
         ProductionNgDetail::create([
             'hourly_remark_id' => $hr2->id,
-            'ng_type_id'       => $ngType->id,
-            'ng_quantity'      => 20,
+            'ng_type_id' => $ngType->id,
+            'ng_quantity' => 20,
         ]);
 
         // Shift 3 DIC (30 NG)
         $dic3 = DailyItemCode::create([
-            'user_id'    => $machine->id,
-            'item_code'  => 'ITEM-HALF-DAY',
+            'user_id' => $machine->id,
+            'item_code' => 'ITEM-HALF-DAY',
             'start_date' => '2026-09-12',
-            'shift'      => 3,
-            'target'     => 1000,
+            'shift' => 3,
+            'target' => 1000,
         ]);
         $hr3 = HourlyRemark::create([
-            'dic_id'            => $dic3->id,
-            'target'            => 1000,
+            'dic_id' => $dic3->id,
+            'target' => 1000,
             'actual_production' => 900,
         ]);
         ProductionNgDetail::create([
             'hourly_remark_id' => $hr3->id,
-            'ng_type_id'       => $ngType->id,
-            'ng_quantity'      => 30,
+            'ng_type_id' => $ngType->id,
+            'ng_quantity' => 30,
         ]);
 
         // Adjust log at 10:00 WIB (03:00 UTC) -> S1: Adjuster Alpha
         $adj1 = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'ITEM-HALF-DAY',
-            'pic'       => 'Adjuster Alpha',
+            'pic' => 'Adjuster Alpha',
         ]);
         $adj1->created_at = '2026-09-12 03:00:00';
         $adj1->save();
 
         // Adjust log at 14:00 WIB (07:00 UTC) -> S2: Adjuster Beta
         $adj2 = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'ITEM-HALF-DAY',
-            'pic'       => 'Adjuster Beta',
+            'pic' => 'Adjuster Beta',
         ]);
         $adj2->created_at = '2026-09-12 07:00:00';
         $adj2->save();
 
         // Adjust log at 18:00 WIB (11:00 UTC) -> S3: Adjuster Gamma
         $adj3 = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'ITEM-HALF-DAY',
-            'pic'       => 'Adjuster Gamma',
+            'pic' => 'Adjuster Gamma',
         ]);
         $adj3->created_at = '2026-09-12 11:00:00';
         $adj3->save();
 
         // Test with $isHalfDay = true
-        $dataHalfDay = $service->getAllDashboardData($date, $date, null, (string)$machine->id, 'karawang', true);
+        $dataHalfDay = $service->getAllDashboardData($date, $date, null, (string) $machine->id, 'karawang', true);
 
         $shiftHalfDay = $dataHalfDay['shift_personnel_analysis']['shifts'];
         $this->assertEquals(['Adjuster Alpha'], $shiftHalfDay[1]['adjusters']);
@@ -521,14 +521,14 @@ class ProductionDashboardOptimizationTest extends TestCase
         // Add second adjuster to Shift 1 with 35 NG to test exact division & balance (35 / 2 = 18 + 17 = 35)
         $hr1->ngDetails()->first()->update(['ng_quantity' => 35]);
         $adj1b = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'ITEM-HALF-DAY',
-            'pic'       => 'Adjuster Alpha 2',
+            'pic' => 'Adjuster Alpha 2',
         ]);
         $adj1b->created_at = '2026-09-12 04:00:00';
         $adj1b->save();
 
-        $dataBalanced = $service->getAllDashboardData($date, $date, null, (string)$machine->id, 'karawang', true);
+        $dataBalanced = $service->getAllDashboardData($date, $date, null, (string) $machine->id, 'karawang', true);
         $balancedSummaries = collect($dataBalanced['adjuster_ng_trend']['adjuster_summaries'])->keyBy('name');
 
         $alpha1Ng = $balancedSummaries['Adjuster Alpha']['total_ng'];
@@ -540,7 +540,7 @@ class ProductionDashboardOptimizationTest extends TestCase
         Livewire::test(ProductionDashboard::class)
             ->set('viewType', 'daily')
             ->set('selectedDate', '2026-09-12') // Saturday
-            ->set('machineUserId', (string)$machine->id)
+            ->set('machineUserId', (string) $machine->id)
             ->assertSet('isHalfDay', false) // Not auto-enabled! Can be full day
             ->set('isHalfDay', true) // Manual toggle
             ->assertSet('isHalfDay', true)
@@ -553,17 +553,17 @@ class ProductionDashboardOptimizationTest extends TestCase
         $machine = User::create(['name' => 'K0450A', 'email' => 'k450_weekly@example.com', 'password' => 'secret']);
 
         MasterListItem::create([
-            'item_code'         => 'ITEM-WEEKLY',
-            'cycle_time'        => 30.0,
+            'item_code' => 'ITEM-WEEKLY',
+            'cycle_time' => 30.0,
             'setup_time_minute' => 20.0,
         ]);
 
         // 1. Wednesday 2026-09-09 (Weekday): Log at 14:00 WIB (07:00 UTC)
         // Weekday Shift 1 is 07:30 - 15:30 -> Always Shift 1!
         $adjWed = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'ITEM-WEEKLY',
-            'pic'       => 'Adjuster Weekday',
+            'pic' => 'Adjuster Weekday',
         ]);
         $adjWed->created_at = '2026-09-09 07:00:00';
         $adjWed->save();
@@ -572,9 +572,9 @@ class ProductionDashboardOptimizationTest extends TestCase
         // When Saturday half-day is enabled: Shift 1 is 07:30 - 12:30, Shift 2 is 12:30 - 17:30 -> Shift 2!
         // When Saturday is full day: Shift 1 is 07:30 - 15:30 -> Shift 1!
         $adjSat2 = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'ITEM-WEEKLY',
-            'pic'       => 'Adjuster Weekend S2',
+            'pic' => 'Adjuster Weekend S2',
         ]);
         $adjSat2->created_at = '2026-09-12 07:00:00';
         $adjSat2->save();
@@ -582,9 +582,9 @@ class ProductionDashboardOptimizationTest extends TestCase
         // 3. Saturday 2026-09-12 (Weekend): Log at 18:00 WIB (11:00 UTC)
         // When Saturday half-day is enabled: Shift 3 is 17:30 - 22:30 -> Shift 3!
         $adjSat3 = AdjustMachineLog::create([
-            'user_id'   => $machine->id,
+            'user_id' => $machine->id,
             'item_code' => 'ITEM-WEEKLY',
-            'pic'       => 'Adjuster Weekend S3',
+            'pic' => 'Adjuster Weekend S3',
         ]);
         $adjSat3->created_at = '2026-09-12 11:00:00';
         $adjSat3->save();
@@ -593,18 +593,18 @@ class ProductionDashboardOptimizationTest extends TestCase
         $endOfWeek = Carbon::parse('2026-09-13')->endOfDay();
 
         // Case A: Full-day Saturday (default: saturday => false)
-        $dataFullDay = $service->getAllDashboardData($startOfWeek, $endOfWeek, null, (string)$machine->id, 'karawang', [
+        $dataFullDay = $service->getAllDashboardData($startOfWeek, $endOfWeek, null, (string) $machine->id, 'karawang', [
             'saturday' => false,
-            'sunday'   => false,
+            'sunday' => false,
         ]);
         $shiftsFullDay = $dataFullDay['shift_personnel_analysis']['shifts'];
         // On normal schedule, 14:00 WIB falls in Shift 1 (07:30 - 15:30)
         $this->assertContains('Adjuster Weekend S2', $shiftsFullDay[1]['adjusters']);
 
         // Case B: Saturday marked half-day (saturday => true)
-        $dataHalfDay = $service->getAllDashboardData($startOfWeek, $endOfWeek, null, (string)$machine->id, 'karawang', [
+        $dataHalfDay = $service->getAllDashboardData($startOfWeek, $endOfWeek, null, (string) $machine->id, 'karawang', [
             'saturday' => true,
-            'sunday'   => false,
+            'sunday' => false,
         ]);
         $shiftsHalfDay = $dataHalfDay['shift_personnel_analysis']['shifts'];
         // On half-day schedule, 14:00 WIB falls in Shift 2 (12:30 - 17:30)
@@ -629,22 +629,22 @@ class ProductionDashboardOptimizationTest extends TestCase
     {
         $role = Role::create(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Admin NG',
-            'email'    => 'admin_ng@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Admin NG',
+            'email' => 'admin_ng@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
         $machine = User::create(['name' => 'K0450A', 'email' => 'k450_ng@example.com', 'password' => 'secret']);
 
         MasterListItem::create([
-            'item_code'  => 'PART-ALPHA',
-            'item_name'  => 'BEZEL FRONT PANEL',
+            'item_code' => 'PART-ALPHA',
+            'item_name' => 'BEZEL FRONT PANEL',
             'cycle_time' => 30,
         ]);
 
         MasterListItem::create([
-            'item_code'  => 'PART-BETA',
-            'item_name'  => 'COVER BOTTOM HOUSING',
+            'item_code' => 'PART-BETA',
+            'item_name' => 'COVER BOTTOM HOUSING',
             'cycle_time' => 45,
         ]);
 
@@ -652,55 +652,55 @@ class ProductionDashboardOptimizationTest extends TestCase
 
         // Daily item code 1: PART-ALPHA
         $dic1 = DailyItemCode::create([
-            'user_id'    => $machine->id,
-            'item_code'  => 'PART-ALPHA',
+            'user_id' => $machine->id,
+            'item_code' => 'PART-ALPHA',
             'start_date' => '2026-10-06',
-            'shift'      => 1,
+            'shift' => 1,
         ]);
 
         $hourly1 = HourlyRemark::create([
-            'dic_id'            => $dic1->id,
-            'start_time'        => '08:00',
-            'target'            => 100,
+            'dic_id' => $dic1->id,
+            'start_time' => '08:00',
+            'target' => 100,
             'actual_production' => 85,
-            'remark'            => 'Bahan kotor',
+            'remark' => 'Bahan kotor',
         ]);
 
         ProductionNgDetail::create([
             'hourly_remark_id' => $hourly1->id,
-            'ng_type_id'       => $ngTypeBlackdot->id,
-            'ng_quantity'      => 15,
-            'ng_remarks'       => 'Bintik hitam di sisi kanan',
+            'ng_type_id' => $ngTypeBlackdot->id,
+            'ng_quantity' => 15,
+            'ng_remarks' => 'Bintik hitam di sisi kanan',
         ]);
 
         // Daily item code 2: PART-BETA
         $dic2 = DailyItemCode::create([
-            'user_id'    => $machine->id,
-            'item_code'  => 'PART-BETA',
+            'user_id' => $machine->id,
+            'item_code' => 'PART-BETA',
             'start_date' => '2026-10-06',
-            'shift'      => 2,
+            'shift' => 2,
         ]);
 
         $hourly2 = HourlyRemark::create([
-            'dic_id'            => $dic2->id,
-            'start_time'        => '16:00',
-            'target'            => 120,
+            'dic_id' => $dic2->id,
+            'start_time' => '16:00',
+            'target' => 120,
             'actual_production' => 110,
-            'remark'            => 'Suhu nozzle tinggi',
+            'remark' => 'Suhu nozzle tinggi',
         ]);
 
         ProductionNgDetail::create([
             'hourly_remark_id' => $hourly2->id,
-            'ng_type_id'       => $ngTypeBlackdot->id,
-            'ng_quantity'      => 10,
-            'ng_remarks'       => null,
+            'ng_type_id' => $ngTypeBlackdot->id,
+            'ng_quantity' => 10,
+            'ng_remarks' => null,
         ]);
 
         $service = app(ProductionDashboardService::class);
         $startDate = Carbon::parse('2026-10-06')->startOfDay();
         $endDate = Carbon::parse('2026-10-06')->endOfDay();
 
-        $allData = $service->getAllDashboardData($startDate, $endDate, null, (string)$machine->id, 'karawang');
+        $allData = $service->getAllDashboardData($startDate, $endDate, null, (string) $machine->id, 'karawang');
         $ngBreakdown = $allData['ng_breakdown'];
 
         $this->assertNotEmpty($ngBreakdown);
@@ -751,9 +751,9 @@ class ProductionDashboardOptimizationTest extends TestCase
     {
         $role = Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Admin Tester',
-            'email'    => 'admin_repair@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Admin Tester',
+            'email' => 'admin_repair@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -761,12 +761,12 @@ class ProductionDashboardOptimizationTest extends TestCase
 
         // Repair log at 10:00 WIB (03:00 UTC) -> Shift 1, duration 45 minutes
         \App\Models\RepairMachineLog::create([
-            'user_id'       => $machine->id,
-            'item_code'     => 'PART-REP-01',
-            'pic'           => 'Mamat Maintenance',
-            'problem'       => 'Pemanas heater mati',
-            'remark'        => 'Ganti thermocouple',
-            'created_at'    => Carbon::parse('2026-10-06 03:00:00', 'UTC'),
+            'user_id' => $machine->id,
+            'item_code' => 'PART-REP-01',
+            'pic' => 'Mamat Maintenance',
+            'problem' => 'Pemanas heater mati',
+            'remark' => 'Ganti thermocouple',
+            'created_at' => Carbon::parse('2026-10-06 03:00:00', 'UTC'),
             'finish_repair' => Carbon::parse('2026-10-06 03:45:00', 'UTC'),
         ]);
 
@@ -798,4 +798,3 @@ class ProductionDashboardOptimizationTest extends TestCase
             ->assertSee('Pemanas heater mati');
     }
 }
-

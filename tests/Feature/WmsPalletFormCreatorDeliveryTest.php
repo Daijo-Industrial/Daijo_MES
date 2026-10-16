@@ -1,28 +1,31 @@
 <?php
+
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Models\Role;
 use App\Models\MasterListItem;
+use App\Models\Role;
 use App\Models\SpkItemHistory;
-use App\Models\WmsWarehouse;
-use App\Models\WmsRack;
-use App\Models\WmsPosition;
+use App\Models\User;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
+use App\Models\WmsPosition;
+use App\Models\WmsRack;
+use App\Models\WmsWarehouse;
 use App\Services\WmsSapSyncService;
 use App\Services\WmsService;
-use Livewire\Livewire;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class WmsPalletFormCreatorDeliveryTest extends TestCase
 {
     protected Role $adminRole;
+
     protected User $adminUser;
+
     protected WmsPosition $position;
 
     protected function setUp(): void
@@ -45,7 +48,7 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
 
         // 3. Setup role & user
         $this->adminRole = Role::create(['name' => 'ADMIN']);
-        
+
         $this->adminUser = new User([
             'name' => 'Admin User',
             'email' => 'admin@test.com',
@@ -389,12 +392,13 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
             if ($request->url() === 'http://192.168.6.149:9001/api/inventory_transfer/create') {
                 $payload = $request->data();
                 if (isset($payload['lines'][0]['quantity']) && $payload['lines'][0]['quantity'] == 50) {
-                    return $payload['lines'][0]['toWarehouse'] === 'FFI' 
+                    return $payload['lines'][0]['toWarehouse'] === 'FFI'
                         && $payload['lines'][0]['fromWarehouse'] === 'FFI'
                         && $payload['lines'][0]['u_NUMPR'] === 'SPK-1234'
                         && $payload['remarks'] === 'Inventory Transfer created from PLT-NORMAL-001';
                 }
             }
+
             return true;
         });
 
@@ -403,12 +407,13 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
             if ($request->url() === 'http://192.168.6.149:9001/api/inventory_transfer/create') {
                 $payload = $request->data();
                 if (isset($payload['lines'][0]['quantity']) && $payload['lines'][0]['quantity'] == 100) {
-                    return $payload['lines'][0]['toWarehouse'] === 'FG' 
+                    return $payload['lines'][0]['toWarehouse'] === 'FG'
                         && $payload['lines'][0]['fromWarehouse'] === 'FFI'
                         && $payload['lines'][0]['u_NUMPR'] === 'SPK-1234'
                         && $payload['remarks'] === 'Inventory Transfer created from PLT-DELIV-002';
                 }
             }
+
             return true;
         });
     }
@@ -470,7 +475,7 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
 
         // Test normal route
         $this->actingAs($this->adminUser);
-        
+
         Livewire::test(\App\Livewire\Wms\SapSyncMonitor::class)
             ->assertSee('PLT-NORMAL-001')
             ->assertSee('PLT-DELIV-002');
@@ -531,9 +536,11 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
         Http::assertSent(function ($request) {
             if ($request->url() === 'http://192.168.6.149:9001/api/inventory_transfer/create') {
                 $payload = $request->data();
-                dump("--- GENERATED SAP PAYLOAD ---", $payload);
+                dump('--- GENERATED SAP PAYLOAD ---', $payload);
+
                 return true;
             }
+
             return true;
         });
     }
@@ -620,16 +627,16 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
     public function test_store_can_assign_slot_to_unassigned_delivery_pallet(): void
     {
         $unassignedPallet = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-STORE-ASSIGN-01',
-            'position_id'      => null,
-            'part_no'          => 'PART-STORE',
-            'model_name'       => 'Model Store',
-            'prod_date'        => '2026-07-28',
-            'delivery_name'    => 'Driver Store',
-            'delivery_shift'   => '1',
-            'box_qty'          => 2,
+            'pallet_id' => 'PLT-STORE-ASSIGN-01',
+            'position_id' => null,
+            'part_no' => 'PART-STORE',
+            'model_name' => 'Model Store',
+            'prod_date' => '2026-07-28',
+            'delivery_name' => 'Driver Store',
+            'delivery_shift' => '1',
+            'box_qty' => 2,
             'total_pallet_qty' => 200,
-            'status'           => 'STORED',
+            'status' => 'STORED',
         ]);
 
         $this->actingAs($this->adminUser);
@@ -671,20 +678,20 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
         ]);
 
         $pallet = WmsPalletForm::create([
-            'pallet_id'       => 'PLT-FAIL-001',
-            'position_id'     => $this->position->id,
-            'part_no'         => 'PART-FAIL',
-            'model_name'      => 'Model Fail',
-            'prod_date'       => '2026-07-28',
+            'pallet_id' => 'PLT-FAIL-001',
+            'position_id' => $this->position->id,
+            'part_no' => 'PART-FAIL',
+            'model_name' => 'Model Fail',
+            'prod_date' => '2026-07-28',
             'sap_sync_status' => 0,
         ]);
 
         $detail = WmsPalletFormDetail::create([
-            'pallet_form_id'  => 'PLT-FAIL-001',
-            'part_no'         => 'PART-FAIL',
-            'spk_no'          => 'SPK-9999',
-            'qty'             => 50,
-            'warehouse'       => 'FG',
+            'pallet_form_id' => 'PLT-FAIL-001',
+            'part_no' => 'PART-FAIL',
+            'spk_no' => 'SPK-9999',
+            'qty' => 50,
+            'warehouse' => 'FG',
             'sap_sync_status' => 0,
         ]);
 
@@ -707,20 +714,20 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
         ]);
 
         $pallet = WmsPalletForm::create([
-            'pallet_id'       => 'PLT-DUP-001',
-            'position_id'     => $this->position->id,
-            'part_no'         => 'PART-DUP',
-            'model_name'      => 'Model Dup',
-            'prod_date'       => '2026-07-28',
+            'pallet_id' => 'PLT-DUP-001',
+            'position_id' => $this->position->id,
+            'part_no' => 'PART-DUP',
+            'model_name' => 'Model Dup',
+            'prod_date' => '2026-07-28',
             'sap_sync_status' => 0,
         ]);
 
         $detail = WmsPalletFormDetail::create([
-            'pallet_form_id'  => 'PLT-DUP-001',
-            'part_no'         => 'PART-DUP',
-            'spk_no'          => 'SPK-8888',
-            'qty'             => 100,
-            'warehouse'       => 'FG',
+            'pallet_form_id' => 'PLT-DUP-001',
+            'part_no' => 'PART-DUP',
+            'spk_no' => 'SPK-8888',
+            'qty' => 100,
+            'warehouse' => 'FG',
             'sap_sync_status' => 0,
         ]);
 
@@ -737,14 +744,14 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
     public function test_zero_qty_pallet_cannot_be_assigned_and_excluded_from_unassigned_filter(): void
     {
         $zeroQtyPallet = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-ZERO-QTY-01',
-            'position_id'      => null,
-            'part_no'          => 'PART-EMPTY',
-            'model_name'       => 'Model Empty',
-            'prod_date'        => '2026-07-29',
-            'delivery_name'    => 'Driver Zero',
-            'delivery_shift'   => '1',
-            'box_qty'          => 0,
+            'pallet_id' => 'PLT-ZERO-QTY-01',
+            'position_id' => null,
+            'part_no' => 'PART-EMPTY',
+            'model_name' => 'Model Empty',
+            'prod_date' => '2026-07-29',
+            'delivery_name' => 'Driver Zero',
+            'delivery_shift' => '1',
+            'box_qty' => 0,
             'total_pallet_qty' => 0,
         ]);
 
@@ -816,36 +823,36 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
     public function test_quick_scan_pallet_verifies_details_and_assigns_slot_to_rack(): void
     {
         $pallet = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-STORE-SCAN-01',
-            'position_id'      => null,
-            'part_no'          => '27120M650A',
-            'model_name'       => 'FRONT COVER TEST',
-            'prod_date'        => '2026-10-09',
-            'delivery_name'    => 'Driver Store Test',
-            'delivery_shift'   => '2',
-            'box_qty'          => 2,
+            'pallet_id' => 'PLT-STORE-SCAN-01',
+            'position_id' => null,
+            'part_no' => '27120M650A',
+            'model_name' => 'FRONT COVER TEST',
+            'prod_date' => '2026-10-09',
+            'delivery_name' => 'Driver Store Test',
+            'delivery_shift' => '2',
+            'box_qty' => 2,
             'total_pallet_qty' => 100,
-            'status'           => 'STORED',
+            'status' => 'STORED',
         ]);
 
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-STORE-SCAN-01',
-            'part_no'        => '27120M650A',
-            'model_name'     => 'FRONT COVER TEST',
-            'spk_no'         => 'SPK-SCAN-001',
-            'qty'            => 50,
-            'label'          => 'LBL-SCAN-01',
-            'warehouse'      => 'FG',
+            'part_no' => '27120M650A',
+            'model_name' => 'FRONT COVER TEST',
+            'spk_no' => 'SPK-SCAN-001',
+            'qty' => 50,
+            'label' => 'LBL-SCAN-01',
+            'warehouse' => 'FG',
         ]);
 
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-STORE-SCAN-01',
-            'part_no'        => '27120M650A',
-            'model_name'     => 'FRONT COVER TEST',
-            'spk_no'         => 'SPK-SCAN-002',
-            'qty'            => 50,
-            'label'          => 'LBL-SCAN-02',
-            'warehouse'      => 'FG',
+            'part_no' => '27120M650A',
+            'model_name' => 'FRONT COVER TEST',
+            'spk_no' => 'SPK-SCAN-002',
+            'qty' => 50,
+            'label' => 'LBL-SCAN-02',
+            'warehouse' => 'FG',
         ]);
 
         $this->actingAs($this->adminUser);
@@ -906,14 +913,14 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
         ]);
 
         $pallet = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-MANUAL-01',
-            'part_no'          => 'PART-XYZ',
-            'model_name'       => 'Test Part Model',
-            'prod_date'        => '2026-10-15',
+            'pallet_id' => 'PLT-MANUAL-01',
+            'part_no' => 'PART-XYZ',
+            'model_name' => 'Test Part Model',
+            'prod_date' => '2026-10-15',
             'total_pallet_qty' => 100,
-            'box_qty'          => 5,
-            'status'           => 'STORED',
-            'position_id'      => null,
+            'box_qty' => 5,
+            'status' => 'STORED',
+            'position_id' => null,
         ]);
 
         $comp = Livewire::test(\App\Livewire\Wms\PalletFormIndex::class)
@@ -938,4 +945,3 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
         $this->assertEquals($pos2->id, $pallet->position_id);
     }
 }
-

@@ -2,11 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\SpWorkOrder;
 use App\Models\SpProductionSession;
+use App\Models\SpWorkOrder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
 class SpProductionSessionTest extends TestCase
@@ -14,7 +13,9 @@ class SpProductionSessionTest extends TestCase
     use RefreshDatabase;
 
     protected $user;
+
     protected $workOrder;
+
     protected $session;
 
     protected function setUp(): void
@@ -22,7 +23,7 @@ class SpProductionSessionTest extends TestCase
         parent::setUp();
 
         $this->user = User::factory()->create();
-        
+
         $this->workOrder = SpWorkOrder::create([
             'wo_number' => 'WO-TEST-001',
             'part_number' => 'PN-12345',
@@ -86,7 +87,7 @@ class SpProductionSessionTest extends TestCase
             ]);
 
         $response->assertRedirect();
-        
+
         $this->assertDatabaseHas('sp_production_sessions', [
             'work_order_id' => $newWorkOrder->id,
             'operator_id' => $this->user->id,
@@ -110,7 +111,7 @@ class SpProductionSessionTest extends TestCase
         $this->assertDatabaseHas('sp_production_entries', [
             'session_id' => $this->session->id,
             'good_qty' => 100,
-            'remarks' => null
+            'remarks' => null,
         ]);
 
         $this->session->refresh();
@@ -123,16 +124,16 @@ class SpProductionSessionTest extends TestCase
         $response = $this->actingAs($this->user)
             ->postJson(route('app.sp-sessions.add-reject', $this->session->id), [
                 'defect_type' => 'Scratch',
-                'quantity' => 10
+                'quantity' => 10,
             ]);
 
         $response->assertOk();
-        
+
         $this->assertDatabaseHas('sp_reject_entries', [
             'session_id' => $this->session->id,
             'defect_type' => 'Scratch',
             'quantity' => 10,
-            'cause' => null
+            'cause' => null,
         ]);
     }
 
@@ -142,15 +143,15 @@ class SpProductionSessionTest extends TestCase
             ->postJson(route('app.sp-sessions.add-downtime', $this->session->id), [
                 'reason' => 'Machine Breakdown',
                 'start_time' => '10:00',
-                'resume_time' => '10:30'
+                'resume_time' => '10:30',
             ]);
 
         $response->assertOk();
-        
+
         $this->assertDatabaseHas('sp_downtime_entries', [
             'session_id' => $this->session->id,
             'reason' => 'Machine Breakdown',
-            'duration_minutes' => 30
+            'duration_minutes' => 30,
         ]);
 
         $entry = \App\Models\SpDowntimeEntry::where('session_id', $this->session->id)->first();
@@ -166,15 +167,15 @@ class SpProductionSessionTest extends TestCase
 
         $response = $this->actingAs($this->user)
             ->postJson(route('app.sp-sessions.add-input', $this->session->id), [
-                'quantity' => 500
+                'quantity' => 500,
             ]);
 
         $response->assertOk();
-        
+
         $this->assertDatabaseHas('sp_input_entries', [
             'session_id' => $this->session->id,
             'quantity' => 500,
-            'pallet_number' => null
+            'pallet_number' => null,
         ]);
 
         $this->session->refresh();
@@ -187,7 +188,7 @@ class SpProductionSessionTest extends TestCase
             ->postJson(route('app.sp-sessions.add-input', $this->session->id), [
                 'quantity' => 200,
                 'source' => 'reworkable',
-                'pallet_number' => 'BOX-REWORK-01'
+                'pallet_number' => 'BOX-REWORK-01',
             ]);
 
         $response->assertOk();
@@ -197,7 +198,7 @@ class SpProductionSessionTest extends TestCase
             'session_id' => $this->session->id,
             'quantity' => 200,
             'source' => 'reworkable',
-            'pallet_number' => 'BOX-REWORK-01'
+            'pallet_number' => 'BOX-REWORK-01',
         ]);
 
         // Verify auto-pending rework entry was created
@@ -218,7 +219,7 @@ class SpProductionSessionTest extends TestCase
             ->postJson(route('app.sp-sessions.add-input', $this->session->id), [
                 'quantity' => 150,
                 'source' => 'reworkable',
-                'pallet_number' => 'BOX-DEL-01'
+                'pallet_number' => 'BOX-DEL-01',
             ]);
 
         $response->assertOk();
@@ -248,7 +249,7 @@ class SpProductionSessionTest extends TestCase
             ->postJson(route('app.sp-sessions.add-input', $this->session->id), [
                 'quantity' => 80,
                 'source' => 'reworkable',
-                'pallet_number' => 'BOX-DEL-02'
+                'pallet_number' => 'BOX-DEL-02',
             ]);
 
         $response->assertOk();
@@ -303,7 +304,7 @@ class SpProductionSessionTest extends TestCase
     {
         $response = $this->actingAs($this->user)
             ->post(route('app.sp-sessions.finish', $this->session->id), [
-                'remarks' => 'Session finished'
+                'remarks' => 'Session finished',
             ]);
 
         $response->assertRedirect(route('app.sp-sessions.closeout', $this->session->id));
@@ -311,17 +312,17 @@ class SpProductionSessionTest extends TestCase
         $closeoutResponse = $this->actingAs($this->user)
             ->post(route('app.sp-sessions.submit-closeout', $this->session->id), [
                 'output_destination' => 'fg',
-                'remarks' => 'Session finished'
+                'remarks' => 'Session finished',
             ]);
 
         $closeoutResponse->assertRedirect();
-        
+
         $this->assertDatabaseHas('sp_production_sessions', [
             'id' => $this->session->id,
             'status' => 'completed',
-            'remarks' => 'Session finished'
+            'remarks' => 'Session finished',
         ]);
-        
+
         $this->session->refresh();
         $this->assertNotNull($this->session->finished_at);
     }
@@ -457,7 +458,7 @@ class SpProductionSessionTest extends TestCase
                 'raw_reject' => 10,
                 'internal_rework_in' => 6,
                 'rework_in' => 6,
-            ]
+            ],
         ]);
 
         $this->assertDatabaseHas('sp_rework_entries', [
@@ -486,7 +487,7 @@ class SpProductionSessionTest extends TestCase
 
         $failResponse->assertStatus(422);
         $failResponse->assertJsonFragment([
-            'error' => 'Cannot issue more than available defect stock (10 Pcs available out of 10 Pcs total logged defects).'
+            'error' => 'Cannot issue more than available defect stock (10 Pcs available out of 10 Pcs total logged defects).',
         ]);
 
         // Issue all 10 defects
@@ -503,7 +504,7 @@ class SpProductionSessionTest extends TestCase
 
         $failResponse2->assertStatus(422);
         $failResponse2->assertJsonFragment([
-            'error' => 'Cannot issue more than available defect stock (0 Pcs available out of 10 Pcs total logged defects).'
+            'error' => 'Cannot issue more than available defect stock (0 Pcs available out of 10 Pcs total logged defects).',
         ]);
     }
 
@@ -540,7 +541,7 @@ class SpProductionSessionTest extends TestCase
 
         $delIssueResponse->assertStatus(422);
         $delIssueResponse->assertJsonFragment([
-            'error' => 'Cannot delete rework entry: parts have already been processed or recovered on the rework bench.'
+            'error' => 'Cannot delete rework entry: parts have already been processed or recovered on the rework bench.',
         ]);
 
         // Delete outcome entry first
@@ -734,5 +735,3 @@ class SpProductionSessionTest extends TestCase
         $this->assertNull($report->next_production_schedule);
     }
 }
-
-

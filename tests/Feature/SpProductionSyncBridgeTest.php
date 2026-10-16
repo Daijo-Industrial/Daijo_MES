@@ -2,10 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\SecondProcessReport;
 use App\Models\SecondProcessNgRecord;
-use App\Models\SecondProcessNgHourlyDetail;
-use App\Models\SecondProcessTrouble;
+use App\Models\SecondProcessReport;
 use App\Models\SpProductionSession;
 use App\Models\SpWorkOrder;
 use App\Models\User;

@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\MasterBom;
-use App\Models\MasterBomFgHeader;
 use App\Models\MasterBomComponent;
+use App\Models\MasterBomFgHeader;
 use App\Services\MasterBomSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class MasterBomSyncServiceTest extends TestCase
 {
@@ -17,66 +17,66 @@ class MasterBomSyncServiceTest extends TestCase
     {
         // 1. Buat Anomali SAP: 'SHAD TOP CASE' yang berisikan produk-produk FG
         MasterBom::create([
-            'parent_item'           => 'SHAD TOP CASE',
-            'parent_description'    => 'PLASTIC PART SHAD TOP CASE',
-            'component_item'        => 'D0B29100.',
+            'parent_item' => 'SHAD TOP CASE',
+            'parent_description' => 'PLASTIC PART SHAD TOP CASE',
+            'component_item' => 'D0B29100.',
             'component_description' => 'TOP CASE SH29',
-            'quantity'              => 1.0,
-            'uom'                   => 'UNIT',
+            'quantity' => 1.0,
+            'uom' => 'UNIT',
         ]);
 
         MasterBom::create([
-            'parent_item'           => 'SHAD TOP CASE',
-            'parent_description'    => 'PLASTIC PART SHAD TOP CASE',
-            'component_item'        => 'D0B46200KO',
+            'parent_item' => 'SHAD TOP CASE',
+            'parent_description' => 'PLASTIC PART SHAD TOP CASE',
+            'component_item' => 'D0B46200KO',
             'component_description' => 'TOP CASE SH46 KOREA',
-            'quantity'              => 1.0,
-            'uom'                   => 'UNIT',
+            'quantity' => 1.0,
+            'uom' => 'UNIT',
         ]);
 
         // 2. Buat Resep Real FG: D0B29100.
         // Komponen Kemasan (Packaging)
         MasterBom::create([
-            'parent_item'           => 'D0B29100.',
-            'parent_description'    => 'TOP CASE SH29',
-            'component_item'        => '600-501146',
+            'parent_item' => 'D0B29100.',
+            'parent_description' => 'TOP CASE SH29',
+            'component_item' => '600-501146',
             'component_description' => 'BOX TOP CASE SH29 (390X390X330MM)',
-            'quantity'              => 1.0,
-            'uom'                   => 'PCS',
+            'quantity' => 1.0,
+            'uom' => 'PCS',
         ]);
 
         // Komponen Level 1 (WIP Base)
         MasterBom::create([
-            'parent_item'           => 'D0B29100.',
-            'parent_description'    => 'TOP CASE SH29',
-            'component_item'        => '401-D1B29BT-A',
+            'parent_item' => 'D0B29100.',
+            'parent_description' => 'TOP CASE SH29',
+            'component_item' => '401-D1B29BT-A',
             'component_description' => 'BASE SH29',
-            'quantity'              => 1.0,
-            'uom'                   => 'PCS',
+            'quantity' => 1.0,
+            'uom' => 'PCS',
         ]);
 
         // 3. Buat Resep Level 2 (WIP Lock Lever di dalam WIP Base)
         MasterBom::create([
-            'parent_item'           => '401-D1B29BT-A',
-            'parent_description'    => 'BASE SH29',
-            'component_item'        => '401-D1B29MA',
+            'parent_item' => '401-D1B29BT-A',
+            'parent_description' => 'BASE SH29',
+            'component_item' => '401-D1B29MA',
             'component_description' => 'LOCK LEVER SET SH29',
-            'quantity'              => 2.0,
-            'uom'                   => 'PCS',
+            'quantity' => 2.0,
+            'uom' => 'PCS',
         ]);
 
         // 4. Buat Resep Level 3 (Bahan Baku Resin ABS di dalam Lock Lever)
         MasterBom::create([
-            'parent_item'           => '401-D1B29MA',
-            'parent_description'    => 'LOCK LEVER SET SH29',
-            'component_item'        => '400-XR404-BK',
+            'parent_item' => '401-D1B29MA',
+            'parent_description' => 'LOCK LEVER SET SH29',
+            'component_item' => '400-XR404-BK',
             'component_description' => 'ABS XR404 RESIN',
-            'quantity'              => 0.05,
-            'uom'                   => 'KG',
+            'quantity' => 0.05,
+            'uom' => 'KG',
         ]);
 
         // Jalankan Sync Service
-        $service = new MasterBomSyncService();
+        $service = new MasterBomSyncService;
         $result = $service->syncAll();
 
         $this->assertEquals('success', $result['status']);

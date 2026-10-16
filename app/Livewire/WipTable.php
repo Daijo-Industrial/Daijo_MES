@@ -11,9 +11,13 @@ class WipTable extends Component
     use WithPagination;
 
     public $search = '';
+
     public $statusFilter = '';
+
     public $sortField = 'id';
+
     public $sortDirection = 'asc';
+
     public $perPage = 10;
 
     protected $queryString = ['search', 'statusFilter', 'sortField', 'sortDirection', 'perPage'];

@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Asakai;
-use Carbon\Carbon;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\DailyReportExport;
-use App\Exports\WeeklyReportExport;
 use App\Exports\MonthlyReportExport;
+use App\Exports\WeeklyReportExport;
+use App\Models\Asakai;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
@@ -26,9 +26,9 @@ class ReportController extends Controller
 
         $asakais = Asakai::with(['pics', 'rcas', 'correctiveActions'])
             ->daily($date)
-            ->when($customer, fn($q) => $q->where('customer', 'like', "%{$customer}%"))
-            ->when($part, fn($q) => $q->where('part_no', 'like', "%{$part}%"))
-            ->when($shift, fn($q) => $q->where('lot_shift', $shift))
+            ->when($customer, fn ($q) => $q->where('customer', 'like', "%{$customer}%"))
+            ->when($part, fn ($q) => $q->where('part_no', 'like', "%{$part}%"))
+            ->when($shift, fn ($q) => $q->where('lot_shift', $shift))
             ->get();
 
         $filename = 'Daily_Report_' . Carbon::parse($date)->format('d-M-Y');
@@ -40,7 +40,7 @@ class ReportController extends Controller
                 'total' => $asakais->count(),
                 'totalQuantity' => $asakais->sum('quantity'),
             ]);
-            
+
             return $pdf->download($filename . '.pdf');
         }
 
@@ -61,8 +61,8 @@ class ReportController extends Controller
 
         $asakais = Asakai::with(['pics', 'rcas', 'correctiveActions'])
             ->weekly(Carbon::parse($weekStart), Carbon::parse($weekEnd))
-            ->when($customer, fn($q) => $q->where('customer', 'like', "%{$customer}%"))
-            ->when($shift, fn($q) => $q->where('lot_shift', $shift))
+            ->when($customer, fn ($q) => $q->where('customer', 'like', "%{$customer}%"))
+            ->when($shift, fn ($q) => $q->where('lot_shift', $shift))
             ->get();
 
         $filename = 'Weekly_Report_' . Carbon::parse($weekStart)->format('d-M') . '_to_' . Carbon::parse($weekEnd)->format('d-M-Y');
@@ -74,7 +74,7 @@ class ReportController extends Controller
                 'weekEnd' => Carbon::parse($weekEnd)->format('d M Y'),
                 'total' => $asakais->count(),
             ]);
-            
+
             return $pdf->download($filename . '.pdf');
         }
 
@@ -93,14 +93,14 @@ class ReportController extends Controller
 
         $asakais = Asakai::with(['pics', 'rcas', 'correctiveActions'])
             ->monthly($year, $month)
-            ->when($customer, fn($q) => $q->where('customer', 'like', "%{$customer}%"))
+            ->when($customer, fn ($q) => $q->where('customer', 'like', "%{$customer}%"))
             ->get();
 
         $monthName = Carbon::createFromDate($year, $month, 1)->format('F_Y');
         $filename = 'Monthly_Report_' . $monthName;
 
         if ($type === 'pdf') {
-            $byCustomer = $asakais->groupBy('customer')->map(fn($group) => [
+            $byCustomer = $asakais->groupBy('customer')->map(fn ($group) => [
                 'count' => $group->count(),
                 'quantity' => $group->sum('quantity'),
             ]);
@@ -112,7 +112,7 @@ class ReportController extends Controller
                 'totalQuantity' => $asakais->sum('quantity'),
                 'byCustomer' => $byCustomer,
             ]);
-            
+
             return $pdf->download($filename . '.pdf');
         }
 

@@ -13,17 +13,23 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class BusinessPartnerManager extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public string $search = '';
+
     public string $groupFilter = 'ALL';
+
     public string $industryFilter = 'ALL';
 
     // File Upload
     public $file;
+
     public bool $showUploadModal = false;
+
     public bool $isProcessing = false;
+
     public string $uploadMessage = '';
+
     public string $uploadError = '';
 
     protected $paginationTheme = 'tailwind';
@@ -60,7 +66,7 @@ class BusinessPartnerManager extends Component
             MasterBusinessPartner::INDUSTRY_GENERAL,
         ];
         $norm = strtoupper(trim($industry));
-        if (!in_array($norm, $allowed, true)) {
+        if (! in_array($norm, $allowed, true)) {
             return;
         }
 
@@ -103,6 +109,7 @@ class BusinessPartnerManager extends Component
             if (empty($rows) || count($rows) < 2) {
                 $this->uploadError = 'File kosong atau tidak memiliki baris data.';
                 $this->isProcessing = false;
+
                 return;
             }
 
@@ -178,7 +185,7 @@ class BusinessPartnerManager extends Component
                     ? trim((string) $row[$colIndex['sales_employee']])
                     : '';
                 $salesEmployee = null;
-                if ($rawSales !== '' && !str_contains(strtolower($rawSales), 'no sales employee')) {
+                if ($rawSales !== '' && ! str_contains(strtolower($rawSales), 'no sales employee')) {
                     $salesEmployee = $rawSales;
                 }
 
@@ -189,7 +196,7 @@ class BusinessPartnerManager extends Component
                     MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
                     MasterBusinessPartner::INDUSTRY_ELECTRONICS,
                     MasterBusinessPartner::INDUSTRY_MOULDING,
-                    MasterBusinessPartner::INDUSTRY_GENERAL
+                    MasterBusinessPartner::INDUSTRY_GENERAL,
                 ], true)) {
                     $industry = $rawIndustry;
                 } else {
@@ -222,6 +229,7 @@ class BusinessPartnerManager extends Component
             if (empty($bpBatch)) {
                 $this->uploadError = 'Tidak ada baris data valid yang ditemukan dalam file.';
                 $this->isProcessing = false;
+
                 return;
             }
 
@@ -236,7 +244,7 @@ class BusinessPartnerManager extends Component
                 }
 
                 // Synchronize CUSTOMER records to master_customer_delivery
-                if (!empty($customerBatch)) {
+                if (! empty($customerBatch)) {
                     foreach (array_chunk($customerBatch, 500) as $chunk) {
                         MasterCustomerDelivery::upsert(
                             $chunk,

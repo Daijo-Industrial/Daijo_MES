@@ -3,36 +3,44 @@
 namespace App\Livewire\MaterialWarehouse;
 
 use App\Models\MasterListMaterial;
-use App\Models\MwhPallet;
 use App\Models\MwhOutgoing;
+use App\Models\MwhPallet;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Illuminate\Support\Carbon;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 class MaterialStockCard extends Component
 {
     use WithPagination;
 
     public string $selectedItemCode = '';
+
     public string $search = '';
+
     public string $filterType = 'ALL'; // ALL, INCOMING, OUTGOING
+
     public $whse_id = 'ALL';
+
     public array $warehouses = [];
+
     public ?string $fromDate = null;
+
     public ?string $toDate = null;
+
     public string $sortDirection = 'DESC'; // DESC (Terbaru -> Terlama), ASC (Terlama -> Terbaru)
+
     public int $perPage = 25;
 
     protected $queryString = [
         'selectedItemCode' => ['except' => ''],
-        'whse_id'          => ['except' => 'ALL'],
-        'search'           => ['except' => ''],
-        'filterType'       => ['except' => 'ALL'],
-        'fromDate'         => ['except' => ''],
-        'toDate'           => ['except' => ''],
-        'sortDirection'    => ['except' => 'DESC'],
-        'perPage'          => ['except' => 25],
+        'whse_id' => ['except' => 'ALL'],
+        'search' => ['except' => ''],
+        'filterType' => ['except' => 'ALL'],
+        'fromDate' => ['except' => ''],
+        'toDate' => ['except' => ''],
+        'sortDirection' => ['except' => 'DESC'],
+        'perPage' => ['except' => 25],
     ];
 
     public function getActiveMaterialsProperty()
@@ -41,12 +49,12 @@ class MaterialStockCard extends Component
         $outQ = MwhOutgoing::whereNotNull('item_code');
 
         if ($this->whse_id && $this->whse_id !== 'ALL') {
-            $whseId = (int)$this->whse_id;
-            $palQ->where(function($q) use ($whseId) {
-                $q->where('whse_id', $whseId)->orWhereHas('position.rack', fn($rq) => $rq->where('whse_id', $whseId));
+            $whseId = (int) $this->whse_id;
+            $palQ->where(function ($q) use ($whseId) {
+                $q->where('whse_id', $whseId)->orWhereHas('position.rack', fn ($rq) => $rq->where('whse_id', $whseId));
             });
-            $outQ->where(function($q) use ($whseId) {
-                $q->where('whse_id', $whseId)->orWhereHas('position.rack', fn($rq) => $rq->where('whse_id', $whseId));
+            $outQ->where(function ($q) use ($whseId) {
+                $q->where('whse_id', $whseId)->orWhereHas('position.rack', fn ($rq) => $rq->where('whse_id', $whseId));
             });
         }
 
@@ -63,10 +71,11 @@ class MaterialStockCard extends Component
 
         return $activeCodes->map(function ($code) use ($masterMaterials) {
             $master = $masterMaterials->get($code);
+
             return (object) [
-                'item_code'          => $code,
-                'item_description'   => $master?->item_description ?: 'Material ' . $code,
-                'purchasing_uom'     => $master?->purchasing_uom ?: 'KG',
+                'item_code' => $code,
+                'item_description' => $master?->item_description ?: 'Material ' . $code,
+                'purchasing_uom' => $master?->purchasing_uom ?: 'KG',
                 'preferred_supplier' => $master?->preferred_supplier ?: '-',
             ];
         })->sortBy('item_code')->values();
@@ -137,15 +146,15 @@ class MaterialStockCard extends Component
     public function render()
     {
         $materials = $this->activeMaterials;
-        $selectedMaterial = !empty($this->selectedItemCode) ? $materials->firstWhere('item_code', $this->selectedItemCode) : null;
+        $selectedMaterial = ! empty($this->selectedItemCode) ? $materials->firstWhere('item_code', $this->selectedItemCode) : null;
         $masterMaterials = MasterListMaterial::all()->keyBy('item_code');
 
         $summary = [
-            'current_stock'  => 0.0,
+            'current_stock' => 0.0,
             'total_incoming' => 0.0,
             'total_outgoing' => 0.0,
             'active_pallets' => 0,
-            'uom'            => $selectedMaterial?->purchasing_uom ?? 'KG',
+            'uom' => $selectedMaterial?->purchasing_uom ?? 'KG',
         ];
 
         // 1. Calculate live summary stats
@@ -153,20 +162,20 @@ class MaterialStockCard extends Component
         $outgoingQuery = MwhOutgoing::query();
 
         if ($this->whse_id && $this->whse_id !== 'ALL') {
-            $whseId = (int)$this->whse_id;
-            $palletQuery->where(function($q) use ($whseId) {
+            $whseId = (int) $this->whse_id;
+            $palletQuery->where(function ($q) use ($whseId) {
                 $q->where('whse_id', $whseId)
-                  ->orWhereHas('position.rack', fn($rq) => $rq->where('whse_id', $whseId))
-                  ->orWhereHas('initialPosition.rack', fn($rq) => $rq->where('whse_id', $whseId));
+                    ->orWhereHas('position.rack', fn ($rq) => $rq->where('whse_id', $whseId))
+                    ->orWhereHas('initialPosition.rack', fn ($rq) => $rq->where('whse_id', $whseId));
             });
-            $outgoingQuery->where(function($q) use ($whseId) {
+            $outgoingQuery->where(function ($q) use ($whseId) {
                 $q->where('whse_id', $whseId)
-                  ->orWhereHas('position.rack', fn($rq) => $rq->where('whse_id', $whseId))
-                  ->orWhereHas('pallet.initialPosition.rack', fn($rq) => $rq->where('whse_id', $whseId));
+                    ->orWhereHas('position.rack', fn ($rq) => $rq->where('whse_id', $whseId))
+                    ->orWhereHas('pallet.initialPosition.rack', fn ($rq) => $rq->where('whse_id', $whseId));
             });
         }
 
-        if (!empty($this->selectedItemCode)) {
+        if (! empty($this->selectedItemCode)) {
             $palletQuery->where('item_code', $this->selectedItemCode);
             $outgoingQuery->where('item_code', $this->selectedItemCode);
         }
@@ -179,14 +188,14 @@ class MaterialStockCard extends Component
         // 2. Fetch Incoming movements (MwhPallet records)
         $incomingsQuery = MwhPallet::with(['incomingHeader', 'position.rack', 'initialPosition.rack', 'outgoings.position.rack']);
         if ($this->whse_id && $this->whse_id !== 'ALL') {
-            $whseId = (int)$this->whse_id;
-            $incomingsQuery->where(function($q) use ($whseId) {
+            $whseId = (int) $this->whse_id;
+            $incomingsQuery->where(function ($q) use ($whseId) {
                 $q->where('whse_id', $whseId)
-                  ->orWhereHas('position.rack', fn($rq) => $rq->where('whse_id', $whseId))
-                  ->orWhereHas('initialPosition.rack', fn($rq) => $rq->where('whse_id', $whseId));
+                    ->orWhereHas('position.rack', fn ($rq) => $rq->where('whse_id', $whseId))
+                    ->orWhereHas('initialPosition.rack', fn ($rq) => $rq->where('whse_id', $whseId));
             });
         }
-        if (!empty($this->selectedItemCode)) {
+        if (! empty($this->selectedItemCode)) {
             $incomingsQuery->where('item_code', $this->selectedItemCode);
         }
 
@@ -207,40 +216,40 @@ class MaterialStockCard extends Component
                 ? ('Retur Sisa Produksi (' . number_format($pallet->current_qty, 2) . ' KG sisa)')
                 : ('Penerimaan Supplier (' . number_format($pallet->current_qty, 2) . ' KG sisa)');
 
-            $slotCode = $pallet->position?->position_code 
-                ?: ($pallet->initialPosition?->position_code 
+            $slotCode = $pallet->position?->position_code
+                ?: ($pallet->initialPosition?->position_code
                 ?: ($pallet->outgoings->first()?->position?->position_code ?: 'UNASSIGNED'));
 
             return [
-                'id'                 => 'IN-' . $pallet->id,
-                'timestamp'          => $dt,
-                'date_formatted'     => $dt ? $dt->timezone('Asia/Jakarta')->format('d M Y H:i') : '-',
-                'type'               => $isRetur ? 'RETURN_PRODUCTION' : 'INCOMING',
-                'item_code'          => $pallet->item_code,
-                'item_description'   => $master?->item_description ?: 'Material ' . $pallet->item_code,
-                'ref_code'           => $pallet->pallet_id,
-                'sub_ref'            => $subRef,
+                'id' => 'IN-' . $pallet->id,
+                'timestamp' => $dt,
+                'date_formatted' => $dt ? $dt->timezone('Asia/Jakarta')->format('d M Y H:i') : '-',
+                'type' => $isRetur ? 'RETURN_PRODUCTION' : 'INCOMING',
+                'item_code' => $pallet->item_code,
+                'item_description' => $master?->item_description ?: 'Material ' . $pallet->item_code,
+                'ref_code' => $pallet->pallet_id,
+                'sub_ref' => $subRef,
                 'source_destination' => $sourceDest,
-                'slot_code'          => $slotCode,
-                'qty_in'             => (float) $pallet->initial_qty,
-                'qty_out'            => 0.0,
-                'pallet_qty'         => (float) $pallet->current_qty,
-                'uom'                => $pallet->uom ?? 'KG',
-                'remarks'            => $pallet->incomingHeader?->remarks ?: $remarks,
+                'slot_code' => $slotCode,
+                'qty_in' => (float) $pallet->initial_qty,
+                'qty_out' => 0.0,
+                'pallet_qty' => (float) $pallet->current_qty,
+                'uom' => $pallet->uom ?? 'KG',
+                'remarks' => $pallet->incomingHeader?->remarks ?: $remarks,
             ];
         });
 
         // 3. Fetch Outgoing movements (MwhOutgoing records)
         $outgoingsQuery = MwhOutgoing::with(['pallet.position.rack', 'pallet.initialPosition.rack', 'position.rack']);
         if ($this->whse_id && $this->whse_id !== 'ALL') {
-            $whseId = (int)$this->whse_id;
-            $outgoingsQuery->where(function($q) use ($whseId) {
+            $whseId = (int) $this->whse_id;
+            $outgoingsQuery->where(function ($q) use ($whseId) {
                 $q->where('whse_id', $whseId)
-                  ->orWhereHas('position.rack', fn($rq) => $rq->where('whse_id', $whseId))
-                  ->orWhereHas('pallet.initialPosition.rack', fn($rq) => $rq->where('whse_id', $whseId));
+                    ->orWhereHas('position.rack', fn ($rq) => $rq->where('whse_id', $whseId))
+                    ->orWhereHas('pallet.initialPosition.rack', fn ($rq) => $rq->where('whse_id', $whseId));
             });
         }
-        if (!empty($this->selectedItemCode)) {
+        if (! empty($this->selectedItemCode)) {
             $outgoingsQuery->where('item_code', $this->selectedItemCode);
         }
 
@@ -248,26 +257,26 @@ class MaterialStockCard extends Component
             $dt = $out->created_at ?: ($out->outgoing_date ? Carbon::parse($out->outgoing_date) : null);
             $master = $masterMaterials->get($out->item_code);
 
-            $slotCode = $out->position?->position_code 
-                ?: ($out->pallet?->position?->position_code 
+            $slotCode = $out->position?->position_code
+                ?: ($out->pallet?->position?->position_code
                 ?: ($out->pallet?->initialPosition?->position_code ?: '-'));
 
             return [
-                'id'                 => 'OUT-' . $out->id,
-                'timestamp'          => $dt,
-                'date_formatted'     => $dt ? $dt->timezone('Asia/Jakarta')->format('d M Y H:i') : '-',
-                'type'               => 'OUTGOING',
-                'item_code'          => $out->item_code,
-                'item_description'   => $master?->item_description ?: 'Material ' . $out->item_code,
-                'ref_code'           => $out->outgoing_code,
-                'sub_ref'            => 'Pallet: ' . $out->pallet_id,
+                'id' => 'OUT-' . $out->id,
+                'timestamp' => $dt,
+                'date_formatted' => $dt ? $dt->timezone('Asia/Jakarta')->format('d M Y H:i') : '-',
+                'type' => 'OUTGOING',
+                'item_code' => $out->item_code,
+                'item_description' => $master?->item_description ?: 'Material ' . $out->item_code,
+                'ref_code' => $out->outgoing_code,
+                'sub_ref' => 'Pallet: ' . $out->pallet_id,
                 'source_destination' => 'Tujuan: ' . ($out->issued_to ?: 'Produksi'),
-                'slot_code'          => $slotCode,
-                'qty_in'             => 0.0,
-                'qty_out'            => (float) $out->qty_taken,
-                'pallet_qty'         => (float) ($out->pallet?->current_qty ?? 0.0),
-                'uom'                => $out->uom ?? 'KG',
-                'remarks'            => $out->remarks ?: 'Pengambilan Material',
+                'slot_code' => $slotCode,
+                'qty_in' => 0.0,
+                'qty_out' => (float) $out->qty_taken,
+                'pallet_qty' => (float) ($out->pallet?->current_qty ?? 0.0),
+                'uom' => $out->uom ?? 'KG',
+                'remarks' => $out->remarks ?: 'Pengambilan Material',
             ];
         });
 
@@ -276,7 +285,7 @@ class MaterialStockCard extends Component
 
         // 5. Calculate Running Balance & Opening Balance per Material
         $fromCarbon = $this->fromDate ? Carbon::parse($this->fromDate)->startOfDay() : null;
-        $toCarbon   = $this->toDate ? Carbon::parse($this->toDate)->endOfDay() : null;
+        $toCarbon = $this->toDate ? Carbon::parse($this->toDate)->endOfDay() : null;
 
         $openingBalances = [];
         $runningBalances = [];
@@ -285,9 +294,9 @@ class MaterialStockCard extends Component
 
         foreach ($allMovements as $item) {
             $itemCode = $item['item_code'];
-            $itemDt   = $item['timestamp'];
+            $itemDt = $item['timestamp'];
 
-            if (!isset($runningBalances[$itemCode])) {
+            if (! isset($runningBalances[$itemCode])) {
                 $runningBalances[$itemCode] = 0.0;
                 $openingBalances[$itemCode] = 0.0;
             }
@@ -319,26 +328,26 @@ class MaterialStockCard extends Component
         }
 
         // 6. Prepend Opening Balance row ONLY IF a single specific material is selected
-        if (!empty($this->selectedItemCode) && $fromCarbon) {
+        if (! empty($this->selectedItemCode) && $fromCarbon) {
             $openingBalance = $openingBalances[$this->selectedItemCode] ?? 0.0;
             if ($openingBalance > 0) {
                 $openingRow = [
-                    'id'                 => 'OPENING-BAL',
-                    'timestamp'          => $fromCarbon,
-                    'date_formatted'     => $fromCarbon->timezone('Asia/Jakarta')->format('d M Y') . ' (00:00)',
-                    'type'               => 'OPENING_BALANCE',
-                    'item_code'          => $this->selectedItemCode,
-                    'item_description'   => $selectedMaterial?->item_description ?: '',
-                    'ref_code'           => 'SALDO AWAL',
-                    'sub_ref'            => 'Akumulasi Sebelum ' . $fromCarbon->format('d M Y'),
+                    'id' => 'OPENING-BAL',
+                    'timestamp' => $fromCarbon,
+                    'date_formatted' => $fromCarbon->timezone('Asia/Jakarta')->format('d M Y') . ' (00:00)',
+                    'type' => 'OPENING_BALANCE',
+                    'item_code' => $this->selectedItemCode,
+                    'item_description' => $selectedMaterial?->item_description ?: '',
+                    'ref_code' => 'SALDO AWAL',
+                    'sub_ref' => 'Akumulasi Sebelum ' . $fromCarbon->format('d M Y'),
                     'source_destination' => 'Stok Bawaan Periode Sebelumnya',
-                    'slot_code'          => '-',
-                    'qty_in'             => $openingBalance,
-                    'qty_out'            => 0.0,
-                    'pallet_qty'         => $openingBalance,
-                    'uom'                => $selectedMaterial?->purchasing_uom ?? 'KG',
-                    'balance'            => $openingBalance,
-                    'remarks'            => 'Saldo awal per tanggal ' . $fromCarbon->format('d M Y'),
+                    'slot_code' => '-',
+                    'qty_in' => $openingBalance,
+                    'qty_out' => 0.0,
+                    'pallet_qty' => $openingBalance,
+                    'uom' => $selectedMaterial?->purchasing_uom ?? 'KG',
+                    'balance' => $openingBalance,
+                    'remarks' => 'Saldo awal per tanggal ' . $fromCarbon->format('d M Y'),
                 ];
 
                 $calculatedMovements->prepend($openingRow);
@@ -349,12 +358,12 @@ class MaterialStockCard extends Component
         $movements = $calculatedMovements;
 
         if ($this->filterType === 'INCOMING') {
-            $movements = $movements->filter(fn($i) => in_array($i['type'], ['INCOMING', 'RETURN_PRODUCTION', 'OPENING_BALANCE']));
+            $movements = $movements->filter(fn ($i) => in_array($i['type'], ['INCOMING', 'RETURN_PRODUCTION', 'OPENING_BALANCE']));
         } elseif ($this->filterType === 'OUTGOING') {
-            $movements = $movements->filter(fn($i) => in_array($i['type'], ['OUTGOING', 'OPENING_BALANCE']));
+            $movements = $movements->filter(fn ($i) => in_array($i['type'], ['OUTGOING', 'OPENING_BALANCE']));
         }
 
-        if (!empty($this->search)) {
+        if (! empty($this->search)) {
             $term = strtolower(trim($this->search));
             $movements = $movements->filter(function ($item) use ($term) {
                 return str_contains(strtolower($item['item_code']), $term)
@@ -388,12 +397,12 @@ class MaterialStockCard extends Component
         );
 
         return view('livewire.material-warehouse.material-stock-card', [
-            'warehouses'          => $this->warehouses,
-            'materials'           => $materials,
-            'selectedMaterial'    => $selectedMaterial,
-            'movements'           => $paginatedMovements,
+            'warehouses' => $this->warehouses,
+            'materials' => $materials,
+            'selectedMaterial' => $selectedMaterial,
+            'movements' => $paginatedMovements,
             'totalMovementsCount' => $totalCount,
-            'summary'             => $summary,
+            'summary' => $summary,
         ]);
     }
 }

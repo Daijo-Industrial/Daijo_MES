@@ -37,8 +37,8 @@ class FirstPieceInspectionController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('model', 'LIKE', "%{$search}%")
-                  ->orWhere('part_number', 'LIKE', "%{$search}%")
-                  ->orWhere('part_name', 'LIKE', "%{$search}%");
+                    ->orWhere('part_number', 'LIKE', "%{$search}%")
+                    ->orWhere('part_name', 'LIKE', "%{$search}%");
             });
         }
 

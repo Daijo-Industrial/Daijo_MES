@@ -14,11 +14,15 @@ class ChecklistReport extends Component
     use WithPagination;
 
     public $selectedDate;
+
     public $selectedMachineId = '';
+
     public $selectedStatus = '';
+
     public $search = '';
 
     public $showDetailModal = false;
+
     public $selectedHeader = null;
 
     public function mount()
@@ -103,7 +107,7 @@ class ChecklistReport extends Component
             }
 
             // Apply search filter on machine name if typed
-            if ($this->search && !str_contains(strtolower($machine->name), strtolower($this->search)) && !isset($submittedHeaders[$machine->id])) {
+            if ($this->search && ! str_contains(strtolower($machine->name), strtolower($this->search)) && ! isset($submittedHeaders[$machine->id])) {
                 continue;
             }
 
@@ -118,7 +122,7 @@ class ChecklistReport extends Component
                 foreach ($header->details as $d) {
                     if ($d->value === '-') {
                         $skipCount++;
-                    } elseif ($d->value === 'NG' || !$d->is_normal) {
+                    } elseif ($d->value === 'NG' || ! $d->is_normal) {
                         $hasNg = true;
                         $ngCount++;
                     } elseif ($d->value === 'OK') {
@@ -154,7 +158,7 @@ class ChecklistReport extends Component
         $totalFilled = $submittedHeaders->count();
         $totalPending = $totalMachines - $totalFilled;
         $totalNgHeaders = $submittedHeaders->filter(function ($h) {
-            return $h->details->contains(fn($d) => $d->value === 'NG' || !$d->is_normal);
+            return $h->details->contains(fn ($d) => $d->value === 'NG' || ! $d->is_normal);
         })->count();
 
         $allItems = MaintenanceCheckItem::orderBy('sort_order')->get();

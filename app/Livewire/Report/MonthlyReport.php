@@ -2,16 +2,18 @@
 
 namespace App\Livewire\Report;
 
-use Livewire\Component;
 use App\Models\Asakai;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
+use Livewire\Component;
 
 #[Layout('layouts.dashboard')]
 class MonthlyReport extends Component
 {
     public $year;
+
     public $month;
+
     public $customerFilter = '';
 
     public function mount()
@@ -25,7 +27,7 @@ class MonthlyReport extends Component
         $date = Carbon::createFromDate($this->year, $this->month, 1)->subMonth();
         $this->year = $date->year;
         $this->month = $date->month;
-        
+
         $this->loadChartData();
     }
 
@@ -34,7 +36,7 @@ class MonthlyReport extends Component
         $date = Carbon::createFromDate($this->year, $this->month, 1)->addMonth();
         $this->year = $date->year;
         $this->month = $date->month;
-        
+
         $this->loadChartData();
     }
 
@@ -42,7 +44,7 @@ class MonthlyReport extends Component
     {
         $this->year = Carbon::now()->year;
         $this->month = Carbon::now()->month;
-        
+
         $this->loadChartData();
     }
 
@@ -59,16 +61,16 @@ class MonthlyReport extends Component
     public function loadChartData()
     {
         $asakais = Asakai::monthly($this->year, $this->month)
-            ->when($this->customerFilter, fn($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
+            ->when($this->customerFilter, fn ($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
             ->get();
 
         // Daily trend
-        $dailyTrend = $asakais->groupBy(fn($item) => $item->date_issue->format('d'))
-            ->map(fn($group) => $group->count())
+        $dailyTrend = $asakais->groupBy(fn ($item) => $item->date_issue->format('d'))
+            ->map(fn ($group) => $group->count())
             ->sortKeys();
 
         // Customer trend (Top 5)
-        $byCustomer = $asakais->groupBy('customer')->map(fn($group) => [
+        $byCustomer = $asakais->groupBy('customer')->map(fn ($group) => [
             'count' => $group->count(),
             'quantity' => $group->sum('quantity'),
         ]);
@@ -76,7 +78,7 @@ class MonthlyReport extends Component
 
         // Dispatch event
         $this->dispatch('updateMonthlyCharts', [
-            'dailyLabels' => $dailyTrend->keys()->map(fn($d) => 'Day ' . $d)->values()->toArray(),
+            'dailyLabels' => $dailyTrend->keys()->map(fn ($d) => 'Day ' . $d)->values()->toArray(),
             'dailyData' => $dailyTrend->values()->values()->toArray(),
             'customerLabels' => $customerTrend->keys()->values()->toArray(),
             'customerData' => $customerTrend->pluck('count')->values()->toArray(),
@@ -92,23 +94,23 @@ class MonthlyReport extends Component
     {
         $asakais = Asakai::with(['pics', 'rcas', 'correctiveActions'])
             ->monthly($this->year, $this->month)
-            ->when($this->customerFilter, fn($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
+            ->when($this->customerFilter, fn ($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
             ->get();
 
         // Analytics
-        $byCustomer = $asakais->groupBy('customer')->map(fn($group) => [
+        $byCustomer = $asakais->groupBy('customer')->map(fn ($group) => [
             'count' => $group->count(),
             'quantity' => $group->sum('quantity'),
         ]);
 
-        $byShift = $asakais->groupBy('lot_shift')->map(fn($group) => [
+        $byShift = $asakais->groupBy('lot_shift')->map(fn ($group) => [
             'count' => $group->count(),
             'quantity' => $group->sum('quantity'),
         ]);
 
         // Top 10 Issues (by frequency)
         $topIssues = $asakais->groupBy('issue')
-            ->map(fn($group) => [
+            ->map(fn ($group) => [
                 'issue' => $group->first()->issue,
                 'count' => $group->count(),
             ])
@@ -117,15 +119,15 @@ class MonthlyReport extends Component
 
         // Performance Metrics - FIX ERROR INI
         $avgReplyDays = $asakais
-            ->filter(fn($a) => $a->reply_date && $a->date_issue)
-            ->map(fn($a) => $a->date_issue->diffInDays($a->reply_date))
+            ->filter(fn ($a) => $a->reply_date && $a->date_issue)
+            ->map(fn ($a) => $a->date_issue->diffInDays($a->reply_date))
             ->avg();
 
-        $overdueCount = $asakais->filter(fn($a) => $a->is_overdue)->count();
+        $overdueCount = $asakais->filter(fn ($a) => $a->is_overdue)->count();
 
         // ← TAMBAH INI: Data untuk Chart (Daily trend dalam bulan)
-        $dailyTrend = $asakais->groupBy(fn($item) => $item->date_issue->format('d'))
-            ->map(fn($group) => $group->count())
+        $dailyTrend = $asakais->groupBy(fn ($item) => $item->date_issue->format('d'))
+            ->map(fn ($group) => $group->count())
             ->sortKeys();
 
         // ← TAMBAH INI: Customer trend (Top 5)

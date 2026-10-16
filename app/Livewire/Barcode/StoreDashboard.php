@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Barcode;
 
-use Livewire\Component;
 use App\Models\BarcodePackagingDetail;
+use Livewire\Component;
 
 class StoreDashboard extends Component
 {
@@ -17,18 +17,18 @@ class StoreDashboard extends Component
     public function loadSummary()
     {
         $allData = BarcodePackagingDetail::with('masterBarcode')
-        ->select('partNo', 'label', 'position', 'scantime', 'noDokumen', 'created_at', 'masterId')
-        ->orderBy('partNo')
-        ->orderBy('label')
-        ->orderBy('scantime', 'desc')
-        ->get()
-        ->groupBy('partNo');
+            ->select('partNo', 'label', 'position', 'scantime', 'noDokumen', 'created_at', 'masterId')
+            ->orderBy('partNo')
+            ->orderBy('label')
+            ->orderBy('scantime', 'desc')
+            ->get()
+            ->groupBy('partNo');
 
         $summaryData = [];
 
         foreach ($allData as $partNo => $partRecords) {
             $labels = $partRecords->groupBy('label');
-            
+
             $daijoQty = $kiicQty = $customerQty = 0;
             $detailPerLabel = [];
 
@@ -61,7 +61,7 @@ class StoreDashboard extends Component
                 ];
             }
 
-            usort($detailPerLabel, function($a, $b) {
+            usort($detailPerLabel, function ($a, $b) {
                 return strtotime($b['last_transaction']) - strtotime($a['last_transaction']);
             });
 

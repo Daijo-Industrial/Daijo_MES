@@ -12,13 +12,19 @@ class DashboardAdmin extends Component
     use WithPagination;
 
     public $childStatus = ''; // Filter for Child Status
+
     public $selectedProcess = ''; // Filter for Parent Process
+
     public $selectedParent = ''; // New filter for selecting specific BOMs
+
     public $availableProcesses = []; // Store unique process names for dropdown
+
     public $availableParents = []; // Store available parents for dropdown
 
     public $completedItems = 0;
+
     public $overallCompletionPercentage = 0;
+
     public $totalPendingChildren = 0;
 
     protected $paginationTheme = 'tailwind';
@@ -42,7 +48,7 @@ class DashboardAdmin extends Component
             })
             ->count();
 
-        $this->completedItems = $childs->filter(fn($child) => in_array($child->action_type, ['stockfinish']) || $child->status === 'Finished')->count();
+        $this->completedItems = $childs->filter(fn ($child) => in_array($child->action_type, ['stockfinish']) || $child->status === 'Finished')->count();
 
         $this->overallCompletionPercentage = $childs->count() > 0 ? ($this->completedItems / $childs->count()) * 100 : 0;
     }
@@ -64,6 +70,7 @@ class DashboardAdmin extends Component
                 } elseif (in_array($child->action_type, ['stockprocess', 'buyprocess'])) {
                     return $processCount > 0 && $finishedCount === $processCount;
                 }
+
                 return false;
             })
             ->count();
@@ -78,16 +85,16 @@ class DashboardAdmin extends Component
                 $query->select(['id', 'parent_id', 'item_code', 'item_description', 'quantity', 'measure', 'action_type', 'status']);
 
                 // Apply childStatus filter inside the children query
-                if (!empty($this->childStatus)) {
-                    if ($this->childStatus == "Not Started") {
+                if (! empty($this->childStatus)) {
+                    if ($this->childStatus == 'Not Started') {
                         $query->where('status', '!=', 'Finished');
-                    } elseif ($this->childStatus == "Finished") {
+                    } elseif ($this->childStatus == 'Finished') {
                         $query->where('status', 'Finished');
                     }
                 }
 
                 // Apply selectedProcess filter to ensure only children with a process are shown
-                if (!empty($this->selectedProcess)) {
+                if (! empty($this->selectedProcess)) {
                     $query->whereHas('materialProcess', function ($q) {
                         $q->where('process_name', $this->selectedProcess);
                     });
@@ -97,7 +104,7 @@ class DashboardAdmin extends Component
                 $query->select(['id', 'child_id', 'process_name', 'status']);
 
                 // Apply selectedProcess filter inside the materialProcess query
-                if (!empty($this->selectedProcess)) {
+                if (! empty($this->selectedProcess)) {
                     $query->where('process_name', $this->selectedProcess);
                 }
             },
@@ -105,17 +112,17 @@ class DashboardAdmin extends Component
 
         // If a parent has no matching children, it will still be included.
         // To remove parents without filtered children, use whereHas()
-        if (!empty($this->childStatus)) {
+        if (! empty($this->childStatus)) {
             $query->whereHas('children', function ($q) {
-                if ($this->childStatus == "Not Started") {
+                if ($this->childStatus == 'Not Started') {
                     $q->where('status', '!=', 'Finished');
-                } elseif ($this->childStatus == "Finished") {
+                } elseif ($this->childStatus == 'Finished') {
                     $q->where('status', 'Finished');
                 }
             });
         }
 
-        if (!empty($this->selectedProcess)) {
+        if (! empty($this->selectedProcess)) {
             $query->whereHas('children.materialProcess', function ($q) {
                 $q->where('process_name', $this->selectedProcess);
             });

@@ -16,16 +16,23 @@ class SecondProcessPlantAccessTest extends TestCase
     use RefreshDatabase;
 
     protected Role $superAdminRole;
+
     protected Role $adminRole;
+
     protected Role $spRole;
+
     protected Role $ppicRole;
+
     protected Role $prodRole;
 
     protected Branch $jakartaBranch;
+
     protected Branch $karawangBranch;
 
     protected Department $spDept;
+
     protected Department $ppicDept;
+
     protected Department $prodDept;
 
     protected function setUp(): void

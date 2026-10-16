@@ -7,12 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 class AsakaiRca extends Model
 {
     protected $table = 'asakai_rca';
-    
+
     protected $fillable = [
         'asakai_id',
         'why_level',
         'description',
-        'order_no'
+        'order_no',
     ];
 
     protected $casts = [

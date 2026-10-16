@@ -25,7 +25,7 @@ class WmsRack extends Model
     public function getEffectiveZoneAttribute(): string
     {
         $rawZone = strtoupper(trim($this->attributes['zone'] ?? ''));
-        if (!empty($rawZone) && $rawZone !== 'DEFAULT') {
+        if (! empty($rawZone) && $rawZone !== 'DEFAULT') {
             return $rawZone;
         }
 

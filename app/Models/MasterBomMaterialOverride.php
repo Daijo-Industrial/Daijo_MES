@@ -34,6 +34,7 @@ class MasterBomMaterialOverride extends Model
         }
 
         $code = strtoupper(trim($itemCode));
+
         return self::$cache[$code] ?? null;
     }
 

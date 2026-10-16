@@ -1,6 +1,7 @@
 <?php
 
 //asakai report export asakai
+
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -10,6 +11,7 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class DailyReportExport implements FromCollection, WithHeadings, WithMapping
 {
     protected $asakais;
+
     protected $date;
 
     public function __construct($asakais, $date)

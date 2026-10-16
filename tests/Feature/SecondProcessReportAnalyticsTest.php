@@ -17,6 +17,7 @@ class SecondProcessReportAnalyticsTest extends TestCase
     use RefreshDatabase;
 
     protected Role $adminRole;
+
     protected User $user;
 
     protected function setUp(): void

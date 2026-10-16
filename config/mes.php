@@ -49,15 +49,15 @@ return [
     */
     'sp_shifts' => [
         1 => [
-            'name'  => 'Shift 1',
+            'name' => 'Shift 1',
             'start' => '07:30',
-            'end'   => '15:30',
+            'end' => '15:30',
         ],
         2 => [
-            'name'  => 'Shift 2',
+            'name' => 'Shift 2',
             'start' => '15:30',
-            'end'   => '23:30',
-        ]
+            'end' => '23:30',
+        ],
     ],
 
     /*
@@ -69,10 +69,10 @@ return [
     |
     */
     'sp_lines' => [
-        'line-a'    => 'Line A',
-        'line-b'    => 'Line B',
-        'line-c'    => 'Line C',
-        'line-d'    => 'Line D',
+        'line-a' => 'Line A',
+        'line-b' => 'Line B',
+        'line-c' => 'Line C',
+        'line-d' => 'Line D',
         'buffing-1' => 'Buffing 1',
         'buffing-2' => 'Buffing 2',
         'buffing-3' => 'Buffing 3',
@@ -84,11 +84,11 @@ return [
         'buffing-9' => 'Buffing 9',
         'buffing-10' => 'Buffing 10',
         'buffing-11' => 'Buffing 11',
-        'amplas'    => 'Area Amplas/Treatment',
+        'amplas' => 'Area Amplas/Treatment',
         'packing-1' => 'Packing 1',
         'packing-2' => 'Packing 2',
         'packing-3' => 'Packing 3',
-        'assy'      => 'Area Assy',
+        'assy' => 'Area Assy',
     ],
 
     /*
@@ -102,7 +102,7 @@ return [
     */
     'chemical_processes' => [
         'Painting',
-        'Repair'
+        'Repair',
     ],
 
     /*
@@ -115,13 +115,13 @@ return [
     |
     */
     'sp_manpower_roles' => [
-        'loading'  => 'Loading / Input',
-        'sprayer'  => 'Sprayer',
-        'checker'  => 'Checker',
-        'qc'       => 'QC',
-        'packing'  => 'Packing',
+        'loading' => 'Loading / Input',
+        'sprayer' => 'Sprayer',
+        'checker' => 'Checker',
+        'qc' => 'QC',
+        'packing' => 'Packing',
         'operator' => 'Operator',
-        'leader'   => 'Leader',
+        'leader' => 'Leader',
     ],
 
     /*
@@ -154,8 +154,8 @@ return [
     |
     */
     'sp_output_destinations' => [
-        'fg'           => 'Finished Goods (FG)',
-        'buffing'      => 'Buffing',
+        'fg' => 'Finished Goods (FG)',
+        'buffing' => 'Buffing',
         'next_process' => 'Next Process Area',
     ],
 
@@ -217,12 +217,12 @@ return [
     |
     */
     'sp_trouble_categories' => [
-        'Man'        => 'Man',
-        'Mesin'      => 'Mesin',
-        'Part'       => 'Part',
-        'PPS'        => 'PPS',
+        'Man' => 'Man',
+        'Mesin' => 'Mesin',
+        'Part' => 'Part',
+        'PPS' => 'PPS',
         'Lingkungan' => 'Lingkungan',
-        'Other'      => 'Other',
+        'Other' => 'Other',
     ],
 
     /*
@@ -235,7 +235,7 @@ return [
     |
     */
     'sp_ng_remark_categories' => [
-        'NG-INPUT'  => 'NG-INPUT',
+        'NG-INPUT' => 'NG-INPUT',
         'NG-PROSES' => 'NG-PROSES',
     ],
 
@@ -249,4 +249,3 @@ return [
     */
     'sp_target_ng_rate' => 2.0,
 ];
-

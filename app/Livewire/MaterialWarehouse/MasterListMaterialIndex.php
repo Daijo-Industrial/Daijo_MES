@@ -4,31 +4,40 @@ namespace App\Livewire\MaterialWarehouse;
 
 use App\Imports\MasterListMaterialImport;
 use App\Models\MasterListMaterial;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Support\Facades\Cache;
 
 class MasterListMaterialIndex extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public string $search = '';
+
     public int $perPage = 25;
-    
+
     // File Upload State
     public $file;
+
     public bool $showUploadModal = false;
+
     public ?string $currentBatchId = null;
+
     public array $importProgress = [];
 
     // Manual Form Add/Edit State
     public bool $showItemModal = false;
+
     public ?int $editingId = null;
+
     public string $item_code = '';
+
     public string $item_description = '';
+
     public string $preferred_supplier = '';
+
     public string $purchasing_uom = '';
 
     protected $queryString = ['search'];
@@ -70,10 +79,10 @@ class MasterListMaterialIndex extends Component
                 $detected = \PhpOffice\PhpSpreadsheet\IOFactory::identify($fullPath);
                 $map = [
                     'Xlsx' => \Maatwebsite\Excel\Excel::XLSX,
-                    'Xls'  => \Maatwebsite\Excel\Excel::XLS,
-                    'Csv'  => \Maatwebsite\Excel\Excel::CSV,
+                    'Xls' => \Maatwebsite\Excel\Excel::XLS,
+                    'Csv' => \Maatwebsite\Excel\Excel::CSV,
                     'Html' => \Maatwebsite\Excel\Excel::HTML,
-                    'Xml'  => \Maatwebsite\Excel\Excel::XML,
+                    'Xml' => \Maatwebsite\Excel\Excel::XML,
                 ];
                 $readerType = $map[$detected] ?? null;
             } catch (\Throwable $t) {
@@ -154,10 +163,10 @@ class MasterListMaterialIndex extends Component
         MasterListMaterial::updateOrCreate(
             ['id' => $this->editingId],
             [
-                'item_code'          => strtoupper(trim($this->item_code)),
-                'item_description'   => trim($this->item_description) ?: null,
+                'item_code' => strtoupper(trim($this->item_code)),
+                'item_description' => trim($this->item_description) ?: null,
                 'preferred_supplier' => trim($this->preferred_supplier) ?: null,
-                'purchasing_uom'     => trim($this->purchasing_uom) ?: null,
+                'purchasing_uom' => trim($this->purchasing_uom) ?: null,
             ]
         );
 
@@ -191,7 +200,7 @@ class MasterListMaterialIndex extends Component
         $totalCount = MasterListMaterial::count();
 
         return view('livewire.material-warehouse.master-list-material-index', [
-            'materials'  => $materials,
+            'materials' => $materials,
             'totalCount' => $totalCount,
         ]);
     }

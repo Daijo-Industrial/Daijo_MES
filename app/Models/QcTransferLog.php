@@ -34,8 +34,8 @@ class QcTransferLog extends Model
     ];
 
     // Warehouse mapping constants
-    const WAREHOUSE_MAP = [
-        'FFI'   => ['ok' => 'FG',   'ng' => 'RJCT'],
+    public const WAREHOUSE_MAP = [
+        'FFI' => ['ok' => 'FG',   'ng' => 'RJCT'],
         'KRFFI' => ['ok' => 'KRFG', 'ng' => 'KRRJCT'],
     ];
 
@@ -56,6 +56,7 @@ class QcTransferLog extends Model
     {
         $okDone = empty($this->ok_to_warehouse) || $this->ok_qty == 0 || $this->ok_sap_status == 1;
         $ngDone = empty($this->ng_to_warehouse) || $this->ng_qty == 0 || $this->ng_sap_status == 1;
+
         return $okDone && $ngDone;
     }
 }

@@ -2,17 +2,16 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RejectService extends BaseSapService
 {
-  
-   public function getReject($itemGroupCodes = '102,103',$warehouseCodes = 'RJCT,RJCTEX')
+    public function getReject($itemGroupCodes = '102,103', $warehouseCodes = 'RJCT,RJCTEX')
     {
-         $response = $this->get('/api/sap_reject/list', [
-            'itemGroupCodes'  => $itemGroupCodes,
-            'warehouseCodes'  => $warehouseCodes,
+        $response = $this->get('/api/sap_reject/list', [
+            'itemGroupCodes' => $itemGroupCodes,
+            'warehouseCodes' => $warehouseCodes,
         ]);
 
         $data = $this->normalizeResponse($response, 'REJECT');
@@ -22,43 +21,41 @@ class RejectService extends BaseSapService
         foreach ($data as $item) {
             $result[] = $item;
         }
-        return $result;
-   
-    }
-   
-    
 
+        return $result;
+
+    }
 
     private function normalizeResponse($response, $tag = 'SAP')
-        {
-            if (!is_array($response)) {
-                Log::warning("[{$tag}] Response bukan array", ['response' => $response]);
-                return [];
-            }
+    {
+        if (! is_array($response)) {
+            Log::warning("[{$tag}] Response bukan array", ['response' => $response]);
 
-            if (array_key_exists('data', $response)) {
-                return is_array($response['data']) ? $response['data'] : [];
-            }
-
-            return $response;
+            return [];
         }
 
+        if (array_key_exists('data', $response)) {
+            return is_array($response['data']) ? $response['data'] : [];
+        }
+
+        return $response;
+    }
 
     public function SyncData()
     {
         $itemGroupCodes = '102,103';
         $warehouseCodes = 'RJCT,RJCTEX';
 
-        $Reject = $this->getReject($itemGroupCodes,$warehouseCodes); // udah array
+        $Reject = $this->getReject($itemGroupCodes, $warehouseCodes); // udah array
 
         DB::table('sap_reject')->truncate();
 
-       $data = array_map(function ($item) {
+        $data = array_map(function ($item) {
             return [
-                'item_no'          => $item['ItemCode'],
-                'item_description'    => $item['ItemName'],
-                'item_group'           => $item['ItemGroupCode'],
-                'in_stock'             => (int) ($item['TotalReject'] ?? 0),
+                'item_no' => $item['ItemCode'],
+                'item_description' => $item['ItemName'],
+                'item_group' => $item['ItemGroupCode'],
+                'in_stock' => (int) ($item['TotalReject'] ?? 0),
             ];
         }, $Reject);
 
@@ -70,7 +67,7 @@ class RejectService extends BaseSapService
             'message' => 'Data Reject berhasil disinkronkan',
             'data' => [
                 'reject' => $Reject,
-            ]
+            ],
         ]);
 
     }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class DeliveryScheduleNew extends Model
 {
     use HasFactory;
+
     protected $table = 'delivery_schedule_new';
 
     protected $fillable = [

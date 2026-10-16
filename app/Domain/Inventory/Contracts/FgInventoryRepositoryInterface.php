@@ -21,7 +21,7 @@ interface FgInventoryRepositoryInterface
      *   - processOwner (string) — exact match on process_owner
      *   - family       (string) — exact match on family
      *
-     * @param  array<string, mixed>  $filters
+     * @param array<string, mixed> $filters
      * @return Collection<int, object>
      */
     public function getAll(array $filters): Collection;

@@ -13,6 +13,7 @@ class FirstPieceInspectionTest extends TestCase
     use RefreshDatabase;
 
     protected Role $adminRole;
+
     protected User $user;
 
     protected function setUp(): void

@@ -10,15 +10,15 @@ class Asakai extends Model
     use SoftDeletes;
 
     protected $table = 'asakai_master'; // ← FIX INI
-    
+
     protected $fillable = [
         'customer', 'part_no', 'issue', 'quantity',
         'lot_shift', 'lot_date', 'date_issue',
         'pokayoke', 'verify', 'fmea_cp', 'std_work',
         'audit_date', 'reply_date', 'status',
-        'created_by', 'updated_by', 'closed_at', 'remark'
+        'created_by', 'updated_by', 'closed_at', 'remark',
     ];
-    
+
     protected $casts = [
         'lot_date' => 'date',
         'date_issue' => 'date',
@@ -31,7 +31,7 @@ class Asakai extends Model
     // ============================================
     // RELATIONSHIPS
     // ============================================
-    
+
     public function pics()
     {
         return $this->hasMany(AsakaiPic::class, 'asakai_id')->orderBy('order_no');
@@ -60,7 +60,7 @@ class Asakai extends Model
     // ============================================
     // ACCESSORS
     // ============================================
-    
+
     public function getPicNamesAttribute()
     {
         return $this->pics->pluck('pic_name')->implode(', ');
@@ -68,11 +68,11 @@ class Asakai extends Model
 
     public function getRcaListAttribute()
     {
-        return $this->rcas->map(function($rca) {
+        return $this->rcas->map(function ($rca) {
             return [
                 'level' => $rca->why_level,
                 'label' => "Why {$rca->why_level}",
-                'description' => $rca->description
+                'description' => $rca->description,
             ];
         });
     }
@@ -89,20 +89,26 @@ class Asakai extends Model
 
     public function getIsOverdueAttribute()
     {
-        if (!$this->reply_date) return false;
+        if (! $this->reply_date) {
+            return false;
+        }
+
         return now()->gt($this->reply_date) && $this->status !== 'closed';
     }
 
     public function getDaysUntilReplyAttribute()
     {
-        if (!$this->reply_date) return null;
+        if (! $this->reply_date) {
+            return;
+        }
+
         return now()->diffInDays($this->reply_date, false);
     }
 
     // ============================================
     // SCOPES
     // ============================================
-    
+
     public function scopeDaily($query, $date)
     {
         return $query->whereDate('date_issue', $date);
@@ -116,7 +122,7 @@ class Asakai extends Model
     public function scopeMonthly($query, $year, $month)
     {
         return $query->whereYear('date_issue', $year)
-                     ->whereMonth('date_issue', $month);
+            ->whereMonth('date_issue', $month);
     }
 
     public function scopeStatus($query, $status)
@@ -127,8 +133,8 @@ class Asakai extends Model
     public function scopeOverdue($query)
     {
         return $query->where('status', '!=', 'closed')
-                     ->whereNotNull('reply_date')
-                     ->whereDate('reply_date', '<', now());
+            ->whereNotNull('reply_date')
+            ->whereDate('reply_date', '<', now());
     }
 
     public function scopeByCustomer($query, $customer)
@@ -149,7 +155,7 @@ class Asakai extends Model
     // ============================================
     // METHODS
     // ============================================
-    
+
     public function markAsClosed()
     {
         $this->update([
@@ -177,29 +183,39 @@ class Asakai extends Model
         $total = 0;
         $filled = 0;
 
-        $requiredFields = ['customer', 'part_no', 'issue', 'quantity', 
-                          'lot_shift', 'lot_date', 'date_issue'];
-        
+        $requiredFields = ['customer', 'part_no', 'issue', 'quantity',
+            'lot_shift', 'lot_date', 'date_issue'];
+
         foreach ($requiredFields as $field) {
             $total++;
-            if (!empty($this->$field)) $filled++;
+            if (! empty($this->$field)) {
+                $filled++;
+            }
         }
 
         $total++;
-        if ($this->pics->count() > 0) $filled++;
+        if ($this->pics->count() > 0) {
+            $filled++;
+        }
 
         $total++;
-        if ($this->rcas->count() >= 3) $filled++;
+        if ($this->rcas->count() >= 3) {
+            $filled++;
+        }
 
         $total++;
-        if ($this->correctiveActions->count() > 0) $filled++;
+        if ($this->correctiveActions->count() > 0) {
+            $filled++;
+        }
 
-        $optionalFields = ['pokayoke', 'audit_date', 'reply_date', 
-                          'verify', 'fmea_cp', 'std_work'];
-        
+        $optionalFields = ['pokayoke', 'audit_date', 'reply_date',
+            'verify', 'fmea_cp', 'std_work'];
+
         foreach ($optionalFields as $field) {
             $total++;
-            if (!empty($this->$field)) $filled++;
+            if (! empty($this->$field)) {
+                $filled++;
+            }
         }
 
         return round(($filled / $total) * 100);

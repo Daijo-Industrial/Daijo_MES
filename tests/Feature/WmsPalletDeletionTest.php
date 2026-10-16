@@ -2,24 +2,25 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Models\Role;
 use App\Models\MasterListItem;
-use App\Models\WmsWarehouse;
-use App\Models\WmsRack;
-use App\Models\WmsPosition;
+use App\Models\Role;
+use App\Models\User;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
-use App\Models\WmsPalletLog;
-use Livewire\Livewire;
-use Illuminate\Support\Facades\Schema;
+use App\Models\WmsPosition;
+use App\Models\WmsRack;
+use App\Models\WmsWarehouse;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class WmsPalletDeletionTest extends TestCase
 {
     protected Role $adminRole;
+
     protected User $adminUser;
+
     protected WmsPosition $position;
 
     protected function setUp(): void
@@ -38,7 +39,7 @@ class WmsPalletDeletionTest extends TestCase
         $this->createTestSchema();
 
         $this->adminRole = Role::create(['name' => 'ADMIN']);
-        
+
         $this->adminUser = new User([
             'name' => 'Admin User',
             'email' => 'admin@test.com',

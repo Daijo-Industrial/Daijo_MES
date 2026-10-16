@@ -3,21 +3,21 @@
 namespace App\Livewire;
 
 use App\Models\MasterBom;
-use App\Models\MasterBomFgHeader;
 use App\Models\MasterBomComponent;
+use App\Models\MasterBomFgHeader;
+use App\Models\MasterBomMaterialOverride;
 use App\Models\MasterBomVerification;
 use App\Models\MasterBomVerificationLog;
-use App\Models\MasterBomMaterialOverride;
-use Livewire\Component;
-use Livewire\WithPagination;
-use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Component;
+use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class MasterBomView extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     // Top-Level Main Tab: 'production' (Default) vs 'staging'
     public string $activeMainTab = 'production';
@@ -27,18 +27,28 @@ class MasterBomView extends Component
     // ==========================================
     // FG Headers Filter & Search
     public string $fgSearch = '';
+
     public string $fgProjectFilter = '';
+
     public string $fgFamilyFilter = '';
+
     public string $fgPackagingFilter = 'all'; // all, with_pkg, without_pkg
+
     public string $fgDepthFilter = 'all'; // all, 1, 2, 3, 4+
+
     public int $fgPerPage = 15;
 
     // Multilevel Components Modal for Selected FG
     public ?int $selectedFgId = null;
+
     public ?MasterBomFgHeader $selectedFg = null;
+
     public bool $showComponentModal = false;
+
     public string $compTypeFilter = 'all'; // all, wip, raw, packaging
+
     public string $compSearch = '';
+
     public float $compSimQty = 1.0;
 
     // Reverse BOM (Where-Used) Search
@@ -48,48 +58,66 @@ class MasterBomView extends Component
     // TAB 2: STAGING RAW BOM (SAP EXTRACT)
     // ==========================================
     public string $search = '';
+
     public string $filterType = 'all'; // all, fg, wip, raw
+
     public string $viewMode = 'grouped'; // 'grouped' or 'flat'
+
     public int $perPage = 25;
 
     // Upload State
     public $bomFile;
+
     public string $uploadMode = 'update'; // 'update' or 'replace'
+
     public bool $showUploadModal = false;
+
     public bool $isUploading = false;
+
     public string $uploadMessage = '';
+
     public string $uploadError = '';
 
     // Tree / Detail Modal State (Visual Explorer)
     public ?string $selectedParentItem = null;
+
     public ?string $selectedParentDesc = null;
+
     public ?string $selectedParentFamily = null;
+
     public array $explodedTree = [];
+
     public array $treeSummaryData = [];
+
     public string $treeActiveTab = 'tree'; // 'tree' or 'summary'
+
     public float $simulationQty = 1.0;
+
     public bool $showTreeModal = false;
 
     // PE Audit Verification State
     public bool $treeIsVerified = false;
+
     public ?string $treeVerifiedAt = null;
+
     public ?string $treeVerifiedBy = null;
+
     public array $treeVerificationLogs = [];
 
     // Delete Confirmation
     public bool $showDeleteAllModal = false;
 
     protected $queryString = [
-        'activeMainTab'       => ['as' => 'tab', 'except' => 'production'],
-        'fgSearch'            => ['as' => 'fg_q', 'except' => ''],
-        'fgProjectFilter'     => ['as' => 'project', 'except' => ''],
-        'fgFamilyFilter'      => ['as' => 'family', 'except' => ''],
-        'fgPackagingFilter'   => ['as' => 'pkg', 'except' => 'all'],
-        'fgDepthFilter'       => ['as' => 'depth', 'except' => 'all'],
-        'whereUsedSearch'     => ['as' => 'where_used', 'except' => ''],
-        'search'              => ['except' => ''],
-        'filterType'          => ['except' => 'all'],
-        'viewMode'            => ['except' => 'grouped'],
+        'activeMainTab' => ['as' => 'tab', 'except' => 'production'],
+        'fgSearch' => ['as' => 'fg_q', 'except' => ''],
+        'fgProjectFilter' => ['as' => 'project', 'except' => ''],
+        'fgFamilyFilter' => ['as' => 'family', 'except' => ''],
+        'fgPackagingFilter' => ['as' => 'pkg', 'except' => 'all'],
+        'fgDepthFilter' => ['as' => 'depth', 'except' => 'all'],
+        'whereUsedSearch' => ['as' => 'where_used', 'except' => ''],
+        'search' => ['except' => ''],
+        'filterType' => ['except' => 'all'],
+        'viewMode' => ['except' => 'grouped'],
     ];
 
     public function mount()
@@ -97,7 +125,7 @@ class MasterBomView extends Component
         $this->ensureAuditTablesExist();
 
         // Jika tabel valid belum ada tapi data staging ada, default ke tab staging
-        if (!request()->has('tab')) {
+        if (! request()->has('tab')) {
             $validCount = MasterBomFgHeader::count();
             if ($validCount === 0 && MasterBom::count() > 0) {
                 $this->activeMainTab = 'staging';
@@ -111,13 +139,40 @@ class MasterBomView extends Component
     }
 
     // Pagination Reset Hooks
-    public function updatingFgSearch() { $this->resetPage('fg_page'); }
-    public function updatingFgProjectFilter() { $this->resetPage('fg_page'); }
-    public function updatingFgPackagingFilter() { $this->resetPage('fg_page'); }
-    public function updatingFgDepthFilter() { $this->resetPage('fg_page'); }
-    public function updatingSearch() { $this->resetPage(); }
-    public function updatingFilterType() { $this->resetPage(); }
-    public function updatingViewMode() { $this->resetPage(); }
+    public function updatingFgSearch()
+    {
+        $this->resetPage('fg_page');
+    }
+
+    public function updatingFgProjectFilter()
+    {
+        $this->resetPage('fg_page');
+    }
+
+    public function updatingFgPackagingFilter()
+    {
+        $this->resetPage('fg_page');
+    }
+
+    public function updatingFgDepthFilter()
+    {
+        $this->resetPage('fg_page');
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterType()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingViewMode()
+    {
+        $this->resetPage();
+    }
 
     public function openUploadModal()
     {
@@ -144,8 +199,8 @@ class MasterBomView extends Component
             'bomFile' => 'required|file|mimes:xlsx,xls,csv,txt|max:51200', // max 50MB
         ], [
             'bomFile.required' => 'Pilih file Excel (.xlsx, .xls) atau .csv terlebih dahulu.',
-            'bomFile.mimes'    => 'Format file harus berupa Excel (.xlsx, .xls) atau CSV.',
-            'bomFile.max'      => 'Ukuran file maksimal adalah 50MB.',
+            'bomFile.mimes' => 'Format file harus berupa Excel (.xlsx, .xls) atau CSV.',
+            'bomFile.max' => 'Ukuran file maksimal adalah 50MB.',
         ]);
 
         $this->uploadError = '';
@@ -183,29 +238,32 @@ class MasterBomView extends Component
 
             if (empty($rows) || count($rows) < 2) {
                 $this->uploadError = 'File Excel kosong atau tidak memiliki baris data.';
+
                 return;
             }
 
             $headerRow = array_shift($rows);
-            
+
             $colIndex = [
-                'line_id'        => null,
-                'parent_item'    => null,
-                'parent_desc'    => null,
+                'line_id' => null,
+                'parent_item' => null,
+                'parent_desc' => null,
                 'component_item' => null,
                 'component_desc' => null,
-                'quantity'       => null,
-                'uom'            => null,
-                'family_1'       => null,
-                'family_2'       => null,
+                'quantity' => null,
+                'uom' => null,
+                'family_1' => null,
+                'family_2' => null,
             ];
 
             $descCount = 0;
             foreach ($headerRow as $colLetter => $headerName) {
-                $normalized = strtolower(trim((string)$headerName));
-                
+                $normalized = strtolower(trim((string) $headerName));
+
                 if ($normalized === '#' || str_contains($normalized, 'line') || str_contains($normalized, 'no')) {
-                    if ($colIndex['line_id'] === null) $colIndex['line_id'] = $colLetter;
+                    if ($colIndex['line_id'] === null) {
+                        $colIndex['line_id'] = $colLetter;
+                    }
                 } elseif (str_contains($normalized, 'parent item') || str_contains($normalized, 'father')) {
                     $colIndex['parent_item'] = $colLetter;
                 } elseif (str_contains($normalized, 'component item') || str_contains($normalized, 'child')) {
@@ -230,14 +288,30 @@ class MasterBomView extends Component
                 }
             }
 
-            if ($colIndex['parent_item'] === null) $colIndex['parent_item'] = 'B';
-            if ($colIndex['parent_desc'] === null) $colIndex['parent_desc'] = 'C';
-            if ($colIndex['component_item'] === null) $colIndex['component_item'] = 'D';
-            if ($colIndex['component_desc'] === null) $colIndex['component_desc'] = 'E';
-            if ($colIndex['quantity'] === null) $colIndex['quantity'] = 'F';
-            if ($colIndex['uom'] === null) $colIndex['uom'] = 'G';
-            if ($colIndex['family_1'] === null) $colIndex['family_1'] = 'H';
-            if ($colIndex['family_2'] === null) $colIndex['family_2'] = 'I';
+            if ($colIndex['parent_item'] === null) {
+                $colIndex['parent_item'] = 'B';
+            }
+            if ($colIndex['parent_desc'] === null) {
+                $colIndex['parent_desc'] = 'C';
+            }
+            if ($colIndex['component_item'] === null) {
+                $colIndex['component_item'] = 'D';
+            }
+            if ($colIndex['component_desc'] === null) {
+                $colIndex['component_desc'] = 'E';
+            }
+            if ($colIndex['quantity'] === null) {
+                $colIndex['quantity'] = 'F';
+            }
+            if ($colIndex['uom'] === null) {
+                $colIndex['uom'] = 'G';
+            }
+            if ($colIndex['family_1'] === null) {
+                $colIndex['family_1'] = 'H';
+            }
+            if ($colIndex['family_2'] === null) {
+                $colIndex['family_2'] = 'I';
+            }
 
             $recordsToInsert = [];
             $detectedFamilies = [];
@@ -250,31 +324,31 @@ class MasterBomView extends Component
             }
 
             foreach ($rows as $row) {
-                $parentItem = isset($row[$colIndex['parent_item']]) ? trim((string)$row[$colIndex['parent_item']]) : '';
-                $compItem   = isset($row[$colIndex['component_item']]) ? trim((string)$row[$colIndex['component_item']]) : '';
+                $parentItem = isset($row[$colIndex['parent_item']]) ? trim((string) $row[$colIndex['parent_item']]) : '';
+                $compItem = isset($row[$colIndex['component_item']]) ? trim((string) $row[$colIndex['component_item']]) : '';
 
                 if (empty($parentItem) || empty($compItem)) {
                     continue;
                 }
 
-                $parentDesc = isset($row[$colIndex['parent_desc']]) ? trim((string)$row[$colIndex['parent_desc']]) : null;
-                $compDesc   = isset($row[$colIndex['component_desc']]) ? trim((string)$row[$colIndex['component_desc']]) : null;
-                
-                $rawQty = isset($row[$colIndex['quantity']]) ? trim((string)$row[$colIndex['quantity']]) : '1';
-                $cleanQty = str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $rawQty));
-                $qty = is_numeric($cleanQty) ? (float)$cleanQty : 1.0;
+                $parentDesc = isset($row[$colIndex['parent_desc']]) ? trim((string) $row[$colIndex['parent_desc']]) : null;
+                $compDesc = isset($row[$colIndex['component_desc']]) ? trim((string) $row[$colIndex['component_desc']]) : null;
 
-                $uom = isset($row[$colIndex['uom']]) ? strtoupper(trim((string)$row[$colIndex['uom']])) : 'PCS';
-                $lineId = ($colIndex['line_id'] && isset($row[$colIndex['line_id']])) ? trim((string)$row[$colIndex['line_id']]) : null;
+                $rawQty = isset($row[$colIndex['quantity']]) ? trim((string) $row[$colIndex['quantity']]) : '1';
+                $cleanQty = str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $rawQty));
+                $qty = is_numeric($cleanQty) ? (float) $cleanQty : 1.0;
+
+                $uom = isset($row[$colIndex['uom']]) ? strtoupper(trim((string) $row[$colIndex['uom']])) : 'PCS';
+                $lineId = ($colIndex['line_id'] && isset($row[$colIndex['line_id']])) ? trim((string) $row[$colIndex['line_id']]) : null;
 
                 // Baca 2 Kolom Family
-                $fam1 = ($colIndex['family_1'] && isset($row[$colIndex['family_1']])) ? trim((string)$row[$colIndex['family_1']]) : '';
-                $fam2 = ($colIndex['family_2'] && isset($row[$colIndex['family_2']])) ? trim((string)$row[$colIndex['family_2']]) : '';
+                $fam1 = ($colIndex['family_1'] && isset($row[$colIndex['family_1']])) ? trim((string) $row[$colIndex['family_1']]) : '';
+                $fam2 = ($colIndex['family_2'] && isset($row[$colIndex['family_2']])) ? trim((string) $row[$colIndex['family_2']]) : '';
 
-                if (!empty($fam1)) {
+                if (! empty($fam1)) {
                     $detectedFamilies[$fam1] = true;
                 }
-                if (!empty($fam2)) {
+                if (! empty($fam2)) {
                     $detectedFamilies[$fam2] = true;
                 }
 
@@ -282,20 +356,20 @@ class MasterBomView extends Component
                 // Ambil kolom pertama dulu jika terisi (termasuk jika keduanya terisi).
                 // Jika hanya kolom kedua yang terisi -> ambil kolom kedua.
                 // Jika kosong -> null.
-                $resolvedFamily = !empty($fam1) ? $fam1 : (!empty($fam2) ? $fam2 : null);
+                $resolvedFamily = ! empty($fam1) ? $fam1 : (! empty($fam2) ? $fam2 : null);
 
                 $recordsToInsert[] = [
-                    'sap_line_id'           => $lineId,
-                    'parent_item'           => $parentItem,
-                    'parent_description'    => $parentDesc,
-                    'component_item'        => $compItem,
+                    'sap_line_id' => $lineId,
+                    'parent_item' => $parentItem,
+                    'parent_description' => $parentDesc,
+                    'component_item' => $compItem,
                     'component_description' => $compDesc,
-                    'quantity'              => $qty,
-                    'uom'                   => $uom,
-                    'family'                => $resolvedFamily,
-                    'family_2'              => !empty($fam2) ? $fam2 : null,
-                    'created_at'            => $now,
-                    'updated_at'            => $now,
+                    'quantity' => $qty,
+                    'uom' => $uom,
+                    'family' => $resolvedFamily,
+                    'family_2' => ! empty($fam2) ? $fam2 : null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ];
 
                 if (count($recordsToInsert) >= $batchSize) {
@@ -305,25 +379,26 @@ class MasterBomView extends Component
                 }
             }
 
-            if (!empty($recordsToInsert)) {
+            if (! empty($recordsToInsert)) {
                 MasterBom::insert($recordsToInsert);
                 $totalImported += count($recordsToInsert);
             }
 
             // Sync list family yang didistinct ke config/bom_projects.php untuk deteksi dummy code
-            if (!empty($detectedFamilies)) {
+            if (! empty($detectedFamilies)) {
                 $cleanFamilies = array_values(array_filter(array_keys($detectedFamilies), function ($f) {
-                    $f = trim((string)$f);
-                    return !empty($f) && $f !== '-' && $f !== '0' && strtoupper($f) !== 'N/A' && strtoupper($f) !== 'FAMILY';
+                    $f = trim((string) $f);
+
+                    return ! empty($f) && $f !== '-' && $f !== '0' && strtoupper($f) !== 'N/A' && strtoupper($f) !== 'FAMILY';
                 }));
-                if (!empty($cleanFamilies)) {
-                    (new \App\Services\MasterBomSyncService())->updateConfigFileIfChanged($cleanFamilies);
+                if (! empty($cleanFamilies)) {
+                    (new \App\Services\MasterBomSyncService)->updateConfigFileIfChanged($cleanFamilies);
                 }
             }
 
             $this->closeUploadModal();
             $this->resetPage();
-            session()->flash('success', "Berhasil mengimpor " . number_format($totalImported) . " relasi BOM dari SAP.");
+            session()->flash('success', 'Berhasil mengimpor ' . number_format($totalImported) . ' relasi BOM dari SAP.');
 
         } catch (\Throwable $e) {
             $this->uploadError = 'Gagal memproses file: ' . $e->getMessage();
@@ -366,7 +441,7 @@ class MasterBomView extends Component
             ->get();
 
         $headers = [
-            'Content-Type'        => 'text/csv',
+            'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"BOM_Multilevel_{$fg->fg_item_code}.csv\"",
         ];
 
@@ -412,7 +487,7 @@ class MasterBomView extends Component
 
         // Load verification status for this parent item
         $verification = MasterBomVerification::where('parent_item', $parentItem)->first();
-        if (!$verification) {
+        if (! $verification) {
             $fg = MasterBomFgHeader::where('fg_item_code', $parentItem)->first();
             if ($fg && $fg->is_verified) {
                 $this->treeIsVerified = true;
@@ -444,10 +519,10 @@ class MasterBomView extends Component
             ->get()
             ->map(function ($log) {
                 return [
-                    'id'               => $log->id,
-                    'verified_at'      => $log->verified_at ? \Carbon\Carbon::parse($log->verified_at)->format('d/m/Y H:i') : '-',
+                    'id' => $log->id,
+                    'verified_at' => $log->verified_at ? \Carbon\Carbon::parse($log->verified_at)->format('d/m/Y H:i') : '-',
                     'verified_by_name' => $log->verified_by_name ?: 'PE Engineering',
-                    'notes'            => $log->notes ?: 'Verifikasi BOM',
+                    'notes' => $log->notes ?: 'Verifikasi BOM',
                 ];
             })
             ->toArray();
@@ -470,43 +545,43 @@ class MasterBomView extends Component
             $existingVerif = MasterBomVerification::where('parent_item', $parentItem)->first();
             if ($existingVerif && $existingVerif->verified_at) {
                 MasterBomVerificationLog::create([
-                    'parent_item'      => $parentItem,
-                    'verified_at'      => $existingVerif->verified_at,
-                    'verified_by'      => $existingVerif->verified_by,
+                    'parent_item' => $parentItem,
+                    'verified_at' => $existingVerif->verified_at,
+                    'verified_by' => $existingVerif->verified_by,
                     'verified_by_name' => $existingVerif->verified_by_name,
-                    'notes'            => $existingVerif->notes ?: 'Verifikasi Awal',
+                    'notes' => $existingVerif->notes ?: 'Verifikasi Awal',
                 ]);
                 $existingLogCount++;
             }
         }
 
-        $logNote = !empty($note) 
-            ? $note 
+        $logNote = ! empty($note)
+            ? $note
             : ($existingLogCount === 0 ? 'Verifikasi Awal' : 'Verifikasi Ulang #' . $existingLogCount);
 
         // 1. Simpan baris baru di tabel history log (riwayat permanen)
         MasterBomVerificationLog::create([
-            'parent_item'      => $parentItem,
-            'verified_at'      => $now,
-            'verified_by'      => auth()->id(),
+            'parent_item' => $parentItem,
+            'verified_at' => $now,
+            'verified_by' => auth()->id(),
             'verified_by_name' => $userName,
-            'notes'            => $logNote,
+            'notes' => $logNote,
         ]);
 
         // 2. Perbarui pointer verifikasi terakhir
         MasterBomVerification::updateOrCreate(
             ['parent_item' => $parentItem],
             [
-                'verified_at'      => $now,
-                'verified_by'      => auth()->id(),
+                'verified_at' => $now,
+                'verified_by' => auth()->id(),
                 'verified_by_name' => $userName,
-                'notes'            => $logNote,
+                'notes' => $logNote,
             ]
         );
 
         MasterBomFgHeader::where('fg_item_code', $parentItem)->update([
-            'is_verified'      => true,
-            'verified_at'      => $now,
+            'is_verified' => true,
+            'verified_at' => $now,
             'verified_by_name' => $userName,
         ]);
 
@@ -527,8 +602,8 @@ class MasterBomView extends Component
         $this->ensureAuditTablesExist();
         MasterBomVerification::where('parent_item', $parentItem)->delete();
         MasterBomFgHeader::where('fg_item_code', $parentItem)->update([
-            'is_verified'      => false,
-            'verified_at'      => null,
+            'is_verified' => false,
+            'verified_at' => null,
             'verified_by_name' => null,
         ]);
 
@@ -558,8 +633,8 @@ class MasterBomView extends Component
         ]);
 
         // Re-explode tree to reflect changes immediately
-        if (!empty($this->selectedParentItem)) {
-            $qty = max(0.0001, (float)$this->simulationQty);
+        if (! empty($this->selectedParentItem)) {
+            $qty = max(0.0001, (float) $this->simulationQty);
             $this->explodedTree = MasterBom::explodeTree($this->selectedParentItem, $qty);
             $this->treeSummaryData = MasterBom::getFlattenedSummary($this->selectedParentItem, $qty);
         }
@@ -578,7 +653,7 @@ class MasterBomView extends Component
     protected function ensureAuditTablesExist(): void
     {
         try {
-            if (!Schema::hasTable('master_bom_verifications')) {
+            if (! Schema::hasTable('master_bom_verifications')) {
                 Schema::create('master_bom_verifications', function ($table) {
                     $table->id();
                     $table->string('parent_item', 100)->unique()->index();
@@ -590,7 +665,7 @@ class MasterBomView extends Component
                 });
             }
 
-            if (!Schema::hasTable('master_bom_verification_logs')) {
+            if (! Schema::hasTable('master_bom_verification_logs')) {
                 Schema::create('master_bom_verification_logs', function ($table) {
                     $table->id();
                     $table->string('parent_item', 100)->index();
@@ -602,7 +677,7 @@ class MasterBomView extends Component
                 });
             }
 
-            if (!Schema::hasTable('master_bom_material_overrides')) {
+            if (! Schema::hasTable('master_bom_material_overrides')) {
                 Schema::create('master_bom_material_overrides', function ($table) {
                     $table->id();
                     $table->string('item_code', 100)->unique()->index();
@@ -615,10 +690,10 @@ class MasterBomView extends Component
 
             if (Schema::hasTable('master_boms')) {
                 Schema::table('master_boms', function ($table) {
-                    if (!Schema::hasColumn('master_boms', 'family')) {
+                    if (! Schema::hasColumn('master_boms', 'family')) {
                         $table->string('family', 150)->nullable()->after('uom');
                     }
-                    if (!Schema::hasColumn('master_boms', 'family_2')) {
+                    if (! Schema::hasColumn('master_boms', 'family_2')) {
                         $table->string('family_2', 150)->nullable()->after('family');
                     }
                 });
@@ -626,16 +701,16 @@ class MasterBomView extends Component
 
             if (Schema::hasTable('master_bom_fg_headers')) {
                 Schema::table('master_bom_fg_headers', function ($table) {
-                    if (!Schema::hasColumn('master_bom_fg_headers', 'family')) {
+                    if (! Schema::hasColumn('master_bom_fg_headers', 'family')) {
                         $table->string('family', 150)->nullable()->after('project_code');
                     }
-                    if (!Schema::hasColumn('master_bom_fg_headers', 'is_verified')) {
+                    if (! Schema::hasColumn('master_bom_fg_headers', 'is_verified')) {
                         $table->boolean('is_verified')->default(false);
                     }
-                    if (!Schema::hasColumn('master_bom_fg_headers', 'verified_at')) {
+                    if (! Schema::hasColumn('master_bom_fg_headers', 'verified_at')) {
                         $table->timestamp('verified_at')->nullable();
                     }
-                    if (!Schema::hasColumn('master_bom_fg_headers', 'verified_by_name')) {
+                    if (! Schema::hasColumn('master_bom_fg_headers', 'verified_by_name')) {
                         $table->string('verified_by_name', 150)->nullable();
                     }
                 });
@@ -650,7 +725,7 @@ class MasterBomView extends Component
                     ->whereNotNull('family')
                     ->where('family', '!=', '')
                     ->update([
-                        'project_code' => DB::raw('family')
+                        'project_code' => DB::raw('family'),
                     ]);
             }
         } catch (\Throwable $e) {
@@ -660,8 +735,10 @@ class MasterBomView extends Component
 
     public function updateSimulation()
     {
-        if (empty($this->selectedParentItem)) return;
-        $qty = max(0.0001, (float)$this->simulationQty);
+        if (empty($this->selectedParentItem)) {
+            return;
+        }
+        $qty = max(0.0001, (float) $this->simulationQty);
         $this->explodedTree = MasterBom::explodeTree($this->selectedParentItem, $qty);
         $this->treeSummaryData = MasterBom::getFlattenedSummary($this->selectedParentItem, $qty);
     }
@@ -694,7 +771,7 @@ class MasterBomView extends Component
     public function downloadTemplate()
     {
         $headers = [
-            'Content-Type'        => 'text/csv',
+            'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="Template_Master_BOM_SAP.csv"',
         ];
 
@@ -723,10 +800,10 @@ class MasterBomView extends Component
             if ($result['status'] === 'empty') {
                 session()->flash('error', $result['message']);
             } else {
-                $anomalyText = !empty($result['anomalies']) 
-                    ? " (" . count($result['anomalies']) . " Project Dummy SAP seperti SHAD TOP CASE berhasil dipetakan ke project_code)" 
-                    : "";
-                $msg = "⚡ Sukses! " . number_format($result['fgs_count']) . " FG Headers & " . number_format($result['components_count']) . " komponen produksi berhasil disimpan{$anomalyText}.";
+                $anomalyText = ! empty($result['anomalies'])
+                    ? ' (' . count($result['anomalies']) . ' Project Dummy SAP seperti SHAD TOP CASE berhasil dipetakan ke project_code)'
+                    : '';
+                $msg = '⚡ Sukses! ' . number_format($result['fgs_count']) . ' FG Headers & ' . number_format($result['components_count']) . " komponen produksi berhasil disimpan{$anomalyText}.";
                 session()->flash('success', $msg);
                 $this->activeMainTab = 'production';
             }
@@ -761,18 +838,18 @@ class MasterBomView extends Component
         if ($this->activeMainTab === 'production') {
             $fgQuery = MasterBomFgHeader::query();
 
-            if (!empty(trim($this->fgSearch))) {
+            if (! empty(trim($this->fgSearch))) {
                 $term = trim($this->fgSearch);
                 $fgQuery->where(function ($q) use ($term) {
                     $q->where('fg_item_code', 'like', "%{$term}%")
-                      ->orWhere('fg_description', 'like', "%{$term}%")
-                      ->orWhere('project_code', 'like', "%{$term}%")
-                      ->orWhere('family', 'like', "%{$term}%")
-                      ->orWhere('customer_name', 'like', "%{$term}%");
+                        ->orWhere('fg_description', 'like', "%{$term}%")
+                        ->orWhere('project_code', 'like', "%{$term}%")
+                        ->orWhere('family', 'like', "%{$term}%")
+                        ->orWhere('customer_name', 'like', "%{$term}%");
                 });
             }
 
-            if (!empty($this->fgProjectFilter)) {
+            if (! empty($this->fgProjectFilter)) {
                 if ($this->fgProjectFilter === 'NO_PROJECT') {
                     $fgQuery->where(function ($q) {
                         $q->whereNull('project_code')->orWhere('project_code', '');
@@ -782,12 +859,12 @@ class MasterBomView extends Component
                 } else {
                     $fgQuery->where(function ($q) {
                         $q->where('project_code', $this->fgProjectFilter)
-                          ->orWhere('family', $this->fgProjectFilter);
+                            ->orWhere('family', $this->fgProjectFilter);
                     });
                 }
             }
 
-            if (!empty($this->fgFamilyFilter)) {
+            if (! empty($this->fgFamilyFilter)) {
                 if ($this->fgFamilyFilter === 'NO_FAMILY') {
                     $fgQuery->where(function ($q) {
                         $q->whereNull('family')->orWhere('family', '');
@@ -795,7 +872,7 @@ class MasterBomView extends Component
                 } else {
                     $fgQuery->where(function ($q) {
                         $q->where('family', $this->fgFamilyFilter)
-                          ->orWhere('project_code', $this->fgFamilyFilter);
+                            ->orWhere('project_code', $this->fgFamilyFilter);
                     });
                 }
             }
@@ -810,7 +887,7 @@ class MasterBomView extends Component
                 if ($this->fgDepthFilter === '4+') {
                     $fgQuery->where('max_depth_level', '>=', 4);
                 } else {
-                    $fgQuery->where('max_depth_level', (int)$this->fgDepthFilter);
+                    $fgQuery->where('max_depth_level', (int) $this->fgDepthFilter);
                 }
             }
 
@@ -821,16 +898,16 @@ class MasterBomView extends Component
 
             // Project List mendeteksi dan mengelompokkan Family juga (Subquery untuk MySQL ONLY_FULL_GROUP_BY compliance)
             $projectList = DB::table(function ($query) {
-                    $query->from('master_bom_fg_headers')
-                        ->selectRaw('COALESCE(NULLIF(project_code, ""), family) as project_code')
-                        ->where(function ($q) {
-                            $q->where(function ($sq) {
-                                $sq->whereNotNull('project_code')->where('project_code', '!=', '');
-                            })->orWhere(function ($sq) {
-                                $sq->whereNotNull('family')->where('family', '!=', '');
-                            });
+                $query->from('master_bom_fg_headers')
+                    ->selectRaw('COALESCE(NULLIF(project_code, ""), family) as project_code')
+                    ->where(function ($q) {
+                        $q->where(function ($sq) {
+                            $sq->whereNotNull('project_code')->where('project_code', '!=', '');
+                        })->orWhere(function ($sq) {
+                            $sq->whereNotNull('family')->where('family', '!=', '');
                         });
-                }, 'sub')
+                    });
+            }, 'sub')
                 ->select('project_code', DB::raw('COUNT(*) as count'))
                 ->groupBy('project_code')
                 ->orderBy('project_code')
@@ -847,12 +924,12 @@ class MasterBomView extends Component
             if ($this->showComponentModal && $this->selectedFgId) {
                 $compQuery = MasterBomComponent::where('fg_id', $this->selectedFgId);
 
-                if (!empty(trim($this->compSearch))) {
+                if (! empty(trim($this->compSearch))) {
                     $cterm = trim($this->compSearch);
                     $compQuery->where(function ($q) use ($cterm) {
                         $q->where('component_item', 'like', "%{$cterm}%")
-                          ->orWhere('component_description', 'like', "%{$cterm}%")
-                          ->orWhere('parent_item', 'like', "%{$cterm}%");
+                            ->orWhere('component_description', 'like', "%{$cterm}%")
+                            ->orWhere('parent_item', 'like', "%{$cterm}%");
                     });
                 }
 
@@ -868,7 +945,7 @@ class MasterBomView extends Component
             }
 
             // Fetch Where-Used (Reverse BOM): Dikelompokkan per Finished Good (FG Unik) agar tidak dobel
-            if (!empty(trim($this->whereUsedSearch))) {
+            if (! empty(trim($this->whereUsedSearch))) {
                 $wTerm = trim($this->whereUsedSearch);
                 $whereUsedResults = MasterBomComponent::with('fgHeader')
                     ->whereHas('fgHeader')
@@ -883,7 +960,7 @@ class MasterBomView extends Component
                     )
                     ->where(function ($q) use ($wTerm) {
                         $q->where('component_item', 'like', "%{$wTerm}%")
-                          ->orWhere('component_description', 'like', "%{$wTerm}%");
+                            ->orWhere('component_description', 'like', "%{$wTerm}%");
                     })
                     ->groupBy('fg_id', 'component_item')
                     ->take(50)
@@ -911,13 +988,13 @@ class MasterBomView extends Component
                     )
                     ->groupBy('parent_item');
 
-                if (!empty(trim($this->search))) {
+                if (! empty(trim($this->search))) {
                     $term = trim($this->search);
                     $query->where(function ($q) use ($term) {
                         $q->where('parent_item', 'like', "%{$term}%")
-                          ->orWhere('parent_description', 'like', "%{$term}%")
-                          ->orWhere('component_item', 'like', "%{$term}%")
-                          ->orWhere('component_description', 'like', "%{$term}%");
+                            ->orWhere('parent_description', 'like', "%{$term}%")
+                            ->orWhere('component_item', 'like', "%{$term}%")
+                            ->orWhere('component_description', 'like', "%{$term}%");
                     });
                 }
 
@@ -939,13 +1016,13 @@ class MasterBomView extends Component
             } else {
                 $query = MasterBom::query();
 
-                if (!empty(trim($this->search))) {
+                if (! empty(trim($this->search))) {
                     $term = trim($this->search);
                     $query->where(function ($q) use ($term) {
                         $q->where('parent_item', 'like', "%{$term}%")
-                          ->orWhere('parent_description', 'like', "%{$term}%")
-                          ->orWhere('component_item', 'like', "%{$term}%")
-                          ->orWhere('component_description', 'like', "%{$term}%");
+                            ->orWhere('parent_description', 'like', "%{$term}%")
+                            ->orWhere('component_item', 'like', "%{$term}%")
+                            ->orWhere('component_description', 'like', "%{$term}%");
                     });
                 }
 
@@ -966,26 +1043,26 @@ class MasterBomView extends Component
 
         return view('livewire.master-bom-view', [
             // Stats
-            'totalRecords'       => $totalRecords,
-            'totalParents'       => $totalParents,
-            'totalComponents'    => $totalComponents,
-            'totalWip'           => $totalWip,
-            'totalValidFg'       => $totalValidFg,
-            'totalValidComp'     => $totalValidComp,
+            'totalRecords' => $totalRecords,
+            'totalParents' => $totalParents,
+            'totalComponents' => $totalComponents,
+            'totalWip' => $totalWip,
+            'totalValidFg' => $totalValidFg,
+            'totalValidComp' => $totalValidComp,
 
             // Tab 1: Production Data
-            'fgHeaders'          => $fgHeaders,
-            'projectList'        => $projectList,
-            'familyList'         => $familyList,
-            'modalComponents'    => $modalComponents,
-            'whereUsedResults'   => $whereUsedResults,
+            'fgHeaders' => $fgHeaders,
+            'projectList' => $projectList,
+            'familyList' => $familyList,
+            'modalComponents' => $modalComponents,
+            'whereUsedResults' => $whereUsedResults,
 
             // Tab 2: Staging Data
-            'parents'            => $parents,
+            'parents' => $parents,
             'componentsByParent' => $componentsByParent,
-            'boms'               => $boms,
-            'allParentCodes'     => $allParentCodes,
-            'allComponentCodes'  => $allComponentCodes,
+            'boms' => $boms,
+            'allParentCodes' => $allParentCodes,
+            'allComponentCodes' => $allComponentCodes,
         ]);
     }
 }

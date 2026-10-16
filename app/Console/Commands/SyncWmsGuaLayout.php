@@ -2,15 +2,16 @@
 
 namespace App\Console\Commands;
 
-use App\Models\WmsWarehouse;
-use App\Models\WmsRack;
 use App\Models\WmsPosition;
+use App\Models\WmsRack;
+use App\Models\WmsWarehouse;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class SyncWmsGuaLayout extends Command
 {
     protected $signature = 'wms:sync-gua-layout';
+
     protected $description = 'Sync physical layout coordinates (x_pos, y_pos, orientation) for GUA (Gudang Utama A)';
 
     public function handle()
@@ -18,10 +19,10 @@ class SyncWmsGuaLayout extends Command
         $this->info('Starting WMS GUA Layout Synchronization...');
 
         $whse = WmsWarehouse::where('whse_code', 'GUA')->first();
-        if (!$whse) {
+        if (! $whse) {
             $whse = WmsWarehouse::create([
                 'whse_code' => 'GUA',
-                'whse_name' => 'Gudang Utama A'
+                'whse_name' => 'Gudang Utama A',
             ]);
         }
 
@@ -108,12 +109,13 @@ class SyncWmsGuaLayout extends Command
             DB::commit();
             $this->info('GUA Layout sync completed successfully!');
 
-            usort($rankings, fn($a, $b) => $a['distance'] <=> $b['distance']);
+            usort($rankings, fn ($a, $b) => $a['distance'] <=> $b['distance']);
 
             $this->table(
                 ['Rank', 'Kode Rak', 'X Pos', 'Y Pos', 'Jarak Manhattan ke Exit Kiri Bawah', 'Total Slots', 'Status'],
-                array_map(function($idx, $r) use ($rankings) {
+                array_map(function ($idx, $r) use ($rankings) {
                     $status = $idx === 0 ? '🏆 Paling Dekat' : ($idx === count($rankings) - 1 ? '⚠️ Paling Jauh' : 'Normal');
+
                     return [
                         $idx + 1,
                         $r['rack'],
@@ -121,7 +123,7 @@ class SyncWmsGuaLayout extends Command
                         $r['y'],
                         $r['distance'] . ' px',
                         $r['slots'],
-                        $status
+                        $status,
                     ];
                 }, array_keys($rankings), $rankings)
             );
@@ -130,6 +132,7 @@ class SyncWmsGuaLayout extends Command
         } catch (\Exception $e) {
             DB::rollBack();
             $this->error('Sync failed: ' . $e->getMessage());
+
             return 1;
         }
     }

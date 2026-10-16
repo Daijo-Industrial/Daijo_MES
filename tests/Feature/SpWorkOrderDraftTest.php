@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\SpWorkOrder;
 use App\Models\SpProductionSession;
+use App\Models\SpWorkOrder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

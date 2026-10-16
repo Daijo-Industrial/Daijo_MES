@@ -4,10 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\ProductionScannedData;
 use App\Models\ProductionSummary;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class GenerateProductionSummaryTest extends TestCase

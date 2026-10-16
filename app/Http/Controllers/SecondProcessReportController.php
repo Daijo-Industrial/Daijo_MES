@@ -85,7 +85,7 @@ class SecondProcessReportController extends Controller
             $query->where('process_prod', $request->process_prod);
         }
         if ($request->filled('unit_line')) {
-            $query->where('unit_line', 'LIKE', '%'.$request->unit_line.'%');
+            $query->where('unit_line', 'LIKE', '%' . $request->unit_line . '%');
         }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -126,7 +126,7 @@ class SecondProcessReportController extends Controller
     public function create(Request $request)
     {
         $report = new SecondProcessReport;
-        
+
         // Auto-fill from dashboard parameters
         if ($request->has('unit_line')) {
             $report->unit_line = $request->input('unit_line');
@@ -213,14 +213,14 @@ class SecondProcessReportController extends Controller
         // Pre-sanitize materials: discard completely empty dynamic rows or untouched preset rows
         if ($request->has('materials') && is_array($request->materials)) {
             $cleanedMaterials = array_values(array_filter($request->materials, function ($mat) {
-                if (!is_array($mat)) {
+                if (! is_array($mat)) {
                     return false;
                 }
-                $hasLot = !empty(trim((string) ($mat['lot_number'] ?? '')));
-                $hasVisco = !empty(trim((string) ($mat['visco'] ?? '')));
-                $hasRatio = !empty(trim((string) ($mat['mixing_ratio'] ?? '')));
+                $hasLot = ! empty(trim((string) ($mat['lot_number'] ?? '')));
+                $hasVisco = ! empty(trim((string) ($mat['visco'] ?? '')));
+                $hasRatio = ! empty(trim((string) ($mat['mixing_ratio'] ?? '')));
                 $hasQty = isset($mat['qty']) && $mat['qty'] !== '' && (float) $mat['qty'] > 0;
-                $hasSubType = !empty(trim((string) ($mat['sub_type'] ?? '')));
+                $hasSubType = ! empty(trim((string) ($mat['sub_type'] ?? '')));
 
                 $hasData = $hasLot || $hasVisco || $hasRatio || $hasQty || $hasSubType;
 
@@ -237,14 +237,14 @@ class SecondProcessReportController extends Controller
         // Pre-sanitize troubles: discard completely empty dynamic rows
         if ($request->has('troubles') && is_array($request->troubles)) {
             $cleanedTroubles = array_values(array_filter($request->troubles, function ($tr) {
-                if (!is_array($tr)) {
+                if (! is_array($tr)) {
                     return false;
                 }
-                $hasMasalah = !empty(trim((string) ($tr['masalah'] ?? '')));
-                $hasPenanganan = !empty(trim((string) ($tr['penanganan'] ?? '')));
-                $hasLossTime = (!empty($tr['loss_time_minutes']) && (int) $tr['loss_time_minutes'] > 0)
-                    || !empty(trim((string) ($tr['loss_time'] ?? '')));
-                $hasCategory = !empty(trim((string) ($tr['category'] ?? ''))) || !empty(trim((string) ($tr['penyebab'] ?? '')));
+                $hasMasalah = ! empty(trim((string) ($tr['masalah'] ?? '')));
+                $hasPenanganan = ! empty(trim((string) ($tr['penanganan'] ?? '')));
+                $hasLossTime = (! empty($tr['loss_time_minutes']) && (int) $tr['loss_time_minutes'] > 0)
+                    || ! empty(trim((string) ($tr['loss_time'] ?? '')));
+                $hasCategory = ! empty(trim((string) ($tr['category'] ?? ''))) || ! empty(trim((string) ($tr['penyebab'] ?? '')));
 
                 return $hasMasalah || $hasPenanganan || $hasLossTime || $hasCategory;
             }));
@@ -336,8 +336,8 @@ class SecondProcessReportController extends Controller
                 function ($attribute, $value, $fail) {
                     if (
                         $value !== 'N/A' &&
-                        !MasterBusinessPartner::customers()->where('bp_name', $value)->exists() &&
-                        !MasterCustomerDelivery::where('customer_name', $value)->exists()
+                        ! MasterBusinessPartner::customers()->where('bp_name', $value)->exists() &&
+                        ! MasterCustomerDelivery::where('customer_name', $value)->exists()
                     ) {
                         $fail('Kolom Customer harus berupa Nama Customer resmi yang terdaftar atau N/A.');
                     }
@@ -425,7 +425,7 @@ class SecondProcessReportController extends Controller
         }
 
         // Enforce material restrictions (Paint: Paint, Hardener, Thinner; Part: WIP, Repairan)
-        if (!empty($validated['materials']) && is_array($validated['materials'])) {
+        if (! empty($validated['materials']) && is_array($validated['materials'])) {
             $materialErrors = [];
             foreach ($validated['materials'] as $idx => $mat) {
                 $matType = $mat['type'] ?? '';
@@ -435,35 +435,35 @@ class SecondProcessReportController extends Controller
                 }
 
                 if ($matType === 'paint') {
-                    if (!preg_match('/^(paint|hardener|thinner|basecoat|topcoat|primer|clear)/i', $itemName)) {
-                        $materialErrors["materials.{$idx}.item_name"] = "Item cat hanya boleh diawali Paint, Basecoat, Topcoat, Hardener, Thinner, atau Primer.";
+                    if (! preg_match('/^(paint|hardener|thinner|basecoat|topcoat|primer|clear)/i', $itemName)) {
+                        $materialErrors["materials.{$idx}.item_name"] = 'Item cat hanya boleh diawali Paint, Basecoat, Topcoat, Hardener, Thinner, atau Primer.';
                     }
                 } elseif ($matType === 'part') {
-                    if (!preg_match('/^(wip|repair)/i', $itemName)) {
-                        $materialErrors["materials.{$idx}.item_name"] = "Item part hanya boleh WIP atau Repairan (contoh: WIP #1, Repairan #1).";
+                    if (! preg_match('/^(wip|repair)/i', $itemName)) {
+                        $materialErrors["materials.{$idx}.item_name"] = 'Item part hanya boleh WIP atau Repairan (contoh: WIP #1, Repairan #1).';
                     }
                 }
             }
-            if (!empty($materialErrors)) {
+            if (! empty($materialErrors)) {
                 throw \Illuminate\Validation\ValidationException::withMessages($materialErrors);
             }
         }
 
         // Enforce defect remarks / categories for submitted reports when Total NG > 0
-        if (!empty($validated['ngs']) && is_array($validated['ngs'])) {
+        if (! empty($validated['ngs']) && is_array($validated['ngs'])) {
             $ngErrors = [];
             foreach ($validated['ngs'] as $idx => $ng) {
                 $ngName = $ng['ng_name'] ?? ('Defect #' . ($idx + 1));
                 $colTotal = 0;
-                if (!empty($ng['hours']) && is_array($ng['hours'])) {
+                if (! empty($ng['hours']) && is_array($ng['hours'])) {
                     foreach ($ng['hours'] as $val) {
                         $colTotal += (int) $val;
                     }
                 }
 
-                $hasCategory = !empty($ng['ng_category']);
+                $hasCategory = ! empty($ng['ng_category']);
                 $category = $hasCategory ? strtoupper(trim((string) $ng['ng_category'])) : null;
-                if ($category && !in_array($category, ['NG-PROCESS', 'NG-PROSES', 'NG-INPUT'], true)) {
+                if ($category && ! in_array($category, ['NG-PROCESS', 'NG-PROSES', 'NG-INPUT'], true)) {
                     $category = 'NG-PROCESS';
                 }
                 $validated['ngs'][$idx]['ng_category'] = $category;
@@ -476,9 +476,9 @@ class SecondProcessReportController extends Controller
 
                 // If explicit ng_input_item is given (or legacy submission without category), validate
                 if ($effectiveStatus === 'submitted' && $colTotal > 0) {
-                    if (!$hasCategory && empty($ng['ng_input_item'])) {
+                    if (! $hasCategory && empty($ng['ng_input_item'])) {
                         $ngErrors["ngs.{$idx}.ng_input_item"] = "Remark detail wajib diisi untuk defect {$ngName} karena terdapat {$colTotal} defect tercatat.";
-                    } elseif (!empty($ng['ng_input_item'])) {
+                    } elseif (! empty($ng['ng_input_item'])) {
                         $normalized = $this->normalizeNgRemarkItem($ng['ng_input_item']);
                         if (empty($normalized['normalized_item'])) {
                             $ngErrors["ngs.{$idx}.ng_input_item"] = "Remark detail wajib diisi untuk defect {$ngName} karena terdapat {$colTotal} defect tercatat.";
@@ -490,7 +490,7 @@ class SecondProcessReportController extends Controller
                 }
             }
 
-            if (!empty($ngErrors)) {
+            if (! empty($ngErrors)) {
                 throw \Illuminate\Validation\ValidationException::withMessages($ngErrors);
             }
         }
@@ -498,11 +498,11 @@ class SecondProcessReportController extends Controller
         // Sanitize next_production_schedule: discard empty strings, nulls, and whitespace
         $cleanSchedule = is_array($validated['next_production_schedule'] ?? null)
             ? array_values(array_filter(
-                array_map(fn($item) => is_string($item) ? trim($item) : $item, $validated['next_production_schedule']),
-                fn($item) => !empty($item)
+                array_map(fn ($item) => is_string($item) ? trim($item) : $item, $validated['next_production_schedule']),
+                fn ($item) => ! empty($item)
             ))
             : null;
-        $validated['next_production_schedule'] = !empty($cleanSchedule) ? $cleanSchedule : null;
+        $validated['next_production_schedule'] = ! empty($cleanSchedule) ? $cleanSchedule : null;
 
         // Default integer fields
         $validated['target_per_hour'] = $validated['target_per_hour'] ?? 0;
@@ -516,7 +516,7 @@ class SecondProcessReportController extends Controller
 
         foreach ($partMaterials as $mat) {
             $qty = (int) ($mat['qty'] ?? 0);
-            $hasLot = !empty(trim((string) ($mat['lot_number'] ?? '')));
+            $hasLot = ! empty(trim((string) ($mat['lot_number'] ?? '')));
             if ($qty > 0 || $hasLot) {
                 $hasPartBreakdown = true;
             }
@@ -628,7 +628,7 @@ class SecondProcessReportController extends Controller
             }
         }
 
-        DB::transaction(function () use ($request, $report, $validated) {
+        DB::transaction(function () use ($report, $validated) {
             if ($report->exists) {
                 // Delete old relations
                 $report->materials()->delete();
@@ -646,16 +646,16 @@ class SecondProcessReportController extends Controller
             if (isset($validated['materials'])) {
                 foreach ($validated['materials'] as $material) {
                     // Item Paint is only recorded if process_prod is Painting or Repair
-                    if (($material['type'] ?? '') === 'paint' && !in_array(($validated['process_prod'] ?? ''), ['Painting', 'Repair'])) {
+                    if (($material['type'] ?? '') === 'paint' && ! in_array(($validated['process_prod'] ?? ''), ['Painting', 'Repair'])) {
                         continue;
                     }
 
-                    $hasData = !empty(trim((string) ($material['lot_number'] ?? '')))
+                    $hasData = ! empty(trim((string) ($material['lot_number'] ?? '')))
                         || (isset($material['qty']) && $material['qty'] !== '' && (float) $material['qty'] > 0)
-                        || !empty(trim((string) ($material['visco'] ?? '')))
-                        || !empty(trim((string) ($material['mixing_ratio'] ?? '')));
+                        || ! empty(trim((string) ($material['visco'] ?? '')))
+                        || ! empty(trim((string) ($material['mixing_ratio'] ?? '')));
 
-                    if (!empty(trim((string) ($material['item_name'] ?? ''))) && $hasData) {
+                    if (! empty(trim((string) ($material['item_name'] ?? ''))) && $hasData) {
                         $report->materials()->create($material);
                     }
                 }
@@ -761,12 +761,12 @@ class SecondProcessReportController extends Controller
             $itemsQuery->where(function ($q) use ($query) {
                 $q->where('item_code', 'LIKE', "%{$query}%")
                     ->orWhere('item_name', 'LIKE', "%{$query}%");
-            })->orderByRaw("CASE WHEN item_code LIKE ? THEN 0 WHEN item_code LIKE ? THEN 1 ELSE 2 END", ["{$query}%", "%{$query}%"]);
+            })->orderByRaw('CASE WHEN item_code LIKE ? THEN 0 WHEN item_code LIKE ? THEN 1 ELSE 2 END', ["{$query}%", "%{$query}%"]);
         } elseif ($by === 'name' || $by === 'item_name') {
             $itemsQuery->where(function ($q) use ($query) {
                 $q->where('item_name', 'LIKE', "%{$query}%")
                     ->orWhere('item_code', 'LIKE', "%{$query}%");
-            })->orderByRaw("CASE WHEN item_name LIKE ? THEN 0 WHEN item_name LIKE ? THEN 1 ELSE 2 END", ["{$query}%", "%{$query}%"]);
+            })->orderByRaw('CASE WHEN item_name LIKE ? THEN 0 WHEN item_name LIKE ? THEN 1 ELSE 2 END', ["{$query}%", "%{$query}%"]);
         } else {
             $itemsQuery->where(function ($q) use ($query) {
                 $q->where('item_code', 'LIKE', "%{$query}%")
@@ -778,9 +778,10 @@ class SecondProcessReportController extends Controller
             ->get()
             ->map(function ($item) {
                 $rawCust = $item->customer?->customer_name ?: $item->businessPartner?->bp_name;
-                $custName = (!empty($rawCust) && $rawCust !== '0' && $rawCust !== '-') ? $rawCust : 'N/A';
+                $custName = (! empty($rawCust) && $rawCust !== '0' && $rawCust !== '-') ? $rawCust : 'N/A';
                 $rawModel = $item->project_code;
-                $modelCode = (!empty($rawModel) && $rawModel !== '0' && $rawModel !== '-') ? $rawModel : 'N/A';
+                $modelCode = (! empty($rawModel) && $rawModel !== '0' && $rawModel !== '-') ? $rawModel : 'N/A';
+
                 return [
                     'id' => $item->id,
                     'item_code' => $item->item_code,
@@ -815,7 +816,8 @@ class SecondProcessReportController extends Controller
         if ($bpResults->isNotEmpty()) {
             $customers = $bpResults->map(function ($bp) {
                 $details = array_filter([$bp->bp_code, $bp->foreign_name]);
-                $subtext = !empty($details) ? ' (' . implode(' - ', $details) . ')' : '';
+                $subtext = ! empty($details) ? ' (' . implode(' - ', $details) . ')' : '';
+
                 return [
                     'id' => $bp->id,
                     'customer_code' => $bp->bp_code,
@@ -894,7 +896,7 @@ class SecondProcessReportController extends Controller
         }
 
         return redirect()->route('second-process-reports.show', $id)
-            ->with('success', ucfirst($role).' signature applied successfully.');
+            ->with('success', ucfirst($role) . ' signature applied successfully.');
     }
 
     public function reject(Request $request, $id)
@@ -920,14 +922,12 @@ class SecondProcessReportController extends Controller
             'leader_signed_at' => null,
             'acknowledged_by_name' => null,
             'acknowledged_signed_at' => null,
-            'ng_remarks' => trim(($report->ng_remarks ? $report->ng_remarks."\n" : '').'Rejected by '.$user->name.': '.$request->rejection_reason),
+            'ng_remarks' => trim(($report->ng_remarks ? $report->ng_remarks . "\n" : '') . 'Rejected by ' . $user->name . ': ' . $request->rejection_reason),
         ]);
 
         return redirect()->route('second-process-reports.show', $id)
             ->with('success', 'Report was successfully rejected and returned to Draft.');
     }
-
-
 
     /**
      * Normalize NG remark item string to canonical UPPERCASE hyphenated categories
@@ -969,7 +969,7 @@ class SecondProcessReportController extends Controller
             }
 
             if ($cleanName !== '') {
-                if (!isset($categoryTotals[$cleanName])) {
+                if (! isset($categoryTotals[$cleanName])) {
                     $categoryTotals[$cleanName] = 0;
                 }
                 $categoryTotals[$cleanName] += $qty;

@@ -2,18 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Delivery\DelschedFinal;
+use App\Models\Delivery\sapInventoryFg;
+use App\Traits\BelongsToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Delivery\sapInventoryFg;
-use App\Models\Delivery\DelschedFinal;
-use App\Traits\BelongsToBranch;
 
 class DailyItemCode extends Model
 {
+    use BelongsToBranch;
     use HasFactory;
     use SoftDeletes;
-    use BelongsToBranch;
 
     protected $fillable = [
         'user_id',
@@ -81,7 +81,8 @@ class DailyItemCode extends Model
 
     public function delsched()
     {
-        return $this->hasMany(DelschedFinal::class,
+        return $this->hasMany(
+            DelschedFinal::class,
             'item_code',
             'item_code'
         );

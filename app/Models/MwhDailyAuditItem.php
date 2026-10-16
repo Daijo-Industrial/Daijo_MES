@@ -32,7 +32,7 @@ class MwhDailyAuditItem extends Model
     protected $casts = [
         'system_qty' => 'decimal:2',
         'actual_qty' => 'decimal:2',
-        'diff_qty'   => 'decimal:2',
+        'diff_qty' => 'decimal:2',
     ];
 
     public function audit()

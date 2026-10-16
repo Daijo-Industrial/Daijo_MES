@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Delivery\sapInventoryMtr;
 use App\Models\Delivery\sapInventoryFg;
+use App\Models\Delivery\sapInventoryMtr;
+use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
@@ -16,7 +16,7 @@ class InventoryController extends Controller
         if ($request->has('item_code') && $request->item_code) {
             $query->where('item_code', 'like', '%' . $request->item_code . '%');
         }
-        
+
         // Filter by Item Name
         if ($request->has('item_name') && $request->item_name) {
             $query->where('item_name', 'like', '%' . $request->item_name . '%');

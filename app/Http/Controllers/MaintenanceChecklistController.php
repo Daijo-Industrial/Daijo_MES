@@ -79,11 +79,11 @@ class MaintenanceChecklistController extends Controller
         );
 
         foreach ($request->items as $itemId => $itemInput) {
-            $value = is_array($itemInput) ? ($itemInput['value'] ?? 'OK') : (string)$itemInput;
+            $value = is_array($itemInput) ? ($itemInput['value'] ?? 'OK') : (string) $itemInput;
             $remarks = is_array($itemInput) ? ($itemInput['remarks'] ?? null) : null;
 
             $checkItem = MaintenanceCheckItem::find($itemId);
-            if (!$checkItem) {
+            if (! $checkItem) {
                 continue;
             }
 
@@ -97,7 +97,7 @@ class MaintenanceChecklistController extends Controller
                 }
             } elseif ($checkItem->input_type === 'numeric') {
                 if (is_numeric($valTrim)) {
-                    $num = (float)$valTrim;
+                    $num = (float) $valTrim;
                     if (str_contains(strtolower($checkItem->item_name), 'temp')) {
                         $isNormal = ($num < 60);
                     } elseif (str_contains(strtolower($checkItem->item_name), 'pump')) {

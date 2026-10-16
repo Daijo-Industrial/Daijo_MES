@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\IpqcCheckItem;
 use App\Models\IpqcInspection;
 use App\Models\IpqcInspectionRecord;
-use App\Models\IpqcCheckItem;
 use App\Models\IpqcMeasurementConfig;
 use App\Models\MasterListItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class IpqcInspectionController extends Controller
 {
@@ -34,12 +33,12 @@ class IpqcInspectionController extends Controller
         }
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('part_number', 'like', "%{$search}%")
-                  ->orWhere('part_name', 'like', "%{$search}%")
-                  ->orWhere('customer', 'like', "%{$search}%")
-                  ->orWhere('model', 'like', "%{$search}%")
-                  ->orWhere('unit_line', 'like', "%{$search}%");
+                    ->orWhere('part_name', 'like', "%{$search}%")
+                    ->orWhere('customer', 'like', "%{$search}%")
+                    ->orWhere('model', 'like', "%{$search}%")
+                    ->orWhere('unit_line', 'like', "%{$search}%");
             });
         }
 
@@ -50,7 +49,7 @@ class IpqcInspectionController extends Controller
 
     public function create()
     {
-        $inspection = new IpqcInspection();
+        $inspection = new IpqcInspection;
         $ipqcCheckItems = IpqcCheckItem::active()->ordered()->get();
         $ipqcMeasurements = IpqcMeasurementConfig::active()->ordered()->get();
 
@@ -64,7 +63,7 @@ class IpqcInspectionController extends Controller
         return DB::transaction(function () use ($validated, $request) {
             $inspectionData = $this->calculateTotals($validated);
             $inspectionData['created_by'] = auth()->id();
-            
+
             $inspection = IpqcInspection::create($inspectionData);
             $this->saveRecordsAndFiles($inspection, $validated['ipqc'] ?? [], $request);
 
@@ -76,14 +75,14 @@ class IpqcInspectionController extends Controller
     public function show($id)
     {
         $inspection = IpqcInspection::with(['records.attachments', 'attachments', 'creator'])->findOrFail($id);
-        
+
         return view('ipqc.show', compact('inspection'));
     }
 
     public function edit($id)
     {
         $inspection = IpqcInspection::with('records.attachments')->findOrFail($id);
-        
+
         if ($inspection->status !== 'ongoing') {
             return redirect()->route('ipqc-inspections.show', $id)
                 ->with('error', 'Cannot edit a completed inspection.');
@@ -98,7 +97,7 @@ class IpqcInspectionController extends Controller
     public function update(Request $request, $id)
     {
         $inspection = IpqcInspection::findOrFail($id);
-        
+
         if ($inspection->status !== 'ongoing') {
             return redirect()->route('ipqc-inspections.show', $id)
                 ->with('error', 'Cannot update a completed inspection.');
@@ -121,8 +120,8 @@ class IpqcInspectionController extends Controller
             $inspection->records()->delete();
             $this->saveRecordsAndFiles($inspection, $validated['ipqc'] ?? [], $request);
 
-            $route = $inspection->status === 'completed' 
-                ? route('ipqc-inspections.show', $inspection->id) 
+            $route = $inspection->status === 'completed'
+                ? route('ipqc-inspections.show', $inspection->id)
                 : route('ipqc-inspections.edit', $inspection->id);
 
             return redirect($route)->with('success', 'IPQC Inspection updated successfully.');
@@ -134,11 +133,11 @@ class IpqcInspectionController extends Controller
         $term = $request->query('q', '');
 
         $items = MasterListItem::where(function ($query) use ($term) {
-                $query->where('item_number', 'like', "%{$term}%")
-                    ->orWhere('item_name', 'like', "%{$term}%")
-                    ->orWhere('model', 'like', "%{$term}%")
-                    ->orWhere('customer', 'like', "%{$term}%");
-            })
+            $query->where('item_number', 'like', "%{$term}%")
+                ->orWhere('item_name', 'like', "%{$term}%")
+                ->orWhere('model', 'like', "%{$term}%")
+                ->orWhere('customer', 'like', "%{$term}%");
+        })
             ->limit(20)
             ->get();
 
@@ -176,7 +175,7 @@ class IpqcInspectionController extends Controller
             'inspector_name' => 'nullable|string',
             'checker_name' => 'nullable|string',
             'status' => 'nullable|string',
-            
+
             'ipqc' => 'nullable|array',
             'ipqc.*.hour_ke' => 'required|integer',
             'ipqc.*.fitting_test' => 'nullable|string',
@@ -204,13 +203,13 @@ class IpqcInspectionController extends Controller
             'total_reject' => 0,
         ];
 
-        if (!empty($validated['ipqc'])) {
+        if (! empty($validated['ipqc'])) {
             foreach ($validated['ipqc'] as $record) {
-                $totals['total_output'] += (int)($record['output_qty'] ?? 0);
-                $totals['total_sample'] += (int)($record['sample_qty'] ?? 0);
-                $totals['total_reject_sample'] += (int)($record['reject_sample_qty'] ?? 0);
-                $totals['total_pass'] += (int)($record['pass_qty'] ?? 0);
-                $totals['total_reject'] += (int)($record['reject_qty'] ?? 0);
+                $totals['total_output'] += (int) ($record['output_qty'] ?? 0);
+                $totals['total_sample'] += (int) ($record['sample_qty'] ?? 0);
+                $totals['total_reject_sample'] += (int) ($record['reject_sample_qty'] ?? 0);
+                $totals['total_pass'] += (int) ($record['pass_qty'] ?? 0);
+                $totals['total_reject'] += (int) ($record['reject_qty'] ?? 0);
             }
             if ($totals['total_sample'] > 0) {
                 $totals['total_reject_rate'] = ($totals['total_reject_sample'] / $totals['total_sample']) * 100;
@@ -218,6 +217,7 @@ class IpqcInspectionController extends Controller
         }
 
         $baseData = collect($validated)->except(['ipqc'])->toArray();
+
         return array_merge($baseData, $totals);
     }
 

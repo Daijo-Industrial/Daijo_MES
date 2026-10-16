@@ -3,22 +3,24 @@
 namespace App\Exports\Sheets;
 
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class DailyDeliveryItemSummarySheet implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithTitle
+class DailyDeliveryItemSummarySheet implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     protected array $items;
+
     protected string $dateLabel;
+
     protected int $rowNum = 1;
 
     public function __construct(array $items, string $dateLabel)
     {
-        $this->items     = $items;
+        $this->items = $items;
         $this->dateLabel = $dateLabel;
     }
 
@@ -49,8 +51,8 @@ class DailyDeliveryItemSummarySheet implements FromCollection, WithHeadings, Wit
 
     public function map($row): array
     {
-        $spkStr = !empty($row['spk_list']) ? implode(', ', $row['spk_list']) : '-';
-        $delStr = !empty($row['delivery_names']) ? implode(', ', $row['delivery_names']) : '-';
+        $spkStr = ! empty($row['spk_list']) ? implode(', ', $row['spk_list']) : '-';
+        $delStr = ! empty($row['delivery_names']) ? implode(', ', $row['delivery_names']) : '-';
 
         return [
             $this->rowNum++,
@@ -76,7 +78,7 @@ class DailyDeliveryItemSummarySheet implements FromCollection, WithHeadings, Wit
             1 => [
                 'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
                 'fill' => [
-                    'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
                     'startColor' => ['argb' => 'FF1E293B'], // Dark slate
                 ],
             ],

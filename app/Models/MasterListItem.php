@@ -11,7 +11,7 @@ class MasterListItem extends Model
 
     public $timestamps = false;
 
-     protected $fillable = [
+    protected $fillable = [
         'item_code',
         'item_name',
         'tipe_mesin',
@@ -40,7 +40,6 @@ class MasterListItem extends Model
     {
         return $this->item_name;
     }
-    
 
     public function files()
     {

@@ -11,23 +11,23 @@ namespace App\Application\Inventory\DTOs;
 readonly class StockHealthFilterDTO
 {
     public function __construct(
-        public readonly string $search       = '',
+        public readonly string $search = '',
         public readonly string $processOwner = '',
-        public readonly string $family       = '',
+        public readonly string $family = '',
     ) {}
 
     /**
      * Convenience factory — builds the DTO from a plain array
      * (e.g. $request->only([...]) from the controller).
      *
-     * @param  array<string, mixed>  $data
+     * @param array<string, mixed> $data
      */
     public static function fromArray(array $data): self
     {
         return new self(
-            search:       trim($data['search']        ?? ''),
+            search: trim($data['search'] ?? ''),
             processOwner: trim($data['process_owner'] ?? ''),
-            family:       trim($data['family']        ?? ''),
+            family: trim($data['family'] ?? ''),
         );
     }
 }

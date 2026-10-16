@@ -24,7 +24,7 @@ class QcTransferService extends BaseSapService
     ): array {
         return DB::transaction(function () use ($scannedDataId, $ngQty, $userId, $remarks, $isKbn, $skipSummaryStatusUpdate) {
             $scannedData = DB::table('production_scanned_data')->find($scannedDataId);
-            if (!$scannedData) {
+            if (! $scannedData) {
                 return ['success' => false, 'message' => 'Data box tidak ditemukan.'];
             }
 
@@ -35,11 +35,11 @@ class QcTransferService extends BaseSapService
             }
 
             $summary = DB::table('production_summary')->find($scannedData->summary_id);
-            if (!$summary || $summary->sap_sent != 1) {
+            if (! $summary || $summary->sap_sent != 1) {
                 return ['success' => false, 'message' => 'Production summary belum terkirim/terverifikasi di SAP (sap_sent != 1).'];
             }
 
-            $originalQty = (int)$scannedData->quantity;
+            $originalQty = (int) $scannedData->quantity;
             if ($ngQty < 0 || $ngQty > $originalQty) {
                 return ['success' => false, 'message' => "Jumlah NG ({$ngQty}) tidak valid. Harus antara 0 sampai {$originalQty}."];
             }
@@ -65,40 +65,40 @@ class QcTransferService extends BaseSapService
             // 1. Create QcTransferLog entry
             $log = QcTransferLog::create([
                 'production_summary_id' => $summary->id,
-                'scanned_data_id'       => $scannedData->id,
-                'item_code'             => $scannedData->item_code,
-                'spk_code'              => $scannedData->spk_code,
-                'label'                 => $scannedData->label,
-                'from_warehouse'        => $fromWh,
-                'original_qty'          => $originalQty,
-                'ok_qty'                => $okQty,
-                'ng_qty'                => $ngQty,
-                'ok_to_warehouse'       => $okToWh,
-                'ok_sap_status'         => $okSapStatus,
-                'ng_to_warehouse'       => $ngToWh,
-                'ng_sap_status'         => $ngSapStatus,
-                'inspected_by'          => $userId,
-                'remarks'               => $remarks,
+                'scanned_data_id' => $scannedData->id,
+                'item_code' => $scannedData->item_code,
+                'spk_code' => $scannedData->spk_code,
+                'label' => $scannedData->label,
+                'from_warehouse' => $fromWh,
+                'original_qty' => $originalQty,
+                'ok_qty' => $okQty,
+                'ng_qty' => $ngQty,
+                'ok_to_warehouse' => $okToWh,
+                'ok_sap_status' => $okSapStatus,
+                'ng_to_warehouse' => $ngToWh,
+                'ng_sap_status' => $ngSapStatus,
+                'inspected_by' => $userId,
+                'remarks' => $remarks,
             ]);
 
             // 2. Push Transfers to SAP
             $transferResult = $this->executeSapTransfers($log);
 
             // 3. Recalculate summary qc_status (skip if batch processing)
-            if (!$skipSummaryStatusUpdate) {
+            if (! $skipSummaryStatusUpdate) {
                 $this->updateSummaryQcStatus($summary->id);
             }
 
             $sapSuccess = ($transferResult['ok_success'] ?? true) && ($transferResult['ng_success'] ?? true);
             $msg = $sapSuccess
-                ? "Inspeksi box {$scannedData->label} berhasil diproses" . ($isKbn ? " (Reject dikirim ke RJCT, OK tidak ditransfer)." : " & terkirim ke SAP.")
+                ? "Inspeksi box {$scannedData->label} berhasil diproses" . ($isKbn ? ' (Reject dikirim ke RJCT, OK tidak ditransfer).' : ' & terkirim ke SAP.')
                 : "Inspeksi box {$scannedData->label} tersimpan, namun SAP Transfer Gagal: " . implode(', ', $transferResult['messages'] ?? []);
 
             return [
                 'success' => $sapSuccess,
                 'message' => $msg,
-                'log'     => $log->fresh(),
-                'sap'     => $transferResult,
+                'log' => $log->fresh(),
+                'sap' => $transferResult,
             ];
         });
     }
@@ -110,7 +110,7 @@ class QcTransferService extends BaseSapService
     public function processSummaryInspection(int $summaryId, array $boxNgMap, ?int $userId = null, ?string $remarks = null, bool $isKbn = false): array
     {
         $summary = DB::table('production_summary')->find($summaryId);
-        if (!$summary || $summary->sap_sent != 1) {
+        if (! $summary || $summary->sap_sent != 1) {
             return ['success' => false, 'message' => 'Production summary tidak valid atau belum receipt ke SAP (sap_sent != 1).'];
         }
 
@@ -119,7 +119,7 @@ class QcTransferService extends BaseSapService
         $failCount = 0;
 
         foreach ($boxNgMap as $scannedDataId => $ngQty) {
-            $res = $this->processSingleBoxInspection((int)$scannedDataId, (int)$ngQty, $userId, $remarks, $isKbn, true);
+            $res = $this->processSingleBoxInspection((int) $scannedDataId, (int) $ngQty, $userId, $remarks, $isKbn, true);
             if ($res['success']) {
                 $successCount++;
             } else {
@@ -131,11 +131,11 @@ class QcTransferService extends BaseSapService
         $this->updateSummaryQcStatus($summaryId);
 
         return [
-            'success'      => $failCount === 0,
-            'success_count'=> $successCount,
-            'fail_count'   => $failCount,
-            'message'      => "Berhasil memproses {$successCount} box" . ($failCount > 0 ? ", {$failCount} gagal/sudah pernah diinspeksi." : "."),
-            'details'      => $results,
+            'success' => $failCount === 0,
+            'success_count' => $successCount,
+            'fail_count' => $failCount,
+            'message' => "Berhasil memproses {$successCount} box" . ($failCount > 0 ? ", {$failCount} gagal/sudah pernah diinspeksi." : '.'),
+            'details' => $results,
         ];
     }
 
@@ -149,7 +149,7 @@ class QcTransferService extends BaseSapService
         $messages = [];
 
         // 1. Transfer OK items (if ok_qty > 0 and ok_to_warehouse is defined and not yet transferred)
-        if ($log->ok_qty > 0 && !empty($log->ok_to_warehouse) && $log->ok_sap_status != 1) {
+        if ($log->ok_qty > 0 && ! empty($log->ok_to_warehouse) && $log->ok_sap_status != 1) {
             $okResult = $this->sendTransferLineToSap(
                 $log,
                 'OK',
@@ -160,8 +160,8 @@ class QcTransferService extends BaseSapService
                 'ok_sap_error',
                 'ok_sap_sent_at'
             );
-            if (!$okResult['success']) {
-                $messages[] = "OK Transfer Gagal: " . $okResult['message'];
+            if (! $okResult['success']) {
+                $messages[] = 'OK Transfer Gagal: ' . $okResult['message'];
             }
         }
 
@@ -177,15 +177,15 @@ class QcTransferService extends BaseSapService
                 'ng_sap_error',
                 'ng_sap_sent_at'
             );
-            if (!$ngResult['success']) {
-                $messages[] = "NG Transfer Gagal: " . $ngResult['message'];
+            if (! $ngResult['success']) {
+                $messages[] = 'NG Transfer Gagal: ' . $ngResult['message'];
             }
         }
 
         return [
             'ok_success' => $okResult === true || (is_array($okResult) && $okResult['success']),
             'ng_success' => $ngResult === true || (is_array($ngResult) && $ngResult['success']),
-            'messages'   => $messages,
+            'messages' => $messages,
         ];
     }
 
@@ -208,28 +208,29 @@ class QcTransferService extends BaseSapService
             ->whereIn($statusCol, [0, 2])
             ->update([
                 $statusCol => 3,
-                $errorCol  => "Sending {$type} Transfer to SAP...",
+                $errorCol => "Sending {$type} Transfer to SAP...",
             ]);
 
-        if (!$locked) {
+        if (! $locked) {
             $currentStatus = DB::table('qc_transfer_logs')->where('id', $log->id)->value($statusCol);
             if ($currentStatus == 1) {
                 return ['success' => true, 'message' => "Transfer {$type} sudah sukses sebelumnya."];
             }
+
             return ['success' => false, 'message' => "Transfer {$type} sedang diproses oleh request lain."];
         }
 
         $payload = [
             'docDate' => now()->format('Y-m-d'),
             'remarks' => "QC {$type} Transfer #{$log->id}: {$qty} pcs {$log->item_code} from {$fromWh} to {$toWh}",
-            'lines'   => [
+            'lines' => [
                 [
-                    'itemCode'      => $log->item_code,
-                    'quantity'      => (float)$qty,
+                    'itemCode' => $log->item_code,
+                    'quantity' => (float) $qty,
                     'fromWarehouse' => $fromWh,
-                    'toWarehouse'   => $toWh,
-                    'u_NUMPR'       => (string)$log->spk_code,
-                ]
+                    'toWarehouse' => $toWh,
+                    'u_NUMPR' => (string) $log->spk_code,
+                ],
             ],
         ];
 
@@ -247,33 +248,36 @@ class QcTransferService extends BaseSapService
             if ($success || $isDuplicate) {
                 $log->update([
                     $statusCol => 1,
-                    $errorCol  => $isDuplicate ? "SAP: " . $errorMsg : null,
-                    $timeCol   => now(),
+                    $errorCol => $isDuplicate ? 'SAP: ' . $errorMsg : null,
+                    $timeCol => now(),
                 ]);
 
-                $logMsg = "QC {$type} Transfer #{$log->id} SUCCESS (" . ($isDuplicate ? "Duplicate/Already Exists" : "Synced") . ")";
+                $logMsg = "QC {$type} Transfer #{$log->id} SUCCESS (" . ($isDuplicate ? 'Duplicate/Already Exists' : 'Synced') . ')';
                 $this->saveApiLog('QC_Stock_Transfer_' . $type, 'POST', $this->endpoint, $payload, $json ?? ['body' => $rawBody], $statusCode, 'success', $logMsg);
+
                 return ['success' => true, 'message' => $logMsg];
             } else {
                 $displayError = "SAP Error [{$statusCode}]: " . $errorMsg;
                 $log->update([
                     $statusCol => 2,
-                    $errorCol  => $displayError,
-                    $timeCol   => now(),
+                    $errorCol => $displayError,
+                    $timeCol => now(),
                 ]);
 
                 $this->saveApiLog('QC_Stock_Transfer_' . $type, 'POST', $this->endpoint, $payload, $json ?? ['body' => $rawBody], $statusCode, 'failed', $displayError);
+
                 return ['success' => false, 'message' => $displayError];
             }
         } catch (\Throwable $e) {
             $log->update([
                 $statusCol => 2,
-                $errorCol  => 'Exception: ' . $e->getMessage(),
-                $timeCol   => now(),
+                $errorCol => 'Exception: ' . $e->getMessage(),
+                $timeCol => now(),
             ]);
 
             Log::error("QC {$type} Transfer Exception [Log #{$log->id}]: " . $e->getMessage());
             $this->saveApiLog('QC_Stock_Transfer_' . $type, 'POST', $this->endpoint, $payload, [], 500, 'failed', 'Exception: ' . $e->getMessage());
+
             return ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
         }
     }
@@ -307,7 +311,7 @@ class QcTransferService extends BaseSapService
         DB::table('production_summary')
             ->where('id', $summaryId)
             ->update([
-                'qc_status'  => $newStatus,
+                'qc_status' => $newStatus,
                 'updated_at' => now(),
             ]);
     }

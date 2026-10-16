@@ -35,4 +35,3 @@ class ApiLog extends Model
         return static::where('created_at', '<', now()->subMonths(3));
     }
 }
-

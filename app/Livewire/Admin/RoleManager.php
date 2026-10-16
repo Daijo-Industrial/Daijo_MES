@@ -193,7 +193,7 @@ class RoleManager extends Component
 
         $role->syncPermissions($permissionIds);
 
-        session()->flash('message', "Permissions for role '{$role->name}' updated successfully (" . count($permissionIds) . " permissions assigned).");
+        session()->flash('message', "Permissions for role '{$role->name}' updated successfully (" . count($permissionIds) . ' permissions assigned).');
         $this->dispatch('close-modal', 'manage-permissions-modal');
         $this->reset(['managingPermissionsRoleId', 'managingPermissionsRoleName', 'selectedPermissions']);
     }
@@ -205,9 +205,9 @@ class RoleManager extends Component
             $term = '%' . trim($this->permissionSearch) . '%';
             $permsQuery->where(function ($q) use ($term) {
                 $q->where('name', 'like', $term)
-                  ->orWhere('label', 'like', $term)
-                  ->orWhere('group', 'like', $term)
-                  ->orWhere('description', 'like', $term);
+                    ->orWhere('label', 'like', $term)
+                    ->orWhere('group', 'like', $term)
+                    ->orWhere('description', 'like', $term);
             });
             $ids = $permsQuery->pluck('id')->map(fn ($id) => (int) $id)->toArray();
             $this->selectedPermissions = array_values(array_unique(array_merge($this->selectedPermissions, $ids)));
@@ -222,9 +222,9 @@ class RoleManager extends Component
             $term = '%' . trim($this->permissionSearch) . '%';
             $ids = Permission::where(function ($q) use ($term) {
                 $q->where('name', 'like', $term)
-                  ->orWhere('label', 'like', $term)
-                  ->orWhere('group', 'like', $term)
-                  ->orWhere('description', 'like', $term);
+                    ->orWhere('label', 'like', $term)
+                    ->orWhere('group', 'like', $term)
+                    ->orWhere('description', 'like', $term);
             })->pluck('id')->map(fn ($id) => (int) $id)->toArray();
 
             $this->selectedPermissions = array_values(array_diff($this->selectedPermissions, $ids));
@@ -267,9 +267,9 @@ class RoleManager extends Component
             $term = '%' . trim($this->permissionSearch) . '%';
             $permissionsQuery->where(function ($q) use ($term) {
                 $q->where('name', 'like', $term)
-                  ->orWhere('label', 'like', $term)
-                  ->orWhere('group', 'like', $term)
-                  ->orWhere('description', 'like', $term);
+                    ->orWhere('label', 'like', $term)
+                    ->orWhere('group', 'like', $term)
+                    ->orWhere('description', 'like', $term);
             });
         }
         $groupedPermissions = $permissionsQuery->get()->groupBy('group');

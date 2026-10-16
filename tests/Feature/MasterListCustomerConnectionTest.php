@@ -5,8 +5,6 @@ namespace Tests\Feature;
 use App\Http\Controllers\SecondProcessReportController;
 use App\Livewire\Admin\MasterListManager;
 use App\Models\MasterBusinessPartner;
-use App\Models\MasterCustomerDelivery;
-use App\Models\MasterItemLog;
 use App\Models\MasterListItem;
 use App\Models\Role;
 use App\Models\User;
@@ -20,6 +18,7 @@ class MasterListCustomerConnectionTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Role $adminRole;
 
     protected function setUp(): void
@@ -170,7 +169,7 @@ class MasterListCustomerConnectionTest extends TestCase
             'customer_code' => 'CUST-004',
         ]);
 
-        $controller = new SecondProcessReportController();
+        $controller = new SecondProcessReportController;
         $request = new Request(['q' => 'SP-PART-001']);
 
         $response = $controller->searchItems($request);
@@ -199,7 +198,7 @@ class MasterListCustomerConnectionTest extends TestCase
             ->call('saveEdit');
 
         $item->refresh();
-        $this->assertEquals(1.275, (float)$item->part_weight);
+        $this->assertEquals(1.275, (float) $item->part_weight);
 
         // Verify audit log
         $this->assertDatabaseHas('master_item_logs', [
@@ -240,11 +239,11 @@ class MasterListCustomerConnectionTest extends TestCase
                 'half_code_1' => '0',
                 'half_code_2' => '0',
                 'position' => '0',
-            ]
+            ],
         ];
 
         $tempPath = storage_path('app/temp/test_import_' . uniqid() . '.json');
-        if (!file_exists(dirname($tempPath))) {
+        if (! file_exists(dirname($tempPath))) {
             mkdir(dirname($tempPath), 0755, true);
         }
         file_put_contents($tempPath, json_encode($tempData));
@@ -257,11 +256,11 @@ class MasterListCustomerConnectionTest extends TestCase
             ->call('importChunk');
 
         $existing->refresh();
-        $this->assertEquals(2.450, (float)$existing->part_weight);
+        $this->assertEquals(2.450, (float) $existing->part_weight);
 
         $newItem = MasterListItem::where('item_code', 'IMPORT-NEW')->first();
         $this->assertNotNull($newItem);
-        $this->assertEquals(0.825, (float)$newItem->part_weight);
+        $this->assertEquals(0.825, (float) $newItem->part_weight);
 
         if (file_exists($tempPath)) {
             unlink($tempPath);
@@ -270,21 +269,21 @@ class MasterListCustomerConnectionTest extends TestCase
 
     public function test_master_list_excel_file_upload_parses_gross_column(): void
     {
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // Exact headers from user screenshot
         $headers = [
-            '#', 'Item No.', 'Item Description', 'Tipe Mes', 'Packaging', 
-            'Setup Tim', 'Pair', 'KVT', 'Customer', 'Standard', 
-            'Family', 'Gross', 'Descripti', 'Color', 'Half Code', 'Half Code', 'Position'
+            '#', 'Item No.', 'Item Description', 'Tipe Mes', 'Packaging',
+            'Setup Tim', 'Pair', 'KVT', 'Customer', 'Standard',
+            'Family', 'Gross', 'Descripti', 'Color', 'Half Code', 'Half Code', 'Position',
         ];
         $sheet->fromArray([$headers], null, 'A1');
 
         $row2 = [
-            '1', '1005217-0', 'SHAFT RELEASE 1170', '', '250', 
-            '', '', '', '', '0.52', 
-            'VF3', '16', 'SHAFT RELEASE', 'BLACK', 'HC1', 'HC2', 'POS-A'
+            '1', '1005217-0', 'SHAFT RELEASE 1170', '', '250',
+            '', '', '', '', '0.52',
+            'VF3', '16', 'SHAFT RELEASE', 'BLACK', 'HC1', 'HC2', 'POS-A',
         ];
         $sheet->fromArray([$row2], null, 'A2');
 
@@ -305,7 +304,7 @@ class MasterListCustomerConnectionTest extends TestCase
         $preview = $component->get('previewRows');
         $this->assertNotEmpty($preview);
         $this->assertEquals('1005217-0', $preview[0]['item_code']);
-        $this->assertEquals(16.0, (float)$preview[0]['part_weight']);
+        $this->assertEquals(16.0, (float) $preview[0]['part_weight']);
         $this->assertEquals('VF3', $preview[0]['family']);
         $this->assertEquals('SHAFT RELEASE', $preview[0]['description_in_foreign_lang']);
         $this->assertEquals('BLACK', $preview[0]['color']);
@@ -318,7 +317,7 @@ class MasterListCustomerConnectionTest extends TestCase
 
         $createdItem = MasterListItem::where('item_code', '1005217-0')->first();
         $this->assertNotNull($createdItem);
-        $this->assertEquals(16.0, (float)$createdItem->part_weight);
+        $this->assertEquals(16.0, (float) $createdItem->part_weight);
         $this->assertEquals('VF3', $createdItem->family);
 
         if (file_exists($tempXlsx)) {

@@ -8,9 +8,9 @@ use App\Models\MasterBomComponent;
 use App\Models\MasterBomFgHeader;
 use App\Models\MasterListMaterial;
 use App\Models\Role;
+use App\Models\SpkBomChangeLog;
 use App\Models\SpkMaster;
 use App\Models\User;
-use App\Models\SpkBomChangeLog;
 use App\Services\SpkBomService;
 use App\Services\SpkMasterService;
 use Illuminate\Support\Facades\Http;
@@ -27,9 +27,9 @@ class SpkBomChangesTest extends TestCase
 
         config(['database.default' => 'sqlite']);
         config(['database.connections.sqlite' => [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]]);
 
         $this->createTestSchema();
@@ -186,10 +186,10 @@ class SpkBomChangesTest extends TestCase
     {
         // 1. Setup FG Header
         $fg = MasterBomFgHeader::create([
-            'fg_item_code'    => 'D0B29100.',
-            'fg_description'  => 'TOP CASE SH29',
-            'project_code'    => 'SHAD TOP CASE',
-            'has_packaging'   => true,
+            'fg_item_code' => 'D0B29100.',
+            'fg_description' => 'TOP CASE SH29',
+            'project_code' => 'SHAD TOP CASE',
+            'has_packaging' => true,
             'total_wip_count' => 1,
             'total_raw_count' => 3,
         ]);
@@ -197,61 +197,61 @@ class SpkBomChangesTest extends TestCase
         // 2. Setup Components in master_bom_components:
         // - WIP Component (HARUS DI-EXCLUDE dari Leaf Material): is_wip = true
         MasterBomComponent::create([
-            'fg_id'                 => $fg->id,
-            'parent_item'           => 'D0B29100.',
-            'component_item'        => '401-D1B29BT-A',
+            'fg_id' => $fg->id,
+            'parent_item' => 'D0B29100.',
+            'component_item' => '401-D1B29BT-A',
             'component_description' => 'BASE SH29 (SUB-ASSEMBLY WIP)',
-            'depth_level'           => 1,
-            'item_type'             => 'WIP',
-            'is_wip'                => true,
-            'unit_qty'              => 1.0,
-            'total_qty_per_fg'      => 1.0,
-            'uom'                   => 'PCS',
+            'depth_level' => 1,
+            'item_type' => 'WIP',
+            'is_wip' => true,
+            'unit_qty' => 1.0,
+            'total_qty_per_fg' => 1.0,
+            'uom' => 'PCS',
         ]);
 
         // - Leaf Component 1: Packaging Box (is_wip = false)
         MasterBomComponent::create([
-            'fg_id'                 => $fg->id,
-            'parent_item'           => 'D0B29100.',
-            'component_item'        => '600-501146',
+            'fg_id' => $fg->id,
+            'parent_item' => 'D0B29100.',
+            'component_item' => '600-501146',
             'component_description' => 'BOX TOP CASE SH29',
-            'depth_level'           => 1,
-            'item_type'             => 'PACKAGING',
-            'is_wip'                => false,
-            'unit_qty'              => 1.0,
-            'total_qty_per_fg'      => 1.0,
-            'uom'                   => 'PCS',
+            'depth_level' => 1,
+            'item_type' => 'PACKAGING',
+            'is_wip' => false,
+            'unit_qty' => 1.0,
+            'total_qty_per_fg' => 1.0,
+            'uom' => 'PCS',
         ]);
 
         // - Leaf Component 2: Resin PP (is_wip = false, child of WIP BASE)
         MasterBomComponent::create([
-            'fg_id'                 => $fg->id,
-            'parent_item'           => '401-D1B29BT-A',
-            'component_item'        => 'RESIN-PP-BLK',
+            'fg_id' => $fg->id,
+            'parent_item' => '401-D1B29BT-A',
+            'component_item' => 'RESIN-PP-BLK',
             'component_description' => 'BIJI PLASTIK PP BLACK',
-            'depth_level'           => 2,
-            'item_type'             => 'RESIN',
-            'is_wip'                => false,
-            'unit_qty'              => 0.450000,
-            'total_qty_per_fg'      => 0.450000,
-            'uom'                   => 'KG',
+            'depth_level' => 2,
+            'item_type' => 'RESIN',
+            'is_wip' => false,
+            'unit_qty' => 0.450000,
+            'total_qty_per_fg' => 0.450000,
+            'uom' => 'KG',
         ]);
 
         // - Leaf Component 3: Baut / Screw (is_wip = false)
         MasterBomComponent::create([
-            'fg_id'                 => $fg->id,
-            'parent_item'           => 'D0B29100.',
-            'component_item'        => 'FAST-M4X10',
+            'fg_id' => $fg->id,
+            'parent_item' => 'D0B29100.',
+            'component_item' => 'FAST-M4X10',
             'component_description' => 'SCREW M4X10 ZINC',
-            'depth_level'           => 1,
-            'item_type'             => 'HARDWARE',
-            'is_wip'                => false,
-            'unit_qty'              => 4.000000,
-            'total_qty_per_fg'      => 4.000000,
-            'uom'                   => 'PCS',
+            'depth_level' => 1,
+            'item_type' => 'HARDWARE',
+            'is_wip' => false,
+            'unit_qty' => 4.000000,
+            'total_qty_per_fg' => 4.000000,
+            'uom' => 'PCS',
         ]);
 
-        $service = new SpkBomService();
+        $service = new SpkBomService;
         $plannedTarget = 500.0; // 500 pcs FG
         $result = $service->getLeafMaterials('D0B29100.', $plannedTarget);
 
@@ -282,32 +282,32 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Admin',
-            'email'    => 'andreas@daijo.co.id',
+            'name' => 'Andreas Admin',
+            'email' => 'andreas@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
 
         $this->actingAs($user);
 
         // Create SPK Master
         $spk = SpkMaster::create([
-            'spk_number'        => 'SPK-2026-001',
-            'item_code'         => 'PART-TEST-01',
-            'planned_quantity'  => 1000,
-            'completed_quantity'=> 250,
+            'spk_number' => 'SPK-2026-001',
+            'item_code' => 'PART-TEST-01',
+            'planned_quantity' => 1000,
+            'completed_quantity' => 250,
             'production_status' => 'P',
-            'post_date'         => '2026-10-01',
+            'post_date' => '2026-10-01',
         ]);
 
         // Create Master BOM Staging fallback
         MasterBom::create([
-            'parent_item'           => 'PART-TEST-01',
-            'parent_description'    => 'PART TEST STAGING',
-            'component_item'        => 'RAW-TEST-A',
+            'parent_item' => 'PART-TEST-01',
+            'parent_description' => 'PART TEST STAGING',
+            'component_item' => 'RAW-TEST-A',
             'component_description' => 'RESIN POLYPROPYLENE',
-            'quantity'              => 0.25,
-            'uom'                   => 'KG',
+            'quantity' => 0.25,
+            'uom' => 'KG',
         ]);
 
         Livewire::test(SpkBomChangesView::class)
@@ -328,24 +328,24 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Admin',
-            'email'    => 'andreas2@daijo.co.id',
+            'name' => 'Andreas Admin',
+            'email' => 'andreas2@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-ALPHA-01',
-            'item_code'         => 'FG-ALPHA',
-            'planned_quantity'  => 100,
+            'spk_number' => 'SPK-ALPHA-01',
+            'item_code' => 'FG-ALPHA',
+            'planned_quantity' => 100,
             'production_status' => 'P',
         ]);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-BETA-02',
-            'item_code'         => 'FG-BETA',
-            'planned_quantity'  => 200,
+            'spk_number' => 'SPK-BETA-02',
+            'item_code' => 'FG-BETA',
+            'planned_quantity' => 200,
             'production_status' => 'P',
         ]);
 
@@ -366,26 +366,26 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Admin',
-            'email'    => 'andreas3@daijo.co.id',
+            'name' => 'Andreas Admin',
+            'email' => 'andreas3@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         $spk = SpkMaster::create([
-            'spk_number'        => 'SPK-MODAL-01',
-            'item_code'         => 'FG-MODAL',
-            'planned_quantity'  => 500,
+            'spk_number' => 'SPK-MODAL-01',
+            'item_code' => 'FG-MODAL',
+            'planned_quantity' => 500,
             'production_status' => 'P',
         ]);
 
         MasterBom::create([
-            'parent_item'           => 'FG-MODAL',
-            'component_item'        => 'RAW-BOLT-1',
+            'parent_item' => 'FG-MODAL',
+            'component_item' => 'RAW-BOLT-1',
             'component_description' => 'BOLT HEX M6',
-            'quantity'              => 2,
-            'uom'                   => 'PCS',
+            'quantity' => 2,
+            'uom' => 'PCS',
         ]);
 
         Livewire::test(SpkBomChangesView::class)
@@ -404,9 +404,9 @@ class SpkBomChangesTest extends TestCase
         Http::fake([
             '*/auth/token' => Http::response(['access_token' => 'dummy_token_123'], 200),
             '*/api/sap_production_order/update' => Http::response([
-                'status'  => true,
+                'status' => true,
                 'message' => 'SPK 250012345 updated successfully.',
-                'lines'   => [
+                'lines' => [
                     ['item_code' => 'RM-STEEL-001', 'action' => 'updated'],
                     ['item_code' => 'RM-PAINT-020', 'action' => 'added'],
                     ['item_code' => 'RM-PAINT-010', 'action' => 'deleted'],
@@ -414,23 +414,23 @@ class SpkBomChangesTest extends TestCase
             ], 200),
         ]);
 
-        $service = new SpkMasterService();
+        $service = new SpkMasterService;
 
         // Kirim payload persis seperti spesifikasi user
         $lines = [
             [
                 'item_code' => 'RM-STEEL-001',
-                'plan_qty'  => 250,
+                'plan_qty' => 250,
             ],
             [
                 'item_code' => 'RM-PAINT-020',
-                'base_qty'  => 0.15,
-                'plan_qty'  => 15,
+                'base_qty' => 0.15,
+                'plan_qty' => 15,
                 'warehouse' => 'WH-RM02',
             ],
             [
                 'item_code' => 'RM-PAINT-010',
-                'delete'    => true,
+                'delete' => true,
             ],
         ];
 
@@ -444,6 +444,7 @@ class SpkBomChangesTest extends TestCase
         Http::assertSent(function ($request) {
             if (str_contains($request->url(), '/api/sap_production_order/update')) {
                 $body = $request->data();
+
                 return $body['spk_code'] === '250012345'
                     && count($body['lines']) === 3
                     && $body['lines'][0]['item_code'] === 'RM-STEEL-001'
@@ -455,6 +456,7 @@ class SpkBomChangesTest extends TestCase
                     && $body['lines'][2]['item_code'] === 'RM-PAINT-010'
                     && $body['lines'][2]['delete'] === true;
             }
+
             return true;
         });
 
@@ -483,37 +485,37 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Admin',
-            'email'    => 'andreas_action@daijo.co.id',
+            'name' => 'Andreas Admin',
+            'email' => 'andreas_action@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         Http::fake([
             '*/auth/token' => Http::response(['access_token' => 'dummy_token_123'], 200),
             '*/api/sap_production_order/update' => Http::response([
-                'status'  => true,
+                'status' => true,
                 'message' => 'Updated ok',
-                'lines'   => [
+                'lines' => [
                     ['item_code' => 'MAT-TEST-01', 'action' => 'updated'],
                 ],
             ], 200),
         ]);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-ACT-001',
-            'item_code'         => 'FG-ACT-01',
-            'planned_quantity'  => 500,
+            'spk_number' => 'SPK-ACT-001',
+            'item_code' => 'FG-ACT-01',
+            'planned_quantity' => 500,
             'production_status' => 'P',
         ]);
 
         MasterBom::create([
-            'parent_item'           => 'FG-ACT-01',
-            'component_item'        => 'MAT-TEST-01',
+            'parent_item' => 'FG-ACT-01',
+            'component_item' => 'MAT-TEST-01',
             'component_description' => 'TEST MATERIAL',
-            'quantity'              => 1,
-            'uom'                   => 'PCS',
+            'quantity' => 1,
+            'uom' => 'PCS',
         ]);
 
         // Test Livewire submitEditQty (Staged in Edit Mode)
@@ -532,9 +534,9 @@ class SpkBomChangesTest extends TestCase
 
         $this->assertDatabaseHas('spk_bom_change_logs', [
             'spk_number' => 'SPK-ACT-001',
-            'item_code'  => 'MAT-TEST-01',
-            'plan_qty'   => 650,
-            'status'     => 'SUCCESS',
+            'item_code' => 'MAT-TEST-01',
+            'plan_qty' => 650,
+            'status' => 'SUCCESS',
         ]);
 
         // Test History Modal
@@ -550,19 +552,19 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Admin',
-            'email'    => 'andreas_sug@daijo.co.id',
+            'name' => 'Andreas Admin',
+            'email' => 'andreas_sug@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         Http::fake([
             '*/auth/token' => Http::response(['access_token' => 'dummy_token_123'], 200),
             '*/api/sap_production_order/update' => Http::response([
-                'status'  => true,
+                'status' => true,
                 'message' => 'Material added ok',
-                'lines'   => [
+                'lines' => [
                     ['item_code' => 'RM-PAINT-020', 'action' => 'added'],
                 ],
             ], 200),
@@ -574,9 +576,9 @@ class SpkBomChangesTest extends TestCase
         ]);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-ADD-999',
-            'item_code'         => 'FG-ADD-999',
-            'planned_quantity'  => 1000,
+            'spk_number' => 'SPK-ADD-999',
+            'item_code' => 'FG-ADD-999',
+            'planned_quantity' => 1000,
             'production_status' => 'P',
         ]);
 
@@ -607,20 +609,22 @@ class SpkBomChangesTest extends TestCase
         Http::assertSent(function ($request) {
             if (str_contains($request->url(), '/api/sap_production_order/update')) {
                 $body = $request->data();
+
                 return $body['spk_code'] === 'SPK-ADD-999'
                     && $body['lines'][0]['item_code'] === 'RM-PAINT-020'
                     && $body['lines'][0]['base_qty'] == 0.15
                     && $body['lines'][0]['plan_qty'] == 150;
             }
+
             return true;
         });
 
         $this->assertDatabaseHas('spk_bom_change_logs', [
             'spk_number' => 'SPK-ADD-999',
-            'item_code'  => 'RM-PAINT-020',
-            'base_qty'   => 0.15,
-            'plan_qty'   => 150,
-            'status'     => 'SUCCESS',
+            'item_code' => 'RM-PAINT-020',
+            'base_qty' => 0.15,
+            'plan_qty' => 150,
+            'status' => 'SUCCESS',
         ]);
     }
 
@@ -628,19 +632,19 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Operator',
-            'email'    => 'andreas_op@daijo.co.id',
+            'name' => 'Andreas Operator',
+            'email' => 'andreas_op@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         Http::fake([
             '*/auth/token' => Http::response(['access_token' => 'dummy_token_123'], 200),
             '*/api/sap_production_order/update' => Http::response([
-                'status'  => true,
+                'status' => true,
                 'message' => 'Batch updated ok',
-                'lines'   => [
+                'lines' => [
                     ['item_code' => 'MAT-EXIST-01', 'action' => 'updated'],
                     ['item_code' => 'MAT-EXIST-02', 'action' => 'deleted'],
                     ['item_code' => 'MAT-NEW-03',   'action' => 'added'],
@@ -649,26 +653,26 @@ class SpkBomChangesTest extends TestCase
         ]);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-BATCH-777',
-            'item_code'         => 'FG-BATCH-777',
-            'planned_quantity'  => 100,
+            'spk_number' => 'SPK-BATCH-777',
+            'item_code' => 'FG-BATCH-777',
+            'planned_quantity' => 100,
             'production_status' => 'P',
         ]);
 
         MasterBom::create([
-            'parent_item'           => 'FG-BATCH-777',
-            'component_item'        => 'MAT-EXIST-01',
+            'parent_item' => 'FG-BATCH-777',
+            'component_item' => 'MAT-EXIST-01',
             'component_description' => 'MAT 1',
-            'quantity'              => 2,
-            'uom'                   => 'PCS',
+            'quantity' => 2,
+            'uom' => 'PCS',
         ]);
 
         MasterBom::create([
-            'parent_item'           => 'FG-BATCH-777',
-            'component_item'        => 'MAT-EXIST-02',
+            'parent_item' => 'FG-BATCH-777',
+            'component_item' => 'MAT-EXIST-02',
             'component_description' => 'MAT 2',
-            'quantity'              => 1,
-            'uom'                   => 'PCS',
+            'quantity' => 1,
+            'uom' => 'PCS',
         ]);
 
         $test = Livewire::test(SpkBomChangesView::class)
@@ -718,7 +722,7 @@ class SpkBomChangesTest extends TestCase
                     if ($l['item_code'] === 'MAT-EXIST-01' && $l['plan_qty'] == 250) {
                         $hasEdit = true;
                     }
-                    if ($l['item_code'] === 'MAT-EXIST-02' && !empty($l['delete'])) {
+                    if ($l['item_code'] === 'MAT-EXIST-02' && ! empty($l['delete'])) {
                         $hasDel = true;
                     }
                     if ($l['item_code'] === 'MAT-NEW-03' && $l['plan_qty'] == 50) {
@@ -732,6 +736,7 @@ class SpkBomChangesTest extends TestCase
                     && $hasDel
                     && $hasAdd;
             }
+
             return true;
         });
 
@@ -743,17 +748,17 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Cancel',
-            'email'    => 'andreas_cancel@daijo.co.id',
+            'name' => 'Andreas Cancel',
+            'email' => 'andreas_cancel@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-CANCEL-001',
-            'item_code'         => 'FG-CANCEL-01',
-            'planned_quantity'  => 50,
+            'spk_number' => 'SPK-CANCEL-001',
+            'item_code' => 'FG-CANCEL-01',
+            'planned_quantity' => 50,
             'production_status' => 'P',
         ]);
 
@@ -785,17 +790,17 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Decimal',
-            'email'    => 'andreas_dec@daijo.co.id',
+            'name' => 'Andreas Decimal',
+            'email' => 'andreas_dec@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-DEC-001',
-            'item_code'         => 'FG-DEC-01',
-            'planned_quantity'  => 678,
+            'spk_number' => 'SPK-DEC-001',
+            'item_code' => 'FG-DEC-01',
+            'planned_quantity' => 678,
             'production_status' => 'P',
         ]);
 
@@ -820,17 +825,17 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas BaseQty',
-            'email'    => 'andreas_base@daijo.co.id',
+            'name' => 'Andreas BaseQty',
+            'email' => 'andreas_base@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-BASE-001',
-            'item_code'         => 'FG-BASE-01',
-            'planned_quantity'  => 1000,
+            'spk_number' => 'SPK-BASE-001',
+            'item_code' => 'FG-BASE-01',
+            'planned_quantity' => 1000,
             'production_status' => 'P',
         ]);
 
@@ -858,42 +863,42 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Toggle',
-            'email'    => 'andreas_toggle@daijo.co.id',
+            'name' => 'Andreas Toggle',
+            'email' => 'andreas_toggle@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-TOGGLE-001',
-            'item_code'         => 'FG-TOGGLE-01',
-            'planned_quantity'  => 100,
+            'spk_number' => 'SPK-TOGGLE-001',
+            'item_code' => 'FG-TOGGLE-01',
+            'planned_quantity' => 100,
             'production_status' => 'P',
         ]);
 
         $fg = MasterBomFgHeader::create([
-            'fg_item_code'    => 'FG-TOGGLE-01',
-            'fg_description'  => 'TOGGLE ITEM FG',
-            'project_code'    => 'PROJECT-TOGGLE',
-            'customer_name'   => 'CUSTOMER TOGGLE',
+            'fg_item_code' => 'FG-TOGGLE-01',
+            'fg_description' => 'TOGGLE ITEM FG',
+            'project_code' => 'PROJECT-TOGGLE',
+            'customer_name' => 'CUSTOMER TOGGLE',
             'total_wip_count' => 0,
             'total_raw_count' => 1,
             'max_depth_level' => 1,
-            'has_packaging'   => false,
+            'has_packaging' => false,
         ]);
 
         MasterBomComponent::create([
-            'fg_id'                 => $fg->id,
-            'parent_item'           => 'FG-TOGGLE-01',
-            'component_item'        => 'RM-TOGGLE-PART',
+            'fg_id' => $fg->id,
+            'parent_item' => 'FG-TOGGLE-01',
+            'component_item' => 'RM-TOGGLE-PART',
             'component_description' => 'TOGGLE RAW PART',
-            'depth_level'           => 1,
-            'item_type'             => 'RAW_MATERIAL',
-            'is_wip'                => false,
-            'unit_qty'              => 2.0,
-            'total_qty_per_fg'      => 2.0,
-            'uom'                   => 'PCS',
+            'depth_level' => 1,
+            'item_type' => 'RAW_MATERIAL',
+            'is_wip' => false,
+            'unit_qty' => 2.0,
+            'total_qty_per_fg' => 2.0,
+            'uom' => 'PCS',
         ]);
 
         $test = Livewire::test(SpkBomChangesView::class)
@@ -933,17 +938,17 @@ class SpkBomChangesTest extends TestCase
         $ppicRole = Role::create(['name' => 'PPIC']);
 
         $peUser = User::create([
-            'name'     => 'User PE',
-            'email'    => 'pe@daijo.co.id',
+            'name' => 'User PE',
+            'email' => 'pe@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $peRole->id,
+            'role_id' => $peRole->id,
         ]);
 
         $ppicUser = User::create([
-            'name'     => 'User PPIC',
-            'email'    => 'ppic@daijo.co.id',
+            'name' => 'User PPIC',
+            'email' => 'ppic@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $ppicRole->id,
+            'role_id' => $ppicRole->id,
         ]);
 
         // Verifikasi Gate authorization
@@ -963,30 +968,30 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Material',
-            'email'    => 'andreas_mat@daijo.co.id',
+            'name' => 'Andreas Material',
+            'email' => 'andreas_mat@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         // Buat data di master_list_materials
         MasterListMaterial::create([
-            'item_code'        => 'RAW-RESIN-PP-01',
+            'item_code' => 'RAW-RESIN-PP-01',
             'item_description' => 'BIJI PLASTIK RESIN PP HITAM',
-            'purchasing_uom'   => 'KG',
+            'purchasing_uom' => 'KG',
         ]);
 
         MasterListMaterial::create([
-            'item_code'        => 'RAW-PAINT-RED-02',
+            'item_code' => 'RAW-PAINT-RED-02',
             'item_description' => 'CAT MERAH GLOSS AUTOMOTIVE',
-            'purchasing_uom'   => 'LT',
+            'purchasing_uom' => 'LT',
         ]);
 
         SpkMaster::create([
-            'spk_number'        => 'SPK-SUGGEST-001',
-            'item_code'         => 'FG-SUGGEST-01',
-            'planned_quantity'  => 500,
+            'spk_number' => 'SPK-SUGGEST-001',
+            'item_code' => 'FG-SUGGEST-01',
+            'planned_quantity' => 500,
             'production_status' => 'P',
         ]);
 
@@ -1022,19 +1027,19 @@ class SpkBomChangesTest extends TestCase
     {
         $peRole = Role::firstOrCreate(['name' => 'PE']);
         $peUser = User::create([
-            'name'     => 'PE Tester',
-            'email'    => 'pe_preview@daijo.com',
+            'name' => 'PE Tester',
+            'email' => 'pe_preview@daijo.com',
             'password' => bcrypt('password'),
-            'role_id'  => $peRole->id,
+            'role_id' => $peRole->id,
         ]);
 
         $payloadData = [
-            'spk_code'     => '250099999',
-            'endpoint'     => 'http://localhost:9000/api/sap_production_order/update',
-            'method'       => 'POST',
-            'payload'      => [
+            'spk_code' => '250099999',
+            'endpoint' => 'http://localhost:9000/api/sap_production_order/update',
+            'method' => 'POST',
+            'payload' => [
                 'spk_code' => '250099999',
-                'lines'    => [
+                'lines' => [
                     ['item_code' => 'RM-STEEL-001', 'plan_qty' => 250],
                     ['item_code' => 'RM-PAINT-020', 'base_qty' => 0.15, 'plan_qty' => 15, 'warehouse' => 'WH-RM02'],
                     ['item_code' => 'RM-PAINT-010', 'delete' => true],
@@ -1042,14 +1047,14 @@ class SpkBomChangesTest extends TestCase
             ],
             'payload_json' => json_encode([
                 'spk_code' => '250099999',
-                'lines'    => [
+                'lines' => [
                     ['item_code' => 'RM-STEEL-001', 'plan_qty' => 250],
                 ],
             ], JSON_PRETTY_PRINT),
-            'result'       => ['status' => true, 'message' => 'Success test'],
-            'error'        => null,
-            'status'       => 'SUCCESS',
-            'timestamp'    => now()->format('Y-m-d H:i:s'),
+            'result' => ['status' => true, 'message' => 'Success test'],
+            'error' => null,
+            'status' => 'SUCCESS',
+            'timestamp' => now()->format('Y-m-d H:i:s'),
         ];
 
         $response = $this->actingAs($peUser)
@@ -1066,34 +1071,34 @@ class SpkBomChangesTest extends TestCase
     {
         $role = Role::create(['name' => 'SUPERADMIN']);
         $user = User::create([
-            'name'     => 'Andreas Guard',
-            'email'    => 'andreas_guard@daijo.co.id',
+            'name' => 'Andreas Guard',
+            'email' => 'andreas_guard@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         // SPK Planned -> Harus terlihat di list
         SpkMaster::create([
-            'spk_number'        => 'SPK-PLANNED-01',
-            'item_code'         => 'FG-PLANNED',
-            'planned_quantity'  => 100,
+            'spk_number' => 'SPK-PLANNED-01',
+            'item_code' => 'FG-PLANNED',
+            'planned_quantity' => 100,
             'production_status' => 'P',
         ]);
 
         // SPK Released -> TIDAK boleh terlihat di list
         SpkMaster::create([
-            'spk_number'        => 'SPK-RELEASED-02',
-            'item_code'         => 'FG-RELEASED',
-            'planned_quantity'  => 200,
+            'spk_number' => 'SPK-RELEASED-02',
+            'item_code' => 'FG-RELEASED',
+            'planned_quantity' => 200,
             'production_status' => 'R',
         ]);
 
         // SPK Closed -> TIDAK boleh terlihat di list
         SpkMaster::create([
-            'spk_number'        => 'SPK-CLOSED-03',
-            'item_code'         => 'FG-CLOSED',
-            'planned_quantity'  => 300,
+            'spk_number' => 'SPK-CLOSED-03',
+            'item_code' => 'FG-CLOSED',
+            'planned_quantity' => 300,
             'production_status' => 'C',
         ]);
 
@@ -1145,6 +1150,3 @@ class SpkBomChangesTest extends TestCase
             ->assertSee('tidak boleh diubah');
     }
 }
-
-
-

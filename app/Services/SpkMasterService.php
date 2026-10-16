@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
-use Carbon\Carbon; 
-use Illuminate\Support\Facades\DB;
-use App\Models\SpkBomChangeLog;
 use App\Models\MasterListItem;
+use App\Models\SpkBomChangeLog;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SpkMasterService extends BaseSapService
 {
@@ -29,15 +29,17 @@ class SpkMasterService extends BaseSapService
     private function transformData(array $data)
     {
         $data = collect($data)->map(function ($item) {
-            if (!is_array($item)) return [];
+            if (! is_array($item)) {
+                return [];
+            }
 
             // Format PostDate
-            if (!empty($item['PostDate'])) {
+            if (! empty($item['PostDate'])) {
                 $item['PostDate'] = Carbon::createFromFormat('d/m/Y', $item['PostDate'])->format('Y-m-d');
             }
 
             // Format DueDate
-            if (!empty($item['DueDate'])) {
+            if (! empty($item['DueDate'])) {
                 $item['DueDate'] = Carbon::createFromFormat('d/m/Y', $item['DueDate'])->format('Y-m-d');
             }
 
@@ -52,15 +54,14 @@ class SpkMasterService extends BaseSapService
             return $item;
         })->filter();
 
-
         return $data->values()->all();
     }
 
-
     private function normalizeResponse($response, $tag = 'SAP')
     {
-        if (!is_array($response)) {
+        if (! is_array($response)) {
             Log::warning("[{$tag}] Response bukan array", ['response' => $response]);
+
             return [];
         }
 
@@ -71,7 +72,7 @@ class SpkMasterService extends BaseSapService
         return $response;
     }
 
-   public function SyncData()
+    public function SyncData()
     {
         try {
             $spkData = $this->getAll();
@@ -97,11 +98,11 @@ class SpkMasterService extends BaseSapService
             // Check for NEW, QTY_CHANGE, STATUS_CHANGE
             foreach ($newSpkMap as $spkNo => $row) {
                 $itemCode = $row['ItemCode'] ?? null;
-                $newPlanned = isset($row['PlannedQty']) ? (int)$row['PlannedQty'] : null;
-                $newCompleted = isset($row['CompletedQty']) ? (int)$row['CompletedQty'] : null;
+                $newPlanned = isset($row['PlannedQty']) ? (int) $row['PlannedQty'] : null;
+                $newCompleted = isset($row['CompletedQty']) ? (int) $row['CompletedQty'] : null;
                 $newStatus = $row['Status'] ?? null;
 
-                if (!isset($oldSpks[$spkNo])) {
+                if (! isset($oldSpks[$spkNo])) {
                     // NEW SPK
                     $changeLogs[] = [
                         'sync_batch_id' => $batchId,
@@ -120,12 +121,12 @@ class SpkMasterService extends BaseSapService
                     ];
                 } else {
                     $old = $oldSpks[$spkNo];
-                    $oldPlanned = (int)$old->planned_quantity;
-                    $oldCompleted = (int)$old->completed_quantity;
-                    $oldStatus = (string)$old->production_status;
+                    $oldPlanned = (int) $old->planned_quantity;
+                    $oldCompleted = (int) $old->completed_quantity;
+                    $oldStatus = (string) $old->production_status;
 
                     $isQtyChanged = ($oldPlanned !== $newPlanned) || ($oldCompleted !== $newCompleted);
-                    $isStatusChanged = ($oldStatus !== (string)$newStatus);
+                    $isStatusChanged = ($oldStatus !== (string) $newStatus);
 
                     if ($isQtyChanged || $isStatusChanged) {
                         $changeType = $isQtyChanged ? 'QTY_CHANGE' : 'STATUS_CHANGE';
@@ -153,15 +154,15 @@ class SpkMasterService extends BaseSapService
 
             // Check for REMOVED SPK (in old, not in new)
             foreach ($oldSpks as $spkNo => $old) {
-                if (!isset($newSpkMap[$spkNo])) {
+                if (! isset($newSpkMap[$spkNo])) {
                     $changeLogs[] = [
                         'sync_batch_id' => $batchId,
                         'spk_number' => $spkNo,
                         'item_code' => $old->item_code,
                         'change_type' => 'REMOVED',
-                        'old_planned_qty' => (int)$old->planned_quantity,
+                        'old_planned_qty' => (int) $old->planned_quantity,
                         'new_planned_qty' => null,
-                        'old_completed_qty' => (int)$old->completed_quantity,
+                        'old_completed_qty' => (int) $old->completed_quantity,
                         'new_completed_qty' => null,
                         'old_status' => $old->production_status,
                         'new_status' => 'CLOSED/REMOVED',
@@ -173,7 +174,7 @@ class SpkMasterService extends BaseSapService
             }
 
             // Insert change logs if any
-            if (!empty($changeLogs)) {
+            if (! empty($changeLogs)) {
                 DB::table('spk_change_logs')->insert($changeLogs);
             }
 
@@ -181,14 +182,14 @@ class SpkMasterService extends BaseSapService
             $newSpkRecords = [];
             foreach ($spkData as $row) {
                 $newSpkRecords[] = [
-                    'spk_number'         => $row['SPKNo'],
-                    'post_date'          => $row['PostDate'],
-                    'due_date'           => $row['DueDate'],
-                    'production_status'  => $row['Status'],
-                    'item_code'          => $row['ItemCode'],
-                    'planned_quantity'   => $row['PlannedQty'],
+                    'spk_number' => $row['SPKNo'],
+                    'post_date' => $row['PostDate'],
+                    'due_date' => $row['DueDate'],
+                    'production_status' => $row['Status'],
+                    'item_code' => $row['ItemCode'],
+                    'planned_quantity' => $row['PlannedQty'],
                     'completed_quantity' => $row['CompletedQty'],
-                    'warehouse'          => $row['Warehouse'],
+                    'warehouse' => $row['Warehouse'],
                 ];
             }
 
@@ -196,21 +197,21 @@ class SpkMasterService extends BaseSapService
             if (empty($newSpkRecords)) {
                 Log::warning('[SPK_SYNC] Data SPK dari SAP kosong. Truncate dibatalkan demi perlindungan data.');
                 DB::table('api_logs')->insert([
-                    'api_name'    => 'SPK_SYNC',
-                    'method'      => 'GET',
-                    'endpoint'    => $this->baseUrl . '/api/sap_production_order/list',
+                    'api_name' => 'SPK_SYNC',
+                    'method' => 'GET',
+                    'endpoint' => $this->baseUrl . '/api/sap_production_order/list',
                     'status_code' => 200,
-                    'status'      => 'warning',
-                    'message'     => 'Data SPK dari SAP kosong. Truncate dibatalkan demi perlindungan data.',
-                    'created_at'  => now(),
-                    'updated_at'  => now(),
+                    'status' => 'warning',
+                    'message' => 'Data SPK dari SAP kosong. Truncate dibatalkan demi perlindungan data.',
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
 
                 return response()->json([
-                    'success'       => false,
-                    'message'       => 'Data SPK dari SAP kosong. Truncate dibatalkan demi perlindungan data.',
+                    'success' => false,
+                    'message' => 'Data SPK dari SAP kosong. Truncate dibatalkan demi perlindungan data.',
                     'changes_count' => 0,
-                    'batch_id'      => $batchId
+                    'batch_id' => $batchId,
                 ], 422);
             }
 
@@ -223,11 +224,11 @@ class SpkMasterService extends BaseSapService
             // Simpan log sukses
             DB::table('api_logs')->insert([
                 'api_name' => 'SPK_SYNC',
-                'method'   => 'GET',
+                'method' => 'GET',
                 'endpoint' => $this->baseUrl . '/api/sap_production_order/list',
                 'status_code' => 200,
-                'status'   => 'success',
-                'message'  => 'Data SPK berhasil disinkronkan. Terdeteksi ' . count($changeLogs) . ' perubahan.',
+                'status' => 'success',
+                'message' => 'Data SPK berhasil disinkronkan. Terdeteksi ' . count($changeLogs) . ' perubahan.',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -236,16 +237,16 @@ class SpkMasterService extends BaseSapService
                 'success' => true,
                 'message' => 'Data SPK berhasil disinkronkan.',
                 'changes_count' => count($changeLogs),
-                'batch_id' => $batchId
+                'batch_id' => $batchId,
             ]);
         } catch (\Exception $e) {
             DB::table('api_logs')->insert([
                 'api_name' => 'SPK_SYNC',
-                'method'   => 'GET',
+                'method' => 'GET',
                 'endpoint' => $this->baseUrl . '/api/sap_production_order/list',
                 'status_code' => 500,
-                'status'   => 'failed',
-                'message'  => $e->getMessage(),
+                'status' => 'failed',
+                'message' => $e->getMessage(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -286,7 +287,7 @@ class SpkMasterService extends BaseSapService
                 'item_code' => $itemCode,
             ];
 
-            if (!empty($line['delete'])) {
+            if (! empty($line['delete'])) {
                 $entry['delete'] = true;
             } else {
                 if (isset($line['base_qty']) && $line['base_qty'] !== null && $line['base_qty'] !== '') {
@@ -295,7 +296,7 @@ class SpkMasterService extends BaseSapService
                 if (isset($line['plan_qty']) && $line['plan_qty'] !== null && $line['plan_qty'] !== '') {
                     $entry['plan_qty'] = (float) $line['plan_qty'];
                 }
-                if (!empty($line['warehouse'])) {
+                if (! empty($line['warehouse'])) {
                     $entry['warehouse'] = trim($line['warehouse']);
                 }
             }
@@ -304,10 +305,10 @@ class SpkMasterService extends BaseSapService
             if (isset($line['old_plan_qty'])) {
                 $entry['_old_plan_qty'] = (float) $line['old_plan_qty'];
             }
-            if (!empty($line['action_type'])) {
+            if (! empty($line['action_type'])) {
                 $entry['_action_type'] = $line['action_type'];
             }
-            if (!empty($line['replaced_item_code'])) {
+            if (! empty($line['replaced_item_code'])) {
                 $entry['_replaced_item_code'] = $line['replaced_item_code'];
             }
 
@@ -321,14 +322,14 @@ class SpkMasterService extends BaseSapService
         // Payload murni untuk SAP (filter keluar underscore keys)
         $sapLines = array_map(function ($line) {
             return array_filter($line, function ($key) {
-                return !str_starts_with($key, '_');
+                return ! str_starts_with($key, '_');
             }, ARRAY_FILTER_USE_KEY);
         }, $cleanLines);
 
         $endpoint = '/api/sap_production_order/update';
         $payload = [
             'spk_code' => $spkCode,
-            'lines'    => $sapLines,
+            'lines' => $sapLines,
         ];
 
         $statusCode = null;
@@ -377,14 +378,14 @@ class SpkMasterService extends BaseSapService
         // 2. Simpan per-baris ke audit log spk_bom_change_logs
         $this->recordBomChangeLogs($spkCode, $cleanLines, $resultLines, $payload, $responseBody, $success, $message, $userId, $userName);
 
-        if (!$success) {
+        if (! $success) {
             throw new \Exception($message);
         }
 
         return [
-            'status'  => true,
+            'status' => true,
             'message' => $message,
-            'lines'   => $resultLines,
+            'lines' => $resultLines,
         ];
     }
 
@@ -410,8 +411,8 @@ class SpkMasterService extends BaseSapService
             $action = $resLine['action'] ?? null;
 
             $actionType = $line['_action_type'] ?? null;
-            if (!$actionType) {
-                if (!empty($line['delete'])) {
+            if (! $actionType) {
+                if (! empty($line['delete'])) {
                     $actionType = 'DELETE_MATERIAL';
                 } elseif ($action === 'added' || isset($line['base_qty'])) {
                     $actionType = 'ADD_MATERIAL';
@@ -423,21 +424,21 @@ class SpkMasterService extends BaseSapService
             $itemName = MasterListItem::where('item_code', $itemCode)->value('item_name');
 
             SpkBomChangeLog::create([
-                'spk_number'         => $spkCode,
-                'action_type'        => $actionType,
-                'item_code'          => $itemCode,
-                'item_name'          => $itemName,
+                'spk_number' => $spkCode,
+                'action_type' => $actionType,
+                'item_code' => $itemCode,
+                'item_name' => $itemName,
                 'replaced_item_code' => $line['_replaced_item_code'] ?? null,
-                'base_qty'           => $line['base_qty'] ?? null,
-                'plan_qty'           => $line['plan_qty'] ?? null,
-                'old_plan_qty'       => $line['_old_plan_qty'] ?? null,
-                'warehouse'          => $line['warehouse'] ?? null,
-                'status'             => $success ? 'SUCCESS' : 'FAILED',
-                'message'            => $generalMessage,
-                'payload'            => $line,
-                'response'           => $resLine ?: $responseBody,
-                'created_by'         => $userId,
-                'created_by_name'    => $userName,
+                'base_qty' => $line['base_qty'] ?? null,
+                'plan_qty' => $line['plan_qty'] ?? null,
+                'old_plan_qty' => $line['_old_plan_qty'] ?? null,
+                'warehouse' => $line['warehouse'] ?? null,
+                'status' => $success ? 'SUCCESS' : 'FAILED',
+                'message' => $generalMessage,
+                'payload' => $line,
+                'response' => $resLine ?: $responseBody,
+                'created_by' => $userId,
+                'created_by_name' => $userName,
             ]);
         }
     }
@@ -448,10 +449,10 @@ class SpkMasterService extends BaseSapService
     public function updateMaterialQty(string $spkCode, string $itemCode, float $newPlanQty, ?float $baseQty = null, ?float $oldPlanQty = null, ?int $userId = null, ?string $userName = null): array
     {
         $line = [
-            'item_code'     => $itemCode,
-            'plan_qty'      => $newPlanQty,
+            'item_code' => $itemCode,
+            'plan_qty' => $newPlanQty,
             '_old_plan_qty' => $oldPlanQty,
-            '_action_type'  => 'UPDATE_QTY',
+            '_action_type' => 'UPDATE_QTY',
         ];
         if ($baseQty !== null) {
             $line['base_qty'] = $baseQty;
@@ -466,8 +467,8 @@ class SpkMasterService extends BaseSapService
     public function addNewMaterial(string $spkCode, string $itemCode, float $planQty, ?float $baseQty = null, ?string $warehouse = null, ?int $userId = null, ?string $userName = null): array
     {
         $line = [
-            'item_code'    => $itemCode,
-            'plan_qty'     => $planQty,
+            'item_code' => $itemCode,
+            'plan_qty' => $planQty,
             '_action_type' => 'ADD_MATERIAL',
         ];
         if ($baseQty !== null) {
@@ -486,8 +487,8 @@ class SpkMasterService extends BaseSapService
     public function deleteMaterial(string $spkCode, string $itemCode, ?int $userId = null, ?string $userName = null): array
     {
         $line = [
-            'item_code'    => $itemCode,
-            'delete'       => true,
+            'item_code' => $itemCode,
+            'delete' => true,
             '_action_type' => 'DELETE_MATERIAL',
         ];
 
@@ -501,17 +502,17 @@ class SpkMasterService extends BaseSapService
     {
         $lines = [
             [
-                'item_code'           => $oldItemCode,
-                'delete'              => true,
-                '_action_type'        => 'REPLACE_MATERIAL',
+                'item_code' => $oldItemCode,
+                'delete' => true,
+                '_action_type' => 'REPLACE_MATERIAL',
                 '_replaced_item_code' => $newItemCode,
             ],
             [
-                'item_code'           => $newItemCode,
-                'plan_qty'            => $newPlanQty,
-                'base_qty'            => $baseQty,
-                'warehouse'           => $warehouse,
-                '_action_type'        => 'REPLACE_MATERIAL',
+                'item_code' => $newItemCode,
+                'plan_qty' => $newPlanQty,
+                'base_qty' => $baseQty,
+                'warehouse' => $warehouse,
+                '_action_type' => 'REPLACE_MATERIAL',
                 '_replaced_item_code' => $oldItemCode,
             ],
         ];

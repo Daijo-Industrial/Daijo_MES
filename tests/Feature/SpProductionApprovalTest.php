@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\SecondProcessReport;
 use App\Models\SpProductionSession;
 use App\Models\SpWorkOrder;
 use App\Models\User;
@@ -15,7 +14,9 @@ class SpProductionApprovalTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected SpWorkOrder $workOrder;
+
     protected SpProductionSession $session;
 
     protected function setUp(): void
@@ -272,4 +273,3 @@ class SpProductionApprovalTest extends TestCase
         );
     }
 }
-

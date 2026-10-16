@@ -241,7 +241,7 @@ class MaterialFifoDirectorDashboardTest extends TestCase
             'created_at' => Carbon::parse('2026-08-15 10:00:00'),
         ]);
 
-        $service = new MaterialFifoService();
+        $service = new MaterialFifoService;
         $deviations = $service->detectFifoDeviations('ALL', '2026-08-01', '2026-08-31');
 
         $this->assertCount(1, $deviations);
@@ -320,7 +320,7 @@ class MaterialFifoDirectorDashboardTest extends TestCase
             'created_at' => Carbon::parse('2026-08-15 10:00:00'),
         ]);
 
-        $service = new MaterialFifoService();
+        $service = new MaterialFifoService;
         $deviations = $service->detectFifoDeviations('ALL', '2026-08-01', '2026-08-31');
 
         // QC hold items are excused, so NO deviation!
@@ -371,7 +371,7 @@ class MaterialFifoDirectorDashboardTest extends TestCase
             'created_at' => Carbon::now()->subDays(120),
         ]);
 
-        $service = new MaterialFifoService();
+        $service = new MaterialFifoService;
         $aging = $service->getInventoryAgingSummary('ALL');
 
         $this->assertEquals(100, $aging['tiers']['fresh']['qty']);
@@ -408,7 +408,7 @@ class MaterialFifoDirectorDashboardTest extends TestCase
             'created_at' => Carbon::now()->subDays(20),
         ]);
 
-        $service = new MaterialFifoService();
+        $service = new MaterialFifoService;
         $queue = $service->getFifoPriorityQueue('ALL');
 
         $this->assertNotEmpty($queue);
@@ -487,7 +487,7 @@ class MaterialFifoDirectorDashboardTest extends TestCase
             'created_at' => Carbon::parse('2026-08-15 10:00:00'),
         ]);
 
-        $service = new MaterialFifoService();
+        $service = new MaterialFifoService;
         $deviations = $service->detectFifoDeviations('ALL', '2026-08-10', '2026-08-20');
 
         // Since PLT-OLD-DEPLETED was ALREADY fully consumed on Aug 05 (before Aug 15),

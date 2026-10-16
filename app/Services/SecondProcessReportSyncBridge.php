@@ -2,16 +2,16 @@
 
 namespace App\Services;
 
-use App\Models\SecondProcessReport;
-use App\Models\SecondProcessNgRecord;
-use App\Models\SecondProcessNgHourlyDetail;
-use App\Models\SecondProcessTrouble;
 use App\Models\SecondProcessHourlyProduction;
 use App\Models\SecondProcessManpower;
 use App\Models\SecondProcessMaterial;
+use App\Models\SecondProcessNgHourlyDetail;
+use App\Models\SecondProcessNgRecord;
+use App\Models\SecondProcessReport;
+use App\Models\SecondProcessTrouble;
 use App\Models\SpProductionSession;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SecondProcessReportSyncBridge
 {
@@ -30,7 +30,7 @@ class SecondProcessReportSyncBridge
                 'reworkEntries',
                 'inputEntries',
                 'manpowerEntries',
-                'materials'
+                'materials',
             ]);
 
             $wo = $session->workOrder;
@@ -76,8 +76,8 @@ class SecondProcessReportSyncBridge
                 'production_notes' => $session->production_notes ?? $session->remarks,
                 'ng_remarks' => $session->ng_remarks,
                 'absent_employees' => $session->absent_employees,
-                'next_production_schedule' => (!empty($session->next_production_schedule) && is_array($session->next_production_schedule))
-                    ? (array_values(array_filter(array_map('trim', $session->next_production_schedule), fn($v) => !empty($v))) ?: null)
+                'next_production_schedule' => (! empty($session->next_production_schedule) && is_array($session->next_production_schedule))
+                    ? (array_values(array_filter(array_map('trim', $session->next_production_schedule), fn ($v) => ! empty($v))) ?: null)
                     : null,
                 'output_destination' => $session->output_destination,
                 'acknowledged_by_name' => $session->approvedBy->name ?? null,
@@ -160,7 +160,7 @@ class SecondProcessReportSyncBridge
             // Sync Materials
             $report->materials()->delete();
             foreach ($session->materials as $mat) {
-                if (!empty($mat->item_name) && (!empty($mat->lot_number) || !empty($mat->qty) || !empty($mat->visco) || !empty($mat->mixing_ratio))) {
+                if (! empty($mat->item_name) && (! empty($mat->lot_number) || ! empty($mat->qty) || ! empty($mat->visco) || ! empty($mat->mixing_ratio))) {
                     SecondProcessMaterial::create([
                         'report_id' => $report->id,
                         'type' => $mat->type,

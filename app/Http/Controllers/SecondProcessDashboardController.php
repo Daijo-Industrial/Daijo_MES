@@ -33,7 +33,7 @@ class SecondProcessDashboardController extends Controller
             ->where(function ($query) use ($date, $shift) {
                 $query->where(function ($q) use ($date, $shift) {
                     $q->whereDate('started_at', $date);
-                    if ((string)$shift !== 'all') {
+                    if ((string) $shift !== 'all') {
                         $q->where('shift', $shift);
                     }
                 })->orWhere('status', 'running');
@@ -41,13 +41,13 @@ class SecondProcessDashboardController extends Controller
             ->get();
 
         // Key by unit_line, prioritizing running sessions over finished ones
-        $reports = $sessions->sortBy(fn($s) => $s->status === 'running' ? 2 : 1)->keyBy('unit_line');
+        $reports = $sessions->sortBy(fn ($s) => $s->status === 'running' ? 2 : 1)->keyBy('unit_line');
 
         // 3. Fetch planned/active Work Orders for today (excluding unreleased drafts, prioritizing active over completed)
         $activeWorkOrders = SpWorkOrder::with(['sessions'])
             ->where(function ($query) use ($date) {
                 $query->whereDate('planned_date', $date)
-                    ->where(function($query) {
+                    ->where(function ($query) {
                         $query->orWhereIn('status', ['planned', 'in_progress', 'completed']);
                     });
             })
@@ -155,15 +155,15 @@ class SecondProcessDashboardController extends Controller
 
         // 2. Query historical sessions matching the filter window
         $query = SpProductionSession::with([
-                'workOrder', 'operator', 'productionEntries', 'rejectEntries',
-                'reworkEntries', 'downtimeEntries', 'inputEntries', 'manpowerEntries',
-            ])
+            'workOrder', 'operator', 'productionEntries', 'rejectEntries',
+            'reworkEntries', 'downtimeEntries', 'inputEntries', 'manpowerEntries',
+        ])
             ->where('unit_line', $line)
             ->whereDate('started_at', '>=', $dateFrom)
             ->whereDate('started_at', '<=', $dateTo);
 
-        if ((string)$shift !== 'all') {
-            $query->where('shift', (int)$shift);
+        if ((string) $shift !== 'all') {
+            $query->where('shift', (int) $shift);
         }
 
         $sessions = $query->orderByDesc('started_at')->get();
@@ -180,12 +180,12 @@ class SecondProcessDashboardController extends Controller
         $totalReworkIn = $sessions->sum('total_rework_in');
         $totalReworkRecovered = $sessions->sum('total_rework_recovered');
         $totalScrap = $sessions->sum('total_scrap');
-        $targetQty = $sessions->sum(fn($s) => $s->workOrder?->target_qty ?? 0);
+        $targetQty = $sessions->sum(fn ($s) => $s->workOrder?->target_qty ?? 0);
 
         // === Hourly Output (grouped by H:00 in Asia/Jakarta timezone) ===
         $hourlyRaw = SpProductionEntry::whereIn('session_id', $sessionIds)
             ->get()
-            ->groupBy(fn($e) => $e->recorded_at ? $e->recorded_at->setTimezone('Asia/Jakarta')->format('H:00') : '00:00');
+            ->groupBy(fn ($e) => $e->recorded_at ? $e->recorded_at->setTimezone('Asia/Jakarta')->format('H:00') : '00:00');
 
         $hourlyOutput = [];
         foreach ($hourlyRaw as $hour => $entries) {
@@ -223,11 +223,30 @@ class SecondProcessDashboardController extends Controller
         $date = $dateFrom; // For backwards compatibility
 
         return view('second_process.line_dashboard', compact(
-            'line', 'date', 'dateFrom', 'dateTo', 'shift', 'preset', 'knownLines', 'sessions',
-            'totalGood', 'totalReject', 'totalInput', 'yieldPct', 'ngRate',
-            'totalDowntimeMinutes', 'totalReworkIn', 'totalReworkRecovered', 'totalScrap',
-            'targetQty', 'hourlyOutput', 'defectPareto', 'downtimeBreakdown',
-            'downtimeLog', 'manpower', 'sessionHistory'
+            'line',
+            'date',
+            'dateFrom',
+            'dateTo',
+            'shift',
+            'preset',
+            'knownLines',
+            'sessions',
+            'totalGood',
+            'totalReject',
+            'totalInput',
+            'yieldPct',
+            'ngRate',
+            'totalDowntimeMinutes',
+            'totalReworkIn',
+            'totalReworkRecovered',
+            'totalScrap',
+            'targetQty',
+            'hourlyOutput',
+            'defectPareto',
+            'downtimeBreakdown',
+            'downtimeLog',
+            'manpower',
+            'sessionHistory'
         ));
     }
 

@@ -31,11 +31,11 @@ class StockHealthController extends Controller
         $data = $this->useCase->execute($filter);
 
         return view('inventory.stock-health', [
-            'items'         => $data['items'],
-            'summary'       => $data['summary'],
+            'items' => $data['items'],
+            'summary' => $data['summary'],
             'processOwners' => $data['processOwners'],
-            'families'      => $data['families'],
-            'filter'        => $filter,
+            'families' => $data['families'],
+            'filter' => $filter,
         ]);
     }
 }

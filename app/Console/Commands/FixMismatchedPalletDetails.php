@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
+use App\Models\ScannedData;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
-use App\Models\ScannedData;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class FixMismatchedPalletDetails extends Command
@@ -31,12 +31,13 @@ class FixMismatchedPalletDetails extends Command
     {
         $dryRun = $this->option('dry-run');
 
-        $this->info("Scanning for falsely soft-deleted WmsPalletFormDetail records...");
+        $this->info('Scanning for falsely soft-deleted WmsPalletFormDetail records...');
 
         $trashedDetails = WmsPalletFormDetail::onlyTrashed()->get();
 
         if ($trashedDetails->isEmpty()) {
-            $this->info("No soft-deleted pallet details found.");
+            $this->info('No soft-deleted pallet details found.');
+
             return 0;
         }
 
@@ -49,7 +50,7 @@ class FixMismatchedPalletDetails extends Command
                 // Check if there is an actual matching scanned_data record for this specific part, SPK & label, created after the pallet detail was created
                 $hasScannedData = ScannedData::where('item_code', $detail->part_no)
                     ->where('label', $detail->label)
-                    ->when(!empty($detail->spk_no), function ($q) use ($detail) {
+                    ->when(! empty($detail->spk_no), function ($q) use ($detail) {
                         $q->where('spk_code', $detail->spk_no);
                     }, function ($q) {
                         $q->where(function ($sub) {
@@ -62,10 +63,10 @@ class FixMismatchedPalletDetails extends Command
                     })
                     ->exists();
 
-                if (!$hasScannedData) {
+                if (! $hasScannedData) {
                     $this->line("Found falsely deleted: Detail ID #{$detail->id}, Pallet: {$detail->pallet_form_id}, Part: {$detail->part_no}, SPK: {$detail->spk_no}, Label: {$detail->label}, Qty: {$detail->qty}");
 
-                    if (!$dryRun) {
+                    if (! $dryRun) {
                         $detail->restore();
                     }
 
@@ -76,7 +77,7 @@ class FixMismatchedPalletDetails extends Command
 
             $affectedPalletIds = array_unique($affectedPalletIds);
 
-            if (!$dryRun && !empty($affectedPalletIds)) {
+            if (! $dryRun && ! empty($affectedPalletIds)) {
                 foreach ($affectedPalletIds as $palletId) {
                     $pallet = WmsPalletForm::withTrashed()->where('pallet_id', $palletId)->first();
                     if ($pallet) {
@@ -103,15 +104,16 @@ class FixMismatchedPalletDetails extends Command
             DB::commit();
 
             if ($dryRun) {
-                $this->warn("[DRY RUN] {$restoredCount} details would be restored across " . count($affectedPalletIds) . " pallets.");
+                $this->warn("[DRY RUN] {$restoredCount} details would be restored across " . count($affectedPalletIds) . ' pallets.');
             } else {
-                $this->info("Successfully restored {$restoredCount} details across " . count($affectedPalletIds) . " pallets.");
+                $this->info("Successfully restored {$restoredCount} details across " . count($affectedPalletIds) . ' pallets.');
             }
 
             return 0;
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error("Failed to fix pallet details: " . $e->getMessage());
+            $this->error('Failed to fix pallet details: ' . $e->getMessage());
+
             return 1;
         }
     }

@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Models\WmsPalletForm;
-use App\Models\WmsPalletFormDetail;
 use App\Models\ScannedData;
 use App\Models\User;
+use App\Models\WmsPalletForm;
+use App\Models\WmsPalletFormDetail;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Tests\TestCase;
 
 class WmsPalletLookupAndSoScanTest extends TestCase
 {

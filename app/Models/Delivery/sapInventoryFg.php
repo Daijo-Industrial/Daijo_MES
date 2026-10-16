@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class sapInventoryFg extends Model
 {
     use HasFactory;
+
     protected $table = 'sap_inventory_fg';
 
     public $timestamps = false;
-    
+
     protected $fillable = [
         'item_code',
         'item_name',

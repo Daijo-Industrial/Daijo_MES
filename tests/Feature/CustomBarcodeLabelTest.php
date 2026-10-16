@@ -18,9 +18,9 @@ class CustomBarcodeLabelTest extends TestCase
 
         config(['database.default' => 'sqlite']);
         config(['database.connections.sqlite' => [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]]);
 
         $this->createTestSchema();
@@ -102,9 +102,9 @@ class CustomBarcodeLabelTest extends TestCase
     {
         $role = Role::create(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Test User',
-            'email'    => 'test@example.com',
-            'role_id'  => $role->id,
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'role_id' => $role->id,
             'password' => bcrypt('password'),
         ]);
 
@@ -116,14 +116,14 @@ class CustomBarcodeLabelTest extends TestCase
         $this->actingAs($user);
 
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'ITEM-001',
-            'spk_number'   => 'SPK-9999',
-            'quantity'     => 100,
-            'warehouse'    => 'WFI',
-            'start_label'  => 1,
-            'end_label'    => 2,
-            'shift'        => 'I',
-            'prod_date'    => '',
+            'item_code' => 'ITEM-001',
+            'spk_number' => 'SPK-9999',
+            'quantity' => 100,
+            'warehouse' => 'WFI',
+            'start_label' => 1,
+            'end_label' => 2,
+            'shift' => 'I',
+            'prod_date' => '',
             'barcode_type' => 'default',
         ]);
 
@@ -143,8 +143,8 @@ class CustomBarcodeLabelTest extends TestCase
     public function test_custom_barcode_print_with_filled_date()
     {
         $user = User::create([
-            'name'     => 'Test User 2',
-            'email'    => 'test2@example.com',
+            'name' => 'Test User 2',
+            'email' => 'test2@example.com',
             'password' => bcrypt('password'),
         ]);
 
@@ -156,14 +156,14 @@ class CustomBarcodeLabelTest extends TestCase
         $this->actingAs($user);
 
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'ITEM-SHARP',
-            'spk_number'   => 'SPK-SHARP-01',
-            'quantity'     => 50,
-            'warehouse'    => 'FFI',
-            'start_label'  => 1,
-            'end_label'    => 1,
-            'shift'        => 'II',
-            'prod_date'    => '2026-09-07',
+            'item_code' => 'ITEM-SHARP',
+            'spk_number' => 'SPK-SHARP-01',
+            'quantity' => 50,
+            'warehouse' => 'FFI',
+            'start_label' => 1,
+            'end_label' => 1,
+            'shift' => 'II',
+            'prod_date' => '2026-09-07',
             'barcode_type' => 'sharp',
         ]);
 
@@ -172,38 +172,38 @@ class CustomBarcodeLabelTest extends TestCase
             return $labels[0]['prod_date'] === '2026-09-07'
                 && $labels[0]['prod_date_formatted'] === 'SEPTEMBER 2026'
                 && $labels[0]['year_code'] === 'BF'
-                && (string)$labels[0]['month_code'] === '9';
+                && (string) $labels[0]['month_code'] === '9';
         });
     }
 
     public function test_itsp_half_code_enlarges_half_code_1_when_position_is_left()
     {
         $user = User::create([
-            'name'     => 'ITSP User Left',
-            'email'    => 'itsp_left@example.com',
+            'name' => 'ITSP User Left',
+            'email' => 'itsp_left@example.com',
             'password' => bcrypt('password'),
         ]);
 
         MasterListItem::create([
-            'item_code'   => 'TSPT10188XA-INJ',
-            'item_name'   => 'PANEL CONSOLE RR SIDE LH',
+            'item_code' => 'TSPT10188XA-INJ',
+            'item_name' => 'PANEL CONSOLE RR SIDE LH',
             'half_code_1' => 'TSPT10',
             'half_code_2' => '188XA',
-            'position'    => 'Left',
+            'position' => 'Left',
         ]);
 
         $this->actingAs($user);
 
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'TSPT10188XA-INJ',
-            'spk_number'   => 'SPK-ITSP-01',
-            'quantity'     => 80,
-            'warehouse'    => 'WFI',
-            'start_label'  => 1,
-            'end_label'    => 1,
-            'shift'        => 'I',
+            'item_code' => 'TSPT10188XA-INJ',
+            'spk_number' => 'SPK-ITSP-01',
+            'quantity' => 80,
+            'warehouse' => 'WFI',
+            'start_label' => 1,
+            'end_label' => 1,
+            'shift' => 'I',
             'barcode_type' => 'itsp',
-            'position'     => 'Left',
+            'position' => 'Left',
         ]);
 
         $response->assertOk();
@@ -220,31 +220,31 @@ class CustomBarcodeLabelTest extends TestCase
     public function test_itsp_half_code_enlarges_half_code_2_when_position_is_right()
     {
         $user = User::create([
-            'name'     => 'ITSP User Right',
-            'email'    => 'itsp_right@example.com',
+            'name' => 'ITSP User Right',
+            'email' => 'itsp_right@example.com',
             'password' => bcrypt('password'),
         ]);
 
         MasterListItem::create([
-            'item_code'   => 'TSPT10188XA-INJ',
-            'item_name'   => 'PANEL CONSOLE RR SIDE RH',
+            'item_code' => 'TSPT10188XA-INJ',
+            'item_name' => 'PANEL CONSOLE RR SIDE RH',
             'half_code_1' => 'TSPT10',
             'half_code_2' => '188XA',
-            'position'    => 'Right',
+            'position' => 'Right',
         ]);
 
         $this->actingAs($user);
 
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'TSPT10188XA-INJ',
-            'spk_number'   => 'SPK-ITSP-02',
-            'quantity'     => 80,
-            'warehouse'    => 'WFI',
-            'start_label'  => 1,
-            'end_label'    => 1,
-            'shift'        => 'I',
+            'item_code' => 'TSPT10188XA-INJ',
+            'spk_number' => 'SPK-ITSP-02',
+            'quantity' => 80,
+            'warehouse' => 'WFI',
+            'start_label' => 1,
+            'end_label' => 1,
+            'shift' => 'I',
             'barcode_type' => 'itsp',
-            'position'     => 'Right',
+            'position' => 'Right',
         ]);
 
         $response->assertOk();
@@ -261,31 +261,31 @@ class CustomBarcodeLabelTest extends TestCase
     public function test_itsp_half_code_uniform_size_when_position_is_center()
     {
         $user = User::create([
-            'name'     => 'ITSP User Center',
-            'email'    => 'itsp_center@example.com',
+            'name' => 'ITSP User Center',
+            'email' => 'itsp_center@example.com',
             'password' => bcrypt('password'),
         ]);
 
         MasterListItem::create([
-            'item_code'   => 'TSPT10188XA-INJ',
-            'item_name'   => 'PANEL CONSOLE RR SIDE CTR',
+            'item_code' => 'TSPT10188XA-INJ',
+            'item_name' => 'PANEL CONSOLE RR SIDE CTR',
             'half_code_1' => 'TSPT10',
             'half_code_2' => '188XA',
-            'position'    => 'Center',
+            'position' => 'Center',
         ]);
 
         $this->actingAs($user);
 
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'TSPT10188XA-INJ',
-            'spk_number'   => 'SPK-ITSP-03',
-            'quantity'     => 80,
-            'warehouse'    => 'WFI',
-            'start_label'  => 1,
-            'end_label'    => 1,
-            'shift'        => 'I',
+            'item_code' => 'TSPT10188XA-INJ',
+            'spk_number' => 'SPK-ITSP-03',
+            'quantity' => 80,
+            'warehouse' => 'WFI',
+            'start_label' => 1,
+            'end_label' => 1,
+            'shift' => 'I',
             'barcode_type' => 'itsp',
-            'position'     => 'Center',
+            'position' => 'Center',
         ]);
 
         $response->assertOk();
@@ -303,33 +303,33 @@ class CustomBarcodeLabelTest extends TestCase
     public function test_itsp_half_code_and_rh_lh_independent_left_position_with_rh_side()
     {
         $user = User::create([
-            'name'     => 'ITSP Independent User',
-            'email'    => 'itsp_indep@example.com',
+            'name' => 'ITSP Independent User',
+            'email' => 'itsp_indep@example.com',
             'password' => bcrypt('password'),
         ]);
 
         MasterListItem::create([
-            'item_code'   => 'TSPT10188XA-INJ',
-            'item_name'   => 'PANEL CONSOLE RR SIDE RH',
+            'item_code' => 'TSPT10188XA-INJ',
+            'item_name' => 'PANEL CONSOLE RR SIDE RH',
             'half_code_1' => 'TSPT10',
             'half_code_2' => '188XA',
-            'position'    => 'Left',
+            'position' => 'Left',
         ]);
 
         $this->actingAs($user);
 
         // Position is Left (enlarges half_code_1), but part side rh_lh is explicitly RH
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'TSPT10188XA-INJ',
-            'spk_number'   => 'SPK-ITSP-03',
-            'quantity'     => 80,
-            'warehouse'    => 'WFI',
-            'start_label'  => 1,
-            'end_label'    => 1,
-            'shift'        => 'I',
+            'item_code' => 'TSPT10188XA-INJ',
+            'spk_number' => 'SPK-ITSP-03',
+            'quantity' => 80,
+            'warehouse' => 'WFI',
+            'start_label' => 1,
+            'end_label' => 1,
+            'shift' => 'I',
             'barcode_type' => 'itsp',
-            'position'     => 'Left',
-            'rh_lh'        => 'RH',
+            'position' => 'Left',
+            'rh_lh' => 'RH',
         ]);
 
         $response->assertOk();
@@ -349,33 +349,33 @@ class CustomBarcodeLabelTest extends TestCase
     public function test_itsp_half_code_and_rh_lh_independent_right_position_with_lh_side()
     {
         $user = User::create([
-            'name'     => 'ITSP Independent User 2',
-            'email'    => 'itsp_indep2@example.com',
+            'name' => 'ITSP Independent User 2',
+            'email' => 'itsp_indep2@example.com',
             'password' => bcrypt('password'),
         ]);
 
         MasterListItem::create([
-            'item_code'   => 'TSPT10188XA-INJ',
-            'item_name'   => 'PANEL CONSOLE RR SIDE LH',
+            'item_code' => 'TSPT10188XA-INJ',
+            'item_name' => 'PANEL CONSOLE RR SIDE LH',
             'half_code_1' => 'TSPT10',
             'half_code_2' => '188XA',
-            'position'    => 'Right',
+            'position' => 'Right',
         ]);
 
         $this->actingAs($user);
 
         // Position is Right (enlarges half_code_2), but part side rh_lh is explicitly LH
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'TSPT10188XA-INJ',
-            'spk_number'   => 'SPK-ITSP-04',
-            'quantity'     => 80,
-            'warehouse'    => 'WFI',
-            'start_label'  => 1,
-            'end_label'    => 1,
-            'shift'        => 'I',
+            'item_code' => 'TSPT10188XA-INJ',
+            'spk_number' => 'SPK-ITSP-04',
+            'quantity' => 80,
+            'warehouse' => 'WFI',
+            'start_label' => 1,
+            'end_label' => 1,
+            'shift' => 'I',
             'barcode_type' => 'itsp',
-            'position'     => 'Right',
-            'rh_lh'        => 'LH',
+            'position' => 'Right',
+            'rh_lh' => 'LH',
         ]);
 
         $response->assertOk();
@@ -395,30 +395,30 @@ class CustomBarcodeLabelTest extends TestCase
     public function test_vinfast_label_generation_with_item_details()
     {
         $user = User::create([
-            'name'     => 'VinFast User',
-            'email'    => 'vinfast@example.com',
+            'name' => 'VinFast User',
+            'email' => 'vinfast@example.com',
             'password' => bcrypt('password'),
         ]);
 
         MasterListItem::create([
-            'item_code'               => 'BIN37024015AA',
-            'item_name'               => 'UPPER RH C PILLAR ASSEMBLY',
-            'family'                  => 'VF5',
-            'part_weight'             => 5.5,
+            'item_code' => 'BIN37024015AA',
+            'item_name' => 'UPPER RH C PILLAR ASSEMBLY',
+            'family' => 'VF5',
+            'part_weight' => 5.5,
             'standart_packaging_list' => 6,
         ]);
 
         $this->actingAs($user);
 
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'BIN37024015AA',
-            'spk_number'   => 'SPK-VF-9988',
-            'quantity'     => 6,
-            'warehouse'    => 'FFI',
-            'start_label'  => 1,
-            'end_label'    => 2,
-            'shift'        => 'I',
-            'prod_date'    => '2026-10-07',
+            'item_code' => 'BIN37024015AA',
+            'spk_number' => 'SPK-VF-9988',
+            'quantity' => 6,
+            'warehouse' => 'FFI',
+            'start_label' => 1,
+            'end_label' => 2,
+            'shift' => 'I',
+            'prod_date' => '2026-10-07',
             'barcode_type' => 'vinfast',
         ]);
 
@@ -428,8 +428,8 @@ class CustomBarcodeLabelTest extends TestCase
                 && $labels[0]['item_code'] === 'BIN37024015AA'
                 && $labels[0]['item_name'] === 'UPPER RH C PILLAR ASSEMBLY'
                 && $labels[0]['model'] === 'VF5'
-                && (float)$labels[0]['part_weight'] === 5.5
-                && (int)$labels[0]['std_pack'] === 6
+                && (float) $labels[0]['part_weight'] === 5.5
+                && (int) $labels[0]['std_pack'] === 6
                 && $labels[0]['made_in'] === 'Indonesia'
                 && $labels[0]['prod_date_formatted'] === '7 OCT 2026';
         });
@@ -449,30 +449,30 @@ class CustomBarcodeLabelTest extends TestCase
     public function test_vinfast_label_generation_without_spk_number_succeeds()
     {
         $user = User::create([
-            'name'     => 'VinFast User No SPK',
-            'email'    => 'vinfast_no_spk@example.com',
+            'name' => 'VinFast User No SPK',
+            'email' => 'vinfast_no_spk@example.com',
             'password' => bcrypt('password'),
         ]);
 
         MasterListItem::create([
-            'item_code'               => 'BIN37024015AA',
-            'item_name'               => 'UPPER RH C PILLAR ASSEMBLY',
-            'family'                  => 'VF5',
-            'part_weight'             => 5.5,
+            'item_code' => 'BIN37024015AA',
+            'item_name' => 'UPPER RH C PILLAR ASSEMBLY',
+            'family' => 'VF5',
+            'part_weight' => 5.5,
             'standart_packaging_list' => 6,
         ]);
 
         $this->actingAs($user);
 
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'BIN37024015AA',
-            'spk_number'   => '', // empty SPK for VinFast
-            'quantity'     => 6,
-            'warehouse'    => 'FFI',
-            'start_label'  => 1,
-            'end_label'    => 1,
-            'shift'        => 'I',
-            'prod_date'    => '2026-10-07',
+            'item_code' => 'BIN37024015AA',
+            'spk_number' => '', // empty SPK for VinFast
+            'quantity' => 6,
+            'warehouse' => 'FFI',
+            'start_label' => 1,
+            'end_label' => 1,
+            'shift' => 'I',
+            'prod_date' => '2026-10-07',
             'barcode_type' => 'vinfast',
         ]);
 
@@ -491,8 +491,8 @@ class CustomBarcodeLabelTest extends TestCase
     public function test_default_barcode_generation_without_spk_number_fails_validation()
     {
         $user = User::create([
-            'name'     => 'Standard User',
-            'email'    => 'standard_user@example.com',
+            'name' => 'Standard User',
+            'email' => 'standard_user@example.com',
             'password' => bcrypt('password'),
         ]);
 
@@ -504,13 +504,13 @@ class CustomBarcodeLabelTest extends TestCase
         $this->actingAs($user);
 
         $response = $this->post(route('barcode.custom.print'), [
-            'item_code'    => 'ITEM-DEFAULT',
-            'spk_number'   => '',
-            'quantity'     => 10,
-            'warehouse'    => 'WFI',
-            'start_label'  => 1,
-            'end_label'    => 1,
-            'shift'        => 'I',
+            'item_code' => 'ITEM-DEFAULT',
+            'spk_number' => '',
+            'quantity' => 10,
+            'warehouse' => 'WFI',
+            'start_label' => 1,
+            'end_label' => 1,
+            'shift' => 'I',
             'barcode_type' => 'default',
         ]);
 

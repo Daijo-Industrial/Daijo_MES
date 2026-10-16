@@ -2,26 +2,28 @@
 
 namespace App\Livewire\Wms;
 
-use App\Models\WmsRack;
-use App\Models\WmsPosition;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletLog;
+use App\Models\WmsPosition;
+use App\Models\WmsRack;
 use App\Services\WmsService;
-use Livewire\Component;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class WmsDashboard extends Component
 {
     public string $statusFilter = 'ALL'; // ALL, EMPTY, PARTIAL, FULL
+
     public string $search = '';
-    
+
     // Slot Detail Modal State
     public ?int $selectedPositionId = null;
+
     public bool $showSlotModal = false;
 
     protected $queryString = [
         'statusFilter' => ['except' => 'ALL'],
-        'search'       => ['except' => ''],
+        'search' => ['except' => ''],
     ];
 
     public function selectPosition(int $id): void
@@ -49,8 +51,9 @@ class WmsDashboard extends Component
 
     public function assignPalletToSelectedSlot(string $palletId, WmsService $wmsService): void
     {
-        if (!$this->selectedPositionId) {
+        if (! $this->selectedPositionId) {
             session()->flash('error', 'Pilih slot rak terlebih dahulu.');
+
             return;
         }
 
@@ -60,6 +63,7 @@ class WmsDashboard extends Component
 
             if ($pallet->total_pallet_qty <= 0) {
                 session()->flash('error', "Pallet {$pallet->pallet_id} sudah kosong (Qty: 0).");
+
                 return;
             }
 
@@ -74,11 +78,11 @@ class WmsDashboard extends Component
             }
             $wmsService->updatePositionStatus($pos->id);
 
-            $wmsService->logTransaction($pallet->pallet_id, 'ASSIGN_SLOT', $pos->id, auth()->id(), "Assigned via WMS Dashboard");
+            $wmsService->logTransaction($pallet->pallet_id, 'ASSIGN_SLOT', $pos->id, auth()->id(), 'Assigned via WMS Dashboard');
 
             session()->flash('success', "Pallet {$pallet->pallet_id} berhasil disimpan di slot {$pos->position_code}.");
         } catch (\Exception $e) {
-            session()->flash('error', "Gagal menempatkan pallet: " . $e->getMessage());
+            session()->flash('error', 'Gagal menempatkan pallet: ' . $e->getMessage());
         }
     }
 
@@ -95,12 +99,12 @@ class WmsDashboard extends Component
             WmsPalletForm::where('position_id', $pos->id)
                 ->where(function ($q) {
                     $q->where('total_pallet_qty', '<=', 0)
-                      ->orWhere('status', 'OUT');
+                        ->orWhere('status', 'OUT');
                 })
                 ->update(['position_id' => null]);
 
             $pos->update([
-                'status'         => 'EMPTY',
+                'status' => 'EMPTY',
                 'last_item_code' => null,
             ]);
         }
@@ -113,32 +117,32 @@ class WmsDashboard extends Component
 
         // 1. Overall WMS Slot Counts & Ratios
         $totalPositionsCount = WmsPosition::count();
-        $emptySlotsCount     = WmsPosition::where('status', 'EMPTY')->count();
-        $partialSlotsCount   = WmsPosition::where('status', 'PARTIAL')->count();
-        $fullSlotsCount      = WmsPosition::where('status', 'FULL')->count();
+        $emptySlotsCount = WmsPosition::where('status', 'EMPTY')->count();
+        $partialSlotsCount = WmsPosition::where('status', 'PARTIAL')->count();
+        $fullSlotsCount = WmsPosition::where('status', 'FULL')->count();
 
-        $occupiedSlotsCount  = $partialSlotsCount + $fullSlotsCount;
-        $occupancyRate       = $totalPositionsCount > 0 ? round(($occupiedSlotsCount / $totalPositionsCount) * 100, 1) : 0;
-        $emptyRate           = $totalPositionsCount > 0 ? round(($emptySlotsCount / $totalPositionsCount) * 100, 1) : 0;
-        $fullRate            = $totalPositionsCount > 0 ? round(($fullSlotsCount / $totalPositionsCount) * 100, 1) : 0;
-        $partialRate         = $totalPositionsCount > 0 ? round(($partialSlotsCount / $totalPositionsCount) * 100, 1) : 0;
+        $occupiedSlotsCount = $partialSlotsCount + $fullSlotsCount;
+        $occupancyRate = $totalPositionsCount > 0 ? round(($occupiedSlotsCount / $totalPositionsCount) * 100, 1) : 0;
+        $emptyRate = $totalPositionsCount > 0 ? round(($emptySlotsCount / $totalPositionsCount) * 100, 1) : 0;
+        $fullRate = $totalPositionsCount > 0 ? round(($fullSlotsCount / $totalPositionsCount) * 100, 1) : 0;
+        $partialRate = $totalPositionsCount > 0 ? round(($partialSlotsCount / $totalPositionsCount) * 100, 1) : 0;
 
         // 2. Total Stored Pallets & Qty Metrics
-        $storedPalletsQuery  = WmsPalletForm::whereNotNull('position_id')->where('total_pallet_qty', '>', 0);
-        $totalStoredPallets  = (clone $storedPalletsQuery)->count();
-        $totalStoredPcs      = (float) (clone $storedPalletsQuery)->sum('total_pallet_qty');
-        $totalStoredBoxes    = (float) (clone $storedPalletsQuery)->sum('box_qty');
+        $storedPalletsQuery = WmsPalletForm::whereNotNull('position_id')->where('total_pallet_qty', '>', 0);
+        $totalStoredPallets = (clone $storedPalletsQuery)->count();
+        $totalStoredPcs = (float) (clone $storedPalletsQuery)->sum('total_pallet_qty');
+        $totalStoredBoxes = (float) (clone $storedPalletsQuery)->sum('box_qty');
 
         // 2b. Overaged Pallets (> 30 days stored in warehouse)
         $thirtyDaysAgo = now()->subDays(30);
         $overagedPalletsQuery = WmsPalletForm::with('position')
             ->whereNotNull('position_id')
             ->where('total_pallet_qty', '>', 0)
-            ->where(function($q) use ($thirtyDaysAgo) {
+            ->where(function ($q) use ($thirtyDaysAgo) {
                 $q->where('assigned_at', '<=', $thirtyDaysAgo)
-                  ->orWhere(function($sq) use ($thirtyDaysAgo) {
-                      $sq->whereNull('assigned_at')->where('created_at', '<=', $thirtyDaysAgo);
-                  });
+                    ->orWhere(function ($sq) use ($thirtyDaysAgo) {
+                        $sq->whereNull('assigned_at')->where('created_at', '<=', $thirtyDaysAgo);
+                    });
             });
 
         $overagedCount = (clone $overagedPalletsQuery)->count();
@@ -147,7 +151,7 @@ class WmsDashboard extends Component
         // 2c. Average Putaway Lead Time calculation (minutes)
         $assignedPallets = WmsPalletForm::whereNotNull('assigned_at')->whereNotNull('created_at')->take(100)->get();
         $avgLeadTimeMin = $assignedPallets->isNotEmpty()
-            ? round($assignedPallets->avg(fn($p) => $p->created_at->diffInMinutes($p->assigned_at)))
+            ? round($assignedPallets->avg(fn ($p) => $p->created_at->diffInMinutes($p->assigned_at)))
             : 0;
 
         $avgLeadTimeText = '-';
@@ -157,7 +161,7 @@ class WmsDashboard extends Component
             } else {
                 $h = floor($avgLeadTimeMin / 60);
                 $m = $avgLeadTimeMin % 60;
-                $avgLeadTimeText = "{$h} J " . ($m > 0 ? "{$m} M" : "");
+                $avgLeadTimeText = "{$h} J " . ($m > 0 ? "{$m} M" : '');
             }
         }
 
@@ -171,38 +175,38 @@ class WmsDashboard extends Component
         // 3. Query Racks with Filtered Positions
         $racksQuery = WmsRack::with(['positions' => function ($q) use ($thirtyDaysAgo) {
             if ($this->statusFilter === 'OVERAGED') {
-                $q->whereHas('palletForms', function($pq) use ($thirtyDaysAgo) {
+                $q->whereHas('palletForms', function ($pq) use ($thirtyDaysAgo) {
                     $pq->where('total_pallet_qty', '>', 0)
-                       ->where(function($sq) use ($thirtyDaysAgo) {
-                           $sq->where('assigned_at', '<=', $thirtyDaysAgo)
-                              ->orWhere(function($ssq) use ($thirtyDaysAgo) {
-                                  $ssq->whereNull('assigned_at')->where('created_at', '<=', $thirtyDaysAgo);
-                              });
-                       });
+                        ->where(function ($sq) use ($thirtyDaysAgo) {
+                            $sq->where('assigned_at', '<=', $thirtyDaysAgo)
+                                ->orWhere(function ($ssq) use ($thirtyDaysAgo) {
+                                    $ssq->whereNull('assigned_at')->where('created_at', '<=', $thirtyDaysAgo);
+                                });
+                        });
                 });
             } elseif ($this->statusFilter !== 'ALL') {
                 $q->where('status', $this->statusFilter);
             }
-            if (!empty($this->search)) {
+            if (! empty($this->search)) {
                 $st = '%' . trim($this->search) . '%';
                 $q->where(function ($subq) use ($st) {
                     $subq->where('position_code', 'like', $st)
-                         ->orWhere('last_item_code', 'like', $st)
-                         ->orWhereHas('palletForms', function ($pq) use ($st) {
-                             $pq->where('pallet_id', 'like', $st)
+                        ->orWhere('last_item_code', 'like', $st)
+                        ->orWhereHas('palletForms', function ($pq) use ($st) {
+                            $pq->where('pallet_id', 'like', $st)
                                 ->orWhere('part_no', 'like', $st)
                                 ->orWhere('model_name', 'like', $st);
-                         });
+                        });
                 });
             }
-            $q->with(['palletForms' => function($pq) {
+            $q->with(['palletForms' => function ($pq) {
                 $pq->where('total_pallet_qty', '>', 0)->with('details');
-              }])
-              ->withCount(['palletForms' => function($pq) {
-                $pq->where('total_pallet_qty', '>', 0);
-              }])
-              ->orderBy('level_no', 'desc')
-              ->orderBy('slot_no', 'asc');
+            }])
+                ->withCount(['palletForms' => function ($pq) {
+                    $pq->where('total_pallet_qty', '>', 0);
+                }])
+                ->orderBy('level_no', 'desc')
+                ->orderBy('slot_no', 'asc');
         }]);
 
         $racks = $racksQuery->get();
@@ -234,35 +238,35 @@ class WmsDashboard extends Component
 
         // 7. Selected Slot Data for Detail Modal
         $selectedPosData = $this->selectedPositionId
-            ? WmsPosition::with(['rack', 'palletForms' => function($q) {
+            ? WmsPosition::with(['rack', 'palletForms' => function ($q) {
                 $q->where('total_pallet_qty', '>', 0)->with('details');
-              }])->withCount(['palletForms' => function($q) {
+            }])->withCount(['palletForms' => function ($q) {
                 $q->where('total_pallet_qty', '>', 0);
-              }])->find($this->selectedPositionId)
+            }])->find($this->selectedPositionId)
             : null;
 
         return view('livewire.wms.wms-dashboard', [
-            'totalPositions'      => $totalPositionsCount,
-            'emptySlots'          => $emptySlotsCount,
-            'partialSlots'        => $partialSlotsCount,
-            'fullSlots'           => $fullSlotsCount,
-            'occupancyRate'       => $occupancyRate,
-            'emptyRate'           => $emptyRate,
-            'fullRate'            => $fullRate,
-            'partialRate'         => $partialRate,
-            'totalStoredPallets'  => $totalStoredPallets,
-            'totalStoredPcs'      => $totalStoredPcs,
-            'totalStoredBoxes'    => $totalStoredBoxes,
-            'overagedCount'       => $overagedCount,
+            'totalPositions' => $totalPositionsCount,
+            'emptySlots' => $emptySlotsCount,
+            'partialSlots' => $partialSlotsCount,
+            'fullSlots' => $fullSlotsCount,
+            'occupancyRate' => $occupancyRate,
+            'emptyRate' => $emptyRate,
+            'fullRate' => $fullRate,
+            'partialRate' => $partialRate,
+            'totalStoredPallets' => $totalStoredPallets,
+            'totalStoredPcs' => $totalStoredPcs,
+            'totalStoredBoxes' => $totalStoredBoxes,
+            'overagedCount' => $overagedCount,
             'overagedPalletsList' => $overagedPalletsList,
-            'avgLeadTimeText'     => $avgLeadTimeText,
-            'unassignedPallets'   => $unassignedPallets,
-            'unassignedCount'     => $unassignedCount,
-            'racks'               => $racks,
-            'oldestPallets'       => $oldestPallets,
-            'topStoredItems'      => $topStoredItems,
-            'recentLogs'          => $recentLogs,
-            'selectedPosData'     => $selectedPosData,
+            'avgLeadTimeText' => $avgLeadTimeText,
+            'unassignedPallets' => $unassignedPallets,
+            'unassignedCount' => $unassignedCount,
+            'racks' => $racks,
+            'oldestPallets' => $oldestPallets,
+            'topStoredItems' => $topStoredItems,
+            'recentLogs' => $recentLogs,
+            'selectedPosData' => $selectedPosData,
         ]);
     }
 }

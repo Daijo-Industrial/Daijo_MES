@@ -3,13 +3,12 @@
 namespace App\Services;
 
 use App\Models\DailyItemCode;
+use App\Models\HourlyRemark;
 use App\Models\MasterListItem;
 use App\Models\PpicListUp;
-use App\Models\PpicListUpItem;
+use App\Models\ProductionOutputLog;
 use App\Models\SpkMaster;
 use App\Models\User;
-use App\Models\HourlyRemark;
-use App\Models\ProductionOutputLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -31,19 +30,20 @@ class PpicListUpService
         // Matching SPKs from spk_masters for this part no
         $cleanPart = rtrim($partNo, '.');
         $matchingSpks = SpkMaster::where(function ($q) use ($partNo, $cleanPart) {
-                $q->where('item_code', $partNo)
-                  ->orWhere('item_code', $cleanPart)
-                  ->orWhere('item_code', 'LIKE', "{$cleanPart}%");
-            })
+            $q->where('item_code', $partNo)
+                ->orWhere('item_code', $cleanPart)
+                ->orWhere('item_code', 'LIKE', "{$cleanPart}%");
+        })
             ->orderBy('post_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
         $availableSpks = $matchingSpks->map(function ($s) {
-            $rem = max(0, (float)$s->planned_quantity - (float)$s->completed_quantity);
+            $rem = max(0, (float) $s->planned_quantity - (float) $s->completed_quantity);
+
             return [
                 'spk_number' => $s->spk_number,
-                'planned_quantity' => (float)$s->planned_quantity,
+                'planned_quantity' => (float) $s->planned_quantity,
                 'remaining_quantity' => $rem,
                 'post_date' => $s->post_date ? Carbon::parse($s->post_date)->format('Y-m-d') : '-',
                 'production_status' => $s->production_status ?: '-',
@@ -72,7 +72,7 @@ class PpicListUpService
                 ->toArray();
         }
 
-        if (!empty($bomComponents)) {
+        if (! empty($bomComponents)) {
             // Compare to master_list_materials
             $matched = DB::table('master_list_materials')
                 ->whereIn('item_code', $bomComponents)
@@ -86,7 +86,7 @@ class PpicListUpService
                     ->where('parent_item', $partNo)
                     ->where(function ($q) {
                         $q->where('item_type', 'RAW_MATERIAL')
-                          ->orWhere('component_item', 'LIKE', '40%');
+                            ->orWhere('component_item', 'LIKE', '40%');
                     })
                     ->first();
                 if ($rawComp) {
@@ -115,10 +115,10 @@ class PpicListUpService
         $db = SpkMaster::with('masterItem')->select('id', 'spk_number', 'item_code', 'planned_quantity', 'completed_quantity', 'post_date', 'production_status');
 
         $query = trim($query);
-        if (!empty($query)) {
+        if (! empty($query)) {
             $db->where(function ($q) use ($query) {
                 $q->where('spk_number', 'LIKE', "%{$query}%")
-                  ->orWhere('item_code', 'LIKE', "%{$query}%");
+                    ->orWhere('item_code', 'LIKE', "%{$query}%");
             });
         }
 
@@ -128,6 +128,7 @@ class PpicListUpService
             ->get()
             ->map(function ($s) {
                 $rem = max(0, (float) $s->planned_quantity - (float) $s->completed_quantity);
+
                 return [
                     'id' => $s->id,
                     'spk_number' => $s->spk_number,
@@ -165,9 +166,15 @@ class PpicListUpService
         try {
             foreach ($items as $item) {
                 $activeShifts = [];
-                if ($item->operator_shift_1 > 0) $activeShifts[] = 1;
-                if ($item->operator_shift_2 > 0) $activeShifts[] = 2;
-                if ($item->operator_shift_3 > 0) $activeShifts[] = 3;
+                if ($item->operator_shift_1 > 0) {
+                    $activeShifts[] = 1;
+                }
+                if ($item->operator_shift_2 > 0) {
+                    $activeShifts[] = 2;
+                }
+                if ($item->operator_shift_3 > 0) {
+                    $activeShifts[] = 3;
+                }
 
                 $count = count($activeShifts);
                 if ($count === 0 || $item->qty_to_run <= 0) {
@@ -192,21 +199,21 @@ class PpicListUpService
                 }
 
                 // If not matched, search strictly by machine name
-                if (!$machineUser && !empty($targetName)) {
+                if (! $machineUser && ! empty($targetName)) {
                     $machineUser = $machineUsers->first(function ($u) use ($targetName, $targetClean) {
                         $uName = strtoupper($u->name);
                         $uClean = preg_replace('/^0+/', '', $uName);
                         $uUser = strtoupper($u->username ?? '');
                         $uUserClean = preg_replace('/^0+/', '', $uUser);
 
-                        return $uClean === $targetClean 
-                            || $uName === $targetName 
-                            || $uUserClean === $targetClean 
+                        return $uClean === $targetClean
+                            || $uName === $targetName
+                            || $uUserClean === $targetClean
                             || $uUser === $targetName;
                     });
                 }
 
-                if (!$machineUser) {
+                if (! $machineUser) {
                     $machineUserId = $item->machine_id ?: 1;
                 } else {
                     $machineUserId = $machineUser->id;
@@ -284,7 +291,7 @@ class PpicListUpService
 
             // Clean up obsolete DICs for machines in this List Up that are no longer scheduled
             $machineUserIdsInvolved = array_values(array_unique(array_filter($machineUserIdsInvolved)));
-            if (!empty($machineUserIdsInvolved)) {
+            if (! empty($machineUserIdsInvolved)) {
                 $obsoleteDics = DailyItemCode::where('schedule_date', $scheduleDate)
                     ->whereIn('user_id', $machineUserIdsInvolved)
                     ->whereNotIn('id', $activeDicIds)
@@ -297,7 +304,7 @@ class PpicListUpService
                         || DB::table('production_scanned_data')->where('dic_id', $obs->id)->exists()
                         || HourlyRemark::where('dic_id', $obs->id)->exists();
 
-                    if (!$hasOutput) {
+                    if (! $hasOutput) {
                         // If machine_jobs was pointing to this obsolete DIC, point it to the new active DIC
                         $mJob = \App\Models\MachineJob::where('user_id', $obs->user_id)->first();
                         if ($mJob && (int) $mJob->dic_id === (int) $obs->id) {
@@ -330,6 +337,7 @@ class PpicListUpService
             ];
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return [
                 'success' => false,
                 'generated_count' => 0,

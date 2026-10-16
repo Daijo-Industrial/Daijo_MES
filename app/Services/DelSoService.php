@@ -2,13 +2,12 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DelSoService extends BaseSapService
 {
-  
-   public function getDelSo($startDate = '2025-12-01')
+    public function getDelSo($startDate = '2025-12-01')
     {
         $response = $this->get('/api/sap_del_so/list', [
             'startDate' => $startDate,
@@ -21,25 +20,25 @@ class DelSoService extends BaseSapService
         foreach ($data as $item) {
             $result[] = $item;
         }
+
         return $result;
-   
+
     }
 
-
     private function normalizeResponse($response, $tag = 'SAP')
-        {
-            if (!is_array($response)) {
-                Log::warning("[{$tag}] Response bukan array", ['response' => $response]);
-                return [];
-            }
+    {
+        if (! is_array($response)) {
+            Log::warning("[{$tag}] Response bukan array", ['response' => $response]);
 
-            if (array_key_exists('data', $response)) {
-                return is_array($response['data']) ? $response['data'] : [];
-            }
-
-            return $response;
+            return [];
         }
 
+        if (array_key_exists('data', $response)) {
+            return is_array($response['data']) ? $response['data'] : [];
+        }
+
+        return $response;
+    }
 
     public function SyncData()
     {
@@ -48,25 +47,25 @@ class DelSoService extends BaseSapService
         $delSo = $this->getDelSo($startDate); // udah array
 
         DB::table('sap_delso')->truncate();
-        
+
         foreach ($delSo as $row) {
-            
-            if (!is_array($row)) {
+
+            if (! is_array($row)) {
                 Log::warning('DelSoService: Row bukan array', ['row' => $row]);
                 continue;
             }
-        
+
             $quantity = isset($row['Quantity']) ? (int) $row['Quantity'] : 0;
             $delquantity = isset($row['DeliveryQty']) ? (int) $row['DeliveryQty'] : 0;
 
             DB::table('sap_delso')->insert([
-                'doc_num'     => $row['DocNum'] ?? null,
+                'doc_num' => $row['DocNum'] ?? null,
                 'doc_status' => $row['DocStatus'] ?? null,
-                'item_no'      => $row['ItemCode'] ?? null,
-                'quantity'       => $quantity,
-                'delivered_qty'       => $delquantity,
-                'line_num'       => $row['LineNum'] ?? null,
-                'row_status'       => $row['LineStatus'] ?? null,
+                'item_no' => $row['ItemCode'] ?? null,
+                'quantity' => $quantity,
+                'delivered_qty' => $delquantity,
+                'line_num' => $row['LineNum'] ?? null,
+                'row_status' => $row['LineStatus'] ?? null,
             ]);
         }
 
@@ -75,7 +74,7 @@ class DelSoService extends BaseSapService
             'message' => 'Data Delso berhasil disinkronkan',
             'data' => [
                 'delsched' => $delSo,
-            ]
+            ],
         ]);
 
     }

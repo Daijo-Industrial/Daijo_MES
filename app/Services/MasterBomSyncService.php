@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\MasterBom;
-use App\Models\MasterBomFgHeader;
 use App\Models\MasterBomComponent;
+use App\Models\MasterBomFgHeader;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -22,7 +22,7 @@ class MasterBomSyncService
 
         if ($allBoms->isEmpty()) {
             return [
-                'status'  => 'empty',
+                'status' => 'empty',
                 'message' => 'Tabel staging master_boms masih kosong. Silakan unggah file Excel SAP terlebih dahulu.',
                 'fgs_count' => 0,
                 'components_count' => 0,
@@ -63,9 +63,9 @@ class MasterBomSyncService
             foreach ($fgCandidates as $fgCode => $fgMeta) {
                 $fgId = $fgIdCounter++;
                 $stats = [
-                    'wip_count'   => 0,
-                    'raw_count'   => 0,
-                    'max_depth'   => 1,
+                    'wip_count' => 0,
+                    'raw_count' => 0,
+                    'max_depth' => 1,
                     'has_packaging' => false,
                 ];
 
@@ -89,23 +89,23 @@ class MasterBomSyncService
                 $verif = $verifications->get($fgCode);
 
                 $fgHeadersToInsert[] = [
-                    'id'               => $fgId,
-                    'fg_item_code'     => $fgCode,
-                    'fg_description'   => $fgMeta['desc'] ?? null,
-                    'project_code'     => $fgMeta['project_code'] ?? null,
-                    'family'           => $fgMeta['family'] ?? null,
-                    'customer_name'    => $fgMeta['customer'] ?? null,
-                    'uom'              => $fgMeta['uom'] ?? 'PCS',
-                    'total_wip_count'  => $stats['wip_count'],
-                    'total_raw_count'  => $stats['raw_count'],
-                    'max_depth_level'  => $stats['max_depth'],
-                    'has_packaging'    => $stats['has_packaging'],
-                    'is_verified'      => $verif ? true : false,
-                    'verified_at'      => $verif?->verified_at,
+                    'id' => $fgId,
+                    'fg_item_code' => $fgCode,
+                    'fg_description' => $fgMeta['desc'] ?? null,
+                    'project_code' => $fgMeta['project_code'] ?? null,
+                    'family' => $fgMeta['family'] ?? null,
+                    'customer_name' => $fgMeta['customer'] ?? null,
+                    'uom' => $fgMeta['uom'] ?? 'PCS',
+                    'total_wip_count' => $stats['wip_count'],
+                    'total_raw_count' => $stats['raw_count'],
+                    'max_depth_level' => $stats['max_depth'],
+                    'has_packaging' => $stats['has_packaging'],
+                    'is_verified' => $verif ? true : false,
+                    'verified_at' => $verif?->verified_at,
                     'verified_by_name' => $verif?->verified_by_name,
-                    'is_active'        => true,
-                    'created_at'       => $now,
-                    'updated_at'       => $now,
+                    'is_active' => true,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ];
 
                 $totalWips += $stats['wip_count'];
@@ -131,13 +131,13 @@ class MasterBomSyncService
             DB::commit();
 
             return [
-                'status'           => 'success',
-                'message'          => 'Berhasil memvalidasi dan menyinkronkan data Master BOM ke 2 tabel produksi!',
-                'fgs_count'        => count($fgHeadersToInsert),
+                'status' => 'success',
+                'message' => 'Berhasil memvalidasi dan menyinkronkan data Master BOM ke 2 tabel produksi!',
+                'fgs_count' => count($fgHeadersToInsert),
                 'components_count' => count($componentsToInsert),
-                'wips_count'       => $totalWips,
-                'raws_count'       => $totalRaws,
-                'anomalies'        => array_keys($dummyParents),
+                'wips_count' => $totalWips,
+                'raws_count' => $totalRaws,
+                'anomalies' => array_keys($dummyParents),
             ];
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -158,13 +158,13 @@ class MasterBomSyncService
         $configList = config('bom_projects.dummy_headers', []);
         $configMap = [];
         foreach ($configList as $item) {
-            $configMap[strtoupper(trim((string)$item))] = true;
+            $configMap[strtoupper(trim((string) $item))] = true;
         }
 
         $detectedNew = false;
 
         foreach ($bomsByParent as $parentCode => $children) {
-            $normalizedCode = strtoupper(trim((string)$parentCode));
+            $normalizedCode = strtoupper(trim((string) $parentCode));
 
             // Bahan baku dan hardware murni bukan dummy project
             if (str_starts_with($normalizedCode, '400-') || str_starts_with($normalizedCode, '401-') || str_starts_with($normalizedCode, '600-') || str_starts_with($normalizedCode, '300-')) {
@@ -172,7 +172,7 @@ class MasterBomSyncService
             }
 
             $firstDesc = $children->first()->parent_description ?? '';
-            $normalizedDesc = strtoupper(trim((string)$firstDesc));
+            $normalizedDesc = strtoupper(trim((string) $firstDesc));
 
             $isDummy = false;
             $reason = '';
@@ -184,13 +184,13 @@ class MasterBomSyncService
             }
             // TINGKAT 2 (Deteksi Pola Project / Series / Parts for di SAP):
             elseif (
-                str_contains($normalizedDesc, 'PLASTIC PART') || 
+                str_contains($normalizedDesc, 'PLASTIC PART') ||
                 str_contains($normalizedDesc, 'PLASTIC PARTS') ||
                 str_contains($normalizedDesc, 'PARTS FOR') ||
                 str_contains($normalizedDesc, 'PART FOR') ||
                 str_contains($normalizedDesc, 'PARTS FROM') ||
-                str_contains($normalizedDesc, 'PROJECT') || 
-                str_contains($normalizedDesc, 'DUMMY') || 
+                str_contains($normalizedDesc, 'PROJECT') ||
+                str_contains($normalizedDesc, 'DUMMY') ||
                 str_contains($normalizedDesc, 'FAMILY') ||
                 str_contains($normalizedCode, 'SHAD TOP CASE') ||
                 (str_contains($normalizedDesc, 'SERIES') && $children->count() >= 2)
@@ -221,7 +221,7 @@ class MasterBomSyncService
                 $dummyParents[$parentCode] = $reason;
                 // Petakan setiap komponen anak ke project_code ini
                 foreach ($children as $c) {
-                    $cleanItem = trim((string)$c->component_item);
+                    $cleanItem = trim((string) $c->component_item);
                     $itemToProjectMap[$cleanItem] = $parentCode;
                     $itemToProjectMap[rtrim($cleanItem, '.')] = $parentCode;
                     $itemToProjectMap[$cleanItem . '.'] = $parentCode;
@@ -245,7 +245,7 @@ class MasterBomSyncService
         sort($merged);
 
         // Jika ada perubahan, tulis ulang file config
-        if ($merged !== $existing || !file_exists(config_path('bom_projects.php'))) {
+        if ($merged !== $existing || ! file_exists(config_path('bom_projects.php'))) {
             $configPath = config_path('bom_projects.php');
             $exported = var_export($merged, true);
 
@@ -309,9 +309,9 @@ PHP;
             // Item adalah FG jika:
             // 1. Punya packaging/kemasan sendiri (misal D0B29100.), ATAU
             // 2. Tidak pernah menjadi anak dari REAL PARENT mana pun (Top-level Father asli)
-            if ($hasPackaging || !$isChildOfRealParent) {
+            if ($hasPackaging || ! $isChildOfRealParent) {
                 // Ambil project code jika item ini berada di bawah folder project SAP
-                $projectCode = $itemToProjectMap[$parentCode] 
+                $projectCode = $itemToProjectMap[$parentCode]
                     ?? ($itemToProjectMap[rtrim($parentCode, '.')] ?? null);
 
                 // Ambil family: prioritas dari kolom family pada BOM parent ini
@@ -324,12 +324,12 @@ PHP;
 
                 // USER REQUIREMENT: Project mendeteksi Family juga!
                 // Masukkan family ke grouping project jika project_code belum terisi
-                if (empty($projectCode) && !empty($family)) {
+                if (empty($projectCode) && ! empty($family)) {
                     $projectCode = $family;
                 }
 
                 // Jika family belum terisi tapi projectCode ada, samakan ke family
-                if (empty($family) && !empty($projectCode)) {
+                if (empty($family) && ! empty($projectCode)) {
                     $family = $projectCode;
                 }
 
@@ -337,12 +337,12 @@ PHP;
                 $customer = $this->guessCustomer($projectCode ?: $parentCode, $desc);
 
                 $fgs[$parentCode] = [
-                    'desc'         => $desc,
-                    'uom'          => $uom,
+                    'desc' => $desc,
+                    'uom' => $uom,
                     'project_code' => $projectCode,
-                    'family'       => $family,
-                    'customer'     => $customer,
-                    'has_packaging'=> $hasPackaging,
+                    'family' => $family,
+                    'customer' => $customer,
+                    'has_packaging' => $hasPackaging,
                 ];
             }
         }
@@ -361,6 +361,7 @@ PHP;
                 return true;
             }
         }
+
         return false;
     }
 
@@ -381,7 +382,7 @@ PHP;
         array &$stats,
         array $branchVisited
     ): void {
-        if (!isset($bomsByParent[$currentParent])) {
+        if (! isset($bomsByParent[$currentParent])) {
             return;
         }
 
@@ -393,7 +394,7 @@ PHP;
 
         foreach ($children as $c) {
             $compItem = $c->component_item;
-            $normCompItem = strtoupper(trim((string)$compItem));
+            $normCompItem = strtoupper(trim((string) $compItem));
 
             // CRITICAL GUARD: Jangan pernah masukkan dummy project code ke dalam tabel komponen!
             if (isset($dummyParents[$compItem]) || isset($dummyParents[$normCompItem])) {
@@ -401,12 +402,12 @@ PHP;
             }
 
             $compDesc = $c->component_description ?? '';
-            $unitQty = (float)$c->quantity;
+            $unitQty = (float) $c->quantity;
             $totalQty = $accumMultiplier * $unitQty;
             $uom = $c->uom ?: 'PCS';
 
             // Apakah anak ini merupakan WIP (punya sub-komponen lagi dan bukan dummy parent)?
-            $isWip = isset($allParentCodes[$compItem]) && !isset($dummyParents[$compItem]);
+            $isWip = isset($allParentCodes[$compItem]) && ! isset($dummyParents[$compItem]);
 
             $cat = MasterBom::determineCategory($compItem, $compDesc, $isWip);
             $itemType = $cat['type'] ?? ($isWip ? 'WIP' : 'RAW_MATERIAL');
@@ -424,21 +425,21 @@ PHP;
             $currentLineage = $lineagePath . ' > ' . $compItem;
 
             $explodedList[] = [
-                'fg_id'                 => $fgId,
-                'parent_item'           => $currentParent,
-                'component_item'        => $compItem,
+                'fg_id' => $fgId,
+                'parent_item' => $currentParent,
+                'component_item' => $compItem,
                 'component_description' => $compDesc,
-                'depth_level'           => $depthLevel,
-                'item_type'             => $itemType,
-                'is_wip'                => $isWip,
-                'unit_qty'              => $unitQty,
-                'total_qty_per_fg'      => $totalQty,
-                'uom'                   => $uom,
-                'lineage_path'          => $currentLineage,
+                'depth_level' => $depthLevel,
+                'item_type' => $itemType,
+                'is_wip' => $isWip,
+                'unit_qty' => $unitQty,
+                'total_qty_per_fg' => $totalQty,
+                'uom' => $uom,
+                'lineage_path' => $currentLineage,
             ];
 
             // Jika anak ini adalah WIP, telusuri lebih dalam (Lv 2, Lv 3, Lv 4, dst)
-            if ($isWip && !isset($branchVisited[$compItem])) {
+            if ($isWip && ! isset($branchVisited[$compItem])) {
                 $newBranch = $branchVisited;
                 $newBranch[$compItem] = true;
 
@@ -478,6 +479,7 @@ PHP;
         if (str_contains($text, 'KAWASAKI')) {
             return 'KAWASAKI';
         }
+
         return 'DAIJO';
     }
 }

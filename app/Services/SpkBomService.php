@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\MasterBom;
-use App\Models\MasterBomFgHeader;
 use App\Models\MasterBomComponent;
+use App\Models\MasterBomFgHeader;
 use Illuminate\Support\Facades\DB;
 
 class SpkBomService
@@ -15,17 +15,16 @@ class SpkBomService
      *
      * @param string $itemCode Kode item Finished Good atau Sub-assembly dari SPK
      * @param float $plannedQty Quantity rencana produksi pada SPK
-     * @return array
      */
     public function getLeafMaterials(string $itemCode, float $plannedQty = 1.0): array
     {
         $itemCode = trim($itemCode);
         if ($itemCode === '') {
             return [
-                'source'                => 'none',
-                'item_code'             => '',
-                'planned_qty'           => $plannedQty,
-                'materials'             => [],
+                'source' => 'none',
+                'item_code' => '',
+                'planned_qty' => $plannedQty,
+                'materials' => [],
                 'total_materials_count' => 0,
             ];
         }
@@ -54,25 +53,25 @@ class SpkBomService
                     $cat = MasterBom::formatCategoryFromType($comp->item_type ?? 'RAW_MATERIAL');
 
                     return [
-                        'component_item'        => $comp->component_item,
+                        'component_item' => $comp->component_item,
                         'component_description' => $comp->component_description ?: '-',
-                        'item_type'             => $comp->item_type,
-                        'category_label'        => $cat['label'],
-                        'category_icon'         => $cat['icon'],
-                        'category_badge'        => $cat['badge'],
-                        'uom'                   => $comp->uom ?: 'PCS',
-                        'unit_qty'              => $unitQty,
-                        'planned_material_qty'  => $plannedMaterialQty,
+                        'item_type' => $comp->item_type,
+                        'category_label' => $cat['label'],
+                        'category_icon' => $cat['icon'],
+                        'category_badge' => $cat['badge'],
+                        'uom' => $comp->uom ?: 'PCS',
+                        'unit_qty' => $unitQty,
+                        'planned_material_qty' => $plannedMaterialQty,
                     ];
                 })->values()->toArray();
 
                 return [
-                    'source'                => 'production',
-                    'item_code'             => $itemCode,
-                    'fg_description'        => $fgHeader->fg_description,
-                    'project_code'          => $fgHeader->project_code ?: $fgHeader->family,
-                    'planned_qty'           => $plannedQty,
-                    'materials'             => $materials,
+                    'source' => 'production',
+                    'item_code' => $itemCode,
+                    'fg_description' => $fgHeader->fg_description,
+                    'project_code' => $fgHeader->project_code ?: $fgHeader->family,
+                    'planned_qty' => $plannedQty,
+                    'materials' => $materials,
                     'total_materials_count' => count($materials),
                 ];
             }
@@ -82,44 +81,44 @@ class SpkBomService
         // (Misalnya part WIP / sub-assembly yang dibuatkan SPK terpisah di pabrik)
         $stagingSummary = MasterBom::getFlattenedSummary($itemCode, 1.0);
 
-        if (!empty($stagingSummary['materials'])) {
+        if (! empty($stagingSummary['materials'])) {
             $materials = collect($stagingSummary['materials'])->map(function ($mat) use ($plannedQty) {
                 $unitQty = (float) $mat['total_qty'];
                 $plannedMaterialQty = $unitQty * $plannedQty;
                 $cat = $mat['category'] ?? MasterBom::determineCategory($mat['item_code'], $mat['description'] ?? '', false);
 
                 return [
-                    'component_item'        => $mat['item_code'],
+                    'component_item' => $mat['item_code'],
                     'component_description' => $mat['description'] ?: '-',
-                    'item_type'             => $cat['type'],
-                    'category_label'        => $cat['label'],
-                    'category_icon'         => $cat['icon'],
-                    'category_badge'        => $cat['badge'],
-                    'uom'                   => $mat['uom'] ?: 'PCS',
-                    'unit_qty'              => $unitQty,
-                    'planned_material_qty'  => $plannedMaterialQty,
+                    'item_type' => $cat['type'],
+                    'category_label' => $cat['label'],
+                    'category_icon' => $cat['icon'],
+                    'category_badge' => $cat['badge'],
+                    'uom' => $mat['uom'] ?: 'PCS',
+                    'unit_qty' => $unitQty,
+                    'planned_material_qty' => $plannedMaterialQty,
                 ];
             })->values()->toArray();
 
             return [
-                'source'                => 'staging',
-                'item_code'             => $itemCode,
-                'fg_description'        => MasterBom::where('parent_item', $itemCode)->value('parent_description'),
-                'project_code'          => null,
-                'planned_qty'           => $plannedQty,
-                'materials'             => $materials,
+                'source' => 'staging',
+                'item_code' => $itemCode,
+                'fg_description' => MasterBom::where('parent_item', $itemCode)->value('parent_description'),
+                'project_code' => null,
+                'planned_qty' => $plannedQty,
+                'materials' => $materials,
                 'total_materials_count' => count($materials),
             ];
         }
 
         // 3. Jika tidak ada BOM sama sekali
         return [
-            'source'                => 'none',
-            'item_code'             => $itemCode,
-            'fg_description'        => null,
-            'project_code'          => null,
-            'planned_qty'           => $plannedQty,
-            'materials'             => [],
+            'source' => 'none',
+            'item_code' => $itemCode,
+            'fg_description' => null,
+            'project_code' => null,
+            'planned_qty' => $plannedQty,
+            'materials' => [],
             'total_materials_count' => 0,
         ];
     }

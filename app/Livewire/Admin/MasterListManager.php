@@ -8,7 +8,6 @@ use App\Models\MasterItemLog;
 use App\Models\MasterListItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -16,22 +15,30 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class MasterListManager extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public $search = '';
+
     public $hardSync = false;
+
     public string $filterConnection = 'ALL'; // 'ALL', 'CONNECTED', 'UNASSIGNED'
 
     // Excel Import status
     public $tempFilePath = '';
+
     public $totalRows = 0;
+
     public $previewRows = [];
+
     public $importedRowsCount = 0;
+
     public $importing = false;
 
     // Inline edit state
     public $editingItemId = null;
+
     public $editingField = null;
+
     public $editingValue = '';
 
     // File Upload binding
@@ -155,6 +162,7 @@ class MasterListManager extends Component
                 return (int) round((float) $clean);
             }
         }
+
         return is_numeric($str) ? (int) round((float) $str) : $default;
     }
 
@@ -171,11 +179,12 @@ class MasterListManager extends Component
             return $default;
         }
         // Handle comma vs dot
-        if (str_contains($str, ',') && !str_contains($str, '.')) {
+        if (str_contains($str, ',') && ! str_contains($str, '.')) {
             $str = str_replace(',', '.', $str);
         } elseif (str_contains($str, ',') && str_contains($str, '.')) {
             $str = str_replace(',', '', $str);
         }
+
         return is_numeric($str) ? (float) $str : $default;
     }
 
@@ -185,6 +194,7 @@ class MasterListManager extends Component
             return $default;
         }
         $str = trim((string) $val);
+
         return $str === '' ? $default : $str;
     }
 
@@ -204,8 +214,8 @@ class MasterListManager extends Component
 
             $headerRow = null;
             // Skip header row if present
-            if (!empty($rows) && (
-                strpos(strtolower($rows[0][1] ?? ''), 'item') !== false || 
+            if (! empty($rows) && (
+                strpos(strtolower($rows[0][1] ?? ''), 'item') !== false ||
                 strpos(strtolower($rows[0][0] ?? ''), '#') !== false
             )) {
                 $headerRow = array_shift($rows);
@@ -240,8 +250,10 @@ class MasterListManager extends Component
                 $hasExplicitGrossOrWeight = false;
 
                 foreach ($headerRow as $idx => $headerVal) {
-                    $norm = strtolower(trim((string)$headerVal));
-                    if ($norm === '') continue;
+                    $norm = strtolower(trim((string) $headerVal));
+                    if ($norm === '') {
+                        continue;
+                    }
 
                     if (str_contains($norm, 'item no') || $norm === 'item_code' || $norm === 'item code') {
                         $colMap['item_code'] = $idx;
@@ -266,7 +278,7 @@ class MasterListManager extends Component
                     } elseif (str_contains($norm, 'gross') || str_contains($norm, 'weight') || str_contains($norm, 'berat')) {
                         $colMap['part_weight'] = $idx;
                         $hasExplicitGrossOrWeight = true;
-                    } elseif (str_contains($norm, 'foreign') || (str_contains($norm, 'descripti') && !str_contains($norm, 'item'))) {
+                    } elseif (str_contains($norm, 'foreign') || (str_contains($norm, 'descripti') && ! str_contains($norm, 'item'))) {
                         $colMap['description_in_foreign_lang'] = $idx;
                     } elseif (str_contains($norm, 'color') || str_contains($norm, 'warna')) {
                         $colMap['color'] = $idx;
@@ -286,21 +298,21 @@ class MasterListManager extends Component
 
                 // If no gross/weight column found in header AND header has fewer than 17 columns,
                 // fall back to legacy 16-column layout (index 11=foreign, 12=color, 13=hc1, 14=hc2, 15=position)
-                if (!$hasExplicitGrossOrWeight && count($headerRow) <= 16) {
+                if (! $hasExplicitGrossOrWeight && count($headerRow) <= 16) {
                     $colMap['part_weight'] = null;
-                    if (!isset($colMap['description_in_foreign_lang']) || $colMap['description_in_foreign_lang'] === 12) {
+                    if (! isset($colMap['description_in_foreign_lang']) || $colMap['description_in_foreign_lang'] === 12) {
                         $colMap['description_in_foreign_lang'] = 11;
                     }
-                    if (!isset($colMap['color']) || $colMap['color'] === 13) {
+                    if (! isset($colMap['color']) || $colMap['color'] === 13) {
                         $colMap['color'] = 12;
                     }
-                    if (!isset($halfCodeIndices[0])) {
+                    if (! isset($halfCodeIndices[0])) {
                         $colMap['half_code_1'] = 13;
                     }
-                    if (!isset($halfCodeIndices[1])) {
+                    if (! isset($halfCodeIndices[1])) {
                         $colMap['half_code_2'] = 14;
                     }
-                    if (!isset($colMap['position']) || $colMap['position'] === 16) {
+                    if (! isset($colMap['position']) || $colMap['position'] === 16) {
                         $colMap['position'] = 15;
                     }
                 }
@@ -347,10 +359,10 @@ class MasterListManager extends Component
             // Write mapped rows to a temporary JSON file to avoid keeping large arrays in session/state
             $jsonFileName = 'mapped_import_' . time() . '_' . uniqid() . '.json';
             $jsonDirectory = storage_path('app/temp');
-            if (!file_exists($jsonDirectory)) {
+            if (! file_exists($jsonDirectory)) {
                 mkdir($jsonDirectory, 0755, true);
             }
-            
+
             $jsonPath = $jsonDirectory . '/' . $jsonFileName;
             file_put_contents($jsonPath, json_encode($mappedRows));
 
@@ -373,14 +385,16 @@ class MasterListManager extends Component
 
     public function importChunk()
     {
-        if (!$this->tempFilePath || !file_exists($this->tempFilePath)) {
+        if (! $this->tempFilePath || ! file_exists($this->tempFilePath)) {
             $this->importing = false;
+
             return;
         }
 
         $allRows = json_decode(file_get_contents($this->tempFilePath), true);
-        if (!$allRows) {
+        if (! $allRows) {
             $this->importing = false;
+
             return;
         }
 
@@ -392,7 +406,7 @@ class MasterListManager extends Component
         $fieldsToTrack = [
             'item_name', 'tipe_mesin', 'standart_packaging_list', 'setup_time_minute',
             'pair', 'cavity', 'customer_code', 'cycle_time',
-            'family', 'part_weight', 'description_in_foreign_lang', 'color', 'half_code_1', 'half_code_2', 'position'
+            'family', 'part_weight', 'description_in_foreign_lang', 'color', 'half_code_1', 'half_code_2', 'position',
         ];
 
         DB::transaction(function () use ($chunk, &$processed, $fieldsToTrack) {
@@ -407,13 +421,13 @@ class MasterListManager extends Component
                 if ($item) {
                     // Update item (Upsert)
                     $oldValues = $item->only($fieldsToTrack);
-                    
+
                     // SAP Owned fields are always updated
                     $item->item_name = $data['item_name'] ?? $item->item_name;
                     $item->customer_code = $data['customer_code'] ?? $item->customer_code;
                     $item->family = $data['family'] ?? $item->family;
                     if (isset($data['part_weight']) && $data['part_weight'] !== '') {
-                        $item->part_weight = (float)$data['part_weight'];
+                        $item->part_weight = (float) $data['part_weight'];
                     }
                     $item->description_in_foreign_lang = $data['description_in_foreign_lang'] ?? $item->description_in_foreign_lang;
                     $item->color = $data['color'] ?? $item->color;
@@ -424,11 +438,11 @@ class MasterListManager extends Component
                     // MES Owned fields are only updated if hardSync is enabled
                     if ($this->hardSync) {
                         $item->tipe_mesin = isset($data['tipe_mesin']) ? $data['tipe_mesin'] : $item->tipe_mesin;
-                        $item->standart_packaging_list = isset($data['standart_packaging_list']) ? (int)$data['standart_packaging_list'] : $item->standart_packaging_list;
-                        $item->setup_time_minute = isset($data['setup_time_minute']) ? (int)$data['setup_time_minute'] : $item->setup_time_minute;
-                        $item->pair = isset($data['pair']) ? (int)$data['pair'] : $item->pair;
-                        $item->cavity = isset($data['cavity']) ? (int)$data['cavity'] : $item->cavity;
-                        $item->cycle_time = isset($data['cycle_time']) ? (int)$data['cycle_time'] : $item->cycle_time;
+                        $item->standart_packaging_list = isset($data['standart_packaging_list']) ? (int) $data['standart_packaging_list'] : $item->standart_packaging_list;
+                        $item->setup_time_minute = isset($data['setup_time_minute']) ? (int) $data['setup_time_minute'] : $item->setup_time_minute;
+                        $item->pair = isset($data['pair']) ? (int) $data['pair'] : $item->pair;
+                        $item->cavity = isset($data['cavity']) ? (int) $data['cavity'] : $item->cavity;
+                        $item->cycle_time = isset($data['cycle_time']) ? (int) $data['cycle_time'] : $item->cycle_time;
                     }
 
                     if ($item->isDirty()) {
@@ -445,7 +459,7 @@ class MasterListManager extends Component
                             }
                         }
 
-                        if (!empty($diffNew)) {
+                        if (! empty($diffNew)) {
                             MasterItemLog::create([
                                 'user_id' => auth()->id(),
                                 'item_code' => $item->item_code,
@@ -457,19 +471,19 @@ class MasterListManager extends Component
                     }
                 } else {
                     // Create new item
-                    $item = new MasterListItem();
+                    $item = new MasterListItem;
                     $item->item_code = $data['item_code'];
                     $item->item_name = $data['item_name'] ?? '';
                     $item->tipe_mesin = $data['tipe_mesin'] ?? '0';
-                    $item->standart_packaging_list = (int)($data['standart_packaging_list'] ?? 0);
-                    $item->setup_time_minute = (int)($data['setup_time_minute'] ?? 0);
-                    $item->pair = (int)($data['pair'] ?? 0);
-                    $item->cavity = (int)($data['cavity'] ?? 0);
+                    $item->standart_packaging_list = (int) ($data['standart_packaging_list'] ?? 0);
+                    $item->setup_time_minute = (int) ($data['setup_time_minute'] ?? 0);
+                    $item->pair = (int) ($data['pair'] ?? 0);
+                    $item->cavity = (int) ($data['cavity'] ?? 0);
                     $item->customer_code = $data['customer_code'] ?? '0';
-                    $item->cycle_time = (int)($data['cycle_time'] ?? 0);
+                    $item->cycle_time = (int) ($data['cycle_time'] ?? 0);
                     $item->project_code = '0';
                     $item->family = $data['family'] ?? '0';
-                    $item->part_weight = (float)($data['part_weight'] ?? 0);
+                    $item->part_weight = (float) ($data['part_weight'] ?? 0);
                     $item->description_in_foreign_lang = $data['description_in_foreign_lang'] ?? '0';
                     $item->color = $data['color'] ?? '0';
                     $item->half_code_1 = $data['half_code_1'] ?? '0';
@@ -503,7 +517,7 @@ class MasterListManager extends Component
             $this->totalRows = 0;
             $this->previewRows = [];
             $this->importedRowsCount = 0;
-            session()->flash('message', "Successfully synced records from SAP Excel.");
+            session()->flash('message', 'Successfully synced records from SAP Excel.');
         }
     }
 
@@ -524,9 +538,9 @@ class MasterListManager extends Component
     {
         $query = MasterListItem::with(['customer', 'businessPartner'])
             ->where(function ($q) {
-                $q->where('item_code', 'like', '%'.$this->search.'%')
-                    ->orWhere('item_name', 'like', '%'.$this->search.'%')
-                    ->orWhere('customer_code', 'like', '%'.$this->search.'%');
+                $q->where('item_code', 'like', '%' . $this->search . '%')
+                    ->orWhere('item_name', 'like', '%' . $this->search . '%')
+                    ->orWhere('customer_code', 'like', '%' . $this->search . '%');
             });
 
         if ($this->filterConnection === 'CONNECTED') {

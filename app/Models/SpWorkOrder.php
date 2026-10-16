@@ -43,15 +43,16 @@ class SpWorkOrder extends Model
      */
     public function getQcStatusAttribute(): string
     {
-        $inspection = $this->latestFirstPieceInspection 
+        $inspection = $this->latestFirstPieceInspection
             ?? FirstPieceInspection::where('part_number', $this->part_number)->latest('id')->first();
 
-        if (!$inspection) {
+        if (! $inspection) {
             return 'missing';
         }
         if ($inspection->isApproved()) {
             return 'approved';
         }
+
         return 'pending';
     }
 
@@ -89,8 +90,11 @@ class SpWorkOrder extends Model
 
     public function getProgressPercentageAttribute()
     {
-        if ($this->target_qty == 0) return 0;
+        if ($this->target_qty == 0) {
+            return 0;
+        }
         $percentage = ($this->total_good / $this->target_qty) * 100;
+
         return min(100, round($percentage));
     }
 }

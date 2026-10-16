@@ -14,11 +14,15 @@ class MachineDailyReportTest extends TestCase
     use RefreshDatabase;
 
     protected Role $operatorRole;
+
     protected Role $ppicRole;
+
     protected Role $adminRole;
 
     protected User $operatorUser;
+
     protected User $ppicUser;
+
     protected User $adminUser;
 
     protected function setUp(): void

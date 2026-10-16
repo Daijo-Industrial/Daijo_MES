@@ -11,8 +11,11 @@ class RawDelschedTable extends Component
     use WithPagination;
 
     public $search = '';
+
     public $sortField = 'item_code';
+
     public $sortDirection = 'asc';
+
     public $perPage = 10;
 
     protected $queryString = ['search', 'sortField', 'sortDirection', 'perPage'];

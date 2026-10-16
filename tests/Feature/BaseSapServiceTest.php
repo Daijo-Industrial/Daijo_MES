@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Services\BaseSapService;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -27,7 +26,7 @@ class BaseSapServiceTest extends TestCase
             'services.sap.password' => 'test_pass',
         ]);
 
-        $service = new BaseSapService();
+        $service = new BaseSapService;
 
         // Use reflection to inspect protected properties
         $reflector = new \ReflectionClass($service);
@@ -63,12 +62,13 @@ class BaseSapServiceTest extends TestCase
                 ) {
                     return Http::response(['access_token' => 'mocked-jwt-token-123'], 200);
                 }
+
                 return Http::response(['error' => 'Invalid credentials'], 401);
             },
             'http://test-sap-server:9001/api/test' => Http::response(['data' => ['success' => true]], 200),
         ]);
 
-        $service = new BaseSapService();
+        $service = new BaseSapService;
         $data = $service->testGet('/api/test');
 
         $this->assertEquals(['data' => ['success' => true]], $data);
@@ -90,7 +90,7 @@ class BaseSapServiceTest extends TestCase
             '*/api/test' => Http::response(['status' => 'ok'], 200),
         ]);
 
-        $service = new BaseSapService();
+        $service = new BaseSapService;
         $result = $service->testGet('/api/test');
 
         $this->assertEquals(['status' => 'ok'], $result);
@@ -121,11 +121,12 @@ class BaseSapServiceTest extends TestCase
                 if ($request->hasHeader('Authorization', 'Bearer fresh-token-456')) {
                     return Http::response(['status' => 'recovered'], 200);
                 }
+
                 return Http::response(['error' => 'Unknown'], 500);
             },
         ]);
 
-        $service = new BaseSapService();
+        $service = new BaseSapService;
         $result = $service->testGet('/api/retry-test');
 
         $this->assertEquals(['status' => 'recovered'], $result);
@@ -136,7 +137,7 @@ class BaseSapServiceTest extends TestCase
 
     public function test_save_api_log_persists_entry_to_database()
     {
-        $service = new BaseSapService();
+        $service = new BaseSapService;
         $apiName = 'TEST_API_' . uniqid();
 
         $service->saveApiLog(
@@ -151,12 +152,12 @@ class BaseSapServiceTest extends TestCase
         );
 
         $this->assertDatabaseHas('api_logs', [
-            'api_name'    => $apiName,
-            'method'      => 'POST',
-            'endpoint'    => '/api/test/endpoint',
+            'api_name' => $apiName,
+            'method' => 'POST',
+            'endpoint' => '/api/test/endpoint',
             'status_code' => 200,
-            'status'      => 'success',
-            'message'     => 'Test message',
+            'status' => 'success',
+            'message' => 'Test message',
         ]);
     }
 }

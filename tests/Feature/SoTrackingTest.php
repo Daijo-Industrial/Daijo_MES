@@ -21,9 +21,9 @@ class SoTrackingTest extends TestCase
 
         config(['database.default' => 'sqlite']);
         config(['database.connections.sqlite' => [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]]);
 
         $this->createTestSchema();
@@ -87,10 +87,10 @@ class SoTrackingTest extends TestCase
     {
         $role = \App\Models\Role::create(['name' => 'ADMIN']);
         $user = User::create([
-            'name'     => 'Store Admin',
-            'email'    => 'store@daijo.co.id',
+            'name' => 'Store Admin',
+            'email' => 'store@daijo.co.id',
             'password' => bcrypt('password'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
 
         $this->actingAs($user)
@@ -103,34 +103,34 @@ class SoTrackingTest extends TestCase
     {
         // 1. Setup SO Header
         SoData::create([
-            'doc_num'      => 'DO-2026-001',
-            'customer'     => 'PT YAMAHA INDONESIA',
+            'doc_num' => 'DO-2026-001',
+            'customer' => 'PT YAMAHA INDONESIA',
             'posting_date' => '2026-10-15',
-            'item_code'    => 'PART-YMH-01',
-            'item_name'    => 'COVER HANDLE FRONT',
-            'quantity'     => 100,
-            'is_done'      => 1,
+            'item_code' => 'PART-YMH-01',
+            'item_name' => 'COVER HANDLE FRONT',
+            'quantity' => 100,
+            'is_done' => 1,
         ]);
 
         // 2. Setup Scanned Box
         ScannedData::create([
-            'doc_num'    => 'DO-2026-001',
-            'item_code'  => 'PART-YMH-01',
-            'spk_code'   => 'SPK-998877',
-            'label'      => 'BOX-LBL-001',
-            'quantity'   => 25,
-            'warehouse'  => 'FG',
+            'doc_num' => 'DO-2026-001',
+            'item_code' => 'PART-YMH-01',
+            'spk_code' => 'SPK-998877',
+            'label' => 'BOX-LBL-001',
+            'quantity' => 25,
+            'warehouse' => 'FG',
             'created_at' => Carbon::parse('2026-10-15 08:30:00'),
         ]);
 
         // Box on another DO
         ScannedData::create([
-            'doc_num'    => 'DO-2026-002',
-            'item_code'  => 'PART-HND-02',
-            'spk_code'   => 'SPK-112233',
-            'label'      => 'BOX-LBL-002',
-            'quantity'   => 50,
-            'warehouse'  => 'FG',
+            'doc_num' => 'DO-2026-002',
+            'item_code' => 'PART-HND-02',
+            'spk_code' => 'SPK-112233',
+            'label' => 'BOX-LBL-002',
+            'quantity' => 50,
+            'warehouse' => 'FG',
             'created_at' => Carbon::parse('2026-10-15 09:00:00'),
         ]);
 
@@ -145,22 +145,22 @@ class SoTrackingTest extends TestCase
     public function test_can_search_by_label_box(): void
     {
         SoData::create([
-            'doc_num'      => 'DO-HONDA-88',
-            'customer'     => 'PT AHM HONDA',
+            'doc_num' => 'DO-HONDA-88',
+            'customer' => 'PT AHM HONDA',
             'posting_date' => '2026-10-14',
-            'item_code'    => 'PART-HND-X',
-            'item_name'    => 'FENDER REAR AHM',
-            'quantity'     => 200,
-            'is_done'      => 0,
+            'item_code' => 'PART-HND-X',
+            'item_name' => 'FENDER REAR AHM',
+            'quantity' => 200,
+            'is_done' => 0,
         ]);
 
         ScannedData::create([
-            'doc_num'    => 'DO-HONDA-88',
-            'item_code'  => 'PART-HND-X',
-            'spk_code'   => 'SPK-AHM-4455',
-            'label'      => 'BOX-SPECIAL-999',
-            'quantity'   => 20,
-            'warehouse'  => 'FG',
+            'doc_num' => 'DO-HONDA-88',
+            'item_code' => 'PART-HND-X',
+            'spk_code' => 'SPK-AHM-4455',
+            'label' => 'BOX-SPECIAL-999',
+            'quantity' => 20,
+            'warehouse' => 'FG',
             'created_at' => Carbon::parse('2026-10-14 10:00:00'),
         ]);
 
@@ -175,22 +175,22 @@ class SoTrackingTest extends TestCase
     public function test_can_input_spk_and_label_manually_and_pinpoint_target_do(): void
     {
         SoData::create([
-            'doc_num'      => 'DO-TARGET-102458',
-            'customer'     => 'PT YAMAHA INDONESIA MOTOR',
+            'doc_num' => 'DO-TARGET-102458',
+            'customer' => 'PT YAMAHA INDONESIA MOTOR',
             'posting_date' => '2026-10-15',
-            'item_code'    => '275PVM650A',
-            'item_name'    => 'CASE CTR 5H45',
-            'quantity'     => 100,
-            'is_done'      => 1,
+            'item_code' => '275PVM650A',
+            'item_name' => 'CASE CTR 5H45',
+            'quantity' => 100,
+            'is_done' => 1,
         ]);
 
         ScannedData::create([
-            'doc_num'    => 'DO-TARGET-102458',
-            'item_code'  => '275PVM650A',
-            'spk_code'   => '26023496',
-            'label'      => '301',
-            'quantity'   => 12,
-            'warehouse'  => 'FG',
+            'doc_num' => 'DO-TARGET-102458',
+            'item_code' => '275PVM650A',
+            'spk_code' => '26023496',
+            'label' => '301',
+            'quantity' => 12,
+            'warehouse' => 'FG',
             'created_at' => Carbon::parse('2026-10-15 09:14:00'),
         ]);
 
@@ -209,12 +209,12 @@ class SoTrackingTest extends TestCase
     public function test_can_process_tab_separated_barcode_scan_input(): void
     {
         ScannedData::create([
-            'doc_num'    => 'DO-SUZUKI-01',
-            'item_code'  => 'SZK-PART-12',
-            'spk_code'   => 'SPK-SZK-8800',
-            'label'      => 'LBL-SZK-55',
-            'quantity'   => 30,
-            'warehouse'  => 'FG',
+            'doc_num' => 'DO-SUZUKI-01',
+            'item_code' => 'SZK-PART-12',
+            'spk_code' => 'SPK-SZK-8800',
+            'label' => 'LBL-SZK-55',
+            'quantity' => 30,
+            'warehouse' => 'FG',
             'created_at' => now(),
         ]);
 
@@ -233,22 +233,22 @@ class SoTrackingTest extends TestCase
     public function test_can_open_and_view_do_detail_modal(): void
     {
         SoData::create([
-            'doc_num'      => 'DO-MODAL-TEST',
-            'customer'     => 'PT SHAD TOP CASE',
+            'doc_num' => 'DO-MODAL-TEST',
+            'customer' => 'PT SHAD TOP CASE',
             'posting_date' => '2026-10-15',
-            'item_code'    => 'D0B29100',
-            'item_name'    => 'BASE PLATE SHAD',
-            'quantity'     => 100,
-            'is_done'      => 1,
+            'item_code' => 'D0B29100',
+            'item_name' => 'BASE PLATE SHAD',
+            'quantity' => 100,
+            'is_done' => 1,
         ]);
 
         ScannedData::create([
-            'doc_num'    => 'DO-MODAL-TEST',
-            'item_code'  => 'D0B29100',
-            'spk_code'   => 'SPK-SHAD-01',
-            'label'      => 'SHAD-BX-01',
-            'quantity'   => 100,
-            'warehouse'  => 'FG',
+            'doc_num' => 'DO-MODAL-TEST',
+            'item_code' => 'D0B29100',
+            'spk_code' => 'SPK-SHAD-01',
+            'label' => 'SHAD-BX-01',
+            'quantity' => 100,
+            'warehouse' => 'FG',
             'created_at' => now(),
         ]);
 
@@ -265,12 +265,12 @@ class SoTrackingTest extends TestCase
     public function test_can_export_csv(): void
     {
         ScannedData::create([
-            'doc_num'    => 'DO-EXP-01',
-            'item_code'  => 'EXP-ITEM-01',
-            'spk_code'   => 'SPK-EXP-01',
-            'label'      => 'EXP-LBL-01',
-            'quantity'   => 15,
-            'warehouse'  => 'FG',
+            'doc_num' => 'DO-EXP-01',
+            'item_code' => 'EXP-ITEM-01',
+            'spk_code' => 'SPK-EXP-01',
+            'label' => 'EXP-LBL-01',
+            'quantity' => 15,
+            'warehouse' => 'FG',
             'created_at' => now(),
         ]);
 
@@ -281,7 +281,7 @@ class SoTrackingTest extends TestCase
 
     public function test_kpi_stats_query_does_not_contain_non_aggregated_columns_in_select(): void
     {
-        $component = new SoTracking();
+        $component = new SoTracking;
         $reflection = new \ReflectionClass($component);
         $method = $reflection->getMethod('buildFilteredQuery');
         $method->setAccessible(true);
@@ -317,22 +317,22 @@ class SoTrackingTest extends TestCase
         for ($i = 1; $i <= 8; $i++) {
             $doc = "DO-MULTI-00{$i}";
             SoData::create([
-                'doc_num'      => $doc,
-                'customer'     => 'PT MULTI CUSTOMER',
+                'doc_num' => $doc,
+                'customer' => 'PT MULTI CUSTOMER',
                 'posting_date' => '2026-10-15',
-                'item_code'    => 'MULTI-PART-01',
-                'item_name'    => 'PART MULTI',
-                'quantity'     => 10,
-                'is_done'      => 1,
+                'item_code' => 'MULTI-PART-01',
+                'item_name' => 'PART MULTI',
+                'quantity' => 10,
+                'is_done' => 1,
             ]);
 
             ScannedData::create([
-                'doc_num'    => $doc,
-                'item_code'  => 'MULTI-PART-01',
-                'spk_code'   => 'SPK-MULTI-999',
-                'label'      => "LBL-00{$i}",
-                'quantity'   => 10,
-                'warehouse'  => 'FG',
+                'doc_num' => $doc,
+                'item_code' => 'MULTI-PART-01',
+                'spk_code' => 'SPK-MULTI-999',
+                'label' => "LBL-00{$i}",
+                'quantity' => 10,
+                'warehouse' => 'FG',
                 'created_at' => Carbon::parse("2026-10-15 08:0{$i}:00"),
             ]);
         }
@@ -341,21 +341,18 @@ class SoTrackingTest extends TestCase
             ->set('spkSearch', 'SPK-MULTI-999')
             ->call('searchBySpkAndLabel')
             ->assertViewHas('matchingDos', function ($dos) {
-                return $dos->total() === 8 
+                return $dos->total() === 8
                     && $dos->count() === 6
                     && $dos->currentPage() === 1
                     && $dos->pluck('doc_num')->contains('DO-MULTI-008')
-                    && !$dos->pluck('doc_num')->contains('DO-MULTI-001');
+                    && ! $dos->pluck('doc_num')->contains('DO-MULTI-001');
             })
             ->call('nextPage', 'doPage')
             ->assertViewHas('matchingDos', function ($dos) {
-                return $dos->total() === 8 
+                return $dos->total() === 8
                     && $dos->count() === 2
                     && $dos->currentPage() === 2
                     && $dos->pluck('doc_num')->contains('DO-MULTI-001');
             });
     }
 }
-
-
-

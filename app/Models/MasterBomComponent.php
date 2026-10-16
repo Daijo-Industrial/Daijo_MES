@@ -27,9 +27,9 @@ class MasterBomComponent extends Model
     ];
 
     protected $casts = [
-        'depth_level'      => 'integer',
-        'is_wip'           => 'boolean',
-        'unit_qty'         => 'float',
+        'depth_level' => 'integer',
+        'is_wip' => 'boolean',
+        'unit_qty' => 'float',
         'total_qty_per_fg' => 'float',
     ];
 

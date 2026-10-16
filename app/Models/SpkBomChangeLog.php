@@ -30,10 +30,10 @@ class SpkBomChangeLog extends Model
     ];
 
     protected $casts = [
-        'payload'      => 'array',
-        'response'     => 'array',
-        'base_qty'     => 'float',
-        'plan_qty'     => 'float',
+        'payload' => 'array',
+        'response' => 'array',
+        'base_qty' => 'float',
+        'plan_qty' => 'float',
         'old_plan_qty' => 'float',
     ];
 

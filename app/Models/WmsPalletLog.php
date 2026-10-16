@@ -10,7 +10,7 @@ class WmsPalletLog extends Model
     use HasFactory;
 
     protected $fillable = [
-        'pallet_id', 'transaction_type', 'position_id', 'user_id', 'notes'
+        'pallet_id', 'transaction_type', 'position_id', 'user_id', 'notes',
     ];
 
     public function position()

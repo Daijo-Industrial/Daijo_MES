@@ -8,5 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class CapItem extends Model
 {
     use HasFactory;
+
     protected $table = 'cap_items';
 }

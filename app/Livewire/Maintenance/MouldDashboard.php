@@ -2,19 +2,24 @@
 
 namespace App\Livewire\Maintenance;
 
-use Livewire\Component;
 use App\Models\MaintenanceMould;
 use Carbon\Carbon;
+use Livewire\Component;
 
 class MouldDashboard extends Component
 {
     public $showMouldModal = false;
+
     public $selectedMould = null;
 
     public $filterType = '';
+
     public $filterPIC = '';
+
     public $filterPartNo = '';
+
     public $filterDateFrom = '';
+
     public $filterDateTo = '';
 
     public function mount()
@@ -39,11 +44,21 @@ class MouldDashboard extends Component
     {
         $query = MaintenanceMould::query();
 
-        if ($this->filterType) $query->where('tipe', $this->filterType);
-        if ($this->filterPIC) $query->where('pic', $this->filterPIC);
-        if ($this->filterPartNo) $query->where('part_no', 'LIKE', '%' . $this->filterPartNo . '%');
-        if ($this->filterDateFrom) $query->where('tanggal', '>=', $this->filterDateFrom);
-        if ($this->filterDateTo) $query->where('tanggal', '<=', $this->filterDateTo);
+        if ($this->filterType) {
+            $query->where('tipe', $this->filterType);
+        }
+        if ($this->filterPIC) {
+            $query->where('pic', $this->filterPIC);
+        }
+        if ($this->filterPartNo) {
+            $query->where('part_no', 'LIKE', '%' . $this->filterPartNo . '%');
+        }
+        if ($this->filterDateFrom) {
+            $query->where('tanggal', '>=', $this->filterDateFrom);
+        }
+        if ($this->filterDateTo) {
+            $query->where('tanggal', '<=', $this->filterDateTo);
+        }
 
         return $query->latest()->get();
     }
@@ -57,17 +72,25 @@ class MouldDashboard extends Component
         $ongoing = $total - $finished;
 
         $mouldTotal = $moulds->count();
-        $mouldFinished = $moulds->where('status',1)->count();
+        $mouldFinished = $moulds->where('status', 1)->count();
         $mouldOngoing = $mouldTotal - $mouldFinished;
 
-
-          $pics = array_unique(array_merge(
+        $pics = array_unique(array_merge(
             MaintenanceMould::pluck('pic')->toArray()
         ));
 
         $partNoList = MaintenanceMould::pluck('part_no')->unique()->filter()->sort()->values()->toArray();
+
         return view('livewire.maintenance.mould-dashboard', compact(
-            'moulds','total','finished','pics','ongoing','mouldTotal','mouldFinished','mouldOngoing', 'partNoList'
+            'moulds',
+            'total',
+            'finished',
+            'pics',
+            'ongoing',
+            'mouldTotal',
+            'mouldFinished',
+            'mouldOngoing',
+            'partNoList'
         ))->layout('layouts.dashboard');
     }
 }

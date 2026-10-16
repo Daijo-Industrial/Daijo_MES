@@ -62,9 +62,16 @@ class PpicListUpItem extends Model
     public function getActiveShiftsCountAttribute(): int
     {
         $count = 0;
-        if ($this->operator_shift_1 > 0) $count++;
-        if ($this->operator_shift_2 > 0) $count++;
-        if ($this->operator_shift_3 > 0) $count++;
+        if ($this->operator_shift_1 > 0) {
+            $count++;
+        }
+        if ($this->operator_shift_2 > 0) {
+            $count++;
+        }
+        if ($this->operator_shift_3 > 0) {
+            $count++;
+        }
+
         return $count;
     }
 
@@ -74,9 +81,15 @@ class PpicListUpItem extends Model
     public function getQtyPerShiftAttribute(): array
     {
         $activeShifts = [];
-        if ($this->operator_shift_1 > 0) $activeShifts[] = 1;
-        if ($this->operator_shift_2 > 0) $activeShifts[] = 2;
-        if ($this->operator_shift_3 > 0) $activeShifts[] = 3;
+        if ($this->operator_shift_1 > 0) {
+            $activeShifts[] = 1;
+        }
+        if ($this->operator_shift_2 > 0) {
+            $activeShifts[] = 2;
+        }
+        if ($this->operator_shift_3 > 0) {
+            $activeShifts[] = 3;
+        }
 
         $count = count($activeShifts);
         if ($count === 0 || $this->qty_to_run <= 0) {

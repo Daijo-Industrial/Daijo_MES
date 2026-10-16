@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\MasterBusinessPartner;
-use App\Models\SecondProcessReport;
 use App\Models\SecondProcessMaterial;
 use App\Models\SecondProcessNgRecord;
+use App\Models\SecondProcessReport;
 use App\Models\SecondProcessTrouble;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -45,7 +45,7 @@ class SecondProcessReportAnalyticsController extends Controller
             MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
             MasterBusinessPartner::INDUSTRY_ELECTRONICS,
             MasterBusinessPartner::INDUSTRY_MOULDING,
-            MasterBusinessPartner::INDUSTRY_GENERAL
+            MasterBusinessPartner::INDUSTRY_GENERAL,
         ], true)) {
             $customerNames = MasterBusinessPartner::where('industry', $selectedIndustry)->pluck('bp_name')->all();
             $baseQuery->whereIn('customer', $customerNames);
@@ -97,7 +97,7 @@ class SecondProcessReportAnalyticsController extends Controller
 
         // 2. Daily Output & NG Trend
         $dailyTrendRaw = (clone $baseQuery)
-            ->select(DB::raw("date, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng, SUM(jumlah_output) as total_output"))
+            ->select(DB::raw('date, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng, SUM(jumlah_output) as total_output'))
             ->groupBy('date')
             ->orderBy('date', 'asc')
             ->get();
@@ -120,7 +120,7 @@ class SecondProcessReportAnalyticsController extends Controller
 
         // 3. Output & NG by Line
         $byLineRaw = (clone $baseQuery)
-            ->select(DB::raw("unit_line, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng, SUM(jumlah_output) as total_output"))
+            ->select(DB::raw('unit_line, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng, SUM(jumlah_output) as total_output'))
             ->groupBy('unit_line')
             ->orderByDesc('total_output')
             ->get();
@@ -218,7 +218,7 @@ class SecondProcessReportAnalyticsController extends Controller
 
         // 5. Output by Shift
         $byShiftRaw = (clone $baseQuery)
-            ->select(DB::raw("shift, SUM(jumlah_output) as total_output, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng"))
+            ->select(DB::raw('shift, SUM(jumlah_output) as total_output, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng'))
             ->groupBy('shift')
             ->orderBy('shift', 'asc')
             ->get();
@@ -260,7 +260,7 @@ class SecondProcessReportAnalyticsController extends Controller
 
         // 7a. Top 5 Products by Output Volume
         $topProductsRaw = (clone $baseQuery)
-            ->select(DB::raw("part_number, part_name, customer, SUM(jumlah_output) as total_output, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng"))
+            ->select(DB::raw('part_number, part_name, customer, SUM(jumlah_output) as total_output, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng'))
             ->groupBy('part_number', 'part_name', 'customer')
             ->orderByDesc('total_output')
             ->limit(5)
@@ -274,7 +274,7 @@ class SecondProcessReportAnalyticsController extends Controller
             });
         }
         $topDefectProductsRaw = $topDefectProductsQuery
-            ->select(DB::raw("part_number, part_name, customer, SUM(jumlah_output) as total_output, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng, SUM(jml_ng_lebur) as total_scrap"))
+            ->select(DB::raw('part_number, part_name, customer, SUM(jumlah_output) as total_output, SUM(jumlah_ok) as total_ok, SUM(jumlah_ng) as total_ng, SUM(jml_ng_lebur) as total_scrap'))
             ->groupBy('part_number', 'part_name', 'customer')
             ->having('total_ng', '>', 0)
             ->orderByDesc('total_ng')
@@ -285,8 +285,8 @@ class SecondProcessReportAnalyticsController extends Controller
         $topTroubles = SecondProcessTrouble::whereIn('report_id', $reportIdsSubquery)
             ->where(function ($q) {
                 $q->whereNotNull('masalah')->where('masalah', '!=', '')
-                  ->orWhereNotNull('penyebab')->where('penyebab', '!=', '')
-                  ->orWhere('loss_time_minutes', '>', 0);
+                    ->orWhereNotNull('penyebab')->where('penyebab', '!=', '')
+                    ->orWhere('loss_time_minutes', '>', 0);
             })
             ->with(['report' => function ($q) {
                 $q->select('id', 'date', 'unit_line', 'shift', 'part_number', 'part_name');
@@ -437,8 +437,8 @@ class SecondProcessReportAnalyticsController extends Controller
             ]);
 
             (clone $query)->withCount(['hourlyProductions' => function ($q) {
-                    $q->where('ok_qty', '>', 0);
-                }])
+                $q->where('ok_qty', '>', 0);
+            }])
                 ->orderBy('date', 'desc')
                 ->orderBy('unit_line', 'asc')
                 ->chunk(200, function ($reports) use ($handle, $industryMap) {
@@ -548,7 +548,7 @@ class SecondProcessReportAnalyticsController extends Controller
                 ->orderBy('second_process_reports.date', 'desc')
                 ->orderBy('second_process_reports.id', 'desc');
 
-            if (!empty($materialType) && in_array(strtolower($materialType), ['part', 'paint'])) {
+            if (! empty($materialType) && in_array(strtolower($materialType), ['part', 'paint'])) {
                 $materialsQuery->where('second_process_materials.type', strtolower($materialType));
             }
 
@@ -615,6 +615,7 @@ class SecondProcessReportAnalyticsController extends Controller
         if ($str !== '' && in_array($str[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
             return "'" . $str;
         }
+
         return $str;
     }
 
@@ -629,6 +630,7 @@ class SecondProcessReportAnalyticsController extends Controller
             if ($totalNg > 0) {
                 $allocations['UNCATEGORIZED'] = $totalNg;
             }
+
             return $allocations;
         }
 

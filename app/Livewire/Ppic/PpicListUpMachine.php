@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Ppic;
 
-use App\Models\DailyItemCode;
 use App\Models\MasterListItem;
 use App\Models\PpicListUp;
 use App\Models\PpicListUpItem;
@@ -14,32 +13,45 @@ use Livewire\Component;
 class PpicListUpMachine extends Component
 {
     public string $selectedDate = '';
+
     public ?int $listUpId = null;
+
     public string $status = 'DRAFT';
+
     public ?string $notes = '';
+
     public bool $isLocked = false;
 
     public array $rows = [];
+
     public array $availableMachines = [];
 
     // History Modal State
     public bool $showHistoryModal = false;
+
     public array $historyListUps = [];
 
     // Part Search Modal State
     public bool $showPartSearchModal = false;
+
     public ?int $searchRowIndex = null;
+
     public string $partSearchQuery = '';
+
     public array $partSearchResults = [];
 
     // SPK Search Modal State
     public bool $showSpkSearchModal = false;
+
     public ?int $searchSpkRowIndex = null;
+
     public string $spkSearchQuery = '';
+
     public array $spkSearchResults = [];
 
     // Flash notification
     public ?string $alertMessage = null;
+
     public string $alertType = 'success'; // success, error, info
 
     public function mount(?string $date = null)
@@ -87,10 +99,10 @@ class PpicListUpMachine extends Component
 
             $service = app(PpicListUpService::class);
             $this->rows = $listUp->items->map(function ($item, $idx) use ($service) {
-                $details = !empty($item->part_no) ? $service->resolvePartDetails($item->part_no) : [];
+                $details = ! empty($item->part_no) ? $service->resolvePartDetails($item->part_no) : [];
                 $availableSpks = $details['available_spks'] ?? [];
 
-                if (!empty($item->spk_no) && !collect($availableSpks)->contains('spk_number', $item->spk_no)) {
+                if (! empty($item->spk_no) && ! collect($availableSpks)->contains('spk_number', $item->spk_no)) {
                     $availableSpks[] = [
                         'spk_number' => $item->spk_no,
                         'planned_quantity' => 0,
@@ -137,7 +149,7 @@ class PpicListUpMachine extends Component
         $this->rows = [];
 
         // Prepopulate with first 5-8 machines or leave empty with 1 template row
-        $preset = !empty($this->availableMachines) ? array_slice($this->availableMachines, 0, 8) : [];
+        $preset = ! empty($this->availableMachines) ? array_slice($this->availableMachines, 0, 8) : [];
         if (empty($preset)) {
             $preset = [
                 ['id' => null, 'name' => '350F'],
@@ -200,7 +212,7 @@ class PpicListUpMachine extends Component
 
     public function onPartNoInput(int $index): void
     {
-        if (!isset($this->rows[$index])) {
+        if (! isset($this->rows[$index])) {
             return;
         }
 
@@ -224,7 +236,7 @@ class PpicListUpMachine extends Component
 
     public function onCycleTimeChanged(int $index): void
     {
-        if (!isset($this->rows[$index])) {
+        if (! isset($this->rows[$index])) {
             return;
         }
         $ct = (int) $this->rows[$index]['cycle_time'];
@@ -250,10 +262,10 @@ class PpicListUpMachine extends Component
         $query = trim($this->partSearchQuery);
         $dbQuery = MasterListItem::select('item_code', 'item_name', 'cavity', 'cycle_time');
 
-        if (!empty($query)) {
+        if (! empty($query)) {
             $dbQuery->where(function ($q) use ($query) {
                 $q->where('item_code', 'LIKE', "%{$query}%")
-                  ->orWhere('item_name', 'LIKE', "%{$query}%");
+                    ->orWhere('item_name', 'LIKE', "%{$query}%");
             });
         }
 
@@ -298,7 +310,7 @@ class PpicListUpMachine extends Component
             $rowIndex = $this->searchSpkRowIndex;
 
             // If row has no part_no and SPK has an item_code, auto-fill part details
-            if (empty($this->rows[$rowIndex]['part_no']) && !empty($itemCode)) {
+            if (empty($this->rows[$rowIndex]['part_no']) && ! empty($itemCode)) {
                 $this->rows[$rowIndex]['part_no'] = $itemCode;
                 $this->onPartNoInput($rowIndex);
             }
@@ -307,7 +319,7 @@ class PpicListUpMachine extends Component
 
             // Ensure this SPK is present in available_spks list
             $available = $this->rows[$rowIndex]['available_spks'] ?? [];
-            if (!collect($available)->contains('spk_number', $spkNo)) {
+            if (! collect($available)->contains('spk_number', $spkNo)) {
                 $available[] = [
                     'spk_number' => $spkNo,
                     'planned_quantity' => $plannedQty ?? 0,
@@ -328,13 +340,13 @@ class PpicListUpMachine extends Component
     public function toggleManualSpk(int $index): void
     {
         if (isset($this->rows[$index])) {
-            $this->rows[$index]['is_manual_spk'] = !($this->rows[$index]['is_manual_spk'] ?? false);
+            $this->rows[$index]['is_manual_spk'] = ! ($this->rows[$index]['is_manual_spk'] ?? false);
         }
     }
 
     public function onMachineChange(int $index): void
     {
-        if (!isset($this->rows[$index])) {
+        if (! isset($this->rows[$index])) {
             return;
         }
         $name = $this->rows[$index]['machine_name'];
@@ -410,6 +422,7 @@ class PpicListUpMachine extends Component
         if ($this->isLocked) {
             $this->alertMessage = 'List up ini telah difinalisasi / digenerate dan terkunci dari perubahan.';
             $this->alertType = 'error';
+
             return;
         }
 
@@ -423,15 +436,17 @@ class PpicListUpMachine extends Component
         if ($this->isLocked) {
             $this->alertMessage = 'List up ini telah difinalisasi / digenerate sebelumnya.';
             $this->alertType = 'error';
+
             return;
         }
 
         $this->persistListUp();
 
         $listUp = PpicListUp::find($this->listUpId);
-        if (!$listUp) {
+        if (! $listUp) {
             $this->alertMessage = 'List Up tidak ditemukan untuk diproses.';
             $this->alertType = 'error';
+
             return;
         }
 
@@ -475,10 +490,11 @@ class PpicListUpMachine extends Component
 
             // Ensure machine_id strictly matches machine_name
             $mId = $row['machine_id'] ?? null;
-            if (!empty($row['machine_name'])) {
+            if (! empty($row['machine_name'])) {
                 $targetClean = preg_replace('/^0+/', '', strtoupper($row['machine_name']));
                 $match = collect($this->availableMachines)->first(function ($m) use ($targetClean, $row) {
                     $mClean = preg_replace('/^0+/', '', strtoupper($m['name']));
+
                     return $mClean === $targetClean || strtoupper($m['name']) === strtoupper($row['machine_name']);
                 });
                 if ($match) {

@@ -2,16 +2,19 @@
 
 namespace App\Exports;
 
-use App\Exports\Sheets\DailyDeliveryItemSummarySheet;
 use App\Exports\Sheets\DailyDeliveryBoxDetailSheet;
+use App\Exports\Sheets\DailyDeliveryItemSummarySheet;
 use App\Services\WmsDeliveryRecapService;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 class DailyDeliveryRecapExport implements WithMultipleSheets
 {
     protected string $selectedDate;
+
     protected ?string $shiftFilter;
+
     protected ?string $deliveryFilter;
+
     protected ?string $search;
 
     public function __construct(
@@ -20,16 +23,16 @@ class DailyDeliveryRecapExport implements WithMultipleSheets
         ?string $deliveryFilter = null,
         ?string $search = null
     ) {
-        $this->selectedDate   = $selectedDate;
-        $this->shiftFilter    = $shiftFilter;
+        $this->selectedDate = $selectedDate;
+        $this->shiftFilter = $shiftFilter;
         $this->deliveryFilter = $deliveryFilter;
-        $this->search         = $search;
+        $this->search = $search;
     }
 
     public function sheets(): array
     {
         $service = app(WmsDeliveryRecapService::class);
-        $recap   = $service->getDailyRecap(
+        $recap = $service->getDailyRecap(
             $this->selectedDate,
             $this->shiftFilter,
             $this->deliveryFilter,

@@ -32,7 +32,7 @@ class MwhPallet extends Model
     protected $casts = [
         'initial_qty' => 'decimal:2',
         'current_qty' => 'decimal:2',
-        'is_qc_hold'  => 'boolean',
+        'is_qc_hold' => 'boolean',
     ];
 
     public function warehouse()
@@ -92,7 +92,7 @@ class MwhPallet extends Model
         if ($this->current_qty < $this->initial_qty) {
             return 'PARTIAL';
         }
+
         return $value ?: 'STORED';
     }
 }
-

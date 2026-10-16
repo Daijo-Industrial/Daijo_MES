@@ -2,21 +2,21 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Models\User;
-use App\Models\WmsWarehouse;
-use App\Models\WmsRack;
-use App\Models\WmsPosition;
-use App\Models\WmsPalletForm;
 use App\Livewire\Wms\RackMapping;
+use App\Models\User;
+use App\Models\WmsPosition;
+use App\Models\WmsRack;
+use App\Models\WmsWarehouse;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\TestCase;
 
 class WmsRackManagementTest extends TestCase
 {
     use RefreshDatabase;
 
     protected $user;
+
     protected $warehouse;
 
     protected function setUp(): void

@@ -2,15 +2,16 @@
 
 namespace App\Console\Commands;
 
-use App\Models\WmsWarehouse;
-use App\Models\WmsRack;
 use App\Models\WmsPosition;
+use App\Models\WmsRack;
+use App\Models\WmsWarehouse;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class SyncWmsJ06Layout extends Command
 {
     protected $signature = 'wms:sync-j06-layout';
+
     protected $description = 'Sync physical layout coordinates and racks for Gudang 06 (J06 / Logistic & Store)';
 
     public function handle()
@@ -123,12 +124,13 @@ class SyncWmsJ06Layout extends Command
             DB::commit();
             $this->info('Gudang 06 (J06) Layout sync completed successfully!');
 
-            usort($rankings, fn($a, $b) => $a['distance'] <=> $b['distance']);
+            usort($rankings, fn ($a, $b) => $a['distance'] <=> $b['distance']);
 
             $this->table(
                 ['Rank', 'Kode Rak', 'Zona', 'X Pos', 'Y Pos', 'Jarak Manhattan ke Panah Hijau Exit', 'Total Slots', 'Status'],
-                array_map(function($idx, $r) use ($rankings) {
+                array_map(function ($idx, $r) use ($rankings) {
                     $status = $idx === 0 ? '🏆 Paling Dekat' : ($idx === count($rankings) - 1 ? '⚠️ Paling Jauh' : 'Normal');
+
                     return [
                         $idx + 1,
                         $r['rack'],
@@ -137,7 +139,7 @@ class SyncWmsJ06Layout extends Command
                         $r['y'],
                         $r['distance'] . ' px',
                         $r['slots'],
-                        $status
+                        $status,
                     ];
                 }, array_keys($rankings), $rankings)
             );
@@ -146,6 +148,7 @@ class SyncWmsJ06Layout extends Command
         } catch (\Exception $e) {
             DB::rollBack();
             $this->error('Sync failed: ' . $e->getMessage());
+
             return 1;
         }
     }

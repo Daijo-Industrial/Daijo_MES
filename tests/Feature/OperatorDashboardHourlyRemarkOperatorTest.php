@@ -20,9 +20,9 @@ class OperatorDashboardHourlyRemarkOperatorTest extends TestCase
 
         config(['database.default' => 'sqlite']);
         config(['database.connections.sqlite' => [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]]);
 
         $this->createTestSchema();
@@ -102,38 +102,38 @@ class OperatorDashboardHourlyRemarkOperatorTest extends TestCase
     {
         $role = Role::create(['name' => 'OPERATOR']);
         $user = User::create([
-            'name'     => 'Mesin 01',
-            'email'    => 'mesin01@daijo.co.id',
+            'name' => 'Mesin 01',
+            'email' => 'mesin01@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         $dic = DailyItemCode::create([
-            'user_id'       => $user->id,
-            'item_code'     => 'PART-TEST-01',
-            'shift'         => 1,
+            'user_id' => $user->id,
+            'item_code' => 'PART-TEST-01',
+            'shift' => 1,
             'schedule_date' => Carbon::today()->toDateString(),
         ]);
 
         $machineJob = MachineJob::create([
-            'user_id'       => $user->id,
-            'item_code'     => 'PART-TEST-01',
-            'shift'         => 1,
-            'dic_id'        => $dic->id,
+            'user_id' => $user->id,
+            'item_code' => 'PART-TEST-01',
+            'shift' => 1,
+            'dic_id' => $dic->id,
             'employee_name' => 'Budi',
         ]);
 
         // Slot hourly remark yang awalnya dibuat tanpa operator 2 & 3
         $hr = HourlyRemark::create([
-            'dic_id'     => $dic->id,
+            'dic_id' => $dic->id,
             'start_time' => '07:30:00',
-            'end_time'   => '08:30:00',
-            'target'     => 100,
-            'actual'     => 95,
-            'pic'        => 'Budi',
-            'pic_2'      => null,
-            'pic_3'      => null,
+            'end_time' => '08:30:00',
+            'target' => 100,
+            'actual' => 95,
+            'pic' => 'Budi',
+            'pic_2' => null,
+            'pic_3' => null,
         ]);
 
         // Kirim updateEmployeeName dengan payload array operators dari syncOperatorsToDB
@@ -143,7 +143,7 @@ class OperatorDashboardHourlyRemarkOperatorTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJson([
-            'success'       => true,
+            'success' => true,
             'employee_name' => 'Budi, Siti Aminah, Ahmad Dani',
         ]);
 
@@ -162,35 +162,35 @@ class OperatorDashboardHourlyRemarkOperatorTest extends TestCase
     {
         $role = Role::create(['name' => 'OPERATOR']);
         $user = User::create([
-            'name'     => 'Mesin 02',
-            'email'    => 'mesin02@daijo.co.id',
+            'name' => 'Mesin 02',
+            'email' => 'mesin02@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         $dic = DailyItemCode::create([
-            'user_id'              => $user->id,
-            'item_code'            => 'PART-TEST-02',
-            'shift'                => 1,
-            'schedule_date'        => Carbon::today()->toDateString(),
-            'temporal_cycle_time'  => '36', // 3600 / 36 = target 100
+            'user_id' => $user->id,
+            'item_code' => 'PART-TEST-02',
+            'shift' => 1,
+            'schedule_date' => Carbon::today()->toDateString(),
+            'temporal_cycle_time' => '36', // 3600 / 36 = target 100
         ]);
 
         MachineJob::create([
-            'user_id'       => $user->id,
-            'item_code'     => 'PART-TEST-02',
-            'shift'         => 1,
-            'dic_id'        => $dic->id,
+            'user_id' => $user->id,
+            'item_code' => 'PART-TEST-02',
+            'shift' => 1,
+            'dic_id' => $dic->id,
             'employee_name' => 'Eko',
         ]);
 
         $response = $this->postJson(route('hourly-remarks.store'), [
             'start_time' => '08:30',
-            'activedic'  => json_encode(['id' => $dic->id, 'item_code' => 'PART-TEST-02']),
-            'nik'        => 'Eko',
-            'pic_2'      => 'Rian Pratama',
-            'pic_3'      => 'Dewi Lestari',
+            'activedic' => json_encode(['id' => $dic->id, 'item_code' => 'PART-TEST-02']),
+            'nik' => 'Eko',
+            'pic_2' => 'Rian Pratama',
+            'pic_3' => 'Dewi Lestari',
         ]);
 
         $response->assertStatus(200);
@@ -215,35 +215,35 @@ class OperatorDashboardHourlyRemarkOperatorTest extends TestCase
     {
         $role = Role::create(['name' => 'OPERATOR']);
         $user = User::create([
-            'name'     => 'Mesin 03',
-            'email'    => 'mesin03@daijo.co.id',
+            'name' => 'Mesin 03',
+            'email' => 'mesin03@daijo.co.id',
             'password' => bcrypt('secret'),
-            'role_id'  => $role->id,
+            'role_id' => $role->id,
         ]);
         $this->actingAs($user);
 
         $dic = DailyItemCode::create([
-            'user_id'              => $user->id,
-            'item_code'            => 'PART-TEST-03',
-            'shift'                => 1,
-            'schedule_date'        => Carbon::today()->toDateString(),
-            'temporal_cycle_time'  => '60', // target 60
+            'user_id' => $user->id,
+            'item_code' => 'PART-TEST-03',
+            'shift' => 1,
+            'schedule_date' => Carbon::today()->toDateString(),
+            'temporal_cycle_time' => '60', // target 60
         ]);
 
         // Operator 2 dan 3 sudah tersimpan di MachineJob
         MachineJob::create([
-            'user_id'       => $user->id,
-            'item_code'     => 'PART-TEST-03',
-            'shift'         => 1,
-            'dic_id'        => $dic->id,
+            'user_id' => $user->id,
+            'item_code' => 'PART-TEST-03',
+            'shift' => 1,
+            'dic_id' => $dic->id,
             'employee_name' => 'Fajar, Gilang Ramadhan, Hesti Purwanti',
         ]);
 
         // Request add hourly remarks tanpa mengirim field pic_2 dan pic_3
         $response = $this->postJson(route('hourly-remarks.store'), [
             'start_time' => '10:30',
-            'activedic'  => json_encode(['id' => $dic->id, 'item_code' => 'PART-TEST-03']),
-            'nik'        => 'Fajar',
+            'activedic' => json_encode(['id' => $dic->id, 'item_code' => 'PART-TEST-03']),
+            'nik' => 'Fajar',
         ]);
 
         $response->assertStatus(200);

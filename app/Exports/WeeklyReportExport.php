@@ -1,7 +1,7 @@
 <?php
 
-
 //weekly report export asakai
+
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -11,7 +11,9 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class WeeklyReportExport implements FromCollection, WithHeadings, WithMapping
 {
     protected $asakais;
+
     protected $weekStart;
+
     protected $weekEnd;
 
     public function __construct($asakais, $weekStart, $weekEnd)

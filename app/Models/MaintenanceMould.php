@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class MaintenanceMould extends Model
 {
     use HasFactory;
-
     use HasFactory;
 
     protected $table = 'maintenance_moulds';
@@ -28,10 +27,10 @@ class MaintenanceMould extends Model
     ];
 
     protected $casts = [
-        'tanggal'      => 'date',
-        'created_at'   => 'datetime',
-        'updated_at'   => 'datetime',
-        'finished_at'  => 'datetime',
+        'tanggal' => 'date',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'finished_at' => 'datetime',
     ];
 
     /**
@@ -49,7 +48,7 @@ class MaintenanceMould extends Model
 
             return "{$hours} jam {$minutes} menit";
         }
+
         return $value;
     }
-
 }

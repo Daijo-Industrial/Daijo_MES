@@ -8,7 +8,9 @@ use Livewire\Component;
 class MaterialQrLookup extends Component
 {
     public string $pallet_id = '';
+
     public ?MwhPallet $palletData = null;
+
     public bool $searched = false;
 
     protected $queryString = ['pallet_id'];
@@ -44,7 +46,7 @@ class MaterialQrLookup extends Component
                 'position.rack.warehouse',
                 'material',
                 'incomingHeader',
-                'outgoings.position.rack'
+                'outgoings.position.rack',
             ])->where('pallet_id', $code)->first();
         } else {
             $this->palletData = null;

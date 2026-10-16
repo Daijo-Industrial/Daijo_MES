@@ -11,6 +11,7 @@ class AssemblyDailyController extends Controller
     public function index()
     {
         $datas = AssemblyDailyProcess::get();
+
         return view('assembly.index', compact('datas'));
     }
 
@@ -25,9 +26,9 @@ class AssemblyDailyController extends Controller
     {
         $query = $request->input('query');
         $items = MasterAllItem::where('item_code', 'like', "%{$query}%")
-                ->orWhere('item_description', 'like', "%{$query}%")
-                ->limit(50) // Limit results to improve performance
-                ->get();
+            ->orWhere('item_description', 'like', "%{$query}%")
+            ->limit(50) // Limit results to improve performance
+            ->get();
 
         return response()->json($items);
     }
@@ -37,7 +38,7 @@ class AssemblyDailyController extends Controller
         $itemCode = $request->query('item_code');
 
         // Validate that the item code was provided
-        if (!$itemCode) {
+        if (! $itemCode) {
             return response()->json(['error' => 'Item code is required'], 400);
         }
 
@@ -45,7 +46,7 @@ class AssemblyDailyController extends Controller
         $item = MasterAllItem::where('item_code', $itemCode)->first();
 
         // Check if the item exists
-        if (!$item) {
+        if (! $item) {
             return response()->json(['error' => 'Item not found'], 404);
         }
 
@@ -81,8 +82,3 @@ class AssemblyDailyController extends Controller
             ->with('success', 'Entries have been added successfully.');
     }
 }
-
-
-
-
-

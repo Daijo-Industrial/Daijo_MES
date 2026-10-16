@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class SpDowntimeEntry extends Model
 {
@@ -36,6 +35,7 @@ class SpDowntimeEntry extends Model
         if ($this->start_time && $this->resume_time) {
             return (int) $this->start_time->diffInMinutes($this->resume_time);
         }
+
         return 0;
     }
 }

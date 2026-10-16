@@ -14,6 +14,7 @@ class NotificationRecepientController extends Controller
     public function index()
     {
         $recipients = NotificationRecipient::all();
+
         return view('notification_recipients.index', compact('recipients'));
     }
 
@@ -23,6 +24,7 @@ class NotificationRecepientController extends Controller
     public function create()
     {
         $notificationTypes = NotificationType::all(); // Fetch all notification types
+
         return view('notification_recipients.create', compact('notificationTypes'));
     }
 
@@ -38,6 +40,7 @@ class NotificationRecepientController extends Controller
         ]);
 
         NotificationRecipient::create($request->all());
+
         return redirect()->route('notification_recipients.index')->with('success', 'Recipient added successfully.');
     }
 
@@ -56,6 +59,7 @@ class NotificationRecepientController extends Controller
     {
         $notificationRecipient = NotificationRecipient::find($id);
         $notificationTypes = NotificationType::all(); // Fetch all notification types
+
         return view('notification_recipients.edit', compact('notificationRecipient', 'notificationTypes'));
     }
 
@@ -73,6 +77,7 @@ class NotificationRecepientController extends Controller
         ]);
 
         $notificationRecipient->update($request->all());
+
         return redirect()->route('notification_recipients.index')->with('success', 'Recipient updated successfully.');
     }
 
@@ -83,6 +88,7 @@ class NotificationRecepientController extends Controller
     {
         $notificationRecipient = NotificationRecipient::find($id);
         $notificationRecipient->delete();
+
         return redirect()->route('notification_recipients.index')->with('success', 'Recipient deleted successfully.');
     }
 }
