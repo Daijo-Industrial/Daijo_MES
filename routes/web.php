@@ -403,6 +403,8 @@ Route::middleware('auth')->group(function (){
         return view('admin.user_role_manager.index', compact('currentTab'));
     })->name('admin.user-role-manager');
 
+    Route::get('/admin/activity-logs', \App\Livewire\Admin\UserActivityDashboard::class)->name('admin.activity-logs');
+
     Route::get('/admin/branches-departments', function () {
         if (\Illuminate\Support\Facades\Gate::denies('manage-branches-departments')) {
             abort(403);

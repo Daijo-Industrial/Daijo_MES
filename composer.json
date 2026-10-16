@@ -21,6 +21,7 @@
         "omines/datatables-bundle": "^0.9.1",
         "phpoffice/phpspreadsheet": "^1.29",
         "pusher/pusher-php-server": "^7.2",
+        "spatie/laravel-activitylog": "^4.0",
         "spatie/laravel-backup": "^9.3",
         "yajra/laravel-datatables": "10.0",
         "yajra/laravel-datatables-buttons": "10.0"
