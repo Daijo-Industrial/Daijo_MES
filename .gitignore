@@ -27,3 +27,4 @@ yarn-error.log
 *.py
 *.docx
 PANDUAN_RECOVERY_DAN_SETUP_SERVER_BARU_DAIJO_MES.docx
+.agents/ecc-install-state.json
