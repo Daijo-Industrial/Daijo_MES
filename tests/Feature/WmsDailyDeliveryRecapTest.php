@@ -9,9 +9,6 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
-use App\Models\WmsPosition;
-use App\Models\WmsRack;
-use App\Models\WmsWarehouse;
 use App\Services\WmsDeliveryRecapService;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
@@ -23,6 +20,7 @@ use Tests\TestCase;
 class WmsDailyDeliveryRecapTest extends TestCase
 {
     protected Role $adminRole;
+
     protected User $adminUser;
 
     protected function setUp(): void
@@ -33,19 +31,19 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         config(['database.default' => 'sqlite']);
         config(['database.connections.sqlite' => [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]]);
 
         $this->createTestSchema();
 
         $this->adminRole = Role::create(['name' => 'ADMIN']);
         $this->adminUser = User::create([
-            'name'     => 'Store Admin',
-            'email'    => 'store@test.com',
+            'name' => 'Store Admin',
+            'email' => 'store@test.com',
             'password' => bcrypt('password'),
-            'role_id'  => $this->adminRole->id,
+            'role_id' => $this->adminRole->id,
         ]);
     }
 
@@ -155,11 +153,11 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         // Pallet 1: Dibuat pada 2026-10-01 07:30:00 (Awal hari produksi 2026-10-01) -> MASUK
         $p1 = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-01',
-            'prod_date'        => '2026-10-01',
-            'delivery_name'    => 'Pak Joko',
-            'delivery_shift'   => '1',
-            'box_qty'          => 2,
+            'pallet_id' => 'PLT-01',
+            'prod_date' => '2026-10-01',
+            'delivery_name' => 'Pak Joko',
+            'delivery_shift' => '1',
+            'box_qty' => 2,
             'total_pallet_qty' => 100,
         ]);
         $p1->created_at = Carbon::parse('2026-10-01 07:30:00');
@@ -167,20 +165,20 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-01',
-            'part_no'        => 'PART-A',
-            'model_name'     => 'Cover Front Panel',
-            'qty'            => 100,
-            'label'          => 'LBL-01',
-            'created_at'     => Carbon::parse('2026-10-01 07:30:00'),
+            'part_no' => 'PART-A',
+            'model_name' => 'Cover Front Panel',
+            'qty' => 100,
+            'label' => 'LBL-01',
+            'created_at' => Carbon::parse('2026-10-01 07:30:00'),
         ]);
 
         // Pallet 2: Dibuat pada 2026-10-02 02:15:00 (Shift 3 malam pergantian tanggal) -> MASUK ke hari produksi 2026-10-01!
         $p2 = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-02',
-            'prod_date'        => '2026-10-01',
-            'delivery_name'    => 'Pak Joko',
-            'delivery_shift'   => '3',
-            'box_qty'          => 1,
+            'pallet_id' => 'PLT-02',
+            'prod_date' => '2026-10-01',
+            'delivery_name' => 'Pak Joko',
+            'delivery_shift' => '3',
+            'box_qty' => 1,
             'total_pallet_qty' => 50,
         ]);
         $p2->created_at = Carbon::parse('2026-10-02 02:15:00');
@@ -188,20 +186,20 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-02',
-            'part_no'        => 'PART-A',
-            'model_name'     => 'Cover Front Panel',
-            'qty'            => 50,
-            'label'          => 'LBL-02',
-            'created_at'     => Carbon::parse('2026-10-02 02:15:00'),
+            'part_no' => 'PART-A',
+            'model_name' => 'Cover Front Panel',
+            'qty' => 50,
+            'label' => 'LBL-02',
+            'created_at' => Carbon::parse('2026-10-02 02:15:00'),
         ]);
 
         // Pallet 3: Dibuat pada 2026-10-02 07:29:59 (Detik terakhir hari produksi 2026-10-01) -> MASUK!
         $p3 = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-03',
-            'prod_date'        => '2026-10-01',
-            'delivery_name'    => 'Pak Budi',
-            'delivery_shift'   => '3',
-            'box_qty'          => 1,
+            'pallet_id' => 'PLT-03',
+            'prod_date' => '2026-10-01',
+            'delivery_name' => 'Pak Budi',
+            'delivery_shift' => '3',
+            'box_qty' => 1,
             'total_pallet_qty' => 25,
         ]);
         $p3->created_at = Carbon::parse('2026-10-02 07:29:59');
@@ -209,20 +207,20 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-03',
-            'part_no'        => 'PART-A',
-            'model_name'     => 'Cover Front Panel',
-            'qty'            => 25,
-            'label'          => 'LBL-03',
-            'created_at'     => Carbon::parse('2026-10-02 07:29:59'),
+            'part_no' => 'PART-A',
+            'model_name' => 'Cover Front Panel',
+            'qty' => 25,
+            'label' => 'LBL-03',
+            'created_at' => Carbon::parse('2026-10-02 07:29:59'),
         ]);
 
         // Pallet 4: Dibuat tepat 2026-10-02 07:30:00 (Sudah masuk hari produksi 2026-10-02) -> TIDAK MASUK ke 2026-10-01
         $p4 = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-04',
-            'prod_date'        => '2026-10-02',
-            'delivery_name'    => 'Pak Joko',
-            'delivery_shift'   => '1',
-            'box_qty'          => 1,
+            'pallet_id' => 'PLT-04',
+            'prod_date' => '2026-10-02',
+            'delivery_name' => 'Pak Joko',
+            'delivery_shift' => '1',
+            'box_qty' => 1,
             'total_pallet_qty' => 999,
         ]);
         $p4->created_at = Carbon::parse('2026-10-02 07:30:00');
@@ -230,11 +228,11 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-04',
-            'part_no'        => 'PART-A',
-            'model_name'     => 'Cover Front Panel',
-            'qty'            => 999,
-            'label'          => 'LBL-04',
-            'created_at'     => Carbon::parse('2026-10-02 07:30:00'),
+            'part_no' => 'PART-A',
+            'model_name' => 'Cover Front Panel',
+            'qty' => 999,
+            'label' => 'LBL-04',
+            'created_at' => Carbon::parse('2026-10-02 07:30:00'),
         ]);
 
         // Eksekusi Service untuk tanggal 2026-10-01
@@ -270,11 +268,11 @@ class WmsDailyDeliveryRecapTest extends TestCase
         MasterListItem::create(['item_code' => 'MODEL-Y', 'item_name' => 'Door Panel Inner']);
 
         $pallet = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-MIX-01',
-            'prod_date'        => '2026-10-06',
-            'delivery_name'    => 'Vendor Logistik',
-            'delivery_shift'   => '2',
-            'box_qty'          => 3,
+            'pallet_id' => 'PLT-MIX-01',
+            'prod_date' => '2026-10-06',
+            'delivery_name' => 'Vendor Logistik',
+            'delivery_shift' => '2',
+            'box_qty' => 3,
             'total_pallet_qty' => 300,
         ]);
         $pallet->created_at = Carbon::parse('2026-10-06 16:00:00');
@@ -283,29 +281,29 @@ class WmsDailyDeliveryRecapTest extends TestCase
         // 2 box MODEL-X (total 200 pcs)
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-MIX-01',
-            'part_no'        => 'MODEL-X',
-            'model_name'     => 'Door Panel Outer',
-            'spk_no'         => 'SPK-9001',
-            'qty'            => 100,
-            'label'          => 'LBL-X1',
+            'part_no' => 'MODEL-X',
+            'model_name' => 'Door Panel Outer',
+            'spk_no' => 'SPK-9001',
+            'qty' => 100,
+            'label' => 'LBL-X1',
         ]);
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-MIX-01',
-            'part_no'        => 'MODEL-X',
-            'model_name'     => 'Door Panel Outer',
-            'spk_no'         => 'SPK-9001',
-            'qty'            => 100,
-            'label'          => 'LBL-X2',
+            'part_no' => 'MODEL-X',
+            'model_name' => 'Door Panel Outer',
+            'spk_no' => 'SPK-9001',
+            'qty' => 100,
+            'label' => 'LBL-X2',
         ]);
 
         // 1 box MODEL-Y (total 100 pcs)
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-MIX-01',
-            'part_no'        => 'MODEL-Y',
-            'model_name'     => 'Door Panel Inner',
-            'spk_no'         => 'SPK-9002',
-            'qty'            => 100,
-            'label'          => 'LBL-Y1',
+            'part_no' => 'MODEL-Y',
+            'model_name' => 'Door Panel Inner',
+            'spk_no' => 'SPK-9002',
+            'qty' => 100,
+            'label' => 'LBL-Y1',
         ]);
 
         $service = app(WmsDeliveryRecapService::class);
@@ -332,11 +330,11 @@ class WmsDailyDeliveryRecapTest extends TestCase
         MasterListItem::create(['item_code' => 'PART-LIVE', 'item_name' => 'Front Bumper']);
 
         $pallet = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-LIVE-01',
-            'prod_date'        => '2026-10-06',
-            'delivery_name'    => 'Driver Supri',
-            'delivery_shift'   => '1',
-            'box_qty'          => 1,
+            'pallet_id' => 'PLT-LIVE-01',
+            'prod_date' => '2026-10-06',
+            'delivery_name' => 'Driver Supri',
+            'delivery_shift' => '1',
+            'box_qty' => 1,
             'total_pallet_qty' => 50,
         ]);
         $pallet->created_at = Carbon::parse('2026-10-06 10:00:00');
@@ -344,11 +342,11 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         WmsPalletFormDetail::create([
             'pallet_form_id' => 'PLT-LIVE-01',
-            'part_no'        => 'PART-LIVE',
-            'model_name'     => 'Front Bumper',
-            'spk_no'         => 'SPK-8888',
-            'qty'            => 50,
-            'label'          => 'LBL-8888',
+            'part_no' => 'PART-LIVE',
+            'model_name' => 'Front Bumper',
+            'spk_no' => 'SPK-8888',
+            'qty' => 50,
+            'label' => 'LBL-8888',
         ]);
 
         Livewire::test(DailyDeliveryRecap::class, ['selectedDate' => '2026-10-06'])
@@ -375,6 +373,7 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         Excel::assertDownloaded('Rekap_Delivery_20261006.xlsx', function (DailyDeliveryRecapExport $export) {
             $sheets = $export->sheets();
+
             return count($sheets) === 2;
         });
     }
@@ -405,35 +404,36 @@ class WmsDailyDeliveryRecapTest extends TestCase
     public function test_recap_preserves_data_when_items_are_dispatched_and_soft_deleted()
     {
         $pallet = WmsPalletForm::create([
-            'pallet_id'        => 'PLT-DISPATCH-01',
-            'prod_date'        => '2026-10-06',
-            'delivery_name'    => 'Driver Barri',
-            'delivery_shift'   => 1,
-            'lot_no'           => 'LOT-DISPATCH',
-            'box_qty'          => 2,
+            'pallet_id' => 'PLT-DISPATCH-01',
+            'prod_date' => '2026-10-06',
+            'delivery_name' => 'Driver Barri',
+            'delivery_shift' => 1,
+            'lot_no' => 'LOT-DISPATCH',
+            'box_qty' => 2,
             'total_pallet_qty' => 100,
-            'status'           => 'STORED',
-            'created_at'       => Carbon::parse('2026-10-06 09:00:00'),
+            'status' => 'STORED',
         ]);
+        $pallet->created_at = Carbon::parse('2026-10-06 09:00:00');
+        $pallet->save();
 
         $detail1 = WmsPalletFormDetail::create([
             'pallet_form_id' => $pallet->pallet_id,
-            'part_no'        => 'PART-OUTBOUND',
-            'model_name'     => 'Handle Door Outer',
-            'spk_no'         => 'SPK-OUT-01',
-            'qty'            => 50,
-            'label'          => 'LBL-OUT-01',
-            'created_at'     => Carbon::parse('2026-10-06 09:05:00'),
+            'part_no' => 'PART-OUTBOUND',
+            'model_name' => 'Handle Door Outer',
+            'spk_no' => 'SPK-OUT-01',
+            'qty' => 50,
+            'label' => 'LBL-OUT-01',
+            'created_at' => Carbon::parse('2026-10-06 09:05:00'),
         ]);
 
         $detail2 = WmsPalletFormDetail::create([
             'pallet_form_id' => $pallet->pallet_id,
-            'part_no'        => 'PART-OUTBOUND',
-            'model_name'     => 'Handle Door Outer',
-            'spk_no'         => 'SPK-OUT-01',
-            'qty'            => 50,
-            'label'          => 'LBL-OUT-02',
-            'created_at'     => Carbon::parse('2026-10-06 09:06:00'),
+            'part_no' => 'PART-OUTBOUND',
+            'model_name' => 'Handle Door Outer',
+            'spk_no' => 'SPK-OUT-01',
+            'qty' => 50,
+            'label' => 'LBL-OUT-02',
+            'created_at' => Carbon::parse('2026-10-06 09:06:00'),
         ]);
 
         // Simulate Store Out scan: detail 1 is dispatched out (soft deleted at 14:15)
