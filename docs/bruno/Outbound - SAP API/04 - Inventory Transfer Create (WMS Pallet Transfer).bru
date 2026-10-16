@@ -1,0 +1,49 @@
+meta {
+  name: 04 - Inventory Transfer Create (WMS Pallet Transfer)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{sap_base_url}}/api/inventory_transfer/create
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{sap_token}}
+}
+
+headers {
+  Host: localhost
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "docDate": "2026-10-16",
+    "remarks": "Inventory Transfer created from PLT-20261016-0001",
+    "lines": [
+      {
+        "itemCode": "TSPT10188XA-INJ",
+        "quantity": 480.0,
+        "fromWarehouse": "FFI",
+        "toWarehouse": "FG",
+        "u_NUMPR": "SPK2410-0012"
+      }
+    ]
+  }
+}
+
+docs {
+  # Inventory Transfer (WMS Pallet Creation & Store Move)
+  
+  Service Pengirim: `App\Services\WmsSapSyncService`
+  Trigger: Dijalankan dari modul WMS Pallet Form saat pallet delivery / internal transfer dibuat atau saat sinkronisasi manual dari SapSyncMonitor.
+  
+  Fungsi:
+  - Memindahkan barang Finished Goods dari warehouse staging produksi `FFI` ke gudang utama `FG`.
+  - Mengelompokkan item per nomor SPK (`u_NUMPR`).
+  - Menandai status sinkronisasi pada `wms_pallet_forms` dan `wms_pallet_form_details` (`sap_sync_status`).
+}

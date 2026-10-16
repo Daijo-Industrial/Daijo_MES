@@ -1,0 +1,34 @@
+meta {
+  name: 08 - Delivery Actual List
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{sap_base_url}}/api/sap_del_actual/list?startDate=2026-01-01
+  body: none
+  auth: bearer
+}
+
+params:query {
+  startDate: 2026-01-01
+}
+
+auth:bearer {
+  token: {{sap_token}}
+}
+
+headers {
+  Host: localhost
+  Accept: application/json
+}
+
+docs {
+  # Delivery Actual (DELACTUAL) List
+  
+  Service Pengambil: `App\Services\DelActualService`
+  Command Scheduler: `php artisan sync:delivery-data`
+  
+  Tabel Tujuan: `sap_delactual`
+  Kolom Utama: `item_no`, `delivery_date`, `item_name`, `quantity`, `so_num`.
+}

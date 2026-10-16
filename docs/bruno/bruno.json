@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Daijo MES - SAP API & Webhooks",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

@@ -1,0 +1,48 @@
+meta {
+  name: 02 - Receipt Production Create
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{sap_base_url}}/api/receipt_production/create
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{sap_token}}
+}
+
+headers {
+  Host: localhost
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  [
+    {
+      "summary_id": 101,
+      "spk_code": "SPK2410-0012",
+      "item_code": "TSPT10188XA-INJ",
+      "warehouse": "FFI",
+      "quantity": 100,
+      "label": "101"
+    }
+  ]
+}
+
+docs {
+  # Receipt Production (Outbound Push)
+  
+  Service Pengirim: `App\Services\ReceiptProductionService`
+  Command Scheduler: `php artisan sap:dispatch-receipt` (setiap 10 menit tanpa overlapping).
+  
+  Sumber Data: Tabel `production_summary` (kolom `sap_sent = 0` dan warehouse `FFI` / `KRFFI`).
+  
+  Mekanisme Proteksi:
+  1. **Atomic Lock**: Status `sap_sent` diubah dari `0` (Pending) ke `2` (Processing) sebelum menembak HTTP POST.
+  2. **Idempotency**: Jika SAP mengembalikan error "already exist" / "duplicate", MES otomatis menganggap transaksi sukses (`sap_sent = 1`) agar tidak terjadi retry loop.
+  3. **Audit Trail**: Request dan Response dicatat ke tabel `api_logs`.
+}

@@ -1,0 +1,42 @@
+meta {
+  name: 04 - Customer Production Status Range (GET)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{mes_base_url}}/api/production-status-range?start_date=2026-10-01&end_date=2026-10-16
+  body: none
+  auth: bearer
+}
+
+params:query {
+  start_date: 2026-10-01
+  end_date: 2026-10-16
+}
+
+auth:bearer {
+  token: {{customer_api_token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  # Customer Production Status Range API
+  
+  Endpoint: `GET /api/production-status-range`
+  Controller: `App\Http\Controllers\Api\CustomerProductionController::range`
+  
+  Autentikasi:
+  - Header: `Authorization: Bearer <CUSTOMER_API_TOKEN>` atau `X-API-TOKEN: <CUSTOMER_API_TOKEN>`.
+  - Token dicocokkan dengan `config('services.customer_api.token')`.
+  
+  Parameter Query:
+  - `start_date` (required, date format: YYYY-MM-DD)
+  - `end_date` (required, date format: YYYY-MM-DD)
+  
+  Format Response:
+  - Mengembalikan rekap agregasi per part number: total target rencana (`planned_quantity`), total pukulan (`total_shots`), total NG (`total_ng`), serta perincian per mesin/jadwal harian (`machines`).
+}

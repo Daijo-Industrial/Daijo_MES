@@ -1,0 +1,40 @@
+meta {
+  name: 12 - Line Production Routing List
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{sap_base_url}}/api/sap_lineproduction/list?startDate=2026-01-01
+  body: none
+  auth: bearer
+}
+
+params:query {
+  startDate: 2026-01-01
+}
+
+auth:bearer {
+  token: {{sap_token}}
+}
+
+headers {
+  Host: localhost
+  Accept: application/json
+}
+
+docs {
+  # Line Production & Machine Priorities List
+  
+  Service Pengambil: `App\Services\LineProductionService`
+  Command Scheduler: `php artisan sync:delivery-data`
+  
+  Sub-Endpoints yang digabungkan:
+  - `/api/sap_lineproduction/list`
+  - `/api/sap_lineproduction_semi/list`
+  - `/api/sap_lineproduction_semi_wip/list`
+  - `/api/sap_lineproduction_semi_semi_wip/list`
+  
+  Tabel Tujuan: `sap_lineproduction`
+  Kolom Utama: `item_code`, `line_production`, `priority`.
+}

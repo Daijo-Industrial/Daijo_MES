@@ -1,0 +1,53 @@
+meta {
+  name: 03 - Inventory Transfer Create (QC Transfer)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{sap_base_url}}/api/inventory_transfer/create
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{sap_token}}
+}
+
+headers {
+  Host: localhost
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "docDate": "2026-10-16",
+    "remarks": "QC OK Transfer #45: 80 pcs TSPT10188XA-INJ from FFI to KRFG",
+    "lines": [
+      {
+        "itemCode": "TSPT10188XA-INJ",
+        "quantity": 80.0,
+        "fromWarehouse": "FFI",
+        "toWarehouse": "KRFG"
+      }
+    ]
+  }
+}
+
+docs {
+  # Inventory Transfer (QC Inspection Pass/Fail Split)
+  
+  Service Pengirim: `App\Services\QcTransferService`
+  Trigger: Dijalankan ketika personil QC melakukan verifikasi box pada modul inspeksi (single box atau batch summary).
+  
+  Warehouse Routing:
+  - **KBN**: 
+    - OK Qty tidak ditransfer (tetap di warehouse asal).
+    - Reject (NG) Qty ditransfer ke gudang `RJCT`.
+  - **Karawang**:
+    - OK Qty ditransfer ke `KRFG`.
+    - Reject (NG) Qty ditransfer ke `KRRJCT`.
+  
+  Log & Audit: Tabel `qc_transfer_logs` dan `api_logs`.
+}

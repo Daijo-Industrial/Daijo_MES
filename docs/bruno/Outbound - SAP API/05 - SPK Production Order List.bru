@@ -1,0 +1,33 @@
+meta {
+  name: 05 - SPK Production Order List
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{sap_base_url}}/api/sap_production_order/list
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{sap_token}}
+}
+
+headers {
+  Host: localhost
+  Accept: application/json
+}
+
+docs {
+  # SPK Production Order List (Inbound Pull / Sync)
+  
+  Service Pengambil: `App\Services\SpkMasterService`
+  Command Scheduler: `php artisan spk:sync` (dijalankan setiap 10 menit tanpa overlapping).
+  
+  Fungsi:
+  - Mengambil daftar Production Order aktif dari SAP.
+  - Membandingkan kuantitas rencana (`PlannedQty`), kuantitas selesai (`CompletedQty`), dan status (`Status`).
+  - Mencatat setiap delta perubahan ke tabel audit `spk_change_logs`.
+  - Memperbarui tabel `spk_masters`.
+}
