@@ -556,9 +556,13 @@ class ProductionDashboardController extends Controller
 
         $machineNames = [
             '0150E',
+            '0150F',
             '0300A',
+            '0300B',
             '0350F',
             '0360A',
+            '0360B',
+            '0360C',
             '0360D',
             '0450B',
             '0450F',
@@ -570,6 +574,9 @@ class ProductionDashboardController extends Controller
             '0650D',
             '0650E',
             '0850D',
+            '1050D',
+            '1300B',
+            '1300C',
             'K0450A',
             'K0650A',
             'K0650B',
