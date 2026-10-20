@@ -27,11 +27,10 @@ use App\Livewire\DeliveryScheduleCalendar;
 use App\Livewire\DeliveryScheduleForm;
 use App\Livewire\MachineStatusPublic;
 use App\Livewire\Maintenance\ChecklistReport;
-use App\Livewire\Maintenance\Machine\Index as MaintenanceMachineIndex;
-use App\Livewire\Maintenance\MachineDashboard as DashboardMachine;
-use App\Livewire\Maintenance\MaintenanceDashboard as DashboardMaintenance;
-use App\Livewire\Maintenance\Mould\Index as MaintenanceMouldIndex;
-use App\Livewire\Maintenance\MouldDashboard as DashboardMould;
+use App\Livewire\Maintenance\MasterMould\Index as MasterMouldIndex;
+use App\Livewire\Maintenance\MouldChecklist\Form as MouldChecklistForm;
+use App\Livewire\Maintenance\MouldChecklist\Index as MouldChecklistIndex;
+use App\Livewire\Maintenance\MouldChecklist\Show as MouldChecklistShow;
 use App\Livewire\ManualSync;
 use App\Livewire\MasterBomView;
 use App\Livewire\MasterListItemView;
@@ -72,11 +71,6 @@ Route::get('/spk-changes/history/{spk}', [SpkChangeLogController::class, 'getHis
 // ROUTE UNTUK SPK BOM CHANGES (INTEGRASI SPK & FORMULA BOM NON-WIP)
 Route::get('/spk-bom-changes', SpkBomChangesView::class)->name('spk.bom-changes.index');
 Route::get('/spk-bom-changes/preview-payload', [SpkBomPayloadPreviewController::class, 'show'])->name('spk.bom-changes.preview-payload');
-
-// Route untuk maintenance dan mould dashboard produksi
-Route::get('/maintenance-dashboard', DashboardMaintenance::class)->name('maintenance.dashboard');
-Route::get('/machine-dashboard', DashboardMachine::class)->name('machine.dashboard');
-Route::get('/mould-dashboard', DashboardMould::class)->name('mould.dashboard');
 
 // Route Maintenance Predictive Checklist Modal & Admin Report
 Route::get('/maintenance-checklist/today/{machineId}', [MaintenanceChecklistController::class, 'getTodayData'])->name('maintenance.checklist.today');
@@ -283,6 +277,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/submit/spk', [DashboardController::class, 'submitSPK'])->name('submit.spk');
 
-    Route::get('/machine-index', MaintenanceMachineIndex::class)->name('maintenance.machine.index');
-    Route::get('/mould-index', MaintenanceMouldIndex::class)->name('maintenance.mould.index');
+    // Master Mould & Mould Checklist Routes
+    Route::get('/master-mould', MasterMouldIndex::class)->name('master-mould.index');
+    Route::get('/mould-checklist', MouldChecklistIndex::class)->name('mould-checklist.index');
+    Route::get('/mould-checklist/create', MouldChecklistForm::class)->name('mould-checklist.create');
+    Route::get('/mould-checklist/{id}', MouldChecklistShow::class)->name('mould-checklist.show');
+    Route::get('/mould-checklist/{id}/edit', MouldChecklistForm::class)->name('mould-checklist.edit');
 });

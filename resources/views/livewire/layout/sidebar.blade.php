@@ -122,12 +122,9 @@ new class extends Component {
 
                 <!-- Dropdown: Maintenance & Machine -->
                 <livewire:parent-dropdown label="Maintenance & Machine" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'maintenance.checklist-report', 'label' => 'Checklist Predictive Maintenance'],
-                    ['name' => 'maintenance.machine.index', 'label' => 'Maintenance Machine'],
-                    ['name' => 'maintenance.mould.index', 'label' => 'Maintenance Mould'],
-                    ['name' => 'maintenance.dashboard', 'label' => 'Dashboard Maintenance'],
-                    ['name' => 'machine.dashboard', 'label' => 'Dashboard Machine'],
-                    ['name' => 'mould.dashboard', 'label' => 'Dashboard Mould'],
+                    ['name' => 'mould-checklist.index', 'label' => 'Mould Maintenance Checklist'],
+                    ['name' => 'master-mould.index', 'label' => 'Master Mould Directory'],
+                    ['name' => 'maintenance.checklist-report', 'label' => 'Checklist Predictive Mesin'],
                 ]" />
 
                 @if (app(\App\Services\PlantContextService::class)->supportsSecondProcess())
@@ -228,11 +225,11 @@ new class extends Component {
                     <livewire:sidebar-link href="{{ route('operator.daily-report') }}" label="Laporan Harian Mesin"
                         :active="request()->routeIs('operator.daily-report')" wire:navigate />
 
-                    <livewire:sidebar-link href="{{ route('maintenance.machine.index') }}" label="Maintenance Machine"
-                        :active="request()->routeIs('maintenance.machine.index')" wire:navigate />
+                    <livewire:sidebar-link href="{{ route('mould-checklist.index') }}" label="Checklist Mould"
+                        :active="request()->routeIs('mould-checklist.*')" wire:navigate />
 
-                    <livewire:sidebar-link href="{{ route('maintenance.mould.index') }}" label="Maintenance Mould"
-                        :active="request()->routeIs('maintenance.mould.index')" wire:navigate />
+                    <livewire:sidebar-link href="{{ route('master-mould.index') }}" label="Master Mould"
+                        :active="request()->routeIs('master-mould.*')" wire:navigate />
 
                     <livewire:sidebar-link href="{{ route('maintenance.checklist-report') }}" label="Checklist Predictive Maintenance"
                         :active="request()->routeIs('maintenance.checklist-report')" wire:navigate />

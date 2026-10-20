@@ -50,5 +50,9 @@ return [
             'checked' => ['QUALITY', 'ADMIN', 'SUPER-ADMIN'],
             'approved' => ['QUALITY', 'LEADER', 'ADMIN', 'SUPER-ADMIN'],
         ],
+        'mould_checklist' => [
+            'issued_by' => ['MAINTENANCE', 'WORKSHOP', 'OPERATOR', 'ADMIN', 'SUPER-ADMIN'],
+            'checked_by' => ['LEADER', 'SUPERVISOR', 'ADMIN', 'SUPER-ADMIN'],
+        ],
     ],
 ];

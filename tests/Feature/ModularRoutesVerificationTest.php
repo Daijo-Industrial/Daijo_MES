@@ -57,8 +57,9 @@ class ModularRoutesVerificationTest extends TestCase
 
             // Production & Dashboards Domain
             'production-dashboard',
-            'machine.dashboard',
-            'mould.dashboard',
+            'master-mould.index',
+            'mould-checklist.index',
+            'mould-checklist.create',
             'machine.monitor',
             'spk.changes.index',
             'spk.bom-changes.index',
