@@ -112,9 +112,9 @@ class ProductionDashboard extends Component
         // ✅ Get users with IDs for machine mapping
         $machineUsers = \App\Models\User::where(function ($q) {
             $q->whereIn('name', [
-                '0150E', '0300A', '0350F', '0360A', '0360D', '0450B',
+                '0150E', '0150F', '0300A', '0300B', '0350F', '0360A', '0360B', '0360C', '0360D', '0450B',
                 '0450F', '0450G', '0450H', '0450I', '0450J',
-                '0550B', '0650D', '0650E', '0850D',
+                '0550B', '0650D', '0650E', '0850D', '1050D', '1300B', '1300C',
                 'K2800A', 'K2100A', 'K1400A', 'K1400B', 'K1400C',
                 'K0900A', 'K0900B', 'K0650A', 'K0650B',
                 'K0750A', 'K0750B', 'K0450A',
