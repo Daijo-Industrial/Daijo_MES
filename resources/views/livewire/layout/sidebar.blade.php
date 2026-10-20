@@ -115,7 +115,6 @@ new class extends Component {
                     ['name' => 'capacityforecastindex', 'label' => 'Capacity By Forecast'],
                     ['name' => 'waiting_purchase_orders.index', 'label' => 'Waiting Purchase Orders'],
                     ['name' => 'notification_recipients.index', 'label' => 'Notification Recipients'],
-                    ['name' => 'maintenance.checklist-report', 'label' => 'Checklist Predictive Maintenance'],
                     ['name' => 'maintenance.index', 'label' => 'Maintenance Index'],
                     ['name' => 'invlinelist', 'label' => 'Machine List'],
                 ]" />
