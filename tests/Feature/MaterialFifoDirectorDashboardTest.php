@@ -522,4 +522,102 @@ class MaterialFifoDirectorDashboardTest extends TestCase
             ->set('preset', 'this_month')
             ->assertSet('preset', 'this_month');
     }
+
+    public function test_fifo_deviation_includes_detailed_transaction_history_for_skipped_pallet()
+    {
+        $data = $this->seedStandardTestData();
+
+        // Older pallet arrived with 1000 KG
+        $headerOld = MwhIncomingHeader::create([
+            'whse_id' => $data['warehouse']->id,
+            'document_no' => 'DOC-HIST-OLD',
+            'incoming_type' => 'SUPPLIER',
+            'supplier_name' => 'PT PLASTIC SUPPLIER',
+            'arrival_date' => '2026-07-01',
+        ]);
+
+        $palletOld = MwhPallet::create([
+            'whse_id' => $data['warehouse']->id,
+            'pallet_id' => 'PLT-HIST-OLD-01',
+            'incoming_header_id' => $headerOld->id,
+            'item_code' => 'RESIN-PP-001',
+            'lot_no' => 'LOT-OLD-999',
+            'initial_qty' => 1000,
+            'current_qty' => 600,
+            'position_id' => $data['pos1']->id,
+            'status' => 'PARTIAL',
+            'created_at' => Carbon::parse('2026-07-01 08:00:00'),
+        ]);
+
+        // Older pallet had an outgoing of 400 KG on Jul 05
+        MwhOutgoing::create([
+            'whse_id' => $data['warehouse']->id,
+            'outgoing_code' => 'OUT-HIST-OLD-01',
+            'pallet_id' => $palletOld->pallet_id,
+            'item_code' => 'RESIN-PP-001',
+            'qty_taken' => 400,
+            'outgoing_date' => '2026-07-05',
+            'created_at' => Carbon::parse('2026-07-05 10:00:00'),
+            'issued_to' => 'Produksi Molding 01',
+        ]);
+
+        // Newer pallet arrived on Jul 10 with 500 KG
+        $headerNew = MwhIncomingHeader::create([
+            'whse_id' => $data['warehouse']->id,
+            'document_no' => 'DOC-HIST-NEW',
+            'arrival_date' => '2026-07-10',
+        ]);
+
+        $palletNew = MwhPallet::create([
+            'whse_id' => $data['warehouse']->id,
+            'pallet_id' => 'PLT-HIST-NEW-01',
+            'incoming_header_id' => $headerNew->id,
+            'item_code' => 'RESIN-PP-001',
+            'lot_no' => 'LOT-NEW-111',
+            'initial_qty' => 500,
+            'current_qty' => 200,
+            'position_id' => $data['pos2']->id,
+            'status' => 'PARTIAL',
+            'created_at' => Carbon::parse('2026-07-10 09:00:00'),
+        ]);
+
+        // Violation: Newer pallet is picked on Jul 12 while older still had 600 KG
+        MwhOutgoing::create([
+            'whse_id' => $data['warehouse']->id,
+            'outgoing_code' => 'OUT-HIST-NEW-01',
+            'pallet_id' => $palletNew->pallet_id,
+            'item_code' => 'RESIN-PP-001',
+            'qty_taken' => 300,
+            'outgoing_date' => '2026-07-12',
+            'created_at' => Carbon::parse('2026-07-12 11:00:00'),
+            'issued_to' => 'Produksi Molding 02',
+        ]);
+
+        $service = new MaterialFifoService;
+        $deviations = $service->detectFifoDeviations('ALL', '2026-07-01', '2026-07-31');
+
+        $this->assertCount(1, $deviations);
+        $dev = $deviations[0];
+
+        $this->assertEquals('PLT-HIST-OLD-01', $dev['skipped_pallet_id']);
+        $this->assertEquals(600.0, $dev['skipped_stock_at_time']);
+        $this->assertNotEmpty($dev['skipped_history']);
+
+        // Check history: first incoming (+1000), then outgoing (-400, sisa 600)
+        $this->assertEquals('INCOMING', $dev['skipped_history'][0]['type']);
+        $this->assertEquals(1000.0, $dev['skipped_history'][0]['qty']);
+
+        $this->assertEquals('OUTGOING', $dev['skipped_history'][1]['type']);
+        $this->assertEquals(400.0, $dev['skipped_history'][1]['qty']);
+        $this->assertEquals(600.0, $dev['skipped_history'][1]['balance_after']);
+
+        // Livewire UI check
+        Livewire::test(MaterialFifoDirectorDashboard::class)
+            ->set('fromDate', '2026-07-01')
+            ->set('toDate', '2026-07-31')
+            ->set('activeTab', 'deviations')
+            ->assertSee('PLT-HIST-OLD-01')
+            ->assertSee('Riwayat Transaksi')
+            ->assertSee('OUT-HIST-OLD-01');
+    }
 }

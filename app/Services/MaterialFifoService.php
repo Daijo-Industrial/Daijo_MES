@@ -250,6 +250,57 @@ class MaterialFifoService
 
                 // Only count as significant deviation if delta is >= 1 day
                 if ($deltaDays >= 1) {
+                    // Build full transaction history for this skipped pallet
+                    $skippedHistory = [];
+                    $initialQty = (float) $oldestSkipped->initial_qty > 0
+                        ? (float) $oldestSkipped->initial_qty
+                        : ((float) $oldestSkipped->current_qty + (float) $oldestSkipped->outgoings->sum('qty_taken'));
+
+                    $inDate = $oldestSkipped->incomingHeader?->arrival_date
+                        ? Carbon::parse($oldestSkipped->incomingHeader->arrival_date)->format('d/m/Y')
+                        : ($oldestSkipped->created_at ? $oldestSkipped->created_at->format('d/m/Y H:i') : '-');
+
+                    $isRetur = ($oldestSkipped->incomingHeader?->incoming_type === 'RETURN_PRODUCTION');
+
+                    $skippedHistory[] = [
+                        'type' => $isRetur ? 'RETUR' : 'INCOMING',
+                        'date' => $inDate,
+                        'code' => $oldestSkipped->pallet_id,
+                        'desc' => $isRetur
+                            ? ('Retur dari: ' . ($oldestSkipped->incomingHeader?->returned_from ?: 'Produksi'))
+                            : ($oldestSkipped->incomingHeader?->supplier_name ?: 'Penerimaan Supplier'),
+                        'qty' => $initialQty,
+                        'balance_after' => $initialQty,
+                    ];
+
+                    $runningBalance = $initialQty;
+                    $sortedOutgoings = $oldestSkipped->outgoings->sortBy(function ($o) {
+                        $ts = $o->created_at ? $o->created_at->timestamp : ($o->outgoing_date ? Carbon::parse($o->outgoing_date)->timestamp : 0);
+
+                        return $ts . '_' . str_pad($o->id, 8, '0', STR_PAD_LEFT);
+                    });
+
+                    foreach ($sortedOutgoings as $sOut) {
+                        $qtyOut = (float) $sOut->qty_taken;
+                        $runningBalance = max(0.0, $runningBalance - $qtyOut);
+                        $outDate = $sOut->created_at
+                            ? $sOut->created_at->format('d/m/Y H:i')
+                            : ($sOut->outgoing_date ? Carbon::parse($sOut->outgoing_date)->format('d/m/Y') : '-');
+
+                        $skippedHistory[] = [
+                            'type' => 'OUTGOING',
+                            'date' => $outDate,
+                            'code' => $sOut->outgoing_code,
+                            'desc' => 'Tujuan: ' . ($sOut->issued_to ?: 'Produksi') . ($sOut->remarks ? ' (' . $sOut->remarks . ')' : ''),
+                            'qty' => $qtyOut,
+                            'balance_after' => $runningBalance,
+                        ];
+                    }
+
+                    $skippedArrivalYmd = $oldestSkipped->incomingHeader?->arrival_date
+                        ? Carbon::parse($oldestSkipped->incomingHeader->arrival_date)->format('Y-m-d')
+                        : ($oldestSkipped->created_at ? $oldestSkipped->created_at->format('Y-m-d') : null);
+
                     $deviations[] = [
                         'outgoing_id' => $out->id,
                         'outgoing_code' => $out->outgoing_code,
@@ -267,8 +318,12 @@ class MaterialFifoService
                         'skipped_pallet_id' => $oldestSkipped->pallet_id,
                         'skipped_lot_no' => $oldestSkipped->lot_no ?: '-',
                         'skipped_arrival_date' => Carbon::parse($oldestArrival)->format('d/m/Y'),
+                        'skipped_arrival_date_ymd' => $skippedArrivalYmd,
                         'skipped_position_code' => $oldestSkipped->position?->position_code ?: ($oldestSkipped->initialPosition?->position_code ?: 'Non-Rak'),
                         'skipped_current_qty' => (float) $oldestSkipped->current_qty,
+                        'skipped_initial_qty' => (float) $initialQty,
+                        'skipped_outgoings_count' => $oldestSkipped->outgoings->count(),
+                        'skipped_history' => $skippedHistory,
                         'skipped_stock_at_time' => (float) $stockAtTime,
                         'delta_days' => (int) $deltaDays,
                         'severity' => $deltaDays >= 30 ? 'HIGH' : ($deltaDays >= 7 ? 'MEDIUM' : 'LOW'),

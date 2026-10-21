@@ -511,7 +511,7 @@
                                                     Lot: <strong>{{ $d['picked_lot_no'] }}</strong> &bull; Masuk: {{ $d['picked_arrival_date'] }}
                                                 </div>
                                             </td>
-                                            <td class="px-4 py-3.5 space-y-0.5 bg-rose-50/40">
+                                            <td class="px-4 py-3.5 space-y-1 bg-rose-50/40 align-top" x-data="{ openHistory: false }">
                                                 <div class="flex items-center gap-1.5 font-bold text-rose-700">
                                                     <span>⚠️ {{ $d['skipped_pallet_id'] }}</span>
                                                     <span class="text-[10px] text-slate-500 font-normal">({{ $d['skipped_position_code'] }})</span>
@@ -523,6 +523,111 @@
                                                     @else
                                                         (Stok Saat Itu: <strong class="text-rose-700">{{ number_format($d['skipped_stock_at_time'] ?? 0, 1) }} KG</strong> &bull; <span class="text-slate-500 font-semibold">Sekarang Habis</span>)
                                                     @endif
+                                                </div>
+
+                                                <!-- Action Buttons: Dropdown Toggle & Stock Card Link -->
+                                                <div class="pt-1 flex items-center gap-2">
+                                                    <button type="button" 
+                                                            @click="openHistory = !openHistory" 
+                                                            class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg transition-all border shadow-xs"
+                                                            :class="openHistory ? 'bg-rose-700 text-white border-rose-800' : 'bg-rose-100/90 hover:bg-rose-200 text-rose-800 border-rose-300'">
+                                                        <svg class="w-3 h-3 transition-transform duration-200" :class="openHistory ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                                        </svg>
+                                                        <span x-text="openHistory ? 'Tutup Riwayat' : 'Riwayat Transaksi ({{ count($d['skipped_history'] ?? []) }})'"></span>
+                                                    </button>
+
+                                                    <a href="{{ route('mwh.stock-card.index', ['search' => $d['skipped_pallet_id'], 'fromDate' => $d['skipped_arrival_date_ymd'] ?? '']) }}" 
+                                                       target="_blank" 
+                                                       class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-blue-700 transition"
+                                                       title="Buka Kartu Stok Pallet Ini di Tab Baru">
+                                                        <span>Kartu Stok</span>
+                                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                                    </a>
+                                                </div>
+
+                                                <!-- Dropdown Collapsible Card -->
+                                                <div x-show="openHistory" 
+                                                     x-cloak 
+                                                     x-transition:enter="transition ease-out duration-150"
+                                                     x-transition:enter-start="opacity-0 -translate-y-1"
+                                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                                     x-transition:leave="transition ease-in duration-100"
+                                                     x-transition:leave-start="opacity-100 translate-y-0"
+                                                     x-transition:leave-end="opacity-0 -translate-y-1"
+                                                     class="mt-2 bg-white rounded-xl border border-rose-200 shadow-md p-3 text-xs space-y-2.5 min-w-[320px] max-w-sm">
+                                                    
+                                                    <!-- Header Summary Badges -->
+                                                    <div class="grid grid-cols-3 gap-1 pb-2 border-b border-slate-100 text-[10px]">
+                                                        <div class="bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-center">
+                                                            <div class="text-[9px] text-slate-400 font-medium">Total Masuk</div>
+                                                            <div class="font-extrabold text-slate-800">{{ number_format($d['skipped_initial_qty'] ?? 0, 1) }} KG</div>
+                                                        </div>
+                                                        <div class="bg-amber-50 p-1.5 rounded-lg border border-amber-100 text-center">
+                                                            <div class="text-[9px] text-amber-600 font-medium">Saat Dilompati</div>
+                                                            <div class="font-extrabold text-amber-800">{{ number_format($d['skipped_stock_at_time'] ?? 0, 1) }} KG</div>
+                                                        </div>
+                                                        <div class="bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-center">
+                                                            <div class="text-[9px] text-slate-400 font-medium">Sisa Sekarang</div>
+                                                            @if (($d['skipped_current_qty'] ?? 0) > 0)
+                                                                <div class="font-extrabold text-rose-700">{{ number_format($d['skipped_current_qty'], 1) }} KG</div>
+                                                            @else
+                                                                <div class="font-extrabold text-slate-500">0.0 KG (Habis)</div>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Timeline list of transactions -->
+                                                    <div class="max-h-56 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100">
+                                                        @forelse(($d['skipped_history'] ?? []) as $tx)
+                                                            <div class="pt-2 first:pt-0 flex items-start justify-between gap-2 text-[10px]">
+                                                                <div class="space-y-0.5 flex-1 min-w-0">
+                                                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                                                        @if($tx['type'] === 'INCOMING' || $tx['type'] === 'RETUR')
+                                                                            <span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-black rounded text-[9px] leading-tight">
+                                                                                📥 {{ $tx['type'] }}
+                                                                            </span>
+                                                                        @else
+                                                                            <span class="px-1.5 py-0.5 bg-rose-100 text-rose-800 font-black rounded text-[9px] leading-tight">
+                                                                                📤 KELUAR
+                                                                            </span>
+                                                                        @endif
+                                                                        <span class="font-mono text-slate-600 font-bold">{{ $tx['date'] }}</span>
+                                                                        <span class="font-mono text-slate-400 text-[9px] truncate">({{ $tx['code'] }})</span>
+                                                                    </div>
+                                                                    <div class="text-slate-600 font-medium truncate" title="{{ $tx['desc'] }}">
+                                                                        {{ $tx['desc'] }}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="text-right shrink-0">
+                                                                    <div class="font-black {{ $tx['type'] === 'INCOMING' || $tx['type'] === 'RETUR' ? 'text-emerald-700' : 'text-rose-700' }}">
+                                                                        {{ $tx['type'] === 'INCOMING' || $tx['type'] === 'RETUR' ? '+' : '-' }}{{ number_format(abs($tx['qty']), 1) }} KG
+                                                                    </div>
+                                                                    <div class="text-[9px] text-slate-400 font-semibold">
+                                                                        Sisa: <strong class="text-slate-700">{{ number_format($tx['balance_after'], 1) }} KG</strong>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        @empty
+                                                            <div class="py-2 text-center text-slate-400 text-[10px]">
+                                                                Tidak ada riwayat transaksi tambahan tercatat.
+                                                            </div>
+                                                        @endforelse
+                                                    </div>
+
+                                                    <!-- Footer link to Stock Card -->
+                                                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                                                        <span class="text-slate-400 font-medium">
+                                                            {{ $d['skipped_outgoings_count'] ?? 0 }}x pengambilan material
+                                                        </span>
+                                                        <a href="{{ route('mwh.stock-card.index', ['search' => $d['skipped_pallet_id'], 'fromDate' => $d['skipped_arrival_date_ymd'] ?? '']) }}" 
+                                                           target="_blank" 
+                                                           class="font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 transition">
+                                                            <span>Buka Kartu Stok</span>
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                                        </a>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td class="px-4 py-3.5 text-center">
