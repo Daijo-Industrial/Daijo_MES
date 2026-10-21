@@ -175,7 +175,7 @@ class MaterialFifoService
 
             $pickedArrivalDate = $pickedPallet->incomingHeader?->arrival_date
                 ? Carbon::parse($pickedPallet->incomingHeader->arrival_date)->format('Y-m-d')
-                : $pickedPallet->created_at->format('Y-m-d');
+                : $pickedPallet->created_at->timezone('Asia/Jakarta')->format('Y-m-d');
 
             $outgoingTimestamp = Carbon::parse($out->outgoing_date);
             if ($out->created_at) {
@@ -191,7 +191,7 @@ class MaterialFifoService
             foreach ($potentialOlderPallets as $older) {
                 $olderArrival = $older->incomingHeader?->arrival_date
                     ? Carbon::parse($older->incomingHeader->arrival_date)->format('Y-m-d')
-                    : $older->created_at->format('Y-m-d');
+                    : $older->created_at->timezone('Asia/Jakarta')->format('Y-m-d');
 
                 // Must be strictly older than picked lot
                 if ($olderArrival >= $pickedArrivalDate) {
@@ -258,7 +258,7 @@ class MaterialFifoService
 
                     $inDate = $oldestSkipped->incomingHeader?->arrival_date
                         ? Carbon::parse($oldestSkipped->incomingHeader->arrival_date)->format('d/m/Y')
-                        : ($oldestSkipped->created_at ? $oldestSkipped->created_at->format('d/m/Y H:i') : '-');
+                        : ($oldestSkipped->created_at ? $oldestSkipped->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-');
 
                     $isRetur = ($oldestSkipped->incomingHeader?->incoming_type === 'RETURN_PRODUCTION');
 
@@ -284,7 +284,7 @@ class MaterialFifoService
                         $qtyOut = (float) $sOut->qty_taken;
                         $runningBalance = max(0.0, $runningBalance - $qtyOut);
                         $outDate = $sOut->created_at
-                            ? $sOut->created_at->format('d/m/Y H:i')
+                            ? $sOut->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i')
                             : ($sOut->outgoing_date ? Carbon::parse($sOut->outgoing_date)->format('d/m/Y') : '-');
 
                         $skippedHistory[] = [
@@ -299,12 +299,13 @@ class MaterialFifoService
 
                     $skippedArrivalYmd = $oldestSkipped->incomingHeader?->arrival_date
                         ? Carbon::parse($oldestSkipped->incomingHeader->arrival_date)->format('Y-m-d')
-                        : ($oldestSkipped->created_at ? $oldestSkipped->created_at->format('Y-m-d') : null);
+                        : ($oldestSkipped->created_at ? $oldestSkipped->created_at->timezone('Asia/Jakarta')->format('Y-m-d') : null);
 
                     $deviations[] = [
                         'outgoing_id' => $out->id,
                         'outgoing_code' => $out->outgoing_code,
                         'outgoing_date' => $out->outgoing_date ? Carbon::parse($out->outgoing_date)->format('d/m/Y') : '-',
+                        'outgoing_time' => $out->created_at ? $out->created_at->timezone('Asia/Jakarta')->format('H:i') : null,
                         'item_code' => $out->item_code,
                         'item_description' => $out->material?->item_description ?: 'Material ' . $out->item_code,
                         'qty_taken' => (float) $out->qty_taken,

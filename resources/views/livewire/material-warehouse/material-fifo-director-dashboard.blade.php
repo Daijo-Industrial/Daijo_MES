@@ -492,7 +492,12 @@
                                     @foreach($deviations as $d)
                                         <tr class="hover:bg-slate-50/80 transition">
                                             <td class="px-4 py-3.5 font-mono text-slate-700 font-semibold">
-                                                <div class="font-bold">{{ $d['outgoing_date'] }}</div>
+                                                <div class="font-bold flex items-center gap-1.5">
+                                                    <span>{{ $d['outgoing_date'] }}</span>
+                                                    @if (!empty($d['outgoing_time']))
+                                                        <span class="text-[11px] font-normal text-slate-500">{{ $d['outgoing_time'] }}</span>
+                                                    @endif
+                                                </div>
                                                 <div class="text-[10px] text-slate-400">{{ $d['outgoing_code'] }}</div>
                                             </td>
                                             <td class="px-4 py-3.5">
@@ -593,6 +598,9 @@
                                                                             </span>
                                                                         @endif
                                                                         <span class="font-mono text-slate-600 font-bold">{{ $tx['date'] }}</span>
+                                                                        @if(str_contains($tx['date'], ':'))
+                                                                            <span class="text-[8px] font-extrabold bg-slate-100 text-slate-500 px-1 py-0.5 rounded leading-none">WIB</span>
+                                                                        @endif
                                                                         <span class="font-mono text-slate-400 text-[9px] truncate">({{ $tx['code'] }})</span>
                                                                     </div>
                                                                     <div class="text-slate-600 font-medium truncate" title="{{ $tx['desc'] }}">
