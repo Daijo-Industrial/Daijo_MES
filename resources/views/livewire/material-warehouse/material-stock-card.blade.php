@@ -365,9 +365,15 @@
                                         @endif
                                     </td>
 
-                                    <!-- Sisa Stok Pallet (Aktual di Slot ini) -->
-                                    <td class="px-4 py-3.5 text-right font-black text-amber-700 bg-amber-50/40">
-                                        {{ number_format($m['pallet_qty'], 2) }} <span class="text-[10px] text-amber-600 font-semibold">{{ $m['uom'] }}</span>
+                                    <!-- Sisa Stok Pallet (Aktual di Pallet ini) -->
+                                    <td class="px-4 py-3.5 text-right font-black bg-amber-50/40">
+                                        @if($m['type'] === 'OPENING_BALANCE')
+                                            <span class="text-slate-300 font-normal">-</span>
+                                        @elseif($m['pallet_qty'] <= 0)
+                                            <span class="text-slate-400 font-semibold">0.00</span> <span class="text-[10px] text-slate-400 font-normal">{{ $m['uom'] }}</span>
+                                        @else
+                                            <span class="text-amber-700 font-black">{{ number_format($m['pallet_qty'], 2) }}</span> <span class="text-[10px] text-amber-600 font-semibold">{{ $m['uom'] }}</span>
+                                        @endif
                                     </td>
 
                                     <!-- Total Stok Material (Seluruh Gudang) -->

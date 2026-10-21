@@ -503,6 +503,91 @@ class MaterialWarehouseTransactionTest extends TestCase
             ->assertSee('OUT-SC-001');
     }
 
+    public function test_material_stock_card_calculates_running_pallet_balance_accurately_across_outgoings()
+    {
+        $mat = MasterListMaterial::firstOrCreate([
+            'item_code' => '400-TYLCT440Y',
+        ], [
+            'item_description' => 'ABS TOYOLAC 440Y MHI B1 BLACK',
+            'purchasing_uom' => 'KG',
+        ]);
+
+        $pallet = MwhPallet::create([
+            'pallet_id' => 'MPLT-20260901-TEST',
+            'item_code' => '400-TYLCT440Y',
+            'initial_qty' => 500.00,
+            'current_qty' => 0.00, // Pallet is currently 0 in database!
+            'uom' => 'KG',
+            'status' => 'EMPTY',
+            'created_at' => '2026-09-01 10:00:00',
+        ]);
+
+        // Create 2 outgoings: -200 KG and -300 KG
+        \App\Models\MwhOutgoing::create([
+            'outgoing_code' => 'OUT-TEST-001',
+            'pallet_id' => 'MPLT-20260901-TEST',
+            'item_code' => '400-TYLCT440Y',
+            'qty_taken' => 200.00,
+            'uom' => 'KG',
+            'outgoing_date' => '2026-10-10',
+            'created_at' => '2026-10-10 13:00:00',
+            'issued_to' => 'Produksi',
+        ]);
+
+        \App\Models\MwhOutgoing::create([
+            'outgoing_code' => 'OUT-TEST-002',
+            'pallet_id' => 'MPLT-20260901-TEST',
+            'item_code' => '400-TYLCT440Y',
+            'qty_taken' => 300.00,
+            'uom' => 'KG',
+            'outgoing_date' => '2026-10-20',
+            'created_at' => '2026-10-20 12:00:00',
+            'issued_to' => 'Produksi',
+        ]);
+
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::create([
+            'name' => 'StockCard Tester',
+            'email' => 'stockcard_test_' . uniqid() . '@example.com',
+            'role_id' => $role->id,
+            'password' => bcrypt('password'),
+        ]);
+
+        $this->actingAs($user);
+
+        // Test in ASC order:
+        // 1. Incoming: 500.00 KG sisa
+        // 2. Outgoing 1: 300.00 KG sisa (500 - 200)
+        // 3. Outgoing 2: 0.00 KG sisa (300 - 300)
+        $componentAsc = Livewire::test(\App\Livewire\MaterialWarehouse\MaterialStockCard::class)
+            ->set('search', 'MPLT-20260901-TEST')
+            ->set('fromDate', '2026-09-01')
+            ->set('toDate', '2026-10-31')
+            ->set('sortDirection', 'ASC');
+
+        $movementsAsc = $componentAsc->viewData('movements');
+        $this->assertCount(3, $movementsAsc);
+        $this->assertEquals(500.00, $movementsAsc[0]['pallet_qty']);
+        $this->assertEquals(300.00, $movementsAsc[1]['pallet_qty']);
+        $this->assertEquals(0.00, $movementsAsc[2]['pallet_qty']);
+
+        // Test in DESC order (default view in user's UI):
+        // 1. Outgoing 2: 0.00 KG sisa
+        // 2. Outgoing 1: 300.00 KG sisa
+        // 3. Incoming: 500.00 KG sisa
+        $componentDesc = Livewire::test(\App\Livewire\MaterialWarehouse\MaterialStockCard::class)
+            ->set('search', 'MPLT-20260901-TEST')
+            ->set('fromDate', '2026-09-01')
+            ->set('toDate', '2026-10-31')
+            ->set('sortDirection', 'DESC');
+
+        $movementsDesc = $componentDesc->viewData('movements');
+        $this->assertCount(3, $movementsDesc);
+        $this->assertEquals(0.00, $movementsDesc[0]['pallet_qty']);
+        $this->assertEquals(300.00, $movementsDesc[1]['pallet_qty']);
+        $this->assertEquals(500.00, $movementsDesc[2]['pallet_qty']);
+    }
+
     public function test_branch_separation_between_kbn_and_karawang()
     {
         $kbn = MwhWarehouse::firstOrCreate(['whse_code' => 'KBN'], ['whse_name' => 'Gudang Material KBN']);

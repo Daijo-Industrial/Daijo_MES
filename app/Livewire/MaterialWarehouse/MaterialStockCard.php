@@ -213,8 +213,8 @@ class MaterialStockCard extends Component
                 : ('Lot: ' . ($pallet->lot_no ?: '-') . ' | PO: ' . ($pallet->incomingHeader?->po_number ?: '-'));
 
             $remarks = $isRetur
-                ? ('Retur Sisa Produksi (' . number_format($pallet->current_qty, 2) . ' KG sisa)')
-                : ('Penerimaan Supplier (' . number_format($pallet->current_qty, 2) . ' KG sisa)');
+                ? ('Retur Sisa Produksi (' . number_format($pallet->initial_qty, 2) . ' KG)')
+                : ('Penerimaan Supplier (' . number_format($pallet->initial_qty, 2) . ' KG)');
 
             $slotCode = $pallet->position?->position_code
                 ?: ($pallet->initialPosition?->position_code
@@ -222,6 +222,8 @@ class MaterialStockCard extends Component
 
             return [
                 'id' => 'IN-' . $pallet->id,
+                'pallet_id' => $pallet->pallet_id,
+                'pallet_initial_qty' => (float) $pallet->initial_qty,
                 'timestamp' => $dt,
                 'date_formatted' => $dt ? $dt->timezone('Asia/Jakarta')->format('d M Y H:i') : '-',
                 'type' => $isRetur ? 'RETURN_PRODUCTION' : 'INCOMING',
@@ -233,7 +235,7 @@ class MaterialStockCard extends Component
                 'slot_code' => $slotCode,
                 'qty_in' => (float) $pallet->initial_qty,
                 'qty_out' => 0.0,
-                'pallet_qty' => (float) $pallet->current_qty,
+                'pallet_qty' => (float) $pallet->initial_qty,
                 'uom' => $pallet->uom ?? 'KG',
                 'remarks' => $pallet->incomingHeader?->remarks ?: $remarks,
             ];
@@ -263,6 +265,8 @@ class MaterialStockCard extends Component
 
             return [
                 'id' => 'OUT-' . $out->id,
+                'pallet_id' => $out->pallet_id,
+                'pallet_initial_qty' => (float) ($out->pallet?->initial_qty ?? 0.0),
                 'timestamp' => $dt,
                 'date_formatted' => $dt ? $dt->timezone('Asia/Jakarta')->format('d M Y H:i') : '-',
                 'type' => 'OUTGOING',
@@ -274,26 +278,43 @@ class MaterialStockCard extends Component
                 'slot_code' => $slotCode,
                 'qty_in' => 0.0,
                 'qty_out' => (float) $out->qty_taken,
-                'pallet_qty' => (float) ($out->pallet?->current_qty ?? 0.0),
+                'pallet_qty' => 0.0,
                 'uom' => $out->uom ?? 'KG',
                 'remarks' => $out->remarks ?: 'Pengambilan Material',
             ];
         });
 
         // 4. Merge and sort chronologically for balance calculation
-        $allMovements = $incomings->concat($outgoings)->sortBy('timestamp')->values();
+        $allMovements = $incomings->concat($outgoings)->sort(function ($a, $b) {
+            $timeA = $a['timestamp'] ? $a['timestamp']->timestamp : 0;
+            $timeB = $b['timestamp'] ? $b['timestamp']->timestamp : 0;
+            if ($timeA !== $timeB) {
+                return $timeA <=> $timeB;
+            }
+            // Same timestamp: INCOMING/RETURN comes before OUTGOING
+            $priority = ['INCOMING' => 1, 'RETURN_PRODUCTION' => 1, 'OUTGOING' => 2];
+            $pA = $priority[$a['type']] ?? 2;
+            $pB = $priority[$b['type']] ?? 2;
+            if ($pA !== $pB) {
+                return $pA <=> $pB;
+            }
 
-        // 5. Calculate Running Balance & Opening Balance per Material
+            return $a['id'] <=> $b['id'];
+        })->values();
+
+        // 5. Calculate Running Balance & Opening Balance per Material AND per Pallet
         $fromCarbon = $this->fromDate ? Carbon::parse($this->fromDate)->startOfDay() : null;
         $toCarbon = $this->toDate ? Carbon::parse($this->toDate)->endOfDay() : null;
 
         $openingBalances = [];
         $runningBalances = [];
+        $runningPalletBalances = [];
 
         $calculatedMovements = collect();
 
         foreach ($allMovements as $item) {
             $itemCode = $item['item_code'];
+            $palletId = $item['pallet_id'] ?? null;
             $itemDt = $item['timestamp'];
 
             if (! isset($runningBalances[$itemCode])) {
@@ -301,9 +322,27 @@ class MaterialStockCard extends Component
                 $openingBalances[$itemCode] = 0.0;
             }
 
+            // Running balance per pallet
+            if ($palletId) {
+                if (! isset($runningPalletBalances[$palletId])) {
+                    // Fallback to initial_qty if this pallet had no incoming record in current collection
+                    $runningPalletBalances[$palletId] = (in_array($item['type'], ['INCOMING', 'RETURN_PRODUCTION']))
+                        ? 0.0
+                        : ($item['pallet_initial_qty'] ?? 0.0);
+                }
+
+                if (in_array($item['type'], ['INCOMING', 'RETURN_PRODUCTION'])) {
+                    $runningPalletBalances[$palletId] += $item['qty_in'];
+                } else {
+                    $runningPalletBalances[$palletId] = max(0.0, $runningPalletBalances[$palletId] - $item['qty_out']);
+                }
+
+                $item['pallet_qty'] = $runningPalletBalances[$palletId];
+            }
+
             // If transaction happened BEFORE fromDate, accumulate to openingBalances
             if ($fromCarbon && $itemDt && $itemDt->lt($fromCarbon)) {
-                if ($item['type'] === 'INCOMING') {
+                if (in_array($item['type'], ['INCOMING', 'RETURN_PRODUCTION'])) {
                     $openingBalances[$itemCode] += $item['qty_in'];
                 } else {
                     $openingBalances[$itemCode] -= $item['qty_out'];
@@ -312,7 +351,7 @@ class MaterialStockCard extends Component
                 continue;
             }
 
-            if ($item['type'] === 'INCOMING') {
+            if (in_array($item['type'], ['INCOMING', 'RETURN_PRODUCTION'])) {
                 $runningBalances[$itemCode] += $item['qty_in'];
             } else {
                 $runningBalances[$itemCode] -= $item['qty_out'];
@@ -333,7 +372,8 @@ class MaterialStockCard extends Component
             if ($openingBalance > 0) {
                 $openingRow = [
                     'id' => 'OPENING-BAL',
-                    'timestamp' => $fromCarbon,
+                    'pallet_id' => null,
+                    'timestamp' => $fromCarbon->copy()->startOfDay(),
                     'date_formatted' => $fromCarbon->timezone('Asia/Jakarta')->format('d M Y') . ' (00:00)',
                     'type' => 'OPENING_BALANCE',
                     'item_code' => $this->selectedItemCode,
@@ -344,7 +384,7 @@ class MaterialStockCard extends Component
                     'slot_code' => '-',
                     'qty_in' => $openingBalance,
                     'qty_out' => 0.0,
-                    'pallet_qty' => $openingBalance,
+                    'pallet_qty' => 0.0,
                     'uom' => $selectedMaterial?->purchasing_uom ?? 'KG',
                     'balance' => $openingBalance,
                     'remarks' => 'Saldo awal per tanggal ' . $fromCarbon->format('d M Y'),
@@ -369,6 +409,7 @@ class MaterialStockCard extends Component
                 return str_contains(strtolower($item['item_code']), $term)
                     || str_contains(strtolower($item['item_description']), $term)
                     || str_contains(strtolower($item['ref_code']), $term)
+                    || str_contains(strtolower($item['pallet_id'] ?? ''), $term)
                     || str_contains(strtolower($item['sub_ref']), $term)
                     || str_contains(strtolower($item['source_destination']), $term)
                     || str_contains(strtolower($item['slot_code']), $term)
@@ -378,9 +419,39 @@ class MaterialStockCard extends Component
 
         // 8. Apply Sorting (ASC vs DESC)
         if ($this->sortDirection === 'DESC') {
-            $movements = $movements->sortByDesc('timestamp')->values();
+            $movements = $movements->sort(function ($a, $b) {
+                $timeA = $a['timestamp'] ? $a['timestamp']->timestamp : 0;
+                $timeB = $b['timestamp'] ? $b['timestamp']->timestamp : 0;
+                if ($timeA !== $timeB) {
+                    return $timeB <=> $timeA; // DESC
+                }
+                // Same timestamp: OUTGOING appears above INCOMING when sorting newest-first
+                $priority = ['OUTGOING' => 1, 'INCOMING' => 2, 'RETURN_PRODUCTION' => 2, 'OPENING_BALANCE' => 3];
+                $pA = $priority[$a['type']] ?? 2;
+                $pB = $priority[$b['type']] ?? 2;
+                if ($pA !== $pB) {
+                    return $pA <=> $pB;
+                }
+
+                return $b['id'] <=> $a['id'];
+            })->values();
         } else {
-            $movements = $movements->sortBy('timestamp')->values();
+            $movements = $movements->sort(function ($a, $b) {
+                $timeA = $a['timestamp'] ? $a['timestamp']->timestamp : 0;
+                $timeB = $b['timestamp'] ? $b['timestamp']->timestamp : 0;
+                if ($timeA !== $timeB) {
+                    return $timeA <=> $timeB; // ASC
+                }
+                // Same timestamp: OPENING_BALANCE -> INCOMING -> OUTGOING
+                $priority = ['OPENING_BALANCE' => 0, 'INCOMING' => 1, 'RETURN_PRODUCTION' => 1, 'OUTGOING' => 2];
+                $pA = $priority[$a['type']] ?? 2;
+                $pB = $priority[$b['type']] ?? 2;
+                if ($pA !== $pB) {
+                    return $pA <=> $pB;
+                }
+
+                return $a['id'] <=> $b['id'];
+            })->values();
         }
 
         // 9. Paginate Collection
