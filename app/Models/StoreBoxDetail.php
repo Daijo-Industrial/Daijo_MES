@@ -17,4 +17,9 @@ class StoreBoxDetail extends Model
         'status',
         'remark',
     ];
+
+    public function boxData()
+    {
+        return $this->belongsTo(StoreBoxData::class, 'part_no', 'part_no');
+    }
 }

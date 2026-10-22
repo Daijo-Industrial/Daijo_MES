@@ -38,12 +38,14 @@ Route::middleware('auth')->group(function () {
     Route::get('indexbarcode', [BarcodeController::class, 'indexBarcode'])->name('barcodeindex');
     Route::post('packaging-barcode-generate', [BarcodeController::class, 'generateBarcode'])->name('generatepackagingbarcode');
     Route::post('packaging-barcode-zebra', [BarcodeController::class, 'generateLabelZebra'])->name('generate.zebra.barcode');
+    Route::post('packaging-barcode-zebra-40x15', [BarcodeController::class, 'generateLabelZebra40x15'])->name('generate.zebra.barcode40x15');
     Route::get('barcode/list', [BarcodeController::class, 'barcodelist'])->name('list.barcode');
     Route::get('barcode/latest/item', [BarcodeController::class, 'latestitemdetails'])->name('updated.barcode.item.position');
     Route::get('barcode/historytable', [BarcodeController::class, 'historybarcodelist'])->name('barcode.historytable');
     Route::get('/barcode/filter', [BarcodeController::class, 'filter'])->name('barcode.filter');
     Route::get('barcode/stockall/{location?}', [BarcodeController::class, 'stockall'])->name('stockallbarcode');
     Route::get('barcode/summary', [BarcodeController::class, 'summaryDashboard'])->name('summaryDashboard');
+    Route::get('api/barcode/label-history', [BarcodeController::class, 'getLabelHistory'])->name('api.barcode.label_history');
 
     // Route untuk master box data (Part Master)
     Route::get('barcode/box-master', [BarcodeController::class, 'indexStoreBoxData'])->name('barcode.box_master.index');

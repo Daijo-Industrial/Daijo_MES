@@ -193,15 +193,12 @@ new class extends Component {
                     ['name' => 'so.tracking', 'label' => 'Tracking SPK & Label DO'],
                 ]" />
 
-                <!-- 7. Dropdown: Barcode & Scan -->
-                <livewire:parent-dropdown label="Barcode & Scan" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'barcode.custom.form', 'label' => 'Custom Barcode Generator'],
-                    ['name' => 'barcode.custom.logs', 'label' => 'Custom Barcode Logs'],
-                    ['name' => 'barcodeindex', 'label' => 'Generate Barcode'],
-                    ['name' => 'inandout.index', 'label' => 'Scan Barcode In/Out'],
-                    ['name' => 'list.barcode', 'label' => 'Scan Document Log'],
-                    ['name' => 'barcode.history.index', 'label' => 'Print History (New)'],
-                    ['name' => 'stockallbarcode', 'label' => 'Stock Status'],
+                <!-- 7. Dropdown: Packaging Menu (Barcode Kemasan) -->
+                <livewire:parent-dropdown label="Packaging Menu" :initiallyOpen="false" :childRoutes="[
+                    ['name' => 'summaryDashboard', 'label' => 'Dashboard & Saldo Kemasan'],
+                    ['name' => 'inandout.index', 'label' => 'Scan Barcode (In/Out)'],
+                    ['name' => 'barcodeindex', 'label' => 'Cetak Barcode & Riwayat'],
+                    ['name' => 'barcode.box_master.index', 'label' => 'Master Data Kemasan'],
                 ]" />
 
                 <!-- 8. Dropdown: SAP Monitor -->
@@ -325,20 +322,11 @@ new class extends Component {
                 @if (auth()->user()?->can('view-store-links'))
                     {{-- Consolidated Packaging Menu --}}
                     <livewire:parent-dropdown label="Packaging Menu" :initiallyOpen="false" :childRoutes="[
-                        ['name' => 'barcode.custom.form', 'label' => 'Custom Barcode Generator'],
-                        ['name' => 'barcode.custom.logs', 'label' => 'Custom Barcode Logs'],
-                        ['name' => 'barcodeindex', 'label' => 'Generate Barcode'],
-                        ['name' => 'barcode.box_master.index', 'label' => 'Master Box Data'],
-                        ['name' => 'barcode.box_detail.index', 'label' => 'Master Box Detail'],
-                        ['name' => 'barcode.history.index', 'label' => 'Print History (New)'],
-                        ['name' => 'stockallbarcode', 'label' => 'Stock Status'],
-                        ['name' => 'list.barcode', 'label' => 'Scan Document Log'],
-                        ['name' => 'updated.barcode.item.position', 'label' => 'Detailed Item List'],
-                        ['name' => 'summaryDashboard', 'label' => 'Packaging Dashboard'],
+                        ['name' => 'summaryDashboard', 'label' => 'Dashboard & Saldo Kemasan'],
+                        ['name' => 'inandout.index', 'label' => 'Scan Barcode (In/Out)'],
+                        ['name' => 'barcodeindex', 'label' => 'Cetak Barcode & Riwayat'],
+                        ['name' => 'barcode.box_master.index', 'label' => 'Master Data Kemasan'],
                     ]" />
-
-                    <livewire:sidebar-link href="{{ route('inandout.index') }}" label="Scan Barcode (In/Out)"
-                        :active="request()->routeIs('inandout.index')" wire:navigate />
 
                     <livewire:sidebar-link href="{{ route('customer.add') }}" label="Manage Customer"
                         :active="request()->routeIs('customer.add')" wire:navigate />
