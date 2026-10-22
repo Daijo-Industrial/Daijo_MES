@@ -59,7 +59,7 @@
         
         <!-- Navigation Buttons -->
         <div class="grid grid-cols-2 gap-4 mt-6">
-            <a href="{{ route('wms.pallet-form.create') }}" class="p-4 bg-white border border-gray-200 rounded-2xl text-center hover:bg-gray-50 transition-all font-bold text-gray-600">
+            <a href="{{ route('wms.pallet-form.create-delivery') }}" class="p-4 bg-white border border-gray-200 rounded-2xl text-center hover:bg-gray-50 transition-all font-bold text-gray-600">
                 ADD NEW PALLET
             </a>
             <a href="{{ route('wms.pallet-form.index') }}" class="p-4 bg-white border border-gray-200 rounded-2xl text-center hover:bg-gray-50 transition-all font-bold text-gray-600">

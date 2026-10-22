@@ -2,6 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Models\Delivery\delsched_stockwip;
+use Carbon\Carbon;
+use DateTime;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -9,15 +12,13 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Delivery\delsched_stockwip;
-use Carbon\Carbon;
-use DateTime;
 
 class ProcessDelschedWipStep2 implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 300;
+
     public $tries = 1;
 
     public function handle()
@@ -33,8 +34,8 @@ class ProcessDelschedWipStep2 implements ShouldQueue
                 $val_stock = $tab_sap_inventoryfg->stock;
 
                 delsched_stockwip::insert([
-                    'item_code'   => $item->wip_code,
-                    'quantity'    => $val_stock,
+                    'item_code' => $item->wip_code,
+                    'quantity' => $val_stock,
                     'total_after' => $val_stock,
                 ]);
             }
@@ -42,43 +43,45 @@ class ProcessDelschedWipStep2 implements ShouldQueue
             $tab_delsched_finalwip = DB::table('delsched_finalwip')->orderBy('id', 'asc')->get();
 
             foreach ($tab_delsched_finalwip as $delsched_finalwip) {
-                $today           = Carbon::today();
-                $finalwip_id     = $delsched_finalwip->id;
-                $dept            = $delsched_finalwip->departement;
-                $wip_code        = $delsched_finalwip->wip_code;
-                $delivery_date   = Carbon::parse($delsched_finalwip->delivery_date);
-                $req_qty         = $delsched_finalwip->req_quantity;
-                $stock_wip       = $delsched_finalwip->stock_wip;
+                $today = Carbon::today();
+                $finalwip_id = $delsched_finalwip->id;
+                $dept = $delsched_finalwip->departement;
+                $wip_code = $delsched_finalwip->wip_code;
+                $delivery_date = Carbon::parse($delsched_finalwip->delivery_date);
+                $req_qty = $delsched_finalwip->req_quantity;
+                $stock_wip = $delsched_finalwip->stock_wip;
                 $outstanding_wip = $delsched_finalwip->outstanding_wip;
 
                 $stockwip = DB::table('delsched_stockwip')->where('item_code', $wip_code)->first();
-                if (!$stockwip) continue;
+                if (! $stockwip) {
+                    continue;
+                }
 
                 $stockwip_id = $stockwip->id;
-                $stock_qty   = $stockwip->quantity;
+                $stock_qty = $stockwip->quantity;
                 $total_after = $stockwip->total_after;
 
                 if ($req_qty == $stock_wip) {
                     DB::table('delsched_finalwip')->where('id', $finalwip_id)->update([
-                        'stock_wip'   => $stock_qty,
+                        'stock_wip' => $stock_qty,
                         'balance_wip' => $total_after,
-                        'status'      => 'SUCCESS',
-                        'remark'      => 'SAFE',
+                        'status' => 'SUCCESS',
+                        'remark' => 'SAFE',
                     ]);
                     continue;
                 }
 
                 if ($total_after >= $req_qty) {
-                    $cal_total_after_now      = $total_after - $outstanding_wip;
-                    $stock_ready              = true;
-                    $cal_outstanding_wip_new  = 0;
+                    $cal_total_after_now = $total_after - $outstanding_wip;
+                    $stock_ready = true;
+                    $cal_outstanding_wip_new = 0;
                 } else {
-                    $cal_total_after_now      = $total_after - $req_qty;
-                    $stock_ready              = false;
-                    $cal_outstanding_wip_new  = $cal_total_after_now;
+                    $cal_total_after_now = $total_after - $req_qty;
+                    $stock_ready = false;
+                    $cal_outstanding_wip_new = $cal_total_after_now;
                 }
 
-                $day_limit  = ($dept == 390) ? 7 : 4;
+                $day_limit = ($dept == 390) ? 7 : 4;
                 $limit_date = $today->copy()->addDays($day_limit);
 
                 if ($delivery_date->lte($limit_date)) {
@@ -91,15 +94,15 @@ class ProcessDelschedWipStep2 implements ShouldQueue
 
                 DB::table('delsched_stockwip')->where('id', $stockwip_id)->update(['total_after' => $cal_total_after_now]);
                 DB::table('delsched_finalwip')->where('id', $finalwip_id)->update([
-                    'stock_wip'       => $stock_qty,
-                    'balance_wip'     => $cal_total_after_now,
+                    'stock_wip' => $stock_qty,
+                    'balance_wip' => $cal_total_after_now,
                     'outstanding_wip' => $cal_outstanding_wip_new,
-                    'status'          => $rcd_status,
-                    'remark'          => $rcd_remark,
+                    'status' => $rcd_status,
+                    'remark' => $rcd_remark,
                 ]);
             }
 
-            $now = new DateTime();
+            $now = new DateTime;
             $now->modify('+420 minutes');
             DB::table('uti_date_list')->where('id', '14')->update(['updated_at' => $now]);
 

@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 
 class ApiLog extends Model
 {
-     protected $fillable = [
+    use HasFactory, MassPrunable;
+
+    protected $fillable = [
         'api_name',
         'method',
         'endpoint',
@@ -22,4 +26,12 @@ class ApiLog extends Model
         'request_payload' => 'array',
         'response_payload' => 'array',
     ];
+
+    /**
+     * Tentukan kriteria data yang akan otomatis dihapus (lebih tua dari 3 bulan).
+     */
+    public function prunable(): Builder
+    {
+        return static::where('created_at', '<', now()->subMonths(3));
+    }
 }

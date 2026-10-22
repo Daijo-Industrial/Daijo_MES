@@ -15,6 +15,7 @@ class ProcessDelschedStep2 implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 300;
+
     public $tries = 1;
 
     public function handle()
@@ -27,27 +28,26 @@ class ProcessDelschedStep2 implements ShouldQueue
                 ->get();
 
             foreach ($tab_delsched_final as $delsched_final) {
-                $val_final_id     = $delsched_final->id;
-                $val_so_number    = $delsched_final->so_number;
+                $val_final_id = $delsched_final->id;
+                $val_so_number = $delsched_final->so_number;
                 $val_delivery_qty = $delsched_final->delivery_qty;
 
-                $tab_solist    = DB::table('delsched_solist')
+                $tab_solist = DB::table('delsched_solist')
                     ->where('so_number', $val_so_number)
                     ->first();
                 $val_so_status = $tab_solist->so_status ?? null;
 
                 if ($val_so_status == 'C') {
                     DB::table('delsched_final')->where('id', $val_final_id)->update([
-                        'delivered'       => $val_delivery_qty,
-                        'outstanding'     => 0,
+                        'delivered' => $val_delivery_qty,
+                        'outstanding' => 0,
                         'outstanding_stk' => 0,
-                        'doc_status'      => 'C',
-                        'status'          => 'success',
+                        'doc_status' => 'C',
+                        'status' => 'success',
                     ]);
                 }
             }
 
-         
             $this->updateLog('delsched_main', 'step2', 'done', 'Step 2 selesai, Step 3 dijadwalkan...');
 
         } catch (\Exception $e) {

@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\MasterListItem;
 use App\Models\MasterItemPhoto;
-
+use App\Models\MasterListItem;
+use Illuminate\Http\Request;
 
 class MasterItemPhotoController extends Controller
 {
@@ -21,14 +20,14 @@ class MasterItemPhotoController extends Controller
     public function upload(Request $request, $itemCode)
     {
         $request->validate([
-            'photo' => 'required|mimes:jpg,jpeg,png'
+            'photo' => 'required|mimes:jpg,jpeg,png',
         ]);
 
         $item = MasterListItem::where('item_code', $itemCode)->firstOrFail();
 
-       // Simpan file di storage/public/item_photos
+        // Simpan file di storage/public/item_photos
         $path = $request->file('photo')->store('item_photos', 'public');
- 
+
         // cek apakah sudah ada
         $existing = MasterItemPhoto::where('item_code', $itemCode)->first();
 
@@ -39,10 +38,10 @@ class MasterItemPhotoController extends Controller
         } else {
             // create baru
             MasterItemPhoto::create([
-                'item_code'         => $item->item_code,
-                'item_description'  => $item->item_name,
-                'standard_packaging'=> $item->standart_packaging_list,
-                'photo_path'        => $path
+                'item_code' => $item->item_code,
+                'item_description' => $item->item_name,
+                'standard_packaging' => $item->standart_packaging_list,
+                'photo_path' => $path,
             ]);
         }
 

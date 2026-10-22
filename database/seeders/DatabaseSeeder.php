@@ -24,6 +24,8 @@ class DatabaseSeeder extends Seeder
             UsersTableSeeder::class,
             MachineJobsTableSeeder::class,
             NotificationTypesTableSeeder::class,
+            IpqcCheckItemSeeder::class,
+            IpqcMeasurementConfigSeeder::class,
         ]);
     }
 }

@@ -18,5 +18,4 @@ class HolidaySchedule extends Model
         'moulding',
         'half_day',
     ];
-    
 }

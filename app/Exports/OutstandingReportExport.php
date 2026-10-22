@@ -27,16 +27,16 @@ class OutstandingReportExport implements FromCollection, WithHeadings
             })
             ->map(function ($row) {
                 return [
-                    'Delivery Date'      => $row->delivery_date,
-                    'SO Number'          => $row->so_number,
-                    'Customer Code'      => $row->customer_code,
-                    'Customer Name'      => $row->customer_name,
-                    'Item Code'          => $row->item_code,
-                    'Item Name'          => $row->item_name,
-                    'Department'         => $row->departement,
-                    'Delivery Quantity'  => $row->delivery_qty,
-                    'Outstanding'        => $row->outstanding,
-                    'Status'             => $row->status,
+                    'Delivery Date' => $row->delivery_date,
+                    'SO Number' => $row->so_number,
+                    'Customer Code' => $row->customer_code,
+                    'Customer Name' => $row->customer_name,
+                    'Item Code' => $row->item_code,
+                    'Item Name' => $row->item_name,
+                    'Department' => $row->departement,
+                    'Delivery Quantity' => $row->delivery_qty,
+                    'Outstanding' => $row->outstanding,
+                    'Status' => $row->status,
                 ];
             });
     }
@@ -56,5 +56,4 @@ class OutstandingReportExport implements FromCollection, WithHeadings
             'Status',
         ];
     }
-
 }

@@ -2,7 +2,6 @@
 
 namespace App\Models\Production;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PRD_BrokenChild extends Model
@@ -14,5 +13,4 @@ class PRD_BrokenChild extends Model
         'broken_quantity',
         'remark',
     ];
-
 }

@@ -10,7 +10,7 @@ class WmsWarehouse extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['whse_code', 'whse_name'];
+    protected $fillable = ['whse_code', 'whse_name', 'layout_image', 'exit_location'];
 
     public function racks()
     {

@@ -16,9 +16,14 @@ class SecondProcessMaterial extends Model
         'lot_number',
         'visco',
         'qty',
+        'uom',
         'mixing_ratio',
         'paint_type',
         'sub_type',
+    ];
+
+    protected $casts = [
+        'qty' => 'float',
     ];
 
     public function report()

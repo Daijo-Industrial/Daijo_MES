@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
+use App\Models\ApiLog;
 use App\Services\BomWipService;
 use App\Services\DelActualService;
 use App\Services\DelSchedService;
@@ -11,8 +11,8 @@ use App\Services\InventoryFgService;
 use App\Services\InventoryMtrService;
 use App\Services\LineProductionService;
 use App\Services\RejectService;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use App\Models\ApiLog;
 
 class SyncDeliveryDataCommand extends Command
 {

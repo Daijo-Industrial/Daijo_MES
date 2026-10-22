@@ -10,7 +10,7 @@ class WmsPalletLog extends Model
     use HasFactory;
 
     protected $fillable = [
-        'pallet_id', 'transaction_type', 'position_id', 'user_id', 'notes'
+        'pallet_id', 'transaction_type', 'position_id', 'user_id', 'notes',
     ];
 
     public function position()
@@ -24,6 +24,11 @@ class WmsPalletLog extends Model
     }
 
     public function pallet()
+    {
+        return $this->belongsTo(WmsPalletForm::class, 'pallet_id', 'pallet_id')->withTrashed();
+    }
+
+    public function palletForm()
     {
         return $this->belongsTo(WmsPalletForm::class, 'pallet_id', 'pallet_id')->withTrashed();
     }

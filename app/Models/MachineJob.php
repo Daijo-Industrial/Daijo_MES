@@ -2,16 +2,20 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MachineJob extends Model
 {
+    use BelongsToBranch;
     use HasFactory;
 
     public $timestamps = false;
 
     protected $fillable = [
+        'user_id',
+        'branch_id',
         'item_code',
         'shift',
         'employee_name',
@@ -44,7 +48,7 @@ class MachineJob extends Model
         return $this->hasMany(AdjustMachineLog::class, 'user_id', 'user_id');
     }
 
-    public function repairMachineLogs ()
+    public function repairMachineLogs()
     {
         return $this->hasMany(RepairMachineLog::class, 'user_id', 'user_id');
     }

@@ -1,0 +1,35 @@
+meta {
+  name: 01 - Auth Token
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{sap_base_url}}/auth/token
+  body: json
+  auth: none
+}
+
+headers {
+  Host: localhost
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "CompanyDB": "{{sap_company_db}}",
+    "Username": "{{sap_username}}",
+    "Password": "{{sap_password}}"
+  }
+}
+
+docs {
+  # SAP Authentication Token Endpoint
+  
+  Digunakan oleh BaseSapService untuk mendapatkan token autentikasi Bearer ke SAP Business One API Gateway.
+  
+  - Token ini di-cache oleh MES ke dalam Redis/Cache dengan TTL 50 menit.
+  - Terdapat mekanisme atomic lock (`sap_token_lock`) selama 40 detik untuk mencegah race condition (cache stampede).
+  - Jika request API menghasilkan HTTP 401 Unauthorized, MES secara otomatis menghapus cache token dan melakukan re-autentikasi ulang.
+}

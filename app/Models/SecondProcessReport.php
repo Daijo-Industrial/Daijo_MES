@@ -4,10 +4,37 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class SecondProcessReport extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'status',
+                'process_prod',
+                'unit_line',
+                'shift',
+                'part_number',
+                'customer',
+                'jumlah_ok',
+                'jumlah_ng',
+                'created_by_name',
+                'leader_name',
+                'leader_signed_at',
+                'pqc_name',
+                'pqc_signed_at',
+                'acknowledged_by_name',
+                'acknowledged_signed_at',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('second_process');
+    }
 
     protected $fillable = [
         'date',
@@ -24,6 +51,7 @@ class SecondProcessReport extends Model
         'jml_input_wip',
         'repairan',
         'jumlah_output',
+        'sisa_input',
         'jumlah_ok',
         'jumlah_ng',
         'ng_prosentase',
@@ -32,6 +60,7 @@ class SecondProcessReport extends Model
         'absent_employees',
         'production_notes',
         'ng_remarks',
+        'sisa_input_remark',
         'created_by_name',
         'created_by_signed_at',
         'pqc_name',
@@ -40,11 +69,36 @@ class SecondProcessReport extends Model
         'leader_signed_at',
         'acknowledged_by_name',
         'acknowledged_signed_at',
+
+        // IPQC Header & Summary fields
+        'ipqc_lot_color',
+        'ipqc_std_glossy',
+        'ipqc_std_viscosity',
+        'ipqc_std_oven_temp',
+        'ipqc_product_color',
+        'ipqc_app_sample',
+        'ipqc_selected_measurements',
+        'ipqc_total_output',
+        'ipqc_total_sample',
+        'ipqc_total_reject_sample',
+        'ipqc_total_reject_rate',
+        'ipqc_total_pass',
+        'ipqc_total_reject',
+        'ipqc_inspector_name',
+        'ipqc_checker_name',
+        'ipqc_overall_judgement',
+        'sp_production_session_id',
     ];
 
     protected $casts = [
         'next_production_schedule' => 'array',
+        'ipqc_selected_measurements' => 'array',
     ];
+
+    public function spProductionSession()
+    {
+        return $this->belongsTo(SpProductionSession::class, 'sp_production_session_id');
+    }
 
     public function materials()
     {
@@ -69,5 +123,27 @@ class SecondProcessReport extends Model
     public function troubles()
     {
         return $this->hasMany(SecondProcessTrouble::class, 'report_id');
+    }
+
+    public function ipqcRecords()
+    {
+        return $this->hasMany(SecondProcessIpqcRecord::class, 'report_id');
+    }
+
+    public function qcAttachments()
+    {
+        return $this->morphMany(QcAttachment::class, 'attachable');
+    }
+
+    /**
+     * Check if a given user is authorized to sign for a specific signature role/slot in Second Process.
+     */
+    public static function isUserAuthorizedToSign(?User $user, string $role): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $user->canSign('second_process', $role);
     }
 }

@@ -11,7 +11,6 @@ class MasterDeliverySchedule extends Model
 
     protected $table = 'master_delivery_schedule';
 
-
     protected $fillable = [
         'customer_code',
         'item_code',

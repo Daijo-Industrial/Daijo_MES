@@ -12,7 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE `files` CHANGE `machine_name` `item_code` VARCHAR(255) null');
+        if (DB::getDriverName() === 'sqlite') {
+            Schema::table('files', function (Blueprint $table) {
+                $table->renameColumn('machine_name', 'item_code');
+            });
+        } else {
+            DB::statement('ALTER TABLE `files` CHANGE `machine_name` `item_code` VARCHAR(255) null');
+        }
     }
 
     /**
@@ -20,8 +26,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('files', function (Blueprint $table) {
-            DB::statement('ALTER TABLE `files` CHANGE `item_code` `machine_name` VARCHAR(255) null');
-        });
+        if (DB::getDriverName() === 'sqlite') {
+            Schema::table('files', function (Blueprint $table) {
+                $table->renameColumn('item_code', 'machine_name');
+            });
+        } else {
+            Schema::table('files', function (Blueprint $table) {
+                DB::statement('ALTER TABLE `files` CHANGE `item_code` `machine_name` VARCHAR(255) null');
+            });
+        }
     }
 };

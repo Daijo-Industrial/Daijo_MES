@@ -21,4 +21,10 @@ yarn-error.log
 /.graphify/
 /graphify-manual.md
 /wiki/
+.phpunit.result.cache
 
+# Python Scripts & Recovery Docs
+*.py
+*.docx
+PANDUAN_RECOVERY_DAN_SETUP_SERVER_BARU_DAIJO_MES.docx
+.agents/ecc-install-state.json

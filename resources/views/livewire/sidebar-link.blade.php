@@ -10,7 +10,7 @@ new class extends Component {
     public function mount(string $href, string $label, bool $active = false)
     {
         $this->href  = $href;
-        $this->label = $label;
+        $this->label = html_entity_decode($label, ENT_QUOTES, 'UTF-8');
         $this->active = $active;
     }
 }; ?>

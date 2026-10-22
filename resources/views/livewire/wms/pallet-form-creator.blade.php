@@ -232,7 +232,11 @@
                 <h1 class="text-2xl font-bold text-gray-800">{{ $isDelivery ? 'Generate Pallet Form (Delivery)' : 'Generate Pallet Form' }}</h1>
                 <p class="text-gray-500 text-sm">Scan box dan lengkapi detail palet. Mendukung multi-item per pallet.</p>
             </div>
-            <div class="flex space-x-2">
+            <div class="flex items-center space-x-2 flex-wrap">
+                <a href="{{ route('wms.pallet-form.daily-recap') }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center transition-all shadow-md shadow-emerald-100">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    REKAP HARIAN DELIVERY
+                </a>
                 <a href="{{ route('wms.outbound') }}" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold flex items-center transition-all shadow-lg shadow-red-100">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     OUTBOUND SCAN
@@ -280,9 +284,9 @@
                                 <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Shift</label>
                                 <select wire:model="delivery_shift" class="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                                     <option value="">Pilih Shift</option>
-                                    <option value="1">Shift 1</option>
-                                    <option value="2">Shift 2</option>
-                                    <option value="3">Shift 3</option>
+                                    <option value="1">Shift 1 (07:30 - 15:30)</option>
+                                    <option value="2">Shift 2 (15:30 - 23:30)</option>
+                                    <option value="3">Shift 3 (23:30 - 07:30)</option>
                                 </select>
                                 @error('delivery_shift') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                             </div>
@@ -319,17 +323,6 @@
                             </div>
                         </div>
 
-                        {{-- Recommended Slot Display --}}
-                        @if($recommendedSlot)
-                            <div class="p-4 bg-slate-800 rounded-2xl border-2 border-slate-700 shadow-inner group overflow-hidden relative">
-                                <div class="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity">
-                                    <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                                </div>
-                                <div class="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">RECOMMENDED SLOT</div>
-                                <div class="text-3xl font-black text-white italic tracking-tighter">{{ $recommendedSlot }}</div>
-                            </div>
-                        @endif
-
                         {{-- Multi-item indicator --}}
                         @php
                             $uniqueParts = collect($scanned_items)->pluck('part_no')->filter()->unique()->values();
@@ -341,11 +334,14 @@
                             </div>
                         @endif
 
-                        <div class="pt-4 border-t border-gray-100">
-                            <button wire:click="generateForm" type="button"
+                        <div class="pt-4 border-t border-gray-100" x-data="{ isSubmitting: false }">
+                            <button 
+                                @click="if (isSubmitting) { $event.preventDefault(); return false; } isSubmitting = true; setTimeout(() => isSubmitting = false, 4000);"
+                                wire:click.throttle.2000ms="generateForm" 
+                                type="button"
                                 wire:loading.attr="disabled"
                                 wire:target="generateForm"
-                                @if($isProcessing) disabled @endif
+                                :disabled="isSubmitting || @js($isProcessing)"
                                 class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center disabled:bg-gray-400 disabled:shadow-none text-sm uppercase">
                                 <span wire:loading.remove wire:target="generateForm">GENERATE PALLET FORM</span>
                                 <span wire:loading wire:target="generateForm">PROCESSING...</span>

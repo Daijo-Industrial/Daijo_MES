@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-
 use App\Models\ProductionScannedData;
 
 class MonitoringController extends Controller
@@ -23,11 +21,12 @@ class MonitoringController extends Controller
         // Ambil data scanned + hourly remarks
         $data = ProductionScannedData::with([
             'ParentDailyItemCode.hourlyRemarks.ngDetails.ngType',
-             'ParentDailyItemCode.user'
+            'ParentDailyItemCode.user',
         ])
-        ->where('spk_code', $spk)
-        ->get();
-            // dd($data);
+            ->where('spk_code', $spk)
+            ->get();
+
+        // dd($data);
         return view('monitoring.showScannedData', compact('data', 'spk'));
     }
 }

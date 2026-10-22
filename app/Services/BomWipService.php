@@ -2,13 +2,12 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BomWipService extends BaseSapService
 {
-  
-   public function getBomWip($startDate = '2025-12-01', $itemGroupCode = '103')
+    public function getBomWip($startDate = '2025-12-01', $itemGroupCode = '103')
     {
         $response = $this->get('/api/sap_bom_wip/list', [
             'startDate' => $startDate,
@@ -22,9 +21,9 @@ class BomWipService extends BaseSapService
         foreach ($data as $item) {
             $result[] = $item;
         }
-      
+
         return $result;
-   
+
     }
 
     public function getSemi($startDate = '2025-12-01', $itemGroupCode = '103')
@@ -41,9 +40,9 @@ class BomWipService extends BaseSapService
         foreach ($data as $item) {
             $result[] = $item;
         }
-    
+
         return $result;
-   
+
     }
 
     public function getSemiSemi($startDate = '2025-12-01', $itemGroupCode = '103')
@@ -60,9 +59,9 @@ class BomWipService extends BaseSapService
         foreach ($data as $item) {
             $result[] = $item;
         }
-    
+
         return $result;
-   
+
     }
 
     public function getAllCombined($startDate, $itemGroupCode = '103')
@@ -75,19 +74,19 @@ class BomWipService extends BaseSapService
     }
 
     private function normalizeResponse($response, $tag = 'SAP')
-        {
-            if (!is_array($response)) {
-                Log::warning("[{$tag}] Response bukan array", ['response' => $response]);
-                return [];
-            }
+    {
+        if (! is_array($response)) {
+            Log::warning("[{$tag}] Response bukan array", ['response' => $response]);
 
-            if (array_key_exists('data', $response)) {
-                return is_array($response['data']) ? $response['data'] : [];
-            }
-
-            return $response;
+            return [];
         }
 
+        if (array_key_exists('data', $response)) {
+            return is_array($response['data']) ? $response['data'] : [];
+        }
+
+        return $response;
+    }
 
     public function SyncData()
     {
@@ -97,7 +96,7 @@ class BomWipService extends BaseSapService
         // dd($bomWip);
 
         DB::table('sap_bom_wip')->truncate();
-        
+
         foreach ($bomWip as $row) {
             DB::table('sap_bom_wip')->insert([
                 'fg_code' => $row['FGCode'],
@@ -117,7 +116,7 @@ class BomWipService extends BaseSapService
             'message' => 'Data BOM WIP berhasil disinkronkan',
             'data' => [
                 'combined' => $bomWip,
-            ]
+            ],
         ]);
 
     }

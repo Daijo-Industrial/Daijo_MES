@@ -30,7 +30,7 @@ new class extends Component {
 
 <!-- Parent Dropdown -->
 <div
-    x-data="{ dropdownOpen: {{ ($isParentActive && $initiallyOpen) ? 'true' : 'false' }} }"
+    x-data="{ dropdownOpen: {{ ($isParentActive || $initiallyOpen) ? 'true' : 'false' }} }"
     class="relative"
     x-cloak
 >
@@ -38,7 +38,7 @@ new class extends Component {
     <button
         @click="dropdownOpen = !dropdownOpen"
         class="w-full text-left inline-flex items-center px-3 py-2 bg-white border
-               {{ $isParentActive ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+               {{ $isParentActive ? 'border-indigo-500 text-indigo-600 font-bold' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
         {{ $label }}
         <svg :class="{ 'rotate-180': dropdownOpen }"
              class="ml-2 h-4 w-4 transition-transform duration-200"
@@ -53,8 +53,8 @@ new class extends Component {
     <div x-show="dropdownOpen" x-transition class="mt-2 space-y-2">
         @foreach ($childRoutes as $childRoute)
             <livewire:sidebar-link
-                href="{{ route($childRoute['name']) }}"
-                label="{{ $childRoute['label'] }}"
+                :href="route($childRoute['name'], $childRoute['params'] ?? [])"
+                :label="$childRoute['label']"
                 :active="request()->routeIs($childRoute['name'])"
                 wire:navigate
                 class="ml-6"

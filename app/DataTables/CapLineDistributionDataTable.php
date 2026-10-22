@@ -8,8 +8,6 @@ use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
-use Yajra\DataTables\Html\Editor\Editor;
-use Yajra\DataTables\Html\Editor\Fields;
 use Yajra\DataTables\Services\DataTable;
 
 class CapLineDistributionDataTable extends DataTable
@@ -18,7 +16,6 @@ class CapLineDistributionDataTable extends DataTable
      * Build DataTable class.
      *
      * @param QueryBuilder $query Results from query() method.
-     * @return \Yajra\DataTables\EloquentDataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -29,9 +26,6 @@ class CapLineDistributionDataTable extends DataTable
 
     /**
      * Get query source of dataTable.
-     *
-     * @param \App\Models\CapLineDistribution $model
-     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function query(CapLineDistribution $model): QueryBuilder
     {
@@ -40,46 +34,42 @@ class CapLineDistributionDataTable extends DataTable
 
     /**
      * Optional method if you want to use html builder.
-     *
-     * @return \Yajra\DataTables\Html\Builder
      */
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('caplinedistribution-table')
-                    ->columns($this->getColumns())
-                    ->minifiedAjax()
-                    ->dom('<"flex justify-between items-center mb-4"lfB>t<"flex justify-between items-center mt-4"ip>')
-                    ->orderBy(1)
-                    ->selectStyleSingle()
-                    ->buttons([
-                        Button::make('excel'),
-                        Button::make('csv'),
-                        Button::make('pdf'),
-                        Button::make('print'),
-                        Button::make('reset'),
-                        Button::make('reload')
-                    ])
-                    ->language([
-                        'paginate' => [
-                            'previous' => '←',
-                            'next' => '→',
-                        ],
-                        'search' => 'Search:',
-                        'lengthMenu' => 'Show _MENU_ entries',
-                        'info' => 'Showing _START_ to _END_ of _TOTAL_ entries',
-                    ])
-                    ->parameters([
-                        'columnDefs' => [
-                            ['className' => 'px-4 py-2 border', 'targets' => '_all'], // Tailwind padding for all columns
-                        ]
-                    ]);
+            ->setTableId('caplinedistribution-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('<"flex justify-between items-center mb-4"lfB>t<"flex justify-between items-center mt-4"ip>')
+            ->orderBy(1)
+            ->selectStyleSingle()
+            ->buttons([
+                Button::make('excel'),
+                Button::make('csv'),
+                Button::make('pdf'),
+                Button::make('print'),
+                Button::make('reset'),
+                Button::make('reload'),
+            ])
+            ->language([
+                'paginate' => [
+                    'previous' => '←',
+                    'next' => '→',
+                ],
+                'search' => 'Search:',
+                'lengthMenu' => 'Show _MENU_ entries',
+                'info' => 'Showing _START_ to _END_ of _TOTAL_ entries',
+            ])
+            ->parameters([
+                'columnDefs' => [
+                    ['className' => 'px-4 py-2 border', 'targets' => '_all'], // Tailwind padding for all columns
+                ],
+            ]);
     }
 
     /**
      * Get the dataTable columns definition.
-     *
-     * @return array
      */
     public function getColumns(): array
     {
@@ -94,8 +84,6 @@ class CapLineDistributionDataTable extends DataTable
 
     /**
      * Get filename for export.
-     *
-     * @return string
      */
     protected function filename(): string
     {

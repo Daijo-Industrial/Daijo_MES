@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class ZonePengawas extends Model
 {
     use HasFactory;
-    protected $table = 'zone_pengawas';
 
+    protected $table = 'zone_pengawas';
 
     protected $fillable = [
         'zone_id',
@@ -19,8 +19,6 @@ class ZonePengawas extends Model
         'end_date',
     ];
 
-
-    
     public function pengawasUser()
     {
         return $this->belongsTo(OperatorUser::class, 'pengawas', 'name');

@@ -36,7 +36,7 @@ class ProductionReportCreated extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage())
+        return (new MailMessage)
             ->greeting('Production Report Notification')
             ->line('There\'s Production Report created!')
             ->line('- Machine ID : ' . $this->details['machine_id'])
@@ -56,7 +56,7 @@ class ProductionReportCreated extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
-                'message' => 'Production Report with has just been created!',
-            ];
+            'message' => 'Production Report with has just been created!',
+        ];
     }
 }

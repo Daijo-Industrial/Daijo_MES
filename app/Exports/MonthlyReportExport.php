@@ -1,7 +1,7 @@
 <?php
 
-
 //monthly report export asakai
+
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -11,7 +11,9 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class MonthlyReportExport implements FromCollection, WithHeadings, WithMapping
 {
     protected $asakais;
+
     protected $year;
+
     protected $month;
 
     public function __construct($asakais, $year, $month)

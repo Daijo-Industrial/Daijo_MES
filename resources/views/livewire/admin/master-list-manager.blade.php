@@ -30,35 +30,62 @@
     </div>
 
     <!-- Main Toolbar -->
-    <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <!-- Search -->
-        <div class="w-full md:w-1/3 relative">
-            <input wire:model.live="search" type="text" placeholder="Search item code or description..." 
-                   class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm pl-10 py-2">
-            <div class="absolute left-3 top-2.5 text-gray-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+    <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <!-- Search -->
+            <div class="w-full md:w-1/3 relative">
+                <input wire:model.live="search" type="text" placeholder="Search item code or description..." 
+                       class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm pl-10 py-2">
+                <div class="absolute left-3 top-2.5 text-gray-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+            </div>
+
+            <!-- Sync Actions -->
+            <div class="flex flex-wrap items-center gap-2">
+                <label class="inline-flex items-center text-xs font-semibold text-gray-700 cursor-pointer mr-2">
+                    <input type="checkbox" wire:model="hardSync" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2">
+                    Force Hard Sync
+                </label>
+
+
+                <div class="relative flex items-center space-x-2">
+                    <input type="file" wire:model="file" id="excel-file-input" class="hidden" accept=".xls,.xlsx,.csv,.txt">
+                    <button type="button" onclick="document.getElementById('excel-file-input').click()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded text-sm shadow transition inline-flex items-center">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        Sync SAP Excel
+                    </button>
+                    <a href="{{ route('admin.master-list-logs') }}" 
+                       class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-3 rounded text-sm shadow transition inline-flex items-center">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Logs
+                    </a>
+                </div>
             </div>
         </div>
 
-        <!-- Sync Actions -->
-        <div class="flex items-center space-x-3">
-            <label class="inline-flex items-center text-xs font-semibold text-gray-700 cursor-pointer">
-                <input type="checkbox" wire:model="hardSync" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2">
-                Force Hard Sync (Overwrite MES fields from Excel)
-            </label>
-            <div class="relative flex items-center space-x-2">
-                <input type="file" wire:model="file" id="excel-file-input" class="hidden" accept=".xls,.xlsx,.csv,.txt">
-                <button type="button" onclick="document.getElementById('excel-file-input').click()" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm shadow transition inline-flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                    Sync SAP Master Excel
-                </button>
-                <a href="{{ route('admin.master-list-logs') }}" 
-                   class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded text-sm shadow transition inline-flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    View Logs
-                </a>
-            </div>
+        <!-- Connection Status Tabs -->
+        <div class="flex flex-wrap items-center gap-2 border-t pt-4">
+            <span class="text-xs font-bold text-gray-500 uppercase mr-2">Status Customer:</span>
+            
+            <button wire:click="setConnectionFilter('ALL')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $filterConnection === 'ALL' ? 'bg-gray-900 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                <span>Semua</span>
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterConnection === 'ALL' ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700' }}">{{ number_format($counts['ALL']) }}</span>
+            </button>
+
+            <button wire:click="setConnectionFilter('CONNECTED')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $filterConnection === 'CONNECTED' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' }}">
+                <span>✓ Terhubung</span>
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterConnection === 'CONNECTED' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-200 text-emerald-900' }}">{{ number_format($counts['CONNECTED']) }}</span>
+            </button>
+
+            <button wire:click="setConnectionFilter('UNASSIGNED')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $filterConnection === 'UNASSIGNED' ? 'bg-amber-600 text-white shadow-sm' : 'bg-amber-50 text-amber-800 hover:bg-amber-100' }}">
+                <span>⚠️ Belum Terhubung</span>
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterConnection === 'UNASSIGNED' ? 'bg-amber-700 text-amber-100' : 'bg-amber-200 text-amber-900' }}">{{ number_format($counts['UNASSIGNED']) }}</span>
+            </button>
         </div>
     </div>
 
@@ -81,7 +108,13 @@
                             <th class="px-3 py-2 text-center">Cavity</th>
                             <th class="px-3 py-2 text-center">Cycle Time (s)</th>
                             <th class="px-3 py-2 text-center">Cust Code</th>
-                            <th class="px-3 py-2 text-center">Project Code</th>
+                            <th class="px-3 py-2 text-center">Family</th>
+                            <th class="px-3 py-2 text-center">Part Weight (KG)</th>
+                            <th class="px-3 py-2 text-center">Foreign Desc</th>
+                            <th class="px-3 py-2 text-center">Color</th>
+                            <th class="px-3 py-2 text-center">Half Code 1</th>
+                            <th class="px-3 py-2 text-center">Half Code 2</th>
+                            <th class="px-3 py-2 text-center">Position</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-blue-100 text-gray-700">
@@ -96,7 +129,13 @@
                                 <td class="px-3 py-2 text-center">{{ $row['cavity'] ?? '0' }}</td>
                                 <td class="px-3 py-2 text-center">{{ $row['cycle_time'] ?? '0' }}</td>
                                 <td class="px-3 py-2 text-center">{{ $row['customer_code'] ?? '-' }}</td>
-                                <td class="px-3 py-2 text-center font-bold text-indigo-700">{{ $row['project_code'] ?? '-' }}</td>
+                                <td class="px-3 py-2 text-center">{{ $row['family'] ?? '-' }}</td>
+                                <td class="px-3 py-2 text-center font-mono">{{ isset($row['part_weight']) ? number_format((float)$row['part_weight'], 3) : '0.000' }}</td>
+                                <td class="px-3 py-2 text-center">{{ $row['description_in_foreign_lang'] ?? '-' }}</td>
+                                <td class="px-3 py-2 text-center">{{ $row['color'] ?? '-' }}</td>
+                                <td class="px-3 py-2 text-center">{{ $row['half_code_1'] ?? '-' }}</td>
+                                <td class="px-3 py-2 text-center">{{ $row['half_code_2'] ?? '-' }}</td>
+                                <td class="px-3 py-2 text-center">{{ $row['position'] ?? '-' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -145,15 +184,21 @@
                 <thead class="bg-gray-50 text-gray-700 font-bold uppercase tracking-wider">
                     <tr>
                         <th class="px-4 py-3">Item Code</th>
-                        <th class="px-4 py-3 w-1/5">Item Name</th>
-                        <th class="px-4 py-3 text-center">Tipe Mesin</th>
-                        <th class="px-4 py-3 text-center">Std Pack Qty</th>
-                        <th class="px-4 py-3 text-center">Setup Time (m)</th>
-                        <th class="px-4 py-3 text-center">Pair</th>
-                        <th class="px-4 py-3 text-center">Cavity</th>
-                        <th class="px-4 py-3 text-center">Cycle Time (s)</th>
-                        <th class="px-4 py-3 text-center">Cust Code</th>
-                        <th class="px-4 py-3 text-center">Project Code</th>
+                        <th class="px-4 py-3 w-1/6">Item Name</th>
+                        <th class="px-3 py-3 text-center">Tipe Mesin</th>
+                        <th class="px-3 py-3 text-center">Std Pack Qty</th>
+                        <th class="px-3 py-3 text-center">Setup Time (m)</th>
+                        <th class="px-3 py-3 text-center">Pair</th>
+                        <th class="px-3 py-3 text-center">Cavity</th>
+                        <th class="px-3 py-3 text-center">Cycle Time (s)</th>
+                        <th class="px-3 py-3 text-center">Cust Code</th>
+                        <th class="px-3 py-3 text-center">Family</th>
+                        <th class="px-3 py-3 text-center">Part Weight (KG)</th>
+                        <th class="px-3 py-3 text-center">Foreign Desc</th>
+                        <th class="px-3 py-3 text-center">Color</th>
+                        <th class="px-3 py-3 text-center">Half Code 1</th>
+                        <th class="px-3 py-3 text-center">Half Code 2</th>
+                        <th class="px-3 py-3 text-center">Position</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 text-gray-800">
@@ -250,33 +295,142 @@
                             <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'customer_code')">
                                 @if($editingItemId === $item->id && $editingField === 'customer_code')
                                     <div class="flex items-center justify-center space-x-1">
-                                        <input type="text" wire:model.defer="editingValue" wire:keydown.enter="saveEdit" wire:keydown.escape="cancelEdit" 
-                                               class="w-24 text-center rounded border-gray-300 p-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500" autofocus>
+                                        <select wire:model.defer="editingValue" 
+                                                wire:keydown.escape="cancelEdit"
+                                                class="text-xs rounded border-gray-300 py-1 px-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 max-w-[170px]" autofocus>
+                                            <option value="">-- Kosongkan / N/A --</option>
+                                            @foreach($customers as $c)
+                                                <option value="{{ $c->customer_code }}">{{ $c->customer_code }} - {{ Str::limit($c->customer_name, 20) }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button wire:click="saveEdit" class="text-xs text-emerald-600 hover:text-emerald-800 font-bold px-1" title="Simpan">✓</button>
+                                        <button wire:click="cancelEdit" class="text-xs text-gray-400 hover:text-gray-600 px-1" title="Batal">✕</button>
                                     </div>
                                 @else
-                                    <span class="cursor-pointer border-b border-dashed border-gray-400 hover:text-blue-600 text-gray-600" title="Double click to edit">
-                                        {{ $item->customer_code ?: '—' }}
-                                    </span>
+                                    @php
+                                        $isConnected = !empty($item->customer_code) && !in_array($item->customer_code, ['0', '-']);
+                                        $resolvedName = $item->customer?->customer_name ?: $item->businessPartner?->bp_name;
+                                    @endphp
+                                    @if($isConnected)
+                                        <div class="cursor-pointer group inline-flex flex-col items-center" title="Double click to edit customer">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 group-hover:bg-emerald-100">
+                                                {{ $item->customer_code }}
+                                            </span>
+                                            @if($resolvedName)
+                                                <span class="text-[10px] text-gray-500 truncate max-w-[130px] font-medium" title="{{ $resolvedName }}">
+                                                    {{ $resolvedName }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <span class="cursor-pointer inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100" title="Double click to map customer">
+                                            ⚠️ Belum Terhubung
+                                        </span>
+                                    @endif
                                 @endif
                             </td>
 
-                            <!-- Project Code -->
-                            <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'project_code')">
-                                @if($editingItemId === $item->id && $editingField === 'project_code')
+                            <!-- Family -->
+                            <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'family')">
+                                @if($editingItemId === $item->id && $editingField === 'family')
                                     <div class="flex items-center justify-center space-x-1">
                                         <input type="text" wire:model.defer="editingValue" wire:keydown.enter="saveEdit" wire:keydown.escape="cancelEdit" 
                                                class="w-24 text-center rounded border-gray-300 p-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500" autofocus>
                                     </div>
                                 @else
                                     <span class="cursor-pointer border-b border-dashed border-gray-400 hover:text-blue-600 font-semibold text-indigo-700" title="Double click to edit">
-                                        {{ $item->project_code ?: '—' }}
+                                        {{ $item->family ?: '—' }}
+                                    </span>
+                                @endif
+                            </td>
+
+                            <!-- Part Weight (KG) -->
+                            <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'part_weight')">
+                                @if($editingItemId === $item->id && $editingField === 'part_weight')
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <input type="number" step="0.001" min="0" wire:model.defer="editingValue" wire:keydown.enter="saveEdit" wire:keydown.escape="cancelEdit" 
+                                               class="w-24 text-center rounded border-gray-300 p-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono" autofocus>
+                                    </div>
+                                @else
+                                    <span class="cursor-pointer border-b border-dashed border-gray-400 hover:text-blue-600 font-mono" title="Double click to edit">
+                                        {{ $item->part_weight !== null ? number_format((float)$item->part_weight, 3) : '0.000' }}
+                                    </span>
+                                @endif
+                            </td>
+
+                            <!-- Foreign Description -->
+                            <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'description_in_foreign_lang')">
+                                @if($editingItemId === $item->id && $editingField === 'description_in_foreign_lang')
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <input type="text" wire:model.defer="editingValue" wire:keydown.enter="saveEdit" wire:keydown.escape="cancelEdit" 
+                                               class="w-28 text-center rounded border-gray-300 p-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500" autofocus>
+                                    </div>
+                                @else
+                                    <span class="cursor-pointer border-b border-dashed border-gray-400 hover:text-blue-600" title="Double click to edit">
+                                        {{ $item->description_in_foreign_lang ?: '—' }}
+                                    </span>
+                                @endif
+                            </td>
+
+                            <!-- Color -->
+                            <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'color')">
+                                @if($editingItemId === $item->id && $editingField === 'color')
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <input type="text" wire:model.defer="editingValue" wire:keydown.enter="saveEdit" wire:keydown.escape="cancelEdit" 
+                                               class="w-20 text-center rounded border-gray-300 p-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500" autofocus>
+                                    </div>
+                                @else
+                                    <span class="cursor-pointer border-b border-dashed border-gray-400 hover:text-blue-600" title="Double click to edit">
+                                        {{ $item->color ?: '—' }}
+                                    </span>
+                                @endif
+                            </td>
+
+                            <!-- Half Code 1 -->
+                            <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'half_code_1')">
+                                @if($editingItemId === $item->id && $editingField === 'half_code_1')
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <input type="text" wire:model.defer="editingValue" wire:keydown.enter="saveEdit" wire:keydown.escape="cancelEdit" 
+                                               class="w-20 text-center rounded border-gray-300 p-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500" autofocus>
+                                    </div>
+                                @else
+                                    <span class="cursor-pointer border-b border-dashed border-gray-400 hover:text-blue-600" title="Double click to edit">
+                                        {{ $item->half_code_1 ?: '—' }}
+                                    </span>
+                                @endif
+                            </td>
+
+                            <!-- Half Code 2 -->
+                            <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'half_code_2')">
+                                @if($editingItemId === $item->id && $editingField === 'half_code_2')
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <input type="text" wire:model.defer="editingValue" wire:keydown.enter="saveEdit" wire:keydown.escape="cancelEdit" 
+                                               class="w-20 text-center rounded border-gray-300 p-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500" autofocus>
+                                    </div>
+                                @else
+                                    <span class="cursor-pointer border-b border-dashed border-gray-400 hover:text-blue-600" title="Double click to edit">
+                                        {{ $item->half_code_2 ?: '—' }}
+                                    </span>
+                                @endif
+                            </td>
+
+                            <!-- Position -->
+                            <td class="px-2 py-2 text-center" wire:dblclick="startEdit({{ $item->id }}, 'position')">
+                                @if($editingItemId === $item->id && $editingField === 'position')
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <input type="text" wire:model.defer="editingValue" wire:keydown.enter="saveEdit" wire:keydown.escape="cancelEdit" 
+                                               class="w-20 text-center rounded border-gray-300 p-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500" autofocus>
+                                    </div>
+                                @else
+                                    <span class="cursor-pointer border-b border-dashed border-gray-400 hover:text-blue-600" title="Double click to edit">
+                                        {{ $item->position ?: '—' }}
                                     </span>
                                 @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center py-6 text-gray-500 font-semibold">No master items found.</td>
+                            <td colspan="16" class="text-center py-6 text-gray-500 font-semibold">No master items found.</td>
                         </tr>
                     @endforelse
                 </tbody>

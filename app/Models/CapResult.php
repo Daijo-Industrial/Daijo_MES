@@ -8,5 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class CapResult extends Model
 {
     use HasFactory;
+
     protected $table = 'cap_results';
 }

@@ -2,26 +2,29 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
+use App\Models\MasterListItem;
 use App\Models\Role;
 use App\Models\SoData;
-use App\Models\MasterListItem;
-use App\Models\WmsWarehouse;
-use App\Models\WmsRack;
-use App\Models\WmsPosition;
+use App\Models\User;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
+use App\Models\WmsPosition;
+use App\Models\WmsRack;
+use App\Models\WmsWarehouse;
 use App\Services\WmsPickingService;
-use Livewire\Livewire;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class WmsPickingGuideTest extends TestCase
 {
     protected Role $adminRole;
+
     protected User $adminUser;
+
     protected WmsPosition $position1;
+
     protected WmsPosition $position2;
 
     protected function setUp(): void
@@ -40,7 +43,7 @@ class WmsPickingGuideTest extends TestCase
         $this->createTestSchema();
 
         $this->adminRole = Role::create(['name' => 'ADMIN']);
-        
+
         $this->adminUser = new User([
             'name' => 'Admin User',
             'email' => 'admin@test.com',
@@ -234,7 +237,7 @@ class WmsPickingGuideTest extends TestCase
             'item_code' => 'PART-A',
             'item_name' => 'Part A Name',
             'quantity' => 100,
-            'is_done' => false
+            'is_done' => false,
         ]);
 
         // 2. Create boxes in Pallet PLT-1 (stored early, oldest timestamp)
@@ -244,7 +247,7 @@ class WmsPickingGuideTest extends TestCase
             'part_no' => 'PART-A',
             'model_name' => 'Part A Name',
             'prod_date' => now()->format('Y-m-d'),
-            'status' => 'STORED'
+            'status' => 'STORED',
         ]);
 
         $detail1 = WmsPalletFormDetail::create([
@@ -264,7 +267,7 @@ class WmsPickingGuideTest extends TestCase
             'part_no' => 'PART-A',
             'model_name' => 'Part A Name',
             'prod_date' => now()->format('Y-m-d'),
-            'status' => 'STORED'
+            'status' => 'STORED',
         ]);
 
         $detail2 = WmsPalletFormDetail::create([
@@ -278,7 +281,7 @@ class WmsPickingGuideTest extends TestCase
         $detail2->save();
 
         // 4. Test service methods
-        $service = new WmsPickingService();
+        $service = new WmsPickingService;
 
         // Test loading SO
         $soItems = $service->loadItemsFromDocNum('DO-100');
@@ -288,7 +291,7 @@ class WmsPickingGuideTest extends TestCase
 
         // Test FIFO routing calculation for Qty 100
         $route = $service->calculateFifoPickingRoute([
-            ['item_code' => 'PART-A', 'item_name' => 'Part A Name', 'quantity' => 100]
+            ['item_code' => 'PART-A', 'item_name' => 'Part A Name', 'quantity' => 100],
         ]);
 
         // We expect 2 instructions because box 1 (60 pcs) + box 2 (40 pcs from total 80 pcs) are allocated
@@ -306,7 +309,7 @@ class WmsPickingGuideTest extends TestCase
 
         // 5. Test out-of-stock fallback handling (PART-C does not exist)
         $routeOos = $service->calculateFifoPickingRoute([
-            ['item_code' => 'PART-C', 'item_name' => 'Part C Name', 'quantity' => 20]
+            ['item_code' => 'PART-C', 'item_name' => 'Part C Name', 'quantity' => 20],
         ]);
 
         $this->assertCount(1, $routeOos);
@@ -316,7 +319,7 @@ class WmsPickingGuideTest extends TestCase
         $this->assertEquals(20, $routeOos[0]['qty_to_pick']);
         // 6. Test database persistence: createPickingList
         $header = $service->createPickingList('DO-100', [
-            ['item_code' => 'PART-A', 'item_name' => 'Part A Name', 'quantity' => 100]
+            ['item_code' => 'PART-A', 'item_name' => 'Part A Name', 'quantity' => 100],
         ], $this->adminUser->id);
 
         $this->assertDatabaseHas('wms_picking_headers', [
@@ -373,9 +376,9 @@ class WmsPickingGuideTest extends TestCase
         // Create picking sheet (saves to DB and sets activePickingId)
         $component->call('createPickingSheet');
         $activeId = $component->get('activePickingId');
-        
+
         $this->assertNotNull($activeId);
-        
+
         $header = $component->get('activePickingHeader');
         $this->assertNotNull($header);
         $this->assertCount(1, $header->details);

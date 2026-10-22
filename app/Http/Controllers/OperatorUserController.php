@@ -2,22 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\OperatorUser;
+use App\Imports\OperatorUsersImport;
 use App\Models\MasterZone;
+use App\Models\OperatorUser;
+use App\Models\User;
 use App\Models\ZoneLog;
 use App\Models\ZonePengawas;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\Writer\PngWriter;
-use Illuminate\Support\Facades\Storage;
-use App\Imports\OperatorUsersImport;
-use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
-
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 
 class OperatorUserController extends Controller
 {
@@ -46,7 +45,7 @@ class OperatorUserController extends Controller
             );
 
             // Generate the QR code using the PngWriter
-            $writer = new PngWriter();
+            $writer = new PngWriter;
             $qrCodeResult = $writer->write($qrCode);
 
             // Get the PNG image as a string
@@ -66,22 +65,22 @@ class OperatorUserController extends Controller
         return view('barcode.qr_operator', ['qrCodes' => $qrCodes]);
     }
 
-    function getNikByName($name, $employeeData)
+    public function getNikByName($name, $employeeData)
     {
         foreach ($employeeData as $employee) {
             if (strtolower(trim($employee['Name'])) === strtolower(trim($name))) {
                 return $employee['NIK']; // asumsikan NIK = EMPLOYEE_NO
             }
         }
-        return null;
+
     }
 
     public function showIdCard()
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Basic QVBJPUV4VCtEQCFqMDpEQCFqMEBKcDR5cjAxMQ=='
+            'Authorization' => 'Basic QVBJPUV4VCtEQCFqMDpEQCFqMEBKcDR5cjAxMQ==',
         ])->post('http://192.168.6.75/JPayroll/thirdparty/ext/API_View_Master_Employee.php', [
-            'CompanyArea' => '10000'
+            'CompanyArea' => '10000',
         ]);
 
         $data = $response->json();
@@ -121,7 +120,7 @@ class OperatorUserController extends Controller
                 margin: 5
             );
 
-            $writer = new PngWriter();
+            $writer = new PngWriter;
             $qrCodeResult = $writer->write($qrCode);
 
             $qrCodeImage = $qrCodeResult->getString();
@@ -143,6 +142,7 @@ class OperatorUserController extends Controller
     public function index()
     {
         $users = OperatorUser::all();
+
         return view('operator.index', compact('users'));
     }
 
@@ -172,7 +172,6 @@ class OperatorUserController extends Controller
         return back()->with('success', 'Profile picture updated successfully.');
     }
 
-
     public function uploadForm()
     {
         return view('uploadExcelOperator');
@@ -194,7 +193,7 @@ class OperatorUserController extends Controller
         $zones = MasterZone::all();
         $zoneData = ZonePengawas::all();
         $adjusters = OperatorUser::where('position', 'Adjuster')->get();
-    
+
         return view('zonepengawas', compact('zones', 'adjusters', 'zoneData'));
     }
 
@@ -208,37 +207,36 @@ class OperatorUserController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-         // Check if the record exists for this zone and shift
-            $zonePengawas = ZonePengawas::where('zone_id', $request->zone_id)
-                ->where('shift', $request->shift)
-                ->first();
+        // Check if the record exists for this zone and shift
+        $zonePengawas = ZonePengawas::where('zone_id', $request->zone_id)
+            ->where('shift', $request->shift)
+            ->first();
 
-            if ($zonePengawas) {
+        if ($zonePengawas) {
             // Update existing record
-                $zonePengawas->update([
+            $zonePengawas->update([
                 'pengawas' => $request->pengawas,
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
-                ]);
-            } else {
-                // Create new record
-                ZonePengawas::create([
-                'zone_id' => $request->zone_id,
-                'pengawas' => $request->pengawas,
-                'shift' => $request->shift,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-                ]);
-            }
-
-            ZoneLog::create([
+            ]);
+        } else {
+            // Create new record
+            ZonePengawas::create([
                 'zone_id' => $request->zone_id,
                 'pengawas' => $request->pengawas,
                 'shift' => $request->shift,
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
             ]);
-    
+        }
+
+        ZoneLog::create([
+            'zone_id' => $request->zone_id,
+            'pengawas' => $request->pengawas,
+            'shift' => $request->shift,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+        ]);
 
         return redirect()->back()->with('success', 'Zone updated successfully.');
     }
@@ -246,13 +244,14 @@ class OperatorUserController extends Controller
     public function showAllOperator()
     {
         $operators = OperatorUser::whereNotBetween('id', [1, 10])->get();
+
         return view('showalloperator', compact('operators'));
     }
 
     public function createOperator()
     {
         $departments = ['390', '351'];
-        $positions = ['Operator', 'Adjuster', 'Setup Mold'];
+        $positions = ['Operator', 'Adjuster', 'Setup Mold', 'Maintenance'];
 
         return view('create-operator', compact('departments', 'positions'));
     }
@@ -262,7 +261,7 @@ class OperatorUserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'department' => 'required|in:390,351',
-            'position' => 'required|in:Operator,Adjuster,Setup Mold',
+            'position' => 'required|in:Operator,Adjuster,Setup Mold,Maintenance',
         ]);
 
         $password = Str::random(10);

@@ -1,0 +1,40 @@
+meta {
+  name: 10 - Inventory Material List
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{sap_base_url}}/api/sap_inventory_mtr/list?startDate=2026-01-01
+  body: none
+  auth: bearer
+}
+
+params:query {
+  startDate: 2026-01-01
+}
+
+auth:bearer {
+  token: {{sap_token}}
+}
+
+headers {
+  Host: localhost
+  Accept: application/json
+}
+
+docs {
+  # Inventory Material (Raw Material & Components) List
+  
+  Service Pengambil: `App\Services\InventoryMtrService`
+  Command Scheduler: `php artisan sync:delivery-data`
+  
+  Sub-Endpoints yang digabungkan:
+  - `/api/sap_inventory_mtr/list`
+  - `/api/sap_inventory_mtr_semi/list`
+  - `/api/sap_inventory_mtr_semi_wip/list`
+  - `/api/sap_inventory_mtr_semi_semi_wip/list`
+  
+  Tabel Tujuan: `sap_inventory_mtr`
+  Kolom Utama: `fg_code`, `material_code`, `material_name`, `bom_quantity`, `in_stock`, `item_group`, `vendor_code`, `vendor_name`.
+}

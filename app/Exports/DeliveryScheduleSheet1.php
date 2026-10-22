@@ -2,16 +2,19 @@
 
 namespace App\Exports;
 
+use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use Carbon\Carbon;
 
 class DeliveryScheduleSheet1 implements FromCollection, WithHeadings, WithTitle
 {
     protected $selectedYear;
+
     protected $selectedMonth;
+
     protected $customerCode;
+
     protected $deliveries;
 
     public function __construct($selectedYear, $selectedMonth, $customerCode, $deliveries)
@@ -46,7 +49,7 @@ class DeliveryScheduleSheet1 implements FromCollection, WithHeadings, WithTitle
             'Item Code',
             'Tanggal',
             'Total Delivery Quantity',
-            'Customer Code'
+            'Customer Code',
         ];
     }
 

@@ -4,10 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\ProductionScannedData;
 use App\Models\ProductionSummary;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class GenerateProductionSummaryTest extends TestCase
@@ -161,5 +160,82 @@ class GenerateProductionSummaryTest extends TestCase
 
         $summary0940 = ProductionSummary::find($scan3Fresh->summary_id);
         $this->assertEquals(30, $summary0940->total_quantity);
+    }
+
+    /**
+     * Test that GenerateProductionSummary skips duplicate spk_code + label records.
+     */
+    public function test_skips_duplicate_spk_label_records(): void
+    {
+        // Insert record 1
+        DB::table('production_scanned_data')->insert([
+            'id' => 10,
+            'spk_code' => 'SPK-DUP',
+            'warehouse' => 'FFI',
+            'quantity' => 10,
+            'item_code' => '8002C294',
+            'label' => 'DUP-LABEL',
+            'processed' => false,
+            'created_at' => '2026-07-16 09:00:00',
+            'updated_at' => '2026-07-16 09:00:00',
+        ]);
+
+        // Insert record 2 (duplicate label)
+        DB::table('production_scanned_data')->insert([
+            'id' => 11,
+            'spk_code' => 'SPK-DUP',
+            'warehouse' => 'FFI',
+            'quantity' => 10,
+            'item_code' => '8002C294',
+            'label' => 'DUP-LABEL',
+            'processed' => false,
+            'created_at' => '2026-07-16 09:05:00',
+            'updated_at' => '2026-07-16 09:05:00',
+        ]);
+
+        $this->artisan('summary:generate')->assertExitCode(0);
+
+        // Verify only 1 summary is created
+        $this->assertEquals(1, ProductionSummary::count());
+        $summary = ProductionSummary::first();
+        $this->assertEquals(10, $summary->total_quantity);
+
+        $rec10 = ProductionScannedData::find(10);
+        $rec11 = ProductionScannedData::find(11);
+
+        $this->assertEquals(1, $rec10->processed);
+        $this->assertEquals($summary->id, $rec10->summary_id);
+
+        $this->assertEquals(0, $rec11->processed);
+        $this->assertNull($rec11->summary_id);
+    }
+
+    /**
+     * Test that GenerateProductionSummary does not regenerate already summarized records.
+     */
+    public function test_does_not_regenerate_already_summarized_records(): void
+    {
+        // Insert record that already has summary_id
+        DB::table('production_scanned_data')->insert([
+            'id' => 20,
+            'spk_code' => 'SPK-ALREADY',
+            'warehouse' => 'FFI',
+            'quantity' => 15,
+            'item_code' => '8002C294',
+            'label' => 'LABEL-A',
+            'processed' => false,
+            'summary_id' => 999,
+            'created_at' => '2026-07-16 09:00:00',
+            'updated_at' => '2026-07-16 09:00:00',
+        ]);
+
+        $this->artisan('summary:generate')->assertExitCode(0);
+
+        // Verify NO new summary was created
+        $this->assertEquals(0, ProductionSummary::count());
+
+        // Verify processed is still false
+        $rec = ProductionScannedData::find(20);
+        $this->assertEquals(0, $rec->processed);
     }
 }

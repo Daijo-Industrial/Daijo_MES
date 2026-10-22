@@ -20,10 +20,7 @@
     <div class="min-h-screen bg-gray-100">
 
         {{-- Overlay untuk mobile ketika sidebar terbuka --}}
-        <div
-            x-show="sidebarOpen"
-            x-transition.opacity
-            class="fixed inset-0 bg-black/40 z-20 lg:hidden"
+        <div x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 bg-black/40 z-20 lg:hidden"
             @click="sidebarOpen = false">
         </div>
 
@@ -36,12 +33,10 @@
             {{-- Tombol toggle sidebar di mobile --}}
             <div class="lg:hidden flex items-center p-4">
                 <button @click="sidebarOpen = true" class="text-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
-                         viewBox="0 0 24 24" stroke="currentColor"
-                         class="h-6 w-6">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M4 6h16M4 12h16M4 18h16" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        class="h-6 w-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
             </div>
@@ -50,7 +45,9 @@
 
             @if (isset($header))
                 <header class="bg-white shadow">
-                    {{ $header }}
+                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                        {{ $header }}
+                    </div>
                 </header>
             @endif
 

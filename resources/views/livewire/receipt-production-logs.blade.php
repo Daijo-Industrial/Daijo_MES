@@ -53,10 +53,36 @@
                 margin-bottom:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
         <div>
             <label style="font-size:10px; font-weight:700; color:#9A9590; display:block;
-                          text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px;">Tanggal</label>
-            <input type="date" wire:model.live="filterDate"
-                   style="border:1px solid #D8D4CC; border-radius:2px; padding:6px 10px;
-                          font-size:12px; font-family:'IBM Plex Sans',sans-serif; color:#1A1816;">
+                          text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px;">Mode</label>
+            <div style="display:flex; border:1px solid #D8D4CC; border-radius:2px; overflow:hidden;">
+                <button wire:click="$set('filterMode', 'daily')"
+                        style="padding:6px 12px; font-size:11px; font-weight:600; border:none; cursor:pointer;
+                               font-family:'IBM Plex Sans',sans-serif; transition:all .15s;
+                               {{ $filterMode === 'daily' ? 'background:#1A1816; color:#fff;' : 'background:#fff; color:#9A9590;' }}">
+                    Harian
+                </button>
+                <button wire:click="$set('filterMode', 'monthly')"
+                        style="padding:6px 12px; font-size:11px; font-weight:600; border:none; cursor:pointer;
+                               font-family:'IBM Plex Sans',sans-serif; border-left:1px solid #D8D4CC; transition:all .15s;
+                               {{ $filterMode === 'monthly' ? 'background:#1A1816; color:#fff;' : 'background:#fff; color:#9A9590;' }}">
+                    Bulanan
+                </button>
+            </div>
+        </div>
+        <div>
+            <label style="font-size:10px; font-weight:700; color:#9A9590; display:block;
+                          text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px;">
+                {{ $filterMode === 'monthly' ? 'Bulan' : 'Tanggal' }}
+            </label>
+            @if($filterMode === 'monthly')
+                <input type="month" wire:model.live="filterMonth"
+                       style="border:1px solid #D8D4CC; border-radius:2px; padding:6px 10px;
+                              font-size:12px; font-family:'IBM Plex Sans',sans-serif; color:#1A1816;">
+            @else
+                <input type="date" wire:model.live="filterDate"
+                       style="border:1px solid #D8D4CC; border-radius:2px; padding:6px 10px;
+                              font-size:12px; font-family:'IBM Plex Sans',sans-serif; color:#1A1816;">
+            @endif
         </div>
         <div>
             <label style="font-size:10px; font-weight:700; color:#9A9590; display:block;
@@ -99,23 +125,33 @@
         </div>
 
         {{-- Batch Push, Ignore & Selection Action Buttons --}}
-        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+        <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             @if(count($selectedLogs) > 0)
+            <div style="background:#FEF3C7; border:1px solid #F59E0B; border-radius:3px; padding:6px 12px; display:flex; align-items:center; gap:8px; font-size:11px; color:#92400E;">
+                <span>
+                    <strong style="font-size:12px;">{{ count($selectedLogs) }}</strong> SPK terpilih
+                </span>
+                <span style="color:#D97706;">|</span>
+                <span>
+                    Total Qty: <strong style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#B45309;">{{ number_format($this->selectedSummary['total_qty']) }}</strong> pcs
+                </span>
+            </div>
+
             <button wire:click="pushSelectedToSap()"
-                    wire:confirm="Yakin ingin mengirim {{ count($selectedLogs) }} SPK terpilih ke SAP?"
+                    wire:confirm="Yakin ingin mengirim {{ count($selectedLogs) }} SPK terpilih (Total: {{ number_format($this->selectedSummary['total_qty']) }} pcs) ke SAP?"
                     style="background:#D97706; color:#fff; border:none; border-radius:2px; 
                            padding:8px 14px; font-size:11px; font-weight:700; cursor:pointer; 
                            font-family:'IBM Plex Sans',sans-serif; text-transform:uppercase; 
                            letter-spacing:.08em; transition:all 0.2s; hover:background:#B45309;">
-                🚀 Kirim Terpilih ({{ count($selectedLogs) }})
+                🚀 Kirim Terpilih ({{ number_format($this->selectedSummary['total_qty']) }} pcs)
             </button>
             <button wire:click="ignoreSelected()"
-                    wire:confirm="Yakin ingin mengabaikan {{ count($selectedLogs) }} SPK terpilih?"
+                    wire:confirm="Yakin ingin mengabaikan {{ count($selectedLogs) }} SPK terpilih (Total: {{ number_format($this->selectedSummary['total_qty']) }} pcs)?"
                     style="background:#DC2626; color:#fff; border:none; border-radius:2px; 
                            padding:8px 14px; font-size:11px; font-weight:700; cursor:pointer; 
                            font-family:'IBM Plex Sans',sans-serif; text-transform:uppercase; 
                            letter-spacing:.08em; transition:all 0.2s; hover:background:#B91C1C;">
-                ⊘ Abaikan Terpilih ({{ count($selectedLogs) }})
+                ⊘ Abaikan Terpilih
             </button>
             @endif
 
@@ -603,6 +639,11 @@
                     <td colspan="5" style="padding:12px 14px; font-size:10px; font-weight:700;
                                            color:#9A9590; letter-spacing:.08em; text-transform:uppercase;">
                         {{ $this->logs->total() }} SPK ditemukan
+                        @if(count($selectedLogs) > 0)
+                            <span style="color:#FBBF24; margin-left:10px; font-weight:600;">
+                                • {{ count($selectedLogs) }} SPK terpilih (Total Qty: {{ number_format($this->selectedSummary['total_qty']) }} pcs)
+                            </span>
+                        @endif
                     </td>
                     <td style="padding:12px 14px; text-align:right; font-family:'IBM Plex Mono',monospace;">
                         <div style="font-size:10px; color:#9A9590; font-weight:700;
@@ -625,4 +666,55 @@
             {{ $this->logs->links() }}
         </div>
     </div>
+
+    {{-- Floating Bottom Selection Bar --}}
+    @if(count($selectedLogs) > 0)
+    <div style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:50;
+                background:#1A1816; color:#fff; border-radius:6px; padding:10px 20px;
+                box-shadow:0 10px 25px -5px rgba(0,0,0,0.4), 0 8px 10px -6px rgba(0,0,0,0.3);
+                display:flex; align-items:center; gap:16px; font-family:'IBM Plex Sans',sans-serif;
+                border:1px solid #383531;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="background:#D97706; color:#fff; font-size:11px; font-weight:800; padding:3px 8px; border-radius:3px;">
+                {{ count($selectedLogs) }} SPK Terpilih
+            </span>
+            <span style="font-size:13px; color:#E8E4DC;">
+                Total Akan Dikirim:
+                <strong style="color:#FBBF24; font-size:16px; font-family:'IBM Plex Mono',monospace; margin-left:4px;">
+                    {{ number_format($this->selectedSummary['total_qty']) }}
+                </strong>
+                <span style="font-size:11px; color:#A8A29E; margin-left:2px;">pcs</span>
+            </span>
+        </div>
+
+        <div style="height:22px; width:1px; background:#383531;"></div>
+
+        <div style="display:flex; align-items:center; gap:8px;">
+            <button wire:click="pushSelectedToSap()"
+                    wire:confirm="Yakin ingin mengirim {{ count($selectedLogs) }} SPK terpilih (Total: {{ number_format($this->selectedSummary['total_qty']) }} pcs) ke SAP?"
+                    style="background:#22C55E; color:#fff; border:none; border-radius:3px; 
+                           padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer; 
+                           letter-spacing:.05em; transition:all 0.2s; hover:background:#16A34A; display:flex; align-items:center; gap:6px;">
+                <span>🚀 Kirim ke SAP</span>
+                <span style="background:rgba(0,0,0,0.2); padding:1px 6px; border-radius:3px; font-size:11px;">{{ number_format($this->selectedSummary['total_qty']) }} pcs</span>
+            </button>
+
+            <button wire:click="ignoreSelected()"
+                    wire:confirm="Yakin ingin mengabaikan {{ count($selectedLogs) }} SPK terpilih (Total: {{ number_format($this->selectedSummary['total_qty']) }} pcs)?"
+                    style="background:#DC2626; color:#fff; border:none; border-radius:3px; 
+                           padding:7px 12px; font-size:12px; font-weight:600; cursor:pointer; 
+                           letter-spacing:.05em; transition:all 0.2s; hover:background:#B91C1C;">
+                ⊘ Abaikan
+            </button>
+
+            <button wire:click="$set('selectedLogs', [])"
+                    title="Batal pilih semua"
+                    style="background:#2A2724; color:#D6D3D1; border:1px solid #444; border-radius:3px; 
+                           padding:7px 10px; font-size:11px; font-weight:600; cursor:pointer; 
+                           transition:all 0.2s; hover:background:#383531;">
+                ✕ Batal
+            </button>
+        </div>
+    </div>
+    @endif
 </div>

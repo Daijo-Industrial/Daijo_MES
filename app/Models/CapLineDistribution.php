@@ -8,5 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class CapLineDistribution extends Model
 {
     use HasFactory;
+
     protected $table = 'cap_line_distributions';
 }

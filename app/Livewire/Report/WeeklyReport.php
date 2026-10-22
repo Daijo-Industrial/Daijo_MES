@@ -2,17 +2,20 @@
 
 namespace App\Livewire\Report;
 
-use Livewire\Component;
 use App\Models\Asakai;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
+use Livewire\Component;
 
 #[Layout('layouts.dashboard')]
 class WeeklyReport extends Component
 {
     public $weekStart;
+
     public $weekEnd;
+
     public $customerFilter = '';
+
     public $shiftFilter = '';
 
     public function mount()
@@ -26,7 +29,7 @@ class WeeklyReport extends Component
         $start = Carbon::parse($this->weekStart)->subWeek();
         $this->weekStart = $start->startOfWeek()->format('Y-m-d');
         $this->weekEnd = $start->endOfWeek()->format('Y-m-d');
-        
+
         $this->loadChartData();
     }
 
@@ -35,7 +38,7 @@ class WeeklyReport extends Component
         $start = Carbon::parse($this->weekStart)->addWeek();
         $this->weekStart = $start->startOfWeek()->format('Y-m-d');
         $this->weekEnd = $start->endOfWeek()->format('Y-m-d');
-        
+
         $this->loadChartData();
     }
 
@@ -43,7 +46,7 @@ class WeeklyReport extends Component
     {
         $this->weekStart = Carbon::now()->startOfWeek()->format('Y-m-d');
         $this->weekEnd = Carbon::now()->endOfWeek()->format('Y-m-d');
-        
+
         $this->loadChartData();
     }
 
@@ -64,11 +67,11 @@ class WeeklyReport extends Component
         $endDate = Carbon::parse($this->weekEnd);
 
         $asakais = Asakai::weekly($startDate, $endDate)
-            ->when($this->customerFilter, fn($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
-            ->when($this->shiftFilter, fn($q) => $q->where('lot_shift', $this->shiftFilter))
+            ->when($this->customerFilter, fn ($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
+            ->when($this->shiftFilter, fn ($q) => $q->where('lot_shift', $this->shiftFilter))
             ->get();
 
-        $groupedByDate = $asakais->groupBy(fn($item) => $item->date_issue->format('Y-m-d'));
+        $groupedByDate = $asakais->groupBy(fn ($item) => $item->date_issue->format('Y-m-d'));
 
         $chartData = [];
         $currentDate = $startDate->copy();
@@ -85,7 +88,7 @@ class WeeklyReport extends Component
         }
 
         $byCustomerChart = $asakais->groupBy('customer')
-            ->map(fn($group) => $group->count())
+            ->map(fn ($group) => $group->count())
             ->sortDesc()
             ->take(5);
 
@@ -115,12 +118,12 @@ class WeeklyReport extends Component
 
         $asakais = Asakai::with(['pics', 'rcas', 'correctiveActions'])
             ->weekly($startDate, $endDate)
-            ->when($this->customerFilter, fn($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
-            ->when($this->shiftFilter, fn($q) => $q->where('lot_shift', $this->shiftFilter))
+            ->when($this->customerFilter, fn ($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
+            ->when($this->shiftFilter, fn ($q) => $q->where('lot_shift', $this->shiftFilter))
             ->get();
 
         // Group by date
-        $groupedByDate = $asakais->groupBy(fn($item) => $item->date_issue->format('Y-m-d'));
+        $groupedByDate = $asakais->groupBy(fn ($item) => $item->date_issue->format('Y-m-d'));
 
         // Chart data for trend - IMPROVED
         $chartData = [];
@@ -138,7 +141,7 @@ class WeeklyReport extends Component
 
         // ← TAMBAH INI: Breakdown by customer untuk chart
         $byCustomerChart = $asakais->groupBy('customer')
-            ->map(fn($group) => $group->count())
+            ->map(fn ($group) => $group->count())
             ->sortDesc()
             ->take(5);
 

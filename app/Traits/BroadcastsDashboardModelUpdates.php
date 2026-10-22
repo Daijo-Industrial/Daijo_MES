@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Traits;
 
 use App\Events\ParentDataUpdated; // Adjust the event name if needed

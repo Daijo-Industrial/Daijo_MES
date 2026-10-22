@@ -17,11 +17,11 @@ class ProductionNgController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'ng_type' => 'required|string|max:255|unique:production_ng_types,ng_type'
+            'ng_type' => 'required|string|max:255|unique:production_ng_types,ng_type',
         ]);
 
         ProductionNgType::create([
-            'ng_type' => $request->ng_type
+            'ng_type' => $request->ng_type,
         ]);
 
         return redirect()->back()->with('success', 'NG Type berhasil ditambahkan.');

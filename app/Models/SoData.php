@@ -10,6 +10,7 @@ class SoData extends Model
     use HasFactory;
 
     protected $table = 'so_datas';
+
     // public $incrementing = true;
     public $timestamps = false;
 

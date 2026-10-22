@@ -8,8 +8,7 @@ use Illuminate\Support\Facades\Storage;
 
 class FileController extends Controller
 {
-
-    // function untuk upload file ke dalam database 
+    // function untuk upload file ke dalam database
     public function upload(Request $request)
     {
         $request->validate([
@@ -19,7 +18,7 @@ class FileController extends Controller
 
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
-                $fileName = time().'-'.$file->getClientOriginalName();
+                $fileName = time() . '-' . $file->getClientOriginalName();
                 $fileSize = $file->getSize();
                 $file->storeAs('public/files', $fileName);
                 // $file->move(public_path('files'), $fileName);
@@ -39,20 +38,20 @@ class FileController extends Controller
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Files uploaded successfully!'
+                'message' => 'Files uploaded successfully!',
             ]);
         }
 
         return redirect()->back()->with('success', 'Files uploaded successfully!');
     }
 
-    // function untuk menghapus file dari database 
+    // function untuk menghapus file dari database
     public function destroy($id)
     {
         $file = File::find($id);
 
         $filename = $file->name;
-        Storage::delete('public/files/'.$filename);
+        Storage::delete('public/files/' . $filename);
         $file->delete();
 
         return redirect()->back()->with('success', 'Files deleted successfully!');

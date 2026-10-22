@@ -23,10 +23,10 @@ class CustomerDeliveryLogs extends Component
     {
         $logs = MasterCustomerLog::with('user')
             ->where(function ($query) {
-                $query->where('customer_code', 'like', '%'.$this->search.'%')
-                    ->orWhere('action', 'like', '%'.$this->search.'%')
+                $query->where('customer_code', 'like', '%' . $this->search . '%')
+                    ->orWhere('action', 'like', '%' . $this->search . '%')
                     ->orWhereHas('user', function ($q) {
-                        $q->where('name', 'like', '%'.$this->search.'%');
+                        $q->where('name', 'like', '%' . $this->search . '%');
                     });
             })
             ->orderBy('created_at', 'desc')

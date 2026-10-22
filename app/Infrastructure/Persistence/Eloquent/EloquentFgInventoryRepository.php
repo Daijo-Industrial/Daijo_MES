@@ -18,19 +18,19 @@ class EloquentFgInventoryRepository implements FgInventoryRepositoryInterface
     {
         $query = sapInventoryFg::query();
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $term = $filters['search'];
             $query->where(function ($q) use ($term) {
                 $q->where('item_code', 'like', "%{$term}%")
-                  ->orWhere('item_name', 'like', "%{$term}%");
+                    ->orWhere('item_name', 'like', "%{$term}%");
             });
         }
 
-        if (!empty($filters['processOwner'])) {
+        if (! empty($filters['processOwner'])) {
             $query->where('process_owner', $filters['processOwner']);
         }
 
-        if (!empty($filters['family'])) {
+        if (! empty($filters['family'])) {
             $query->where('family', $filters['family']);
         }
 

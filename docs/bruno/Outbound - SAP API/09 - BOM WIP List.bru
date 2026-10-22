@@ -1,0 +1,40 @@
+meta {
+  name: 09 - BOM WIP List
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{sap_base_url}}/api/sap_bom_wip/list?startDate=2026-01-01&itemGroupCode=103
+  body: none
+  auth: bearer
+}
+
+params:query {
+  startDate: 2026-01-01
+  itemGroupCode: 103
+}
+
+auth:bearer {
+  token: {{sap_token}}
+}
+
+headers {
+  Host: localhost
+  Accept: application/json
+}
+
+docs {
+  # BOM WIP Structure List
+  
+  Service Pengambil: `App\Services\BomWipService`
+  Command Scheduler: `php artisan sync:delivery-data`
+  
+  Sub-Endpoints yang digabungkan:
+  - `/api/sap_bom_wip/list`
+  - `/api/sap_bom_wip_semi/list`
+  - `/api/sap_bom_wip_semi_semi/list`
+  
+  Tabel Tujuan: `sap_bom_wip`
+  Kolom Utama: `fg_code`, `semi_first`, `qty_first`, `semi_second`, `qty_second`, `semi_third`, `qty_third`, `level`, `item_group`.
+}

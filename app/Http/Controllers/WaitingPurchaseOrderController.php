@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\WaitingPurchaseOrder;
-use Illuminate\Http\Request;
 use App\Services\FileService;
+use Illuminate\Http\Request;
 
 class WaitingPurchaseOrderController extends Controller
 {
-
     protected $fileService;
 
     public function __construct(FileService $fileService)
@@ -23,6 +22,7 @@ class WaitingPurchaseOrderController extends Controller
     {
         $orders = WaitingPurchaseOrder::orderBy('status', 'asc')->get();
         $total = $orders->sum('price');
+
         return view('waiting_purchase_orders.index', compact('orders', 'total'));
     }
 
@@ -76,6 +76,7 @@ class WaitingPurchaseOrderController extends Controller
     public function show(string $id)
     {
         $waitingPurchaseOrder = WaitingPurchaseOrder::find($id);
+
         return view('waiting_purchase_orders.show', compact('waitingPurchaseOrder'));
     }
 
@@ -85,6 +86,7 @@ class WaitingPurchaseOrderController extends Controller
     public function edit(string $id)
     {
         $waitingPurchaseOrder = WaitingPurchaseOrder::find($id);
+
         return view('waiting_purchase_orders.edit', compact('waitingPurchaseOrder'));
     }
 
@@ -133,7 +135,6 @@ class WaitingPurchaseOrderController extends Controller
     /**
      * Change the specified resource status.
      */
-
     public function changeStatus(Request $request, string $id)
     {
         $waitingPurchaseOrder = WaitingPurchaseOrder::find($id);

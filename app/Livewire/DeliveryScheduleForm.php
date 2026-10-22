@@ -6,20 +6,29 @@ use App\Models\MasterCustomerDelivery;
 use App\Models\MasterDeliverySchedule;
 use App\Models\MasterListItem;
 use Carbon\Carbon;
-use Livewire\Component;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class DeliveryScheduleForm extends Component
 {
     public $customerSearch = '';
+
     public $selectedCustomer = null;
+
     public $selectedMonth;
+
     public $selectedYear;
+
     public $itemSearch = '';
+
     public $selectedItem = null;
+
     public $soNum = '';
+
     public $schedules = [];
+
     public $showCustomerDropdown = false;
+
     public $showItemDropdown = false;
 
     protected $rules = [
@@ -38,12 +47,12 @@ class DeliveryScheduleForm extends Component
 
     public function updatedCustomerSearch()
     {
-        $this->showCustomerDropdown = !empty($this->customerSearch);
+        $this->showCustomerDropdown = ! empty($this->customerSearch);
     }
 
     public function updatedItemSearch()
     {
-        $this->showItemDropdown = !empty($this->itemSearch);
+        $this->showItemDropdown = ! empty($this->itemSearch);
     }
 
     public function selectCustomer($customerId)
@@ -80,12 +89,12 @@ class DeliveryScheduleForm extends Component
     {
         if ($this->selectedMonth && $this->selectedYear) {
             $daysInMonth = Carbon::createFromDate($this->selectedYear, $this->selectedMonth, 1)->daysInMonth;
-            
+
             $this->schedules = [];
             for ($day = 1; $day <= $daysInMonth; $day++) {
                 $this->schedules[$day] = [
                     'date' => $day,
-                    'quantity' => 0
+                    'quantity' => 0,
                 ];
             }
         }
@@ -97,17 +106,18 @@ class DeliveryScheduleForm extends Component
 
         if (empty($this->schedules)) {
             session()->flash('error', 'Silakan generate tabel schedule terlebih dahulu');
+
             return;
         }
 
         DB::beginTransaction();
-        
+
         try {
             $inserted = 0;
-            
+
             foreach ($this->schedules as $day => $schedule) {
                 // Skip jika quantity 0 atau kosong
-                if (!isset($schedule['quantity']) || $schedule['quantity'] <= 0) {
+                if (! isset($schedule['quantity']) || $schedule['quantity'] <= 0) {
                     continue;
                 }
 

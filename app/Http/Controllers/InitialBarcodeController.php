@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CustomBarcodeLog;
 use App\Models\MasterListItem;
 use App\Models\SpkItemHistory;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
 use Milon\Barcode\DNS1D;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\Writer\PngWriter;
 
 class InitialBarcodeController extends Controller
 {
@@ -73,14 +74,88 @@ class InitialBarcodeController extends Controller
 
     public function customGenerateForm(Request $request)
     {
+        $branch = $request->query('branch', 'all'); // 'all', 'karawang', 'kbn'
+
         $items = MasterListItem::orderBy('item_code')->get();
-        return view('barcode.custom_generate_form', compact('items'));
+
+        $logsQuery = CustomBarcodeLog::query();
+        if ($branch === 'karawang') {
+            $logsQuery->where('item_code', 'LIKE', 'K-%');
+        } elseif ($branch === 'kbn') {
+            $logsQuery->where('item_code', 'NOT LIKE', 'K-%');
+        }
+        $logs = $logsQuery->latest()->take(20)->get();
+
+        $branchCounts = [
+            'all' => CustomBarcodeLog::count(),
+            'karawang' => CustomBarcodeLog::where('item_code', 'LIKE', 'K-%')->count(),
+            'kbn' => CustomBarcodeLog::where('item_code', 'NOT LIKE', 'K-%')->count(),
+        ];
+
+        return view('barcode.custom_generate_form', compact('items', 'logs', 'branch', 'branchCounts'));
+    }
+
+    public function customGenerateLogs(Request $request)
+    {
+        $branch = $request->input('branch', 'all'); // 'all', 'karawang', 'kbn'
+        $query = CustomBarcodeLog::query();
+
+        if ($branch === 'karawang') {
+            $query->where('item_code', 'LIKE', 'K-%');
+        } elseif ($branch === 'kbn') {
+            $query->where('item_code', 'NOT LIKE', 'K-%');
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('item_code', 'like', "%{$search}%")
+                    ->orWhere('item_name', 'like', "%{$search}%")
+                    ->orWhere('spk_number', 'like', "%{$search}%")
+                    ->orWhere('user_name', 'like', "%{$search}%")
+                    ->orWhere('customer', 'like', "%{$search}%")
+                    ->orWhere('operator', 'like', "%{$search}%")
+                    ->orWhere('remark', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->input('start_date'));
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->input('end_date'));
+        }
+
+        $logs = $query->latest()->paginate(25)->withQueryString();
+
+        $baseStatsQuery = CustomBarcodeLog::query();
+        if ($branch === 'karawang') {
+            $baseStatsQuery->where('item_code', 'LIKE', 'K-%');
+        } elseif ($branch === 'kbn') {
+            $baseStatsQuery->where('item_code', 'NOT LIKE', 'K-%');
+        }
+
+        $stats = [
+            'total_print_jobs' => (clone $baseStatsQuery)->count(),
+            'total_labels_printed' => (clone $baseStatsQuery)->sum('total_labels'),
+            'today_print_jobs' => (clone $baseStatsQuery)->whereDate('created_at', today())->count(),
+            'today_labels_printed' => (clone $baseStatsQuery)->whereDate('created_at', today())->sum('total_labels'),
+        ];
+
+        $branchCounts = [
+            'all' => CustomBarcodeLog::count(),
+            'karawang' => CustomBarcodeLog::where('item_code', 'LIKE', 'K-%')->count(),
+            'kbn' => CustomBarcodeLog::where('item_code', 'NOT LIKE', 'K-%')->count(),
+        ];
+
+        return view('barcode.custom_generate_logs', compact('logs', 'stats', 'branch', 'branchCounts'));
     }
 
     public function getSpksByItem(Request $request)
     {
         $itemCode = $request->input('item_code');
-        
+
         $spks = SpkItemHistory::where('item_code', $itemCode)
             ->whereNotNull('spk_number')
             ->distinct()
@@ -94,7 +169,7 @@ class InitialBarcodeController extends Controller
     {
         $request->validate([
             'item_code' => 'required|string',
-            'spk_number' => 'required|string',
+            'spk_number' => 'required_unless:barcode_type,vinfast|nullable|string',
             'quantity' => 'required|integer|min:1',
             'warehouse' => 'required|string',
             'start_label' => 'required|integer|min:1',
@@ -103,26 +178,243 @@ class InitialBarcodeController extends Controller
             'prod_date' => 'nullable|date',
             'operator' => 'nullable|string',
             'customer' => 'nullable|string',
+            'barcode_type' => 'nullable|string|in:default,sharp,yanfeng,itsp,vinfast',
+            'qad' => 'nullable|string|max:255',
+            'model' => 'nullable|string|max:255',
+            'color' => 'nullable|string|max:255',
+            'position' => 'nullable|string|max:255',
+            'rh_lh' => 'nullable|string|max:255',
+            'part_weight' => 'nullable|numeric|min:0',
+            'std_pack' => 'nullable|integer|min:0',
+            'made_in' => 'nullable|string|max:255',
+            'expiry_date' => 'nullable|string|max:255',
+            'shipment_date' => 'nullable|string|max:255',
+            'is_sp' => 'nullable|boolean',
             'is_trial' => 'nullable|boolean',
+            'remark' => 'nullable|string|max:1000',
         ]);
 
         $itemCode = $request->input('item_code');
-        $spkNumber = $request->input('spk_number');
-        $quantity = $request->input('quantity');
+        $spkNumber = $request->input('spk_number') ?: '-';
+        $quantity = (int) $request->input('quantity');
         $warehouse = $request->input('warehouse');
-        $startLabel = $request->input('start_label');
-        $endLabel = $request->input('end_label');
+        $startLabel = (int) $request->input('start_label');
+        $endLabel = (int) $request->input('end_label');
         $shift = $request->input('shift');
-        $prodDate = $request->input('prod_date') ?: today()->toDateString();
+        $prodDate = $request->input('prod_date') ?: null;
         $operator = $request->input('operator') ?: '-';
         $customer = $request->input('customer') ?: '-';
+        $barcodeType = $request->input('barcode_type', 'default');
         $isTrial = $request->boolean('is_trial');
+        $isSp = $request->boolean('is_sp');
+        $remark = $request->input('remark');
+        $totalLabels = ($endLabel - $startLabel) + 1;
 
-        $item = MasterListItem::where('item_code', $itemCode)->firstOrFail();
-        $itemName = $item->item_name;
+        $item = MasterListItem::where('item_code', $itemCode)->first();
+        $itemName = $item?->item_name ?? $itemCode;
+
+        // Log the print action
+        CustomBarcodeLog::create([
+            'user_id' => auth()->id(),
+            'user_name' => auth()->user()?->name ?? 'Guest',
+            'item_code' => $itemCode,
+            'item_name' => $itemName,
+            'spk_number' => $spkNumber,
+            'quantity' => $quantity,
+            'warehouse' => $warehouse,
+            'shift' => $shift,
+            'start_label' => $startLabel,
+            'end_label' => $endLabel,
+            'total_labels' => $totalLabels,
+            'prod_date' => $prodDate,
+            'operator' => $operator,
+            'customer' => $customer,
+            'barcode_type' => $barcodeType,
+            'is_trial' => $isTrial,
+            'remark' => $remark,
+        ]);
+
+        $labels = $this->buildLabelsData(
+            $itemCode,
+            $spkNumber,
+            $quantity,
+            $warehouse,
+            $startLabel,
+            $endLabel,
+            $shift,
+            $prodDate,
+            $operator,
+            $customer,
+            $barcodeType,
+            $isTrial,
+            $isSp,
+            $request->input('qad'),
+            $request->input('model'),
+            $request->input('color'),
+            $request->input('position'),
+            $request->input('part_weight'),
+            $request->input('std_pack'),
+            $request->input('made_in'),
+            $request->input('expiry_date'),
+            $request->input('shipment_date'),
+            $request->input('rh_lh')
+        );
+
+        $logoBase64 = $this->getLogoBase64();
+        $vinfastLogoBase64 = $this->getVinfastLogoBase64();
+
+        return view('barcode.custom_generate_print', compact('labels', 'barcodeType', 'logoBase64', 'vinfastLogoBase64'));
+    }
+
+    public function customGenerateReprint($id)
+    {
+        $log = CustomBarcodeLog::findOrFail($id);
+
+        $itemCode = $log->item_code;
+        $spkNumber = $log->spk_number ?: '-';
+        $quantity = (int) $log->quantity;
+        $warehouse = $log->warehouse;
+        $startLabel = (int) $log->start_label;
+        $endLabel = (int) $log->end_label;
+        $shift = $log->shift;
+        $prodDate = $log->prod_date ?: null;
+        $operator = $log->operator ?: '-';
+        $customer = $log->customer ?: '-';
+        $barcodeType = $log->barcode_type ?: 'default';
+        $isTrial = (bool) $log->is_trial;
+        $isSp = false;
+
+        $labels = $this->buildLabelsData(
+            $itemCode,
+            $spkNumber,
+            $quantity,
+            $warehouse,
+            $startLabel,
+            $endLabel,
+            $shift,
+            $prodDate,
+            $operator,
+            $customer,
+            $barcodeType,
+            $isTrial,
+            $isSp
+        );
+
+        $logoBase64 = $this->getLogoBase64();
+        $vinfastLogoBase64 = $this->getVinfastLogoBase64();
+
+        return view('barcode.custom_generate_print', compact('labels', 'barcodeType', 'logoBase64', 'vinfastLogoBase64'));
+    }
+
+    protected function buildLabelsData(
+        string $itemCode,
+        ?string $spkNumber,
+        int $quantity,
+        string $warehouse,
+        int $startLabel,
+        int $endLabel,
+        string $shift,
+        ?string $prodDate,
+        string $operator,
+        string $customer,
+        string $barcodeType,
+        bool $isTrial,
+        bool $isSp = false,
+        ?string $customQad = null,
+        ?string $customModel = null,
+        ?string $customColor = null,
+        ?string $customPosition = null,
+        ?string $customPartWeight = null,
+        ?int $customStdPack = null,
+        ?string $customMadeIn = null,
+        ?string $customExpiryDate = null,
+        ?string $customShipmentDate = null,
+        ?string $customRhLh = null
+    ): array {
+        $spkNumber = $spkNumber ?: '-';
+        $item = MasterListItem::where('item_code', $itemCode)->first();
+        $itemName = $item?->item_name ?? $itemCode;
+        $qad = $customQad ?: (($item?->description_in_foreign_lang && $item->description_in_foreign_lang !== '0') ? $item->description_in_foreign_lang : '');
+        $model = $customModel ?: (($item?->family && $item->family !== '0') ? $item->family : '');
+        $color = $customColor ?: (($item?->color && $item->color !== '0') ? $item->color : '');
+        $partWeight = ($customPartWeight !== null && $customPartWeight !== '') ? $customPartWeight : ($item?->part_weight ?? 0);
+        $stdPack = $customStdPack ?: ($item?->standart_packaging_list ?: $quantity);
+        $madeIn = $customMadeIn ?: 'Indonesia';
+        $expiryDate = $customExpiryDate ?: '';
+        $shipmentDate = $customShipmentDate ?: '';
+
+        // Position format: strictly determines enlarged half code (1 for Left/HC1, 2 for Right/HC2, 0 for Center/None)
+        $positionInput = $customPosition ?: (($item?->position && $item->position !== '0') ? $item->position : '');
+        $posRaw = strtolower(trim((string) $positionInput));
+
+        $isCenterPos = ($posRaw === 'center' || $posRaw === 'c' || $posRaw === 'ctr' || $posRaw === 'middle' || str_contains($posRaw, 'center') || str_contains($posRaw, 'tengah'));
+        $isLeftPos = ! $isCenterPos && ($posRaw === 'left' || $posRaw === 'lh' || $posRaw === 'l' || $posRaw === '1' || str_contains($posRaw, 'left') || str_contains($posRaw, 'lh'));
+        $isRightPos = ! $isCenterPos && ($posRaw === 'right' || $posRaw === 'rh' || $posRaw === 'r' || $posRaw === '2' || str_contains($posRaw, 'right') || str_contains($posRaw, 'rh'));
+
+        if ($isCenterPos) {
+            $enlargedHalfCode = 0;
+        } elseif ($isLeftPos) {
+            $enlargedHalfCode = 1;
+        } elseif ($isRightPos) {
+            $enlargedHalfCode = 2;
+        } else {
+            $enlargedHalfCode = 0;
+        }
+
+        // RH / LH data: manually provided by user for ITSP (with backward compatibility fallback)
+        $rhLhInput = trim((string) ($customRhLh ?? ''));
+        if ($rhLhInput !== '') {
+            $rhLhRaw = strtolower($rhLhInput);
+            if ($rhLhRaw === 'right' || $rhLhRaw === 'rh' || $rhLhRaw === 'r') {
+                $rhLh = 'RH';
+            } elseif ($rhLhRaw === 'left' || $rhLhRaw === 'lh' || $rhLhRaw === 'l') {
+                $rhLh = 'LH';
+            } elseif ($rhLhRaw === 'center' || $rhLhRaw === 'c' || $rhLhRaw === 'ctr' || $rhLhRaw === 'middle') {
+                $rhLh = 'CTR';
+            } else {
+                $rhLh = strtoupper($rhLhInput);
+            }
+        } else {
+            // Backward compatibility fallback to position if rh_lh was not provided
+            if ($isRightPos) {
+                $rhLh = 'RH';
+            } elseif ($isLeftPos) {
+                $rhLh = 'LH';
+            } elseif ($isCenterPos) {
+                $rhLh = 'CTR';
+            } else {
+                $rhLh = strtoupper($positionInput ?: '-');
+            }
+        }
+
+        $position = $rhLh;
+
+        // Half codes for ITSP
+        $h1 = strtoupper(trim((string) ($item?->half_code_1 && $item->half_code_1 !== '0' ? $item->half_code_1 : '')));
+        $h2 = strtoupper(trim((string) ($item?->half_code_2 && $item->half_code_2 !== '0' ? $item->half_code_2 : '')));
+        $itspCode = ($h1 !== '' || $h2 !== '') ? "{$h1}{$h2}" : $itemCode;
+
+        // Year and month codes for SHARP format & VinFast formatted date
+        if ($prodDate) {
+            $year = date('Y', strtotime($prodDate));
+            $month = date('n', strtotime($prodDate));
+            $yearCode = $this->getSharpYearCode($year);
+            $monthName = $this->getIndonesianMonthName($month);
+            if ($barcodeType === 'vinfast') {
+                $prodDateFormatted = strtoupper(date('j M Y', strtotime($prodDate)));
+            } else {
+                $prodDateFormatted = "{$monthName} {$year}";
+            }
+        } else {
+            $year = '';
+            $month = '';
+            $yearCode = '';
+            $monthName = '';
+            $prodDateFormatted = ($barcodeType === 'vinfast') ? strtoupper(date('j M Y')) : '';
+        }
 
         $labels = [];
-        $writer = new PngWriter();
+        $writer = new PngWriter;
 
         for ($i = $startLabel; $i <= $endLabel; $i++) {
             // Format: spkno(tab)quantity(tab)warehouse(tab)nolabel
@@ -130,7 +422,7 @@ class InitialBarcodeController extends Controller
             if ($isTrial) {
                 $qrData .= "\tTRIAL";
             }
-            
+
             $qrCode = new QrCode(
                 data: $qrData,
                 errorCorrectionLevel: ErrorCorrectionLevel::High,
@@ -138,16 +430,39 @@ class InitialBarcodeController extends Controller
                 margin: 0
             );
 
-            $qrResult = $writer->write($qrCode);
-            $qrBase64 = base64_encode($qrResult->getString());
+            if (extension_loaded('gd')) {
+                $qrResult = $writer->write($qrCode);
+                $qrBase64 = base64_encode($qrResult->getString());
+            } else {
+                $qrBase64 = '';
+            }
 
             $labels[] = [
                 'label_no' => $i,
                 'item_code' => $itemCode,
                 'item_name' => $itemName,
+                'qad' => $qad,
+                'model' => $model,
+                'color' => $color,
+                'position' => $position,
+                'rh_lh' => $rhLh,
+                'half_code_1' => $h1,
+                'half_code_2' => $h2,
+                'itsp_code' => $itspCode,
+                'enlarged_half_code' => $enlargedHalfCode,
+                'part_weight' => $partWeight,
+                'std_pack' => $stdPack,
+                'made_in' => $madeIn,
+                'expiry_date' => $expiryDate,
+                'shipment_date' => $shipmentDate,
+                'is_sp' => $isSp,
                 'spk_number' => $spkNumber,
                 'warehouse' => $warehouse,
                 'prod_date' => $prodDate,
+                'prod_date_formatted' => $prodDateFormatted,
+                'year_code' => $yearCode,
+                'month_code' => $month,
+                'barcode_type' => $barcodeType,
                 'operator' => $operator,
                 'quantity' => $quantity,
                 'shift' => $shift,
@@ -157,6 +472,61 @@ class InitialBarcodeController extends Controller
             ];
         }
 
-        return view('barcode.custom_generate_print', compact('labels'));
+        return $labels;
+    }
+
+    protected function getLogoBase64(): ?string
+    {
+        $logoPath = public_path('picture/logo-dj.png');
+        if (! file_exists($logoPath)) {
+            $logoPath = storage_path('app/public/picture/logo-dj.png');
+        }
+
+        return file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+    }
+
+    protected function getVinfastLogoBase64(): ?string
+    {
+        $logoPath = public_path('picture/vinfast-logo.png');
+        if (! file_exists($logoPath)) {
+            $logoPath = public_path('images/vinfast-logo.png');
+        }
+        if (! file_exists($logoPath)) {
+            $logoPath = storage_path('app/public/picture/vinfast-logo.png');
+        }
+
+        return file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+    }
+
+    /**
+     * Map Year to 2-letter Code for SHARP customer:
+     * 1=A, 2=B, 3=C, 4=D, 5=E, 6=F, 7=G, 8=H, 9=I, 0=O
+     * e.g. 2026 -> 26 -> BF, 2027 -> 27 -> BG, 2030 -> 30 -> CO, 2040 -> 40 -> DO
+     */
+    protected function getSharpYearCode($year)
+    {
+        $lastTwo = sprintf('%02d', (int) $year % 100);
+        $map = [
+            '0' => 'O', '1' => 'A', '2' => 'B', '3' => 'C', '4' => 'D',
+            '5' => 'E', '6' => 'F', '7' => 'G', '8' => 'H', '9' => 'I',
+        ];
+        $d1 = $lastTwo[0];
+        $d2 = $lastTwo[1];
+
+        return ($map[$d1] ?? '') . ($map[$d2] ?? '');
+    }
+
+    /**
+     * Get Indonesian month name (UPPERCASE)
+     */
+    protected function getIndonesianMonthName($monthNumber)
+    {
+        $months = [
+            1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL',
+            5 => 'MEI', 6 => 'JUNI', 7 => 'JULI', 8 => 'AGUSTUS',
+            9 => 'SEPTEMBER', 10 => 'OKTOBER', 11 => 'NOVEMBER', 12 => 'DESEMBER',
+        ];
+
+        return $months[(int) $monthNumber] ?? '';
     }
 }

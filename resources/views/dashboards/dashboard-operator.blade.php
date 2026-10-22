@@ -90,6 +90,18 @@
 
             <!-- Right Section: Context-Relevant Buttons -->
             <div class="flex flex-wrap gap-2 items-center justify-end">
+                <button 
+                    id="btnOpenMaintenanceChecklist" 
+                    class="px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-all duration-150 flex items-center gap-2 {{ ($hasMaintenanceChecklistToday ?? false) ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-700 hover:bg-slate-800 text-white border border-slate-600' }}"
+                >
+                    <span>🛠️ Maintenance Checklist</span>
+                    @if($hasMaintenanceChecklistToday ?? false)
+                        <span class="bg-emerald-800 text-emerald-100 text-[10px] px-2 py-0.5 rounded-full font-black uppercase">Sudah Diisi</span>
+                    @else
+                        <span class="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase animate-pulse">Belum Diisi</span>
+                    @endif
+                </button>
+
                 @if($activeState === 'RUNNING')
                     <button 
                         id="startMouldChange" 
@@ -247,11 +259,25 @@
                     </select>
                 </div>
 
+                <div id="maintenanceSelectContainer" class="mb-3 hidden">
+                    <label for="maintenance_select" class="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                        Pilih Operator Maintenance:
+                    </label>
+                    <select id="maintenance_select" class="border border-gray-300 rounded p-2 w-full text-xs shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="" data-password="">-- Pilih Nama --</option>
+                        @foreach($maintenanceOperators as $maint)
+                            <option value="{{ $maint->name }}" data-password="{{ $maint->password }}">
+                                {{ $maint->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <input type="text" id="nik" class="border p-2 w-full rounded" placeholder="Enter NIK...">
                 <input type="password" id="password" class="border p-2 w-full rounded mt-2" placeholder="Enter Password...">
                 
                 <div id="nextItemCodeContainer" class="mt-3 hidden">
-                    <label for="next_item_code" class="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                    <label id="nextItemCodeLabel" for="next_item_code" class="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                         Pilih Item Code Selanjutnya:
                     </label>
                     <select id="next_item_code" class="border border-gray-300 rounded-xl p-2 w-full text-xs shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
@@ -453,10 +479,14 @@
                                             <span class="font-semibold text-red-600">{{ $log->problem ?? '-' }}</span>
                                         </div>
                                         <div>
+                                            <span class="text-gray-400 block text-[9px] uppercase">Item Code</span>
+                                            <span class="font-bold text-indigo-600">{{ $log->item_code ?? '-' }}</span>
+                                        </div>
+                                        <div>
                                             <span class="text-gray-400 block text-[9px] uppercase">PIC</span>
                                             <span class="font-semibold text-gray-800">{{ $log->pic }}</span>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div>
                                             <span class="text-gray-400 block text-[9px] uppercase">Durasi Pengerjaan</span>
                                             <span class="font-bold text-emerald-600">{{ $log->total_pengerjaan ?? '-' }} menit</span>
                                         </div>
@@ -628,6 +658,8 @@
                                             <th class="py-1 px-2 text-gray-700">Quantity</th>
                                             <th class="py-1 px-2 text-gray-700">Status</th>
                                             <th class="py-1 px-2 text-gray-700">Cycle Time</th>
+                                            <th class="py-1 px-2 text-gray-700">Lot Material</th>
+                                            <th class="py-1 px-2 text-gray-700">Lot Accessories</th>
                                             <th class="py-1 px-2 text-gray-700">Berat Purging</th>
                                             <th class="py-1 px-2 text-gray-700">Remark</th>
                                             <!-- <th class="py-1 px-2 text-gray-700">Loss Package Quantity</th> -->
@@ -669,6 +701,32 @@
                                                     @endif
                                                 </td>
                                                 <td class="py-1 px-2">
+                                                    @if ($data->material_lot)
+                                                        <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-sm font-black uppercase">
+                                                            {{ $data->material_lot }}
+                                                        </span>
+                                                    @else
+                                                        <span class="bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full text-sm italic">
+                                                            -
+                                                        </span>
+                                                    @endif
+                                                </td>
+                                                <td class="py-1 px-2">
+                                                    @if ($data->accessoryLots && $data->accessoryLots->isNotEmpty())
+                                                        <div class="flex flex-col gap-1 items-center">
+                                                            @foreach($data->accessoryLots as $acc)
+                                                                <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-bold">
+                                                                    {{ $acc->accessory_name }}: {{ $acc->accessory_lot }}
+                                                                </span>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <span class="bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full text-sm italic">
+                                                            -
+                                                        </span>
+                                                    @endif
+                                                </td>
+                                                <td class="py-1 px-2">
                                                     @if ($data->resin_usage)
                                                         <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-sm font-semibold">
                                                             {{ $data->resin_usage }} KG
@@ -702,6 +760,22 @@
                                                             onclick="openCycleTimeModal('{{ $data->id }}', '{{ $data->temporal_cycle_time ?? '' }}')"
                                                         >
                                                             Set Cycle Time
+                                                    </button>
+
+                                                    <button 
+                                                        type="button" 
+                                                        class="px-2 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded mt-1 font-bold"
+                                                        onclick="openMaterialLotModal('{{ $data->id }}', '{{ $data->material_lot ?? '' }}')"
+                                                    >
+                                                        Set Lot Material
+                                                    </button>
+
+                                                    <button 
+                                                        type="button" 
+                                                        class="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white rounded mt-1 font-bold"
+                                                        onclick="openAccessoryLotOpModal('{{ $data->id }}')"
+                                                    >
+                                                        Set Lot Accessories
                                                     </button>
 
                                                     <button 
@@ -760,6 +834,64 @@
                                                 <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Submit</button>
                                             </div>
                                         </form>
+                                    </div>
+                                </div>
+
+                                <div id="materialLotModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex justify-center items-center z-50">
+                                    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md relative">
+                                        <h2 class="text-lg font-semibold mb-4">Set Lot Material</h2>
+                                        <form id="materialLotForm" method="POST">
+                                            @csrf
+                                            @method('PUT')
+                                            <input type="hidden" name="data_id" id="mlDataIdInput">
+                                            <label for="material_lot" class="block text-sm font-medium text-gray-700 mb-1">Kode Lot Material (Alphanumeric)</label>
+                                            <input type="text" id="materialLotInput" name="material_lot" placeholder="Contoh: LOT-2026-A123" class="w-full border rounded p-2 mb-4 uppercase" oninput="this.value = this.value.toUpperCase()">
+                                            <div class="flex justify-end gap-2">
+                                                <button type="button" onclick="closeMaterialLotModal()" class="bg-gray-400 text-white px-3 py-1 rounded">Cancel</button>
+                                                <button type="submit" class="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700">Submit</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <div id="accessoryLotOpModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex justify-center items-center z-50">
+                                    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md relative text-left">
+                                        <h2 class="text-lg font-semibold mb-3 text-purple-900 flex items-center justify-between">
+                                            <span>Kelola Lot Accessories</span>
+                                            <button type="button" onclick="closeAccessoryLotOpModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+                                        </h2>
+                                        
+                                        <!-- Form add accessory -->
+                                        <div class="bg-purple-50 p-3 rounded mb-4 border border-purple-200">
+                                            <span class="block text-xs font-bold text-purple-900 mb-2">Tambah Accessory Baru</span>
+                                            <div class="space-y-2 text-xs">
+                                                <div>
+                                                    <label class="block text-gray-600 font-semibold mb-0.5">Jenis Accessories (Alphanumeric)</label>
+                                                    <input type="text" id="accOpName" placeholder="Contoh: Screw / Label / Box" class="w-full border rounded p-1.5 bg-white text-xs">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-gray-600 font-semibold mb-0.5">Kode Lot Accessories (Alphanumeric + Symbol)</label>
+                                                    <input type="text" id="accOpLot" placeholder="Contoh: LOT-ACC#123/B" class="w-full border rounded p-1.5 bg-white text-xs">
+                                                </div>
+                                                <div class="text-right pt-1">
+                                                    <button type="button" onclick="submitAddAccessoryLotOp()" class="bg-purple-700 hover:bg-purple-800 text-white px-3 py-1 rounded font-bold text-xs">
+                                                        + Tambah
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- List existing accessories -->
+                                        <div>
+                                            <span class="block text-xs font-bold text-gray-700 mb-1">Daftar Accessories Terdaftar:</span>
+                                            <div id="accOpListContainer" class="space-y-1 max-h-40 overflow-y-auto pr-1 text-xs">
+                                                <div class="text-gray-400 italic text-center py-2">Loading...</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex justify-end mt-4 pt-2 border-t">
+                                            <button type="button" onclick="closeAccessoryLotOpModal()" class="bg-gray-400 text-white px-3 py-1 rounded text-xs">Tutup</button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -868,10 +1000,53 @@
             
                 <div class="flex gap-6 items-start w-full">
                     <!-- Profile Section -->
-                    <div id="dashboardSection" class="bg-white p-6 rounded-lg shadow-md w-[300px] flex flex-col items-center">
-                        <img id="profileImage" class="w-40 h-40 rounded-full border-2 border-gray-300 object-cover" 
-                            src="{{ asset('default-avatar.png') }}" alt="Profile Picture">
-                        <h2 class="mt-4 text-xl font-bold text-center">Welcome, <span id="operatorName"></span></h2>
+                    <div id="dashboardSection" class="bg-white p-5 rounded-2xl shadow-md w-full sm:w-[320px] flex flex-col items-center border border-gray-100">
+                        <div class="flex flex-col items-center text-center w-full">
+                            <img id="profileImage" class="w-28 h-28 rounded-full border-4 border-indigo-100 object-cover shadow-sm" 
+                                src="{{ asset('default-avatar.png') }}" alt="Profile Picture">
+                            <h2 class="mt-3 text-lg font-bold text-gray-800">
+                                Welcome, <span id="operatorName"></span>
+                            </h2>
+                            <span class="text-[10px] uppercase font-bold tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full mt-1">Operator Utama (1)</span>
+                        </div>
+
+                        <!-- Additional Operators Section (Operator 2 & 3) -->
+                        <div class="w-full mt-4 pt-4 border-t border-gray-100">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-gray-600 uppercase tracking-wider">Operator Tambahan</span>
+                                <span id="operatorCountBadge" class="text-[10px] font-black bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">1 / 3</span>
+                            </div>
+
+                            <!-- Rendered list of additional active operators -->
+                            <div id="activeAdditionalOperatorsList" class="space-y-2 mb-3"></div>
+
+                            <!-- Dropdown select wrapper to add 1 by 1 -->
+                            <div id="addOperatorSelectWrapper" class="hidden mb-2">
+                                <div class="space-y-2 p-2.5 bg-gray-50 rounded-xl border border-gray-200">
+                                    <label class="block text-[11px] font-bold text-gray-700">Pilih Operator Tambahan:</label>
+                                    <select id="select_additional_operator" class="w-full border border-gray-300 rounded-xl text-xs p-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm">
+                                        <option value="">-- Pilih Operator --</option>
+                                        @foreach(($allOperators ?? []) as $op)
+                                            <option value="{{ $op->name }}">
+                                                {{ $op->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="flex gap-2 justify-end">
+                                        <button type="button" id="btnCancelAddOperator" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                                            Batal
+                                        </button>
+                                        <button type="button" id="btnConfirmAddOperator" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
+                                            + Tambah
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="button" id="btnShowAddOperator" class="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition">
+                                <span>➕</span> <span>Tambah Operator (Maks 3)</span>
+                            </button>
+                        </div>
                     </div>
                   
 
@@ -1108,7 +1283,7 @@
                             <dialog id="detailModal" class="rounded-md shadow-lg p-4 w-full max-w-3xl">
                                 <div class="flex justify-between items-center mb-4">
                                     <h3 class="text-lg font-bold">Detail Per Jam - {{ $activeDIC['item_code'] ?? '' }}</h3>
-                                    <button onclick="document.getElementById('addHourlyRemarksModal').showModal()" 
+                                    <button onclick="openAddHourlyRemarksModal()" 
                                             class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
                                         Add Hourly Remarks
                                     </button>
@@ -1116,9 +1291,17 @@
                                 </div>
 
                                 <dialog id="addHourlyRemarksModal" class="rounded-md p-6 w-full max-w-md bg-white shadow">
-                                    <form id="addHourlyRemarksForm" method="POST" action="{{ route('hourly-remarks.store') }}" x-data="autoSubmitForm()" >
+                                    <form id="addHourlyRemarksForm" method="POST" action="{{ route('hourly-remarks.store') }}" x-data="{ nikInput: localStorage.getItem('nik') || '' }">
                                         @csrf
-                                        <h3 class="text-lg font-bold mb-4">Tambah Hourly Remarks</h3>
+                                        <h3 class="text-lg font-bold mb-3">Tambah Hourly Remarks</h3>
+
+                                        <!-- Operator Info Preview -->
+                                        <div id="hourlyRemarksOperatorPreview" class="mb-4 p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl text-xs space-y-1">
+                                            <span class="text-[10px] uppercase font-bold text-indigo-700 tracking-wider block">Operator Bertugas:</span>
+                                            <div id="hourlyRemarksOperatorList" class="flex flex-wrap gap-1.5 pt-0.5">
+                                                <span class="text-gray-400 italic text-xs">Memuat operator...</span>
+                                            </div>
+                                        </div>
 
                                         <label for="start_time" class="block text-sm font-semibold mb-1">Pilih Jam Mulai</label>
                                         <select name="start_time" id="start_time" required
@@ -1139,7 +1322,9 @@
                                         <input type="hidden" name="uniqueData" value='@json($itemCollections)' />
                                         <input type="hidden" name="datas" value='@json($datas)' />
                                         <input type="hidden" name="activedic" value='@json($activeDIC)' />
-                                        <input type="hidden" id="nik" name="nik" x-model="nikInput" />
+                                        <input type="hidden" id="hourly_nik" name="nik" x-model="nikInput" />
+                                        <input type="hidden" id="hourly_pic_2" name="pic_2" />
+                                        <input type="hidden" id="hourly_pic_3" name="pic_3" />
 
                                         <div class="flex justify-end gap-2 mt-4">
                                             <button type="button" onclick="document.getElementById('addHourlyRemarksModal').close()"
@@ -1162,6 +1347,7 @@
                                             <th class="py-2 px-4 border">Actual Production</th>
                                             <th class="py-2 px-4 border">NG</th>
                                             <th class="py-2 px-4 border">Status</th>
+                                            <th class="py-2 px-4 border">Operator (PIC)</th>
                                             <th class="py-2 px-4 border">Remark</th>
                                             <th class="py-2 px-4 border">Action</th>
                                         </tr>
@@ -1187,6 +1373,17 @@
                                                             <span class="px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">Tidak Tercapai</span>
                                                         @endif
                                                     </td>
+                                                    <td class="py-2 px-4 border">
+                                                        <div class="flex flex-col gap-0.5 text-xs text-center items-center">
+                                                            <span class="font-bold text-gray-800">{{ $slot->pic ?: '-' }}</span>
+                                                            @if(!empty($slot->pic_2))
+                                                                <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold">+ {{ $slot->pic_2 }}</span>
+                                                            @endif
+                                                            @if(!empty($slot->pic_3))
+                                                                <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold">+ {{ $slot->pic_3 }}</span>
+                                                            @endif
+                                                        </div>
+                                                    </td>
                                                     <td class="py-2 px-4 border">{{ $slot->remark ?? '-' }}</td>
                                                     <td class="py-2 px-4 border">
                                                         <button 
@@ -1211,13 +1408,12 @@
                                                             Add NG
                                                         </button>
                                                     </td>
-                                                    </td>
                                                 </tr>
 
                                             @endforeach
                                         @else
                                             <tr>
-                                                <td colspan="3" class="text-center py-2 text-gray-500">No hourly data available</td>
+                                                <td colspan="10" class="text-center py-2 text-gray-500">No hourly data available</td>
                                             </tr>
                                         @endif
                                     </tbody>
@@ -1390,8 +1586,25 @@
 
 
                 <div class="bg-white shadow-sm sm:rounded-lg p-4 mt-6">
-                    <h3 class="text-xl font-bold mb-2">Scan Barcode</h3>
-                    <div id="ajaxAlert" class="hidden p-3 rounded mb-4 font-bold text-center"></div>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 mb-3 border-b border-gray-100 gap-2">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900 leading-tight">Scan Barcode</h3>
+                            <p class="text-xs text-gray-500">Scan label kardus hasil produksi secara berurutan</p>
+                        </div>
+                        <!-- Display Ringkasan Label Terakhir -->
+                        <div id="lastScannedBadgeContainer" class="flex items-center bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 shadow-sm transition-all duration-300">
+                            <span class="text-xs font-semibold text-blue-800 uppercase tracking-wider mr-2">Label Terakhir:</span>
+                            <span id="lastScannedLabelNumber" class="text-lg font-black font-mono text-blue-900 bg-white px-2 py-0.5 rounded border border-blue-300 shadow-inner">
+                                {{ (isset($spkData) && $spkData->isNotEmpty()) ? '#' . $spkData->last()->label : '-' }}
+                            </span>
+                            <span id="lastScannedSubMeta" class="ml-2 text-xs text-blue-700 hidden sm:inline-block">
+                                @if(isset($spkData) && $spkData->isNotEmpty())
+                                    (SPK: {{ $spkData->last()->spk_code }} | {{ $spkData->last()->quantity }} pcs)
+                                @endif
+                            </span>
+                        </div>
+                    </div>
+                    <div id="ajaxAlert" class="hidden p-4 rounded-lg mb-4 text-sm font-medium border shadow-sm transition-all duration-300"></div>
                     <form id="scanForm" action="{{ route('process.productionbarcode') }}" method="POST"
                         class="space-y-3" x-data="autoSubmitForm()" >
                         @csrf
@@ -1400,6 +1613,8 @@
                         <input type="hidden" id="datas" name="datas" value="{{ json_encode($datas) }}" />
                         <input type="hidden" id="activedic" name="activedic" value="{{ $activeDIC }}" />
                         <input type="hidden" id="nik" name="nik" x-model="nikInput" />
+                        <input type="hidden" id="pic_2" name="pic_2" />
+                        <input type="hidden" id="pic_3" name="pic_3" />
 
         
                         <!-- Grid Layout for 2 Columns -->
@@ -1408,7 +1623,21 @@
                                 <label for="spk_code">SPK Code</label>
                                 <input type="text" id="spk_code" name="spk_code_auto" required
                                     class="border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-full"
-                                    placeholder="SPK Code" x-on:input="debouncedSubmit()" />
+                                    placeholder="SPK Code" 
+                                    x-on:input="
+                                        if ($el.value.includes('\t')) {
+                                            let parts = $el.value.split('\t');
+                                            if (parts.length >= 4) {
+                                                $el.value = parts[0].trim();
+                                                let qEl = document.getElementById('quantity'); if (qEl) qEl.value = parts[1].trim();
+                                                let wEl = document.getElementById('warehouse'); if (wEl) wEl.value = parts[2].trim();
+                                                let lEl = document.getElementById('label'); if (lEl) lEl.value = parts[3].trim();
+                                                checkAndSubmitForm();
+                                                return;
+                                            }
+                                        }
+                                        debouncedSubmit();
+                                    " />
                             </div>
                             <div>
                                 <label for="quantity">Quantity</label>
@@ -1424,9 +1653,19 @@
                             </div>
                             <div>
                                 <label for="label">Label</label>
-                                <input type="number" id="label" name="label_auto" required
+                                <input type="number" id="label" name="label_auto" required min="1" max="999999"
                                     class="border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-full"
-                                    placeholder="Label" x-on:input="debouncedSubmit()" />
+                                    placeholder="Label" 
+                                    x-on:input="
+                                        let spkVal = document.getElementById('spk_code')?.value.trim();
+                                        if (spkVal && $el.value.endsWith(spkVal) && $el.value.length > spkVal.length) {
+                                            $el.value = $el.value.slice(0, -spkVal.length);
+                                        }
+                                        if ($el.value.length > 6) {
+                                            $el.value = $el.value.slice(0, 6);
+                                        }
+                                        debouncedSubmit();
+                                    " />
                             </div>
                         </div>
 
@@ -1525,12 +1764,22 @@
                                                 <span class="text-red-600 font-semibold">Tidak Tercapai</span>
                                             @endif
                                         </td>
-                                        <td class="py-2 px-4 border">{{ $remark->pic }}</td>
+                                        <td class="py-2 px-4 border">
+                                            <div class="flex flex-col gap-0.5 text-xs text-center items-center">
+                                                <span class="font-bold text-gray-800">{{ $remark->pic ?: '-' }}</span>
+                                                @if(!empty($remark->pic_2))
+                                                    <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold">+ {{ $remark->pic_2 }}</span>
+                                                @endif
+                                                @if(!empty($remark->pic_3))
+                                                    <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold">+ {{ $remark->pic_3 }}</span>
+                                                @endif
+                                            </div>
+                                        </td>
                                         <td class="py-2 px-4 border">{{ $remark->remark ?? '-' }}</td>
                                     </tr>
                                 @empty
                                     <tr>
-                                         <td colspan="7" class="text-center py-3 text-gray-500">Belum ada data summary</td>
+                                         <td colspan="9" class="text-center py-3 text-gray-500">Belum ada data summary</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -1677,34 +1926,54 @@
             $(document).on('click', '#startMouldChange', function () {
                 $('#nikModal').removeClass('hidden').attr('data-action', 'mould');
                 $('#nextItemCodeContainer').removeClass('hidden');
+                $('#nextItemCodeLabel').text('Pilih Item Code Selanjutnya:');
+                $('#next_item_code').val('{{ $defaultNextItemCode }}');
                 $('#setupMolderSelectContainer').removeClass('hidden');
                 $('#adjusterSelectContainer').addClass('hidden');
+                $('#maintenanceSelectContainer').addClass('hidden');
                 $('#nik').val('');
                 $('#password').val('');
                 $('#setup_molder_select').val('');
                 $('#adjuster_select').val('');
+                $('#maintenance_select').val('');
             });
 
             $(document).on('click', '#startAdjustMachine', function () {
                 $('#nikModal').removeClass('hidden').attr('data-action', 'adjust');
                 $('#nextItemCodeContainer').removeClass('hidden');
+                $('#nextItemCodeLabel').text('Pilih Item Code:');
+                @if($itemCode)
+                    $('#next_item_code').val('{{ $itemCode }}');
+                @else
+                    $('#next_item_code').val('{{ $defaultNextItemCode }}');
+                @endif
                 $('#adjusterSelectContainer').removeClass('hidden');
                 $('#setupMolderSelectContainer').addClass('hidden');
+                $('#maintenanceSelectContainer').addClass('hidden');
                 $('#nik').val('');
                 $('#password').val('');
                 $('#setup_molder_select').val('');
                 $('#adjuster_select').val('');
+                $('#maintenance_select').val('');
             });
 
             $(document).on('click', '#startRepairMachine', function () {
                 $('#nikModal').removeClass('hidden').attr('data-action', 'repair');
-                $('#nextItemCodeContainer').addClass('hidden');
+                $('#nextItemCodeContainer').removeClass('hidden');
+                $('#nextItemCodeLabel').text('Pilih Item Code:');
+                @if($itemCode)
+                    $('#next_item_code').val('{{ $itemCode }}');
+                @else
+                    $('#next_item_code').val('{{ $defaultNextItemCode }}');
+                @endif
+                $('#maintenanceSelectContainer').removeClass('hidden');
                 $('#setupMolderSelectContainer').addClass('hidden');
                 $('#adjusterSelectContainer').addClass('hidden');
                 $('#nik').val('');
                 $('#password').val('');
                 $('#setup_molder_select').val('');
                 $('#adjuster_select').val('');
+                $('#maintenance_select').val('');
             });
 
             // Handle Setup Molder selection
@@ -1718,6 +1987,15 @@
 
             // Handle Adjuster selection
             $(document).on('change', '#adjuster_select', function () {
+                let selectedOption = $(this).find('option:selected');
+                let name = selectedOption.val();
+                let password = selectedOption.attr('data-password') || '';
+                $('#nik').val(name);
+                $('#password').val(password);
+            });
+
+            // Handle Maintenance selection
+            $(document).on('change', '#maintenance_select', function () {
                 let selectedOption = $(this).find('option:selected');
                 let name = selectedOption.val();
                 let password = selectedOption.attr('data-password') || '';
@@ -1742,8 +2020,8 @@
                     return;
                 }
 
-                if ((actionType === 'mould' || actionType === 'adjust') && !nextItemCode) {
-                    alert('Please select next item code.');
+                if ((actionType === 'mould' || actionType === 'adjust' || actionType === 'repair') && !nextItemCode) {
+                    alert('Please select item code.');
                     return;
                 }
 
@@ -1762,7 +2040,7 @@
                         } else if (actionType === 'adjust') {
                             startAdjustMachine(verifiedUser.name, nextItemCode);
                         } else if (actionType === 'repair') {
-                            startRepairMachine(verifiedUser.name);
+                            startRepairMachine(verifiedUser.name, nextItemCode);
                         }
                     },
                     error: function (xhr) {
@@ -1858,19 +2136,20 @@
             });
 
             // Start Repair Machine Process
-            function startRepairMachine(picName) {
+            function startRepairMachine(picName, nextItemCode) {
                 $.ajax({
                     url: "{{ route('repair.machine.start') }}",
                     type: "POST",
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    data: { pic_name: picName },
+                    data: { pic_name: picName, item_code: nextItemCode },
                     success: function (response) {
                         alert(response.message);
                         localStorage.setItem('repairMachineOperator', JSON.stringify(response.operator));
                         refreshStatusAndContainers();
                     },
                     error: function (xhr) {
-                        alert(xhr.responseJSON?.error || 'Gagal memulai perbaikan.');
+                        const msg = xhr.responseJSON?.message || xhr.responseJSON?.error || 'Gagal memulai perbaikan.';
+                        alert(msg);
                     }
                 });
             }
@@ -1903,9 +2182,15 @@
             $('#scanForm').on('submit', function (e) {
                 e.preventDefault();
 
+                // Capture input values before clearing
+                const inputSpk = $('#spk_code').val()?.trim() || '';
+                const inputQty = $('#quantity').val()?.trim() || '';
+                const inputWh = $('#warehouse').val()?.trim() || '';
+                const inputLabel = $('#label').val()?.trim() || '';
+
                 // Clear previous alerts
                 const $alert = $('#ajaxAlert');
-                $alert.addClass('hidden').removeClass('bg-green-100 text-green-700 bg-red-100 text-red-700');
+                $alert.addClass('hidden').removeClass('bg-green-50 text-green-900 border-green-500 bg-amber-50 text-amber-900 border-amber-400 bg-red-50 text-red-900 border-red-500 border-2');
 
                 // Get form details
                 const actionUrl = $(this).attr('action');
@@ -1916,25 +2201,75 @@
                     type: 'POST',
                     data: formData,
                     success: function (response) {
-                        // Display success message in alert
-                        $alert.text(response.message)
+                        // Reset submit flag di AlpineJS pada form scan
+                        const scanFormEl = document.getElementById('scanForm');
+                        if (scanFormEl && window.Alpine) {
+                            Alpine.$data(scanFormEl).isSubmitting = false;
+                        }
+
+                        const labelNo = response.label || inputLabel;
+                        const spkNo = response.spk_code || inputSpk;
+                        const qtyNo = response.quantity || inputQty;
+                        const scanTime = response.time || new Date().toLocaleTimeString('id-ID', { hour12: false });
+
+                        // Update badge label terakhir
+                        $('#lastScannedLabelNumber').text('#' + labelNo);
+                        $('#lastScannedSubMeta').text('(SPK: ' + spkNo + ' | ' + qtyNo + ' pcs)').removeClass('hidden');
+                        
+                        // Efek highlight pada badge
+                        const $badgeContainer = $('#lastScannedBadgeContainer');
+                        $badgeContainer.addClass('ring-2 ring-green-400 bg-green-50');
+                        setTimeout(() => {
+                            $badgeContainer.removeClass('ring-2 ring-green-400');
+                        }, 1500);
+
+                        // Render rich alert
+                        if (response.was_recovered) {
+                            $alert.html(`
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-3xl">⚠️</span>
+                                        <div>
+                                            <div class="text-xs font-bold uppercase tracking-wider text-amber-700">Scan Berhasil (Auto-Koreksi)</div>
+                                            <div class="text-base font-extrabold text-amber-900">
+                                                Label <span class="px-2 py-0.5 bg-amber-200 text-amber-900 rounded font-mono text-lg shadow-sm border border-amber-300">#${labelNo}</span>
+                                                <span class="text-xs font-normal text-amber-700 ml-2">(Scan asli terkoreksi dari: <code class="line-through font-bold">${response.original_label}</code>)</span>
+                                            </div>
+                                            <div class="text-xs text-amber-800 mt-0.5 font-semibold">Tercatat: SPK ${spkNo} | Qty: ${qtyNo} pcs</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs font-mono font-bold text-amber-800">${scanTime} WIB</div>
+                                </div>
+                            `)
                             .removeClass('hidden')
-                            .addClass('bg-green-100 text-green-700');
+                            .addClass('bg-amber-50 text-amber-900 border-2 border-amber-400');
+                        } else {
+                            $alert.html(`
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-3xl">✅</span>
+                                        <div>
+                                            <div class="text-xs font-bold uppercase tracking-wider text-green-700">Scan Berhasil</div>
+                                            <div class="text-base font-extrabold text-green-900">
+                                                Label <span class="px-2 py-0.5 bg-green-200 text-green-900 rounded font-mono text-lg shadow-sm border border-green-300">#${labelNo}</span>
+                                                <span class="text-sm font-semibold text-green-800 ml-2">(${qtyNo} pcs | SPK: ${spkNo})</span>
+                                            </div>
+                                            <div class="text-xs text-green-700 mt-0.5">Data berhasil disimpan ke sistem</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs font-mono font-bold text-green-800">${scanTime} WIB</div>
+                                </div>
+                            `)
+                            .removeClass('hidden')
+                            .addClass('bg-green-50 text-green-900 border-2 border-green-500');
+                        }
 
                         // Fetch updated page content via background GET to replace elements
                         $.get(window.location.href, function (html) {
                             const $html = $(html);
-                            
-                            // 1. Update pekerjaanTableContainer
                             $('#pekerjaanTableContainer').html($html.find('#pekerjaanTableContainer').html());
-
-                            // 2. Update detailDataModal tbody
                             $('#detailDataModalTbody').html($html.find('#detailDataModalTbody').html());
-
-                            // 3. Update detailRemarkModal tbody
                             $('#detailRemarkModalTbody').html($html.find('#detailRemarkModalTbody').html());
-
-                            // 4. Update summaryTableContainer
                             $('#summaryTableContainer').html($html.find('#summaryTableContainer').html());
                         });
 
@@ -1949,35 +2284,108 @@
                             $('#spk_code').focus();
                         }, 100);
 
-                        // Clear alert after 5 seconds
-                        setTimeout(function () {
+                        // Clear alert after 7 seconds (if no new scan)
+                        clearTimeout(window.scanAlertTimer);
+                        window.scanAlertTimer = setTimeout(function () {
                             $alert.addClass('hidden');
-                        }, 5000);
+                        }, 7000);
                     },
                     error: function (xhr) {
-                        let errMsg = 'Terjadi kesalahan saat menscan barcode.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            errMsg = xhr.responseJSON.message;
-                        } else if (xhr.responseJSON && xhr.responseJSON.errors) {
-                            // Extract validation errors
-                            const errors = xhr.responseJSON.errors;
-                            errMsg = Object.values(errors).map(errArr => errArr.join(', ')).join('; ');
+                        // Reset submit flag di AlpineJS pada form scan
+                        const scanFormEl = document.getElementById('scanForm');
+                        if (scanFormEl && window.Alpine) {
+                            Alpine.$data(scanFormEl).isSubmitting = false;
                         }
-                        
-                        // Display error in alert
-                        $alert.text(errMsg)
+
+                        const badLabel = xhr.responseJSON?.label || inputLabel || '-';
+                        const badSpk = xhr.responseJSON?.spk_code || inputSpk || '-';
+                        const status = xhr.responseJSON?.status || 'error';
+                        let errMsg = xhr.responseJSON?.message || 'Terjadi kesalahan saat memproses scan barcode.';
+
+                        if (!xhr.responseJSON?.message && xhr.responseJSON?.errors) {
+                            errMsg = Object.values(xhr.responseJSON.errors).map(errArr => errArr.join(', ')).join('; ');
+                        }
+
+                        // Efek highlight error pada badge
+                        const $badgeContainer = $('#lastScannedBadgeContainer');
+                        $badgeContainer.addClass('ring-2 ring-red-400');
+                        setTimeout(() => {
+                            $badgeContainer.removeClass('ring-2 ring-red-400');
+                        }, 2000);
+
+                        let alertHtml = '';
+                        if (status === 'duplicate') {
+                            alertHtml = `
+                                <div class="flex items-center space-x-3 text-left">
+                                    <span class="text-3xl">⛔</span>
+                                    <div>
+                                        <div class="text-xs font-bold uppercase tracking-wider text-red-700">Label Duplikat (Sudah Pernah Di-Scan)</div>
+                                        <div class="text-base font-extrabold text-red-900">
+                                            Label <span class="px-2 py-0.5 bg-red-200 text-red-900 rounded font-mono text-lg shadow-sm border border-red-300">#${badLabel}</span> SUDAH TERCATAT SEBELUMNYA!
+                                        </div>
+                                        <div class="text-xs text-red-700 mt-0.5 font-medium">
+                                            SPK: <strong>${badSpk}</strong>. Kardus dengan nomor label ini sudah discan sebelumnya, mohon pastikan kardus tidak di-scan dua kali.
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (status === 'stutter') {
+                            alertHtml = `
+                                <div class="flex items-center space-x-3 text-left">
+                                    <span class="text-3xl">⚠️</span>
+                                    <div>
+                                        <div class="text-xs font-bold uppercase tracking-wider text-red-700">Scanner Stutter / Key Repeat</div>
+                                        <div class="text-base font-extrabold text-red-900">
+                                            Nilai Terbaca: <span class="px-2 py-0.5 bg-red-200 text-red-900 rounded font-mono text-lg shadow-sm border border-red-300 font-bold">${badLabel}</span>
+                                        </div>
+                                        <div class="text-xs text-red-700 mt-0.5 font-medium">
+                                            Scanner mengirimkan digit berulang (tombol macet). Harap periksa scanner dan scan ulang barcode.
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            alertHtml = `
+                                <div class="flex items-center space-x-3 text-left">
+                                    <span class="text-3xl">⛔</span>
+                                    <div>
+                                        <div class="text-xs font-bold uppercase tracking-wider text-red-700">Scan Barcode Gagal</div>
+                                        <div class="text-base font-extrabold text-red-900">
+                                            Label Diterima: <span class="px-2 py-0.5 bg-red-200 text-red-900 rounded font-mono text-lg shadow-sm border border-red-300">#${badLabel}</span>
+                                        </div>
+                                        <div class="text-xs text-red-700 mt-0.5 font-medium">${errMsg}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        // Display rich error in alert
+                        $alert.html(alertHtml)
                             .removeClass('hidden')
-                            .addClass('bg-red-100 text-red-700');
+                            .addClass('bg-red-50 text-red-900 border-2 border-red-500');
 
                         // Clear inputs but refocus SPK code
                         $('#spk_code').val('');
                         $('#quantity').val('');
                         $('#warehouse').val('');
                         $('#label').val('');
-                        
+
                         setTimeout(function () {
                             $('#spk_code').focus();
                         }, 100);
+
+                        // Keep error visible longer (15s) so operator has time to read
+                        clearTimeout(window.scanAlertTimer);
+                        window.scanAlertTimer = setTimeout(function () {
+                            $alert.addClass('hidden');
+                        }, 15000);
+                    },
+                    complete: function () {
+                        // Pastikan isSubmitting selalu kembali false setelah request selesai
+                        const scanFormEl = document.getElementById('scanForm');
+                        if (scanFormEl && window.Alpine) {
+                            Alpine.$data(scanFormEl).isSubmitting = false;
+                        }
                     }
                 });
             });
@@ -2073,7 +2481,16 @@
             $(document).on('submit', '#addHourlyRemarksForm', function(e) {
                 e.preventDefault();
                 const form = this;
+
+                // Pastikan nik, pic_2, dan pic_3 terisi dari localStorage
+                const op1 = localStorage.getItem('operator_name') || localStorage.getItem('nik') || '';
+                const op2 = localStorage.getItem('operator_name_2') || '';
+                const op3 = localStorage.getItem('operator_name_3') || '';
+
                 const formData = new FormData(form);
+                if (op1 && (!formData.get('nik') || formData.get('nik') === '')) formData.set('nik', op1);
+                if (op2) formData.set('pic_2', op2);
+                if (op3) formData.set('pic_3', op3);
                 
                 $.ajax({
                     url: form.action,
@@ -2083,7 +2500,8 @@
                     contentType: false,
                     success: function (data) {
                         alert(data.message || 'Hourly Remark added successfully!');
-                        // Modal remains open
+                        const modal = document.getElementById('addHourlyRemarksModal');
+                        if (modal) modal.close();
                         
                         // Update containers
                         $.get(window.location.href, function (html) {
@@ -2368,6 +2786,147 @@
         document.addEventListener("DOMContentLoaded", initializeTimer);
 
 
+            const serverAssignedOperators = @json($assignedOperators ?? []);
+            const allOperatorProfiles = {
+                @foreach(($allOperators ?? []) as $op)
+                    "{{ addslashes($op->name) }}": "{{ $op->profile_picture ? asset('storage/' . $op->profile_picture) : asset('default-avatar.png') }}",
+                @endforeach
+            };
+
+            function renderAdditionalOperators() {
+                const op1 = localStorage.getItem('operator_name') || '';
+                let op2 = localStorage.getItem('operator_name_2') || '';
+                let op3 = localStorage.getItem('operator_name_3') || '';
+                const defaultAvatar = "{{ asset('default-avatar.png') }}";
+
+                const list = $('#activeAdditionalOperatorsList');
+                if (!list.length) return;
+                list.empty();
+
+                let count = 1;
+
+                if (op2) {
+                    count++;
+                    const op2Pic = allOperatorProfiles[op2] || defaultAvatar;
+                    list.append(`
+                        <div class="flex items-center justify-between bg-indigo-50/70 border border-indigo-100 rounded-xl p-2 shadow-xs">
+                            <div class="flex items-center gap-2.5">
+                                <img src="${op2Pic}" class="w-8 h-8 rounded-full border border-indigo-200 object-cover shadow-xs" alt="Operator 2 Profile">
+                                <div>
+                                    <span class="text-xs font-bold text-gray-800 block">${op2}</span>
+                                    <span class="text-[9px] text-indigo-600 font-semibold uppercase block">Operator 2</span>
+                                </div>
+                            </div>
+                            <button type="button" onclick="removeAdditionalOperator(2)" class="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg transition text-xs font-bold" title="Hapus Operator 2">
+                                ✕
+                            </button>
+                        </div>
+                    `);
+                }
+
+                if (op3) {
+                    count++;
+                    const op3Pic = allOperatorProfiles[op3] || defaultAvatar;
+                    list.append(`
+                        <div class="flex items-center justify-between bg-indigo-50/70 border border-indigo-100 rounded-xl p-2 shadow-xs">
+                            <div class="flex items-center gap-2.5">
+                                <img src="${op3Pic}" class="w-8 h-8 rounded-full border border-indigo-200 object-cover shadow-xs" alt="Operator 3 Profile">
+                                <div>
+                                    <span class="text-xs font-bold text-gray-800 block">${op3}</span>
+                                    <span class="text-[9px] text-indigo-600 font-semibold uppercase block">Operator 3</span>
+                                </div>
+                            </div>
+                            <button type="button" onclick="removeAdditionalOperator(3)" class="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg transition text-xs font-bold" title="Hapus Operator 3">
+                                ✕
+                            </button>
+                        </div>
+                    `);
+                }
+
+                $('#operatorCountBadge').text(`${count} / 3`);
+
+                if (count >= 3) {
+                    $('#btnShowAddOperator').addClass('hidden');
+                    $('#addOperatorSelectWrapper').addClass('hidden');
+                } else {
+                    $('#btnShowAddOperator').removeClass('hidden');
+                }
+
+                $('#pic_2').val(op2);
+                $('#pic_3').val(op3);
+                updateHourlyRemarksOperatorInputs();
+            }
+
+            function updateHourlyRemarksOperatorInputs() {
+                const op1 = localStorage.getItem('operator_name') || localStorage.getItem('nik') || '';
+                const op2 = localStorage.getItem('operator_name_2') || '';
+                const op3 = localStorage.getItem('operator_name_3') || '';
+
+                $('#hourly_nik').val(op1);
+                $('#hourly_pic_2').val(op2);
+                $('#hourly_pic_3').val(op3);
+
+                const list = $('#hourlyRemarksOperatorList');
+                if (list.length) {
+                    list.empty();
+                    if (op1) {
+                        list.append(`<span class="px-2 py-0.5 bg-white border border-indigo-200 text-gray-800 rounded-md font-semibold text-xs shadow-2xs">👤 ${op1} <span class="text-[9px] text-gray-400 font-normal">(Op 1)</span></span>`);
+                    }
+                    if (op2) {
+                        list.append(`<span class="px-2 py-0.5 bg-indigo-100 border border-indigo-200 text-indigo-800 rounded-md font-semibold text-xs shadow-2xs">👤 ${op2} <span class="text-[9px] text-indigo-500 font-normal">(Op 2)</span></span>`);
+                    }
+                    if (op3) {
+                        list.append(`<span class="px-2 py-0.5 bg-indigo-100 border border-indigo-200 text-indigo-800 rounded-md font-semibold text-xs shadow-2xs">👤 ${op3} <span class="text-[9px] text-indigo-500 font-normal">(Op 3)</span></span>`);
+                    }
+                    if (!op1 && !op2 && !op3) {
+                        list.append(`<span class="text-gray-400 italic text-xs">Belum ada operator terdaftar</span>`);
+                    }
+                }
+            }
+
+            window.openAddHourlyRemarksModal = function() {
+                updateHourlyRemarksOperatorInputs();
+                const modal = document.getElementById('addHourlyRemarksModal');
+                if (modal) modal.showModal();
+            };
+
+            function syncOperatorsToDB() {
+                const op1 = localStorage.getItem('operator_name') || '';
+                const op2 = localStorage.getItem('operator_name_2') || '';
+                const op3 = localStorage.getItem('operator_name_3') || '';
+                const operators = [op1, op2, op3].filter(Boolean);
+
+                $.ajax({
+                    url: "{{ route('updateEmployeeName') }}",
+                    type: "POST",
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    data: { operators: operators },
+                    success: function() {
+                        $.get(window.location.href, function (html) {
+                            const $html = $(html);
+                            $('#detailRemarkModalTbody').html($html.find('#detailRemarkModalTbody').html());
+                            $('#summaryTableContainer').html($html.find('#summaryTableContainer').html());
+                        });
+                    }
+                });
+            }
+
+            window.removeAdditionalOperator = function(index) {
+                if (index === 2) {
+                    const op3 = localStorage.getItem('operator_name_3');
+                    if (op3) {
+                        localStorage.setItem('operator_name_2', op3);
+                        localStorage.removeItem('operator_name_3');
+                    } else {
+                        localStorage.removeItem('operator_name_2');
+                    }
+                } else if (index === 3) {
+                    localStorage.removeItem('operator_name_3');
+                }
+                renderAdditionalOperators();
+                syncOperatorsToDB();
+            };
+
             document.addEventListener("DOMContentLoaded", function () {
                     // Check if user is already verified (persistent login)
                     if (localStorage.getItem("verified")) {
@@ -2382,6 +2941,55 @@
                             $('#loginSection').addClass('hidden');
                         }
                     }
+
+                    if (serverAssignedOperators && serverAssignedOperators.length > 1) {
+                        if (serverAssignedOperators[1] && !localStorage.getItem('operator_name_2')) {
+                            localStorage.setItem('operator_name_2', serverAssignedOperators[1]);
+                        }
+                        if (serverAssignedOperators[2] && !localStorage.getItem('operator_name_3')) {
+                            localStorage.setItem('operator_name_3', serverAssignedOperators[2]);
+                        }
+                    }
+
+                    $('#btnShowAddOperator').on('click', function() {
+                        $('#addOperatorSelectWrapper').removeClass('hidden');
+                        $(this).addClass('hidden');
+                    });
+
+                    $('#btnCancelAddOperator').on('click', function() {
+                        $('#addOperatorSelectWrapper').addClass('hidden');
+                        $('#btnShowAddOperator').removeClass('hidden');
+                    });
+
+                    $('#btnConfirmAddOperator').on('click', function() {
+                        const selected = $('#select_additional_operator').val();
+                        if (!selected) {
+                            alert("Silakan pilih nama operator terlebih dahulu.");
+                            return;
+                        }
+
+                        const op1 = localStorage.getItem('operator_name') || '';
+                        const op2 = localStorage.getItem('operator_name_2') || '';
+                        const op3 = localStorage.getItem('operator_name_3') || '';
+
+                        if (selected === op1 || selected === op2 || selected === op3) {
+                            alert("Operator " + selected + " sudah terdaftar sebagai operator aktif.");
+                            return;
+                        }
+
+                        if (!op2) {
+                            localStorage.setItem('operator_name_2', selected);
+                        } else if (!op3) {
+                            localStorage.setItem('operator_name_3', selected);
+                        }
+
+                        $('#select_additional_operator').val('');
+                        $('#addOperatorSelectWrapper').addClass('hidden');
+                        renderAdditionalOperators();
+                        syncOperatorsToDB();
+                    });
+
+                    renderAdditionalOperators();
                 });
 
             function scanModeHandler(deactivateScanModeFlag) {
@@ -2495,6 +3103,8 @@
 
                         localStorage.removeItem('nik');
                         localStorage.removeItem('operator_name');
+                        localStorage.removeItem('operator_name_2');
+                        localStorage.removeItem('operator_name_3');
                         localStorage.removeItem('profile_picture');
 
                         // Reset UI elements
@@ -2518,6 +3128,7 @@
             return {
                 nikInput: localStorage.getItem('nik') || '',
                 _submitTimer: null,
+                isSubmitting: false,
 
                 debouncedSubmit() {
                     // Cancel any pending submit timer
@@ -2531,16 +3142,46 @@
                 },
 
                 checkAndSubmitForm() {
+                    if (this.isSubmitting) return;
+
                     if (!this.nikInput) {
                         this.nikInput = localStorage.getItem('nik') || '';
                     }
 
-                    // Securely set NIK in scan form hidden input
+                    // Auto-clean & validate label if appended with SPK or stutter
+                    const labelEl = document.getElementById('label');
+                    const spkEl = document.getElementById('spk_code');
+                    if (labelEl && spkEl) {
+                        let lVal = labelEl.value.trim();
+                        let sVal = spkEl.value.trim();
+                        // Auto-strip SPK jika tertempel di belakang nomor label (misal 30026026744)
+                        if (sVal && lVal.endsWith(sVal) && lVal.length > sVal.length) {
+                            lVal = lVal.slice(0, -sVal.length);
+                            labelEl.value = lVal;
+                        }
+                        // Cegah submit jika label terindikasi rusak (panjang > 6 digit atau ada 5 digit kembar berulang)
+                        if (lVal.length > 6 || /(\d)\1{4,}/.test(lVal)) {
+                            alert('Nomor label terindikasi salah scan atau scanner mengalami tombol macet (' + lVal + '). Harap scan ulang.');
+                            labelEl.value = '';
+                            setTimeout(() => spkEl.focus(), 50);
+                            return;
+                        }
+                    }
+
+                    // Securely set NIK, pic_2, pic_3 in scan form hidden input
                     const form = document.getElementById('scanForm');
                     if (form) {
                         const nikHiddenInput = form.querySelector('input[name="nik"]');
                         if (nikHiddenInput) {
                             nikHiddenInput.value = this.nikInput;
+                        }
+                        const pic2HiddenInput = form.querySelector('input[name="pic_2"]');
+                        if (pic2HiddenInput) {
+                            pic2HiddenInput.value = localStorage.getItem('operator_name_2') || '';
+                        }
+                        const pic3HiddenInput = form.querySelector('input[name="pic_3"]');
+                        if (pic3HiddenInput) {
+                            pic3HiddenInput.value = localStorage.getItem('operator_name_3') || '';
                         }
                     }
 
@@ -2552,6 +3193,12 @@
 
                     if (allFilled && this.nikInput) {
                         console.log("✅ Form is valid. Submitting...");
+                        this.isSubmitting = true;
+                        // Auto-unlock safety timeout (2 detik) jika AJAX lambat / tidak ter-reset
+                        setTimeout(() => {
+                            this.isSubmitting = false;
+                        }, 2000);
+                        if (labelEl) labelEl.blur();
                         $('#scanForm').submit();
                     } else {
                         console.warn("❌ Form not submitted. Missing required fields or NIK.");
@@ -2605,6 +3252,136 @@
 
             function closeCycleTimeModal() {
                 document.getElementById('cycleTimeModal').classList.add('hidden');
+            }
+
+            function openMaterialLotModal(dataId, existingValue = '') {
+                document.getElementById('materialLotModal').classList.remove('hidden');
+                document.getElementById('mlDataIdInput').value = dataId;
+                document.getElementById('materialLotInput').value = existingValue;
+
+                // Set form action dynamically
+                document.getElementById('materialLotForm').action = `/daily-item-codes/${dataId}/material-lot`;
+            }
+
+            function closeMaterialLotModal() {
+                document.getElementById('materialLotModal').classList.add('hidden');
+            }
+
+            let currentDicIdForAcc = null;
+
+            function openAccessoryLotOpModal(dicId) {
+                currentDicIdForAcc = dicId;
+                document.getElementById('accOpName').value = '';
+                document.getElementById('accOpLot').value = '';
+                document.getElementById('accessoryLotOpModal').classList.remove('hidden');
+                fetchAccessoryLotsOp(dicId);
+            }
+
+            function closeAccessoryLotOpModal() {
+                document.getElementById('accessoryLotOpModal').classList.add('hidden');
+                currentDicIdForAcc = null;
+            }
+
+            function fetchAccessoryLotsOp(dicId) {
+                const container = document.getElementById('accOpListContainer');
+                if (!container) return;
+                container.innerHTML = `<div class="text-gray-400 italic text-center py-2">Loading...</div>`;
+                
+                fetch(`/daily-item-codes/${dicId}/accessory-lots`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        renderAccessoryLotsOp(data.accessory_lots);
+                    } else {
+                        container.innerHTML = `<div class="text-red-500 text-center py-2">Gagal memuat data.</div>`;
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML = `<div class="text-red-500 text-center py-2">Gagal memuat data.</div>`;
+                });
+            }
+
+            function renderAccessoryLotsOp(lots) {
+                const container = document.getElementById('accOpListContainer');
+                if (!container) return;
+                if (!lots || lots.length === 0) {
+                    container.innerHTML = `<div class="text-gray-400 italic text-center py-3 bg-gray-50 rounded">Belum ada accessory lot.</div>`;
+                    return;
+                }
+                
+                let html = '';
+                lots.forEach(lot => {
+                    html += `
+                        <div class="flex items-center justify-between bg-gray-100 p-2 rounded border">
+                            <div>
+                                <span class="font-bold text-gray-800">${lot.accessory_name}:</span>
+                                <span class="font-semibold text-purple-900 ml-1">${lot.accessory_lot}</span>
+                            </div>
+                            <button type="button" onclick="deleteAccessoryLotOp(${lot.id})" class="text-red-600 font-bold hover:text-red-800 text-xs px-1">
+                                ✕
+                            </button>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+
+            function submitAddAccessoryLotOp() {
+                if (!currentDicIdForAcc) return;
+                
+                const name = document.getElementById('accOpName').value.trim();
+                const lot = document.getElementById('accOpLot').value.trim();
+                
+                if (!name || !lot) {
+                    alert('Harap isi Jenis Accessories dan Kode Lot Accessories!');
+                    return;
+                }
+                
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+                
+                fetch(`/daily-item-codes/${currentDicIdForAcc}/accessory-lots`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ accessory_name: name, accessory_lot: lot })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('accOpName').value = '';
+                        document.getElementById('accOpLot').value = '';
+                        fetchAccessoryLotsOp(currentDicIdForAcc);
+                    } else {
+                        alert('Gagal menambahkan Lot Accessory.');
+                    }
+                })
+                .catch(() => alert('Terjadi kesalahan koneksi.'));
+            }
+
+            function deleteAccessoryLotOp(id) {
+                if (!confirm('Yakin ingin menghapus Lot Accessory ini?')) return;
+                
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+                
+                fetch(`/accessory-lots/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && currentDicIdForAcc) {
+                        fetchAccessoryLotsOp(currentDicIdForAcc);
+                    }
+                })
+                .catch(() => alert('Gagal menghapus Lot Accessory.'));
             }
 
             function openProductionModal(slotId, currentValue = 0) {
@@ -2954,5 +3731,426 @@
                 style="width:0; height:0; border:0; border:none; position:absolute; visibility:hidden;">
         </iframe>
     @endif -->
+
+<!-- Modal Maintenance Checklist (Predictive Maintenance) -->
+<div id="maintenanceChecklistModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Backdrop -->
+        <div id="maintenanceChecklistBackdrop" class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+        <!-- Modal Container -->
+        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-100">
+            
+            <!-- Modal Header -->
+            <div class="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-xl">
+                        🛠️
+                    </div>
+                    <div>
+                        <h3 class="text-base font-black tracking-tight uppercase italic text-white flex items-center gap-2">
+                            Checklist Pengecekan Mesin <span class="text-indigo-400 text-xs font-semibold normal-case">(Predictive Maintenance)</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 font-medium">
+                            Mesin: <span class="text-white font-bold">{{ auth()->user()?->name ?? '-' }}</span> | Tanggal Produksi: <span id="maintChecklistDisplayDate" class="text-indigo-300 font-bold">-</span>
+                        </p>
+                    </div>
+                </div>
+                <button type="button" id="closeMaintenanceChecklistModal" class="text-slate-400 hover:text-white transition-colors p-2 rounded-xl hover:bg-slate-800">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Form Content -->
+            <form id="maintenanceChecklistForm" class="p-6">
+                <input type="hidden" id="maintChecklistMachineId" value="{{ auth()->id() }}">
+
+                <!-- Notice Bar -->
+                <div id="maintChecklistStatusAlert" class="mb-6 p-4 rounded-2xl text-xs font-semibold flex items-center justify-between border hidden"></div>
+
+                <!-- 17 Items Section -->
+                <div id="maintChecklistItemsContainer" class="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                    <!-- Loaded dynamically via JS -->
+                    <div class="py-12 text-center text-gray-400 font-bold text-xs">
+                        Loading item checklist...
+                    </div>
+                </div>
+
+                <!-- Bottom Signatures & Time -->
+                <div class="mt-6 pt-6 border-t border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-2xl">
+                    <div>
+                        <label class="block text-[11px] font-black uppercase tracking-wider text-gray-500 mb-1">
+                            Prepared BY (PIC Maintenance) <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="maintPreparedBy" 
+                            name="prepared_by" 
+                            required 
+                            placeholder="Ketik Nama PIC..." 
+                            oninput="this.value = this.value.toUpperCase()"
+                            class="w-full px-3 py-2 text-xs font-bold uppercase rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                        >
+                        <span class="text-[9px] text-gray-400 italic">Otomatis CAPS LOCK</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-black uppercase tracking-wider text-gray-500 mb-1">
+                            Approved BY (Atasan)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="maintApprovedBy" 
+                            name="approved_by" 
+                            placeholder="Ketik Nama Atasan..." 
+                            oninput="this.value = this.value.toUpperCase()"
+                            class="w-full px-3 py-2 text-xs font-bold uppercase rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                        >
+                        <span class="text-[9px] text-gray-400 italic">Otomatis CAPS LOCK</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-black uppercase tracking-wider text-gray-500 mb-1">
+                            Jam Pengecekan
+                        </label>
+                        <input 
+                            type="time" 
+                            id="maintCheckTime" 
+                            name="check_time" 
+                            class="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                        >
+                    </div>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button" id="btnCancelMaintChecklist" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit" id="btnSaveMaintChecklist" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2">
+                        <span>💾 Simpan Checklist</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+window.validateNumericInput = function(input, itemName) {
+    const val = parseFloat(input.value);
+    const hintEl = input.closest('.flex-col').querySelector('.numeric-hint-tag');
+    if (!hintEl) return;
+
+    if (isNaN(val) || input.value.trim() === '') {
+        hintEl.className = 'numeric-hint-tag text-[10px] font-bold text-gray-400';
+        hintEl.textContent = itemName.toLowerCase().includes('temp') ? 'Standar: Normal (< 60)' : 'Standar: Normal (100-200Kgf)';
+        input.classList.remove('border-red-500', 'border-emerald-500');
+        return;
+    }
+
+    let isNormal = true;
+    if (itemName.toLowerCase().includes('temp')) {
+        isNormal = (val < 60);
+    } else if (itemName.toLowerCase().includes('pump')) {
+        isNormal = (val >= 100 && val <= 200);
+    }
+
+    if (isNormal) {
+        hintEl.className = 'numeric-hint-tag text-[10px] font-black text-emerald-600';
+        hintEl.textContent = '✓ Normal';
+        input.classList.remove('border-red-500');
+        input.classList.add('border-emerald-500');
+    } else {
+        hintEl.className = 'numeric-hint-tag text-[10px] font-black text-red-600 animate-pulse';
+        hintEl.textContent = '⚠️ ABNORMAL (Di luar standar)';
+        input.classList.remove('border-emerald-500');
+        input.classList.add('border-red-500');
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const btnOpen = document.getElementById('btnOpenMaintenanceChecklist');
+    const modal = document.getElementById('maintenanceChecklistModal');
+    const backdrop = document.getElementById('maintenanceChecklistBackdrop');
+    const btnClose = document.getElementById('closeMaintenanceChecklistModal');
+    const btnCancel = document.getElementById('btnCancelMaintChecklist');
+    const form = document.getElementById('maintenanceChecklistForm');
+    const itemsContainer = document.getElementById('maintChecklistItemsContainer');
+    const displayDateEl = document.getElementById('maintChecklistDisplayDate');
+    const alertEl = document.getElementById('maintChecklistStatusAlert');
+    const machineIdEl = document.getElementById('maintChecklistMachineId');
+    if (!machineIdEl) return;
+    const machineId = machineIdEl.value;
+
+    function openModal() {
+        modal.classList.remove('hidden');
+        loadChecklistData();
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+    }
+
+    if (btnOpen) btnOpen.addEventListener('click', openModal);
+    if (btnClose) btnClose.addEventListener('click', closeModal);
+    if (btnCancel) btnCancel.addEventListener('click', closeModal);
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+
+    function loadChecklistData() {
+        itemsContainer.innerHTML = `
+            <div class="py-12 text-center text-gray-400 font-bold text-xs flex flex-col items-center gap-2">
+                <svg class="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <span>Mengambil data checklist hari ini...</span>
+            </div>
+        `;
+
+        fetch(`/maintenance-checklist/today/${machineId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    itemsContainer.innerHTML = `<div class="p-4 text-red-600 text-xs font-bold text-center">Gagal memuat data checklist.</div>`;
+                    return;
+                }
+
+                displayDateEl.textContent = data.display_date;
+
+                const header = data.header;
+                const detailsMap = {};
+                if (header && header.details) {
+                    header.details.forEach(d => {
+                        detailsMap[d.item_id] = d;
+                    });
+                }
+
+                const now = new Date();
+                const defaultTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+                document.getElementById('maintPreparedBy').value = header ? (header.prepared_by || '') : '';
+                document.getElementById('maintApprovedBy').value = header ? (header.approved_by || '') : '';
+                document.getElementById('maintCheckTime').value = header ? (header.check_time || defaultTime) : defaultTime;
+
+                if (data.is_filled) {
+                    alertEl.className = 'mb-6 p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-between';
+                    alertEl.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span>✅ Checklist hari ini (${data.display_date}) sudah terisi. Anda dapat mengedit & menyimpan ulang.</span>
+                        </div>
+                    `;
+                    alertEl.classList.remove('hidden');
+                } else {
+                    alertEl.className = 'mb-6 p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center justify-between';
+                    alertEl.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span>⚠️ Checklist hari ini (${data.display_date}) belum terisi. Silakan lengkapi form di bawah ini.</span>
+                        </div>
+                    `;
+                    alertEl.classList.remove('hidden');
+                }
+
+                renderItems(data.items, detailsMap);
+            })
+            .catch(err => {
+                console.error(err);
+                itemsContainer.innerHTML = `<div class="p-4 text-red-600 text-xs font-bold text-center">Terjadi kesalahan server saat memuat data.</div>`;
+            });
+    }
+
+    function renderItems(items, detailsMap) {
+        const periods = ['Daily', 'Weekly', 'Two weeks'];
+        const periodBadges = {
+            'Daily': 'bg-blue-100 text-blue-800 border-blue-200',
+            'Weekly': 'bg-purple-100 text-purple-800 border-purple-200',
+            'Two weeks': 'bg-orange-100 text-orange-800 border-orange-200',
+        };
+
+        let html = '';
+
+        periods.forEach(p => {
+            const periodItems = items.filter(i => i.period === p);
+            if (periodItems.length === 0) return;
+
+            html += `
+                <div class="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-2xs mb-4">
+                    <div class="bg-gray-100/80 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                        <span class="text-xs font-black uppercase tracking-wider text-gray-700 flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-black border ${periodBadges[p] || 'bg-gray-100'}">${p}</span>
+                            <span>Pengecekan ${p} (${periodItems.length} Item)</span>
+                        </span>
+                    </div>
+                    <div class="divide-y divide-gray-100 text-xs">
+            `;
+
+            periodItems.forEach((item) => {
+                const detail = detailsMap[item.id];
+                const isNonDaily = (item.period === 'Weekly' || item.period === 'Two weeks');
+                const savedVal = detail ? detail.value : (item.input_type === 'numeric' ? '' : (isNonDaily ? '-' : 'OK'));
+                
+                let inputHtml = '';
+                if (item.input_type === 'ok_ng') {
+                    if (isNonDaily) {
+                        const isSkip = (!detail && savedVal === '-') || savedVal === '-';
+                        const isOk = (savedVal === 'OK');
+                        const isNg = (savedVal === 'NG');
+
+                        inputHtml = `
+                            <div class="flex items-center gap-1.5">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="items[${item.id}][value]" value="-" ${isSkip ? 'checked' : ''} class="peer sr-only">
+                                    <span class="px-3 py-1.5 rounded-xl border text-xs font-black transition-all peer-checked:bg-slate-600 peer-checked:text-white peer-checked:border-slate-600 bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100">
+                                        - (Lewati)
+                                    </span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="items[${item.id}][value]" value="OK" ${isOk ? 'checked' : ''} class="peer sr-only">
+                                    <span class="px-3 py-1.5 rounded-xl border text-xs font-black transition-all peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100">
+                                        ✓ OK
+                                    </span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="items[${item.id}][value]" value="NG" ${isNg ? 'checked' : ''} class="peer sr-only">
+                                    <span class="px-3 py-1.5 rounded-xl border text-xs font-black transition-all peer-checked:bg-red-600 peer-checked:text-white peer-checked:border-red-600 bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100">
+                                        ✕ NG
+                                    </span>
+                                </label>
+                            </div>
+                        `;
+                    } else {
+                        const isOk = (savedVal === 'OK' || savedVal === '' || !detail);
+                        inputHtml = `
+                            <div class="flex items-center gap-2">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="items[${item.id}][value]" value="OK" ${isOk ? 'checked' : ''} class="peer sr-only">
+                                    <span class="px-4 py-1.5 rounded-xl border text-xs font-black transition-all peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100">
+                                        ✓ OK
+                                    </span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="items[${item.id}][value]" value="NG" ${!isOk ? 'checked' : ''} class="peer sr-only">
+                                    <span class="px-4 py-1.5 rounded-xl border text-xs font-black transition-all peer-checked:bg-red-600 peer-checked:text-white peer-checked:border-red-600 bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100">
+                                        ✕ NG
+                                    </span>
+                                </label>
+                            </div>
+                        `;
+                    }
+                } else if (item.input_type === 'numeric') {
+                    inputHtml = `
+                        <div class="flex flex-col items-end gap-1">
+                            <div class="flex items-center gap-2">
+                                <input 
+                                    type="text" 
+                                    name="items[${item.id}][value]" 
+                                    value="${savedVal}" 
+                                    placeholder="Nilai..." 
+                                    required
+                                    oninput="validateNumericInput(this, '${item.item_name}')"
+                                    class="w-32 px-3 py-1.5 rounded-xl border border-gray-300 font-bold text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                >
+                                <span class="bg-gray-100 text-gray-700 font-black text-xs px-2.5 py-1 rounded-lg border border-gray-200">${item.unit || ''}</span>
+                            </div>
+                            <span class="numeric-hint-tag text-[10px] font-bold text-gray-400">Standar: ${item.standard}</span>
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div class="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-gray-50/50 transition-colors ${isNonDaily && savedVal === '-' ? 'opacity-75' : ''}">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-black text-gray-400 text-[10px] w-5">${item.sort_order}.</span>
+                                <span class="font-bold text-gray-800 text-xs">${item.item_name}</span>
+                            </div>
+                            <div class="ml-7 text-[10px] text-gray-400 font-medium">
+                                Standar: <span class="text-gray-600 font-semibold">${item.standard}</span> | Kriteria: <span class="text-gray-600 font-semibold">${item.kriteria}</span>
+                            </div>
+                        </div>
+                        <div class="ml-7 md:ml-0">
+                            ${inputHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+
+        itemsContainer.innerHTML = html;
+    }
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('btnSaveMaintChecklist');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span>⏳ Menyimpan...</span>`;
+
+            const formData = new FormData(form);
+            const payload = {
+                machine_id: machineId,
+                prepared_by: formData.get('prepared_by'),
+                approved_by: formData.get('approved_by'),
+                check_time: formData.get('check_time'),
+                items: {}
+            };
+
+            const radioChecked = form.querySelectorAll('input[type="radio"]:checked');
+            radioChecked.forEach(radio => {
+                const match = radio.name.match(/items\[(\d+)\]\[value\]/);
+                if (match) {
+                    payload.items[match[1]] = radio.value;
+                }
+            });
+
+            const textInputs = form.querySelectorAll('input[type="text"][name^="items"]');
+            textInputs.forEach(input => {
+                const match = input.name.match(/items\[(\d+)\]\[value\]/);
+                if (match) {
+                    payload.items[match[1]] = input.value;
+                }
+            });
+
+            fetch('/maintenance-checklist/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    closeModal();
+
+                    if (btnOpen) {
+                        btnOpen.className = 'px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-all duration-150 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white';
+                        btnOpen.innerHTML = `
+                            <span>🛠️ Maintenance Checklist</span>
+                            <span class="bg-emerald-800 text-emerald-100 text-[10px] px-2 py-0.5 rounded-full font-black uppercase">Sudah Diisi</span>
+                        `;
+                    }
+                } else {
+                    alert('✕ ' + (data.message || 'Gagal menyimpan checklist.'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('✕ Terjadi kesalahan saat menghubungi server.');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span>💾 Simpan Checklist</span>`;
+            });
+        });
+    }
+});
+</script>
 
 </x-app-layout>

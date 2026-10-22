@@ -2,19 +2,22 @@
 
 namespace App\Models;
 
+use App\Models\Delivery\DelschedFinal;
+use App\Models\Delivery\sapInventoryFg;
+use App\Traits\BelongsToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Delivery\sapInventoryFg;
-use App\Models\Delivery\DelschedFinal;
 
 class DailyItemCode extends Model
 {
+    use BelongsToBranch;
     use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
         'user_id',
+        'branch_id',
         'item_code',
         'quantity',
         'final_quantity',
@@ -28,7 +31,11 @@ class DailyItemCode extends Model
         'start_date',
         'end_date',
         'remark',
+        'material_lot',
+        'temporal_cycle_time',
         'temporal_cycletime',
+        'temporal_cavity',
+        'temporal_cavity',
         'resin_usage',
     ];
 
@@ -45,6 +52,11 @@ class DailyItemCode extends Model
     public function masterItem()
     {
         return $this->hasOne(MasterListItem::class, 'item_code', 'item_code');
+    }
+
+    public function accessoryLots()
+    {
+        return $this->hasMany(DicAccessoryLot::class, 'dic_id', 'id');
     }
 
     public function machinerelation()
@@ -69,7 +81,8 @@ class DailyItemCode extends Model
 
     public function delsched()
     {
-        return $this->hasMany(DelschedFinal::class,
+        return $this->hasMany(
+            DelschedFinal::class,
             'item_code',
             'item_code'
         );

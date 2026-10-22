@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Setting;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Setting\HolidaySchedule;
 use App\Exports\HolidayScheduleExport;
+use App\Http\Controllers\Controller;
 use App\Imports\HolidayScheduleImport;
+use App\Models\Setting\HolidaySchedule;
+use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
 class HolidayScheduleController extends Controller
@@ -15,12 +15,10 @@ class HolidayScheduleController extends Controller
     {
         $datas = HolidaySchedule::all();
 
-        
         return view('setting.holiday-schedule.index', compact('datas'));
     }
 
-
-        public function create()
+    public function create()
     {
         // Return the view for creating a new holiday schedule
         return view('setting.holiday-schedule.create');

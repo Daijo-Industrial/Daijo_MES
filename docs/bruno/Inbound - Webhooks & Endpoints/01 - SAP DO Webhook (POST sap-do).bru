@@ -1,0 +1,54 @@
+meta {
+  name: 01 - SAP DO Webhook (POST sap-do)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{mes_base_url}}/api/sap/do
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  X-API-KEY: {{mes_api_key}}
+}
+
+body:json {
+  [
+    {
+      "doc_num": "DO-20261016-001",
+      "customer": "PT. INDONESIA THAILAND SPECIAL PARTS",
+      "posting_date": "2026-10-16",
+      "item_code": "TSPT10188XA-INJ",
+      "item_name": "PANEL CONSOLE RR SIDE LH",
+      "quantity": 100,
+      "sales_uom": "PCS",
+      "packaging_quantity": 20,
+      "sales_pack": "BOX",
+      "create_date": "2026-10-16",
+      "update_date": "2026-10-16",
+      "update_fulltime": 133000
+    }
+  ]
+}
+
+docs {
+  # SAP Delivery Order (DO) Inbound Webhook
+  
+  Endpoint: `POST /api/sap/do`
+  Controller: `App\Http\Controllers\Store\SOController::storeFromSap`
+  Middleware: `['ip.and.apikey', 'throttle:sap-api']`
+  
+  Autentikasi:
+  - Whitelist IP: `192.168.6.1` (IP SAP server)
+  - Header: `X-API-KEY: <API_SECRET_KEY>`
+  
+  Fungsi:
+  - Menerima kumpulan data Delivery Order dari SAP.
+  - Melakukan rekonsiliasi otomatis: Item yang ada di MES tapi tidak lagi ada di payload SAP untuk `doc_num` tersebut akan dihapus.
+  - Mengupdate atau membuat record baru di tabel `so_datas`.
+  - Mencatat request & response ke tabel `api_logs` (API Name: `DO Sync`).
+}

@@ -12,6 +12,7 @@ use Illuminate\Queue\SerializesModels;
 class DailyWaitingPurchaseOrders extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
+
     public $orders;
 
     /**

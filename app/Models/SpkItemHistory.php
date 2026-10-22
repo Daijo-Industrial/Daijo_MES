@@ -15,6 +15,4 @@ class SpkItemHistory extends Model
         'spk_number',
         'item_code',
     ];
-
-
 }

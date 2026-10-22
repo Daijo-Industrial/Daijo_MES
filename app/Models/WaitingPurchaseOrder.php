@@ -15,14 +15,14 @@ class WaitingPurchaseOrder extends Model
         'price',
         'quotation_no',
         'remark',
-        'doc_num'
+        'doc_num',
     ];
 
     protected static function boot()
     {
         parent::boot();
 
-        static::created(function($order){
+        static::created(function ($order) {
             // Format the date into yyyymmdd
             $dateCreated = $order->created_at->format('Ymd');
 

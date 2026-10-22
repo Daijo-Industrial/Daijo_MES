@@ -1,16 +1,16 @@
 <?php
 
-
 namespace App\Livewire\Asakai;
 
-use Livewire\Component;
 use App\Models\Asakai;
 use Livewire\Attributes\Layout;
+use Livewire\Component;
 
 #[Layout('layouts.dashboard')]
 class AsakaiDetail extends Component
 {
     public $asakai;
+
     public $asakaiId;
 
     public function mount($id)
@@ -26,7 +26,7 @@ class AsakaiDetail extends Component
             'rcas',
             'correctiveActions',
             'creator',
-            'updater'
+            'updater',
         ])->findOrFail($this->asakaiId);
     }
 
@@ -51,6 +51,7 @@ class AsakaiDetail extends Component
 
         $this->asakai->delete();
         session()->flash('success', 'Data Asakai berhasil dihapus!');
+
         return redirect()->route('asakai.index');
     }
 

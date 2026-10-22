@@ -277,6 +277,15 @@ class UsersTableSeeder extends Seeder
             ],
             [
                 'role_id' => Role::where('name', 'OPERATOR')->first()->id,
+                'name' => '0300A',
+                'email' => '0300A@daijo.co.id',
+                'password' => Hash::make('0300A'),
+                'remember_token' => null,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ],
+            [
+                'role_id' => Role::where('name', 'OPERATOR')->first()->id,
                 'name' => '0350A',
                 'email' => '0350A@daijo.co.id',
                 'password' => Hash::make('0350A'),

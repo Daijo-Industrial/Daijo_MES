@@ -2,37 +2,39 @@
 
 namespace App\Livewire\Asakai;
 
-use Livewire\Component;
 use App\Models\Asakai;
-use Livewire\Attributes\Validate;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Validate;
+use Livewire\Component;
 
 #[Layout('layouts.dashboard')]
 class AsakaiForm extends Component
 {
     public $asakaiId = null;
+
     public $isEdit = false;
+
     public $isClosed = false;
 
     // Main Fields
     #[Validate('required|string')]
     public $customer;
-    
+
     #[Validate('required|string')]
     public $part_no;
-    
+
     #[Validate('required|string')]
     public $issue;
-    
+
     #[Validate('required|integer|min:1')]
     public $quantity;
-    
+
     #[Validate('required|in:Shift 1,Shift 2,Shift 3')]
     public $lot_shift;
-    
+
     #[Validate('required|date')]
     public $lot_date;
-    
+
     #[Validate('required|date')]
     public $date_issue;
 
@@ -53,11 +55,17 @@ class AsakaiForm extends Component
 
     // Other Fields
     public $pokayoke;
+
     public $audit_date;
+
     public $reply_date;
+
     public $verify;
+
     public $fmea_cp;
+
     public $std_work;
+
     public $remark;
 
     public function mount($id = null)
@@ -67,6 +75,7 @@ class AsakaiForm extends Component
 
             if ($this->isClosed) {
                 session()->flash('error', 'Data tidak dapat diedit karena sudah berstatus CLOSED!');
+
                 return redirect()->route('asakai.detail', $id);
             }
         }
@@ -75,24 +84,24 @@ class AsakaiForm extends Component
     public function loadAsakai($id)
     {
         $asakai = Asakai::with(['pics', 'rcas', 'correctiveActions'])->findOrFail($id);
-        
+
         $this->asakaiId = $asakai->id;
         $this->isEdit = true;
         $this->isClosed = $asakai->status === 'closed';
-        
+
         // Fill main data
         $this->customer = $asakai->customer;
         $this->part_no = $asakai->part_no;
         $this->issue = $asakai->issue;
         $this->quantity = $asakai->quantity;
         $this->lot_shift = $asakai->lot_shift;
-        
+
         // FIX: Format tanggal untuk input type="date" (Y-m-d)
         $this->lot_date = $asakai->lot_date ? $asakai->lot_date->format('Y-m-d') : null;
         $this->date_issue = $asakai->date_issue ? $asakai->date_issue->format('Y-m-d') : null;
         $this->audit_date = $asakai->audit_date ? $asakai->audit_date->format('Y-m-d') : null;
         $this->reply_date = $asakai->reply_date ? $asakai->reply_date->format('Y-m-d') : null;
-        
+
         $this->pokayoke = $asakai->pokayoke;
         $this->verify = $asakai->verify;
         $this->fmea_cp = $asakai->fmea_cp;
@@ -100,8 +109,8 @@ class AsakaiForm extends Component
         $this->remark = $asakai->remark;
 
         // Fill PICs
-        $this->pics = $asakai->pics->count() > 0 
-            ? $asakai->pics->pluck('pic_name')->toArray() 
+        $this->pics = $asakai->pics->count() > 0
+            ? $asakai->pics->pluck('pic_name')->toArray()
             : [''];
 
         // Fill RCAs
@@ -149,11 +158,12 @@ class AsakaiForm extends Component
     {
         if ($this->isClosed) {
             session()->flash('error', 'Data tidak dapat diubah karena sudah berstatus CLOSED!');
+
             return;
         }
 
         $this->validate();
-        
+
         // Custom Validation
         $this->validateRcas();
         $this->validatePics();
@@ -163,7 +173,7 @@ class AsakaiForm extends Component
         try {
             // FIX: Ambil existing asakai dulu kalau edit
             $existingAsakai = $this->asakaiId ? Asakai::find($this->asakaiId) : null;
-            
+
             $asakai = Asakai::updateOrCreate(
                 ['id' => $this->asakaiId],
                 [
@@ -199,7 +209,7 @@ class AsakaiForm extends Component
             // Save RCAs
             $asakai->rcas()->delete();
             foreach ($this->rcas as $rca) {
-                if (!empty($rca['description'])) {
+                if (! empty($rca['description'])) {
                     $asakai->rcas()->create($rca);
                 }
             }
@@ -214,8 +224,9 @@ class AsakaiForm extends Component
             }
 
             \DB::commit();
-            
+
             session()->flash('success', 'Asakai berhasil disimpan!');
+
             return redirect()->route('asakai.index');
 
         } catch (\Exception $e) {
@@ -226,8 +237,8 @@ class AsakaiForm extends Component
 
     protected function validateRcas()
     {
-        $filledRcas = array_filter($this->rcas, fn($rca) => !empty($rca['description']));
-        
+        $filledRcas = array_filter($this->rcas, fn ($rca) => ! empty($rca['description']));
+
         if (count($filledRcas) < 3) {
             $this->addError('rcas', 'Minimal 3 Why harus diisi untuk RCA');
             throw new \Illuminate\Validation\ValidationException(
@@ -239,7 +250,7 @@ class AsakaiForm extends Component
     protected function validatePics()
     {
         $filledPics = array_filter($this->pics);
-        
+
         if (count($filledPics) < 1) {
             $this->addError('pics', 'Minimal 1 PIC harus diisi');
             throw new \Illuminate\Validation\ValidationException(
@@ -251,7 +262,7 @@ class AsakaiForm extends Component
     protected function validateCorrectiveActions()
     {
         $filledActions = array_filter($this->corrective_actions);
-        
+
         if (count($filledActions) < 1) {
             $this->addError('corrective_actions', 'Minimal 1 Corrective Action harus diisi');
             throw new \Illuminate\Validation\ValidationException(

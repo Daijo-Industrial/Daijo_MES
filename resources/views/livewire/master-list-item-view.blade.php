@@ -8,15 +8,31 @@
     </div>
     @endif
 
-    {{-- Header --}}
-    <div style="margin-bottom:20px;">
-        <h1 style="font-size:20px; font-weight:800; color:#1A1816; margin:0 0 2px 0;
-                   font-family:'IBM Plex Mono',monospace; letter-spacing:-.5px;">
-            MASTER LIST ITEM
-        </h1>
-        <p style="font-size:12px; color:#7A756E; margin:0;">
-            {{ $items->total() }} items total
-        </p>
+    {{-- Header & Stats --}}
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+        <div>
+            <h1 style="font-size:20px; font-weight:800; color:#1A1816; margin:0 0 2px 0;
+                       font-family:'IBM Plex Mono',monospace; letter-spacing:-.5px;">
+                MASTER LIST ITEM
+            </h1>
+            <p style="font-size:12px; color:#7A756E; margin:0;">
+                Kelola item master dan relasi customer untuk Second Process & Delivery
+            </p>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button type="button" wire:click="$set('filterConnection', 'all')"
+                style="padding:6px 12px; border-radius:3px; font-size:11px; font-weight:700; cursor:pointer; font-family:'IBM Plex Mono',monospace; border:1px solid {{ $filterConnection === 'all' ? '#1A1816' : '#D8D4CC' }}; background:{{ $filterConnection === 'all' ? '#1A1816' : '#fff' }}; color:{{ $filterConnection === 'all' ? '#fff' : '#1A1816' }}; transition:all 0.15s;">
+                TOTAL: {{ number_format($this->counts['total']) }}
+            </button>
+            <button type="button" wire:click="$set('filterConnection', 'connected')"
+                style="padding:6px 12px; border-radius:3px; font-size:11px; font-weight:700; cursor:pointer; font-family:'IBM Plex Mono',monospace; border:1px solid {{ $filterConnection === 'connected' ? '#059669' : '#A7F3D0' }}; background:{{ $filterConnection === 'connected' ? '#059669' : '#ECFDF5' }}; color:{{ $filterConnection === 'connected' ? '#fff' : '#065F46' }}; transition:all 0.15s;">
+                ✓ TERHUBUNG: {{ number_format($this->counts['connected']) }}
+            </button>
+            <button type="button" wire:click="$set('filterConnection', 'unassigned')"
+                style="padding:6px 12px; border-radius:3px; font-size:11px; font-weight:700; cursor:pointer; font-family:'IBM Plex Mono',monospace; border:1px solid {{ $filterConnection === 'unassigned' ? '#D97706' : '#FDE68A' }}; background:{{ $filterConnection === 'unassigned' ? '#D97706' : '#FFFBEB' }}; color:{{ $filterConnection === 'unassigned' ? '#fff' : '#92400E' }}; transition:all 0.15s;">
+                ⚠️ BELUM TERHUBUNG: {{ number_format($this->counts['unassigned']) }}
+            </button>
+        </div>
     </div>
 
     {{-- Filter bar --}}
@@ -34,6 +50,16 @@
                           box-sizing:border-box;">
         </div>
 
+        {{-- Filter Connection Status --}}
+        <select wire:model.live="filterConnection"
+                style="padding:8px 10px; border:1px solid #D8D4CC; border-radius:3px;
+                       font-size:12px; background:#fff; font-family:'IBM Plex Sans',sans-serif;
+                       color:#1A1816; min-width:160px;">
+            <option value="all">Semua Status Relasi</option>
+            <option value="connected">✓ Terhubung Customer</option>
+            <option value="unassigned">⚠️ Belum Terhubung (N/A)</option>
+        </select>
+
         {{-- Filter Customer --}}
         <select wire:model.live="filterCustomer"
                 style="padding:8px 10px; border:1px solid #D8D4CC; border-radius:3px;
@@ -41,7 +67,7 @@
                        color:#1A1816; min-width:160px;">
             <option value="">— All Customers</option>
             @foreach($this->customerList as $customer)
-            <option value="{{ $customer->customer_code }}">{{ $customer->customer_name }}</option>
+            <option value="{{ $customer->customer_code }}">[{{ $customer->customer_code }}] {{ $customer->customer_name }}</option>
             @endforeach
         </select>
 
@@ -140,9 +166,9 @@
                                 style="width:100%; padding:4px 6px; border:1px solid #4F46E5;
                                        border-radius:2px; font-size:11px; background:#fff;
                                        font-family:'IBM Plex Mono',monospace;">
-                            <option value="">— None</option>
+                            <option value="">— Belum Terhubung (N/A)</option>
                             @foreach($this->customerList as $customer)
-                            <option value="{{ $customer->customer_code }}">{{ $customer->customer_name }}</option>
+                            <option value="{{ $customer->customer_code }}">[{{ $customer->customer_code }}] {{ $customer->customer_name }}</option>
                             @endforeach
                         </select>
                         @error('addForm.customer_code') <div style="color:#DC2626; font-size:9px; margin-top:2px;">{{ $message }}</div> @enderror
@@ -234,9 +260,9 @@
                                 style="width:100%; padding:4px 6px; border:1px solid #F59E0B;
                                        border-radius:2px; font-size:11px; background:#fff;
                                        font-family:'IBM Plex Mono',monospace;">
-                            <option value="">— None</option>
+                            <option value="">— Belum Terhubung (N/A)</option>
                             @foreach($this->customerList as $customer)
-                            <option value="{{ $customer->customer_code }}">{{ $customer->customer_name }}</option>
+                            <option value="{{ $customer->customer_code }}">[{{ $customer->customer_code }}] {{ $customer->customer_name }}</option>
                             @endforeach
                         </select>
                     </td>
@@ -319,7 +345,10 @@
                             {{ $item->customer->customer_name }}
                         </span>
                         @else
-                        <span style="color:#C8C4BC; font-size:11px;">—</span>
+                        <span style="background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; font-size:9px; font-weight:700;
+                                     padding:2px 6px; border-radius:2px; display:inline-flex; align-items:center; gap:3px;">
+                            ⚠️ Belum Terhubung (N/A)
+                        </span>
                         @endif
                     </td>
                     <td style="padding:8px 12px; font-size:11px; color:#3D3935;

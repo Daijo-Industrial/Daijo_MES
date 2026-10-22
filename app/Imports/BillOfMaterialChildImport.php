@@ -3,9 +3,9 @@
 namespace App\Imports;
 
 use App\Models\Production\PRD_BillOfMaterialChild;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
-use Carbon\Carbon;
 
 class BillOfMaterialChildImport implements ToCollection
 {
@@ -20,7 +20,7 @@ class BillOfMaterialChildImport implements ToCollection
     {
         // Skip the first row if it's a header
         $isHeader = true;
-        
+
         foreach ($rows as $row) {
             if ($isHeader) {
                 $isHeader = false;

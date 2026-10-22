@@ -239,19 +239,83 @@
                                                         </thead>
                                                         <tbody>
                                                             @foreach ($item->hourlyRemarks as $hr)
-                                                                <tr class="border-t">
-                                                                    <td class="px-2 py-1">{{ $hr->start_time }}</td>
-                                                                    <td class="px-2 py-1">{{ $hr->end_time }}</td>
-                                                                    <td class="px-2 py-1">{{ $hr->target ?? '-' }}</td>
-                                                                    <td class="px-2 py-1">{{ $hr->actual ?? '-' }}</td>
-                                                                    <td class="px-2 py-1">{{ $hr->actual_production ?? '-' }}</td>
-                                                                    <td class="px-2 py-1">{{ $hr->remark ?? '-' }}</td>
-                                                                    <td class="px-4 py-2">
-                                                                        <form action="{{ route('hourlyremarks.destroy', $hr->id) }}" method="POST" onsubmit="return confirm('Yakin hapus remark ini beserta data scan terkait?')">
-                                                                            @csrf
-                                                                            @method('DELETE')
-                                                                            <button type="submit" class="text-red-600 hover:underline text-xs">Hapus</button>
-                                                                        </form>
+                                                                @php
+                                                                    $initActual = $hr->actual_production !== null ? $hr->actual_production : 0;
+                                                                    $initRemark = $hr->remark ?? '';
+                                                                    $dispActual = $hr->actual_production !== null ? (string)$hr->actual_production : '-';
+                                                                    $dispRemark = ($hr->remark !== null && trim($hr->remark) !== '') ? $hr->remark : '-';
+                                                                @endphp
+                                                                <tr class="border-t hover:bg-gray-50/50" 
+                                                                    x-data="{ 
+                                                                        editing: false, 
+                                                                        actual: {{ json_encode($initActual) }}, 
+                                                                        remark: {{ json_encode($initRemark) }},
+                                                                        displayActual: {{ json_encode($dispActual) }},
+                                                                        displayRemark: {{ json_encode($dispRemark) }},
+                                                                        isSaving: false,
+                                                                        save() {
+                                                                            this.isSaving = true;
+                                                                            $.ajax({
+                                                                                url: '{{ url('/hourly-remarks') }}/{{ $hr->id }}/update-remark',
+                                                                                type: 'POST',
+                                                                                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                                                                data: {
+                                                                                    actual_production: this.actual,
+                                                                                    remark: this.remark
+                                                                                },
+                                                                                success: (res) => {
+                                                                                    this.isSaving = false;
+                                                                                    this.editing = false;
+                                                                                    this.displayActual = (this.actual !== '' && this.actual !== null) ? this.actual : '-';
+                                                                                    this.displayRemark = (this.remark && this.remark.trim() !== '') ? this.remark : '-';
+                                                                                },
+                                                                                error: (xhr) => {
+                                                                                    this.isSaving = false;
+                                                                                    alert('Gagal menyimpan perubahan.');
+                                                                                }
+                                                                            });
+                                                                        }
+                                                                    }">
+                                                                    <td class="px-2 py-1 text-gray-600">{{ $hr->start_time }}</td>
+                                                                    <td class="px-2 py-1 text-gray-600">{{ $hr->end_time }}</td>
+                                                                    <td class="px-2 py-1 font-semibold">{{ $hr->target ?? '-' }}</td>
+                                                                    <td class="px-2 py-1 font-semibold text-blue-600">{{ $hr->actual ?? '-' }}</td>
+                                                                    
+                                                                    <!-- Editable Actual Production -->
+                                                                    <td class="px-2 py-1">
+                                                                        <span x-show="!editing" class="font-bold text-emerald-700" x-text="displayActual"></span>
+                                                                        <input x-show="editing" type="number" min="0" x-model="actual" class="w-20 border border-indigo-300 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 font-bold">
+                                                                    </td>
+
+                                                                    <!-- Editable Remark -->
+                                                                    <td class="px-2 py-1 min-w-[200px]">
+                                                                        <span x-show="!editing" class="whitespace-pre-wrap text-gray-700 block" x-text="displayRemark"></span>
+                                                                        <textarea x-show="editing" x-model="remark" rows="2" class="w-full border border-indigo-300 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500" placeholder="Ketik remark..."></textarea>
+                                                                    </td>
+
+                                                                    <!-- Action Column -->
+                                                                    <td class="px-2 py-1">
+                                                                        <div class="flex items-center gap-2">
+                                                                            <button x-show="!editing" type="button" @click="editing = true" class="text-indigo-600 hover:text-indigo-800 font-bold text-xs flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition cursor-pointer">
+                                                                                ✏️ Edit
+                                                                            </button>
+
+                                                                            <div x-show="editing" class="flex items-center gap-1" style="display: none;">
+                                                                                <button type="button" @click="save()" :disabled="isSaving" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded text-xs transition shadow-sm cursor-pointer">
+                                                                                    <span x-show="!isSaving">💾 Simpan</span>
+                                                                                    <span x-show="isSaving">...</span>
+                                                                                </button>
+                                                                                <button type="button" @click="editing = false" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-2 py-1 rounded text-xs transition cursor-pointer">
+                                                                                    Batal
+                                                                                </button>
+                                                                            </div>
+
+                                                                            <form action="{{ route('hourlyremarks.destroy', $hr->id) }}" method="POST" onsubmit="return confirm('Yakin hapus remark ini beserta data scan terkait?')" class="inline">
+                                                                                @csrf
+                                                                                @method('DELETE')
+                                                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-semibold hover:underline cursor-pointer">Hapus</button>
+                                                                            </form>
+                                                                        </div>
                                                                     </td>
                                                                 </tr>
                                                             @endforeach

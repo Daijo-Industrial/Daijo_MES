@@ -8,9 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class sapInventoryMtr extends Model
 {
     use HasFactory;
+
     protected $table = 'sap_inventory_mtr';
+
     public $timestamps = false;
+
     public $incrementing = false;
+
     protected $primaryKey = null;
 
     protected $fillable = [
@@ -21,6 +25,6 @@ class sapInventoryMtr extends Model
         'in_stock',
         'item_group',
         'vendor_code',
-        'vendor_name',    
+        'vendor_name',
     ];
 }

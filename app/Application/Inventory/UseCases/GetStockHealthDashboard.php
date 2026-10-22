@@ -25,7 +25,7 @@ class GetStockHealthDashboard
 {
     public function __construct(
         private readonly FgInventoryRepositoryInterface $fgRepository,
-        private readonly RejectRepositoryInterface      $rejectRepository,
+        private readonly RejectRepositoryInterface $rejectRepository,
     ) {}
 
     /**
@@ -41,40 +41,40 @@ class GetStockHealthDashboard
         $rejectMap = $this->rejectRepository->getKeyedByItemNo();
 
         $fgRows = $this->fgRepository->getAll([
-            'search'        => $filter->search,
-            'processOwner'  => $filter->processOwner,
-            'family'        => $filter->family,
+            'search' => $filter->search,
+            'processOwner' => $filter->processOwner,
+            'family' => $filter->family,
         ]);
 
         $items = $fgRows->map(function (object $row) use ($rejectMap): StockHealthItemDTO {
-            $stock       = (int) ($row->stock        ?? 0);
+            $stock = (int) ($row->stock ?? 0);
             $safetyStock = (int) ($row->safety_stock ?? 0);
             $rejectStock = $rejectMap[$row->item_code] ?? 0;
 
             return new StockHealthItemDTO(
-                itemCode:     $row->item_code    ?? '',
-                itemName:     $row->item_name    ?? '',
+                itemCode: $row->item_code ?? '',
+                itemName: $row->item_name ?? '',
                 processOwner: $row->process_owner ?? '',
-                family:       $row->family        ?? '',
-                stock:        $stock,
-                safetyStock:  $safetyStock,
-                rejectStock:  $rejectStock,
-                status:       StockStatus::fromStock($stock, $safetyStock),
+                family: $row->family ?? '',
+                stock: $stock,
+                safetyStock: $safetyStock,
+                rejectStock: $rejectStock,
+                status: StockStatus::fromStock($stock, $safetyStock),
             );
         })->values()->all();
 
         $summary = $this->buildSummary($items);
 
         return [
-            'items'         => $items,
-            'summary'       => $summary,
+            'items' => $items,
+            'summary' => $summary,
             'processOwners' => $this->fgRepository->getDistinctProcessOwners(),
-            'families'      => $this->fgRepository->getDistinctFamilies(),
+            'families' => $this->fgRepository->getDistinctFamilies(),
         ];
     }
 
     /**
-     * @param  StockHealthItemDTO[]  $items
+     * @param StockHealthItemDTO[] $items
      * @return array{total: int, healthy: int, at_risk: int, critical: int}
      */
     private function buildSummary(array $items): array
@@ -83,8 +83,8 @@ class GetStockHealthDashboard
 
         foreach ($items as $item) {
             match ($item->status) {
-                StockStatus::Healthy  => $summary['healthy']++,
-                StockStatus::AtRisk   => $summary['at_risk']++,
+                StockStatus::Healthy => $summary['healthy']++,
+                StockStatus::AtRisk => $summary['at_risk']++,
                 StockStatus::Critical => $summary['critical']++,
             };
         }

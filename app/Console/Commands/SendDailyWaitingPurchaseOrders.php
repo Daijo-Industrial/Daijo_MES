@@ -35,18 +35,20 @@ class SendDailyWaitingPurchaseOrders extends Command
 
         if ($waitingOrders->isEmpty()) {
             $this->info('No waiting purchase orders found.');
+
             return 0;
         }
 
         $notificationType = NotificationType::where('name', 'daily-waiting-purchase-orders')->first();
 
         $recipients = NotificationRecipient::where('notification_type_id', $notificationType->id)
-                                        ->where('active', true)
-                                        ->pluck('email')
-                                        ->toArray();
+            ->where('active', true)
+            ->pluck('email')
+            ->toArray();
 
         if (empty($recipients)) {
             $this->info('No recipients configured for this notification type.');
+
             return 0;
         }
 
@@ -56,6 +58,7 @@ class SendDailyWaitingPurchaseOrders extends Command
         }
 
         $this->info('Daily waiting purchase order notifications sent successfully.');
+
         return 0;
     }
 }

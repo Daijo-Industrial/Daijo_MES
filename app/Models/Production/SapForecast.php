@@ -8,8 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class SapForecast extends Model
 {
     use HasFactory;
+
     protected $table = 'sap_forecast';
+
     public $timestamps = false;
+
     // public $incrementing = false;
-    protected $primaryKey = null; 
+    protected $primaryKey = null;
 }

@@ -18,9 +18,21 @@ class HourlyRemark extends Model
         'remark',
         'is_achieve',
         'pic',
+        'pic_2',
+        'pic_3',
         'actual_production',
         'NG',
     ];
+
+    public function getPicsArrayAttribute()
+    {
+        return array_values(array_filter([$this->pic, $this->pic_2, $this->pic_3]));
+    }
+
+    public function getPicsStringAttribute()
+    {
+        return implode(', ', $this->pics_array);
+    }
 
     public function dailyItemCode()
     {
@@ -32,7 +44,6 @@ class HourlyRemark extends Model
         return $this->hasMany(ProductionNgDetail::class, 'hourly_remark_id');
     }
 
-    
     protected static function boot()
     {
         parent::boot();
@@ -40,7 +51,7 @@ class HourlyRemark extends Model
         static::updating(function ($model) {
             // Jika kolom actual_production tidak berubah,
             // nonaktifkan timestamps agar updated_at tidak diperbarui
-            if (!$model->isDirty('actual_production')) {
+            if (! $model->isDirty('actual_production')) {
                 $model->timestamps = false;
             }
         });

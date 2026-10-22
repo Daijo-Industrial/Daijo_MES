@@ -100,14 +100,27 @@
                 @foreach($structuredData as $machineName => $data)
                     @php
                         $zoneName = collect($data['pengawas'])->pluck('zone_name')->first();
+                        $machineUser = \App\Models\User::where('name', $machineName)->first();
                     @endphp
                     <div class="border p-4 rounded-xl mb-6 shadow-md bg-white">
-                        <h2 class="text-xl font-bold mb-4">
-                            Machine: {{ $machineName }} 
-                            @if($zoneName)
-                                || ZONA {{ $zoneName }}
+                        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <h2 class="text-xl font-bold">
+                                Machine: {{ $machineName }} 
+                                @if($zoneName)
+                                    || ZONA {{ $zoneName }}
+                                @endif
+                            </h2>
+
+                            @if($machineUser)
+                                <button 
+                                    type="button" 
+                                    onclick="openMasterMaintChecklistModal({{ $machineUser->id }}, '{{ $machineName }}', '{{ $selectedDate }}')" 
+                                    class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                                >
+                                    <span>🛠️ Cek Maintenance Checklist</span>
+                                </button>
                             @endif
-                        </h2>
+                        </div>
                          <h1>
                             <!-- Daily Percentage : {{ $data['average_achievement'] ?? 0 }} % -->
                             Efficiency: {{ $data['machine_efficiency'] ?? 0 }}%
@@ -402,9 +415,9 @@
                                     <span class="w-2.5 h-5 bg-indigo-600 rounded-sm"></span>
                                     <span>Hourly Remarks</span>
                                 </h4>
-                                <div class="overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-white mt-2">
+                                <div class="rounded-2xl border border-slate-200 shadow-sm bg-white mt-2 relative">
                                     <table class="w-full text-sm text-left text-slate-600 border-collapse">
-                                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold uppercase text-xs tracking-wider">
+                                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold uppercase text-xs tracking-wider rounded-t-2xl">
                                             <tr>
                                                 <th class="px-4 py-3.5">PIC</th>
                                                 <th class="px-4 py-3.5">Item Code</th>
@@ -461,9 +474,60 @@
                                             @endphp
 
                                             <tr class="hover:bg-slate-50/70 transition-colors {{ $borderIndicator }}">
-                                                <td class="px-4 py-3.5 flex items-center space-x-3">
-                                                    <img src="{{ $remark['pic_profile_path'] }}" alt="PIC Profile" class="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-sm">
-                                                    <span class="font-medium text-slate-800">{{ $remark['pic'] }}</span>
+                                                <td class="px-4 py-3.5 relative">
+                                                    @if(($remark['pics_count'] ?? 1) > 1)
+                                                        <div class="relative inline-block pic-dropdown-container">
+                                                            <button type="button" 
+                                                                class="pic-dropdown-btn flex items-center space-x-2 text-left p-1 -m-1 rounded-lg hover:bg-indigo-50/80 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer group"
+                                                                title="Klik untuk melihat {{ $remark['pics_count'] }} PIC">
+                                                                
+                                                                <!-- Avatar Stack -->
+                                                                <div class="flex -space-x-2 overflow-hidden flex-shrink-0">
+                                                                    @foreach(array_slice($remark['pics'], 0, 2) as $p)
+                                                                        <img src="{{ $p['profile_path'] }}" alt="{{ $p['name'] }}" class="inline-block w-7 h-7 rounded-full ring-2 ring-white object-cover shadow-xs">
+                                                                    @endforeach
+                                                                </div>
+
+                                                                <!-- Primary Name & Badge -->
+                                                                <div class="flex items-center space-x-1.5">
+                                                                    <span class="font-semibold text-slate-800 text-xs sm:text-sm group-hover:text-indigo-700 transition-colors">{{ $remark['pic'] }}</span>
+                                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-700 border border-indigo-200 group-hover:bg-indigo-200 transition-colors shadow-2xs">
+                                                                        +{{ count($remark['pics']) - 1 }}
+                                                                        <svg class="w-3 h-3 ml-0.5 transform transition-transform group-hover:translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                                                                        </svg>
+                                                                    </span>
+                                                                </div>
+                                                            </button>
+
+                                                            <!-- Dropdown Menu -->
+                                                            <div class="pic-dropdown-menu hidden absolute left-0 {{ $loop->remaining < 2 && count($data['hourly_remarks']) > 2 ? 'bottom-full mb-2' : 'top-full mt-2' }} z-50 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 p-2.5 transition-all transform origin-top-left">
+                                                                <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 px-1">
+                                                                    <div class="flex items-center space-x-1.5">
+                                                                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                                                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Daftar PIC ({{ $remark['pics_count'] }})</span>
+                                                                    </div>
+                                                                    <span class="text-[10px] text-slate-400 font-medium">Shift {{ $remark['shift'] }}</span>
+                                                                </div>
+                                                                <div class="space-y-1.5">
+                                                                    @foreach($remark['pics'] as $p)
+                                                                        <div class="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                                                                            <img src="{{ $p['profile_path'] }}" alt="{{ $p['name'] }}" class="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-xs flex-shrink-0">
+                                                                            <div class="min-w-0 flex-1">
+                                                                                <div class="text-xs font-bold text-slate-800 truncate">{{ $p['name'] }}</div>
+                                                                                <div class="text-[10px] font-semibold text-indigo-600">{{ $p['role'] }}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @else
+                                                        <div class="flex items-center space-x-2.5">
+                                                            <img src="{{ $remark['pic_profile_path'] }}" alt="PIC Profile" class="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-sm flex-shrink-0">
+                                                            <span class="font-medium text-slate-800 text-xs sm:text-sm">{{ $remark['pic'] }}</span>
+                                                        </div>
+                                                    @endif
                                                 </td>
                                                 <td class="px-4 py-3.5 font-mono text-xs font-semibold text-slate-700">{{ $remark['item_code'] }}</td>
                                                 <td class="px-4 py-3.5 text-xs text-slate-500">
@@ -956,13 +1020,52 @@
                                         <td class="px-5 py-4 text-center text-slate-500 font-mono">{{ $remark['target'] }}</td>
                                         <td class="px-5 py-4 text-center font-bold text-slate-700 font-mono">{{ $remark['actual_production'] }}</td>
                                         <td class="px-5 py-4 text-center font-bold text-rose-600 font-mono">{{ $remark['ng'] }}</td>
-                                        <td class="px-5 py-4">
-                                            <div class="flex items-center space-x-2">
-                                                <img src="{{ asset($remark['pic_profile_path']) }}"
-                                                     alt="{{ $remark['pic'] }}"
-                                                     class="w-7 h-7 rounded-full object-cover border border-gray-200 shadow-sm">
-                                                <span class="font-medium text-slate-700">{{ $remark['pic'] }}</span>
-                                            </div>
+                                        <td class="px-5 py-4 relative">
+                                            @if(($remark['pics_count'] ?? 1) > 1)
+                                                <div class="relative inline-block pic-dropdown-container">
+                                                    <button type="button" 
+                                                        class="pic-dropdown-btn flex items-center space-x-2 text-left p-1 -m-1 rounded-lg hover:bg-indigo-50/80 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer group"
+                                                        title="Klik untuk melihat {{ $remark['pics_count'] }} PIC">
+                                                        <div class="flex -space-x-2 overflow-hidden flex-shrink-0">
+                                                            @foreach(array_slice($remark['pics'], 0, 2) as $p)
+                                                                <img src="{{ asset($p['profile_path']) }}" alt="{{ $p['name'] }}" class="inline-block w-6 h-6 rounded-full ring-2 ring-white object-cover shadow-xs">
+                                                            @endforeach
+                                                        </div>
+                                                        <div class="flex items-center space-x-1.5">
+                                                            <span class="font-medium text-slate-700 text-xs group-hover:text-indigo-700 transition-colors">{{ $remark['pic'] }}</span>
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-700 border border-indigo-200 group-hover:bg-indigo-200 transition-colors shadow-2xs">
+                                                                +{{ count($remark['pics']) - 1 }}
+                                                                <svg class="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                                                                </svg>
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                    <div class="pic-dropdown-menu hidden absolute left-0 top-full mt-2 z-50 w-60 bg-white rounded-xl shadow-2xl border border-slate-200 p-2.5 transition-all">
+                                                        <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-100 px-1">
+                                                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Daftar PIC ({{ $remark['pics_count'] }})</span>
+                                                        </div>
+                                                        <div class="space-y-1">
+                                                            @foreach($remark['pics'] as $p)
+                                                                <div class="flex items-center space-x-2 p-1 rounded-lg hover:bg-slate-50">
+                                                                    <img src="{{ asset($p['profile_path']) }}" alt="{{ $p['name'] }}" class="w-7 h-7 rounded-full object-cover border border-slate-200">
+                                                                    <div class="min-w-0 flex-1">
+                                                                        <div class="text-xs font-bold text-slate-800 truncate">{{ $p['name'] }}</div>
+                                                                        <div class="text-[10px] text-indigo-600 font-semibold">{{ $p['role'] }}</div>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <div class="flex items-center space-x-2">
+                                                    <img src="{{ asset($remark['pic_profile_path']) }}"
+                                                         alt="{{ $remark['pic'] }}"
+                                                         class="w-7 h-7 rounded-full object-cover border border-gray-200 shadow-sm">
+                                                    <span class="font-medium text-slate-700 text-xs">{{ $remark['pic'] }}</span>
+                                                </div>
+                                            @endif
                                         </td>
                                         <td class="px-5 py-4 text-slate-600 italic whitespace-normal break-words min-w-[200px]">{{ $remark['remark'] }}</td>
                                     </tr>
@@ -1311,5 +1414,217 @@
         document.getElementById("ngDetailModal").classList.add("hidden");
     }
 
+</script>
+
+<!-- Modal Maintenance Checklist for Master Production Dashboard -->
+<div id="masterMaintChecklistModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div id="masterMaintBackdrop" onclick="closeMasterMaintChecklistModal()" class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-100">
+            <!-- Header Modal -->
+            <div class="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-xl">
+                        🛠️
+                    </div>
+                    <div>
+                        <h3 class="text-base font-black tracking-tight uppercase italic text-white flex items-center gap-2">
+                            Checklist Predictive Maintenance
+                        </h3>
+                        <p class="text-xs text-slate-400 font-medium">
+                            Mesin: <span id="masterMaintMachineName" class="text-white font-bold">-</span> | Tanggal Laporan: <span id="masterMaintDisplayDate" class="text-indigo-300 font-bold">-</span>
+                        </p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeMasterMaintChecklistModal()" class="text-slate-400 hover:text-white transition-colors p-2 rounded-xl hover:bg-slate-800">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Body Modal -->
+            <div id="masterMaintModalBody" class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                <div class="py-12 text-center text-gray-400 font-bold text-xs flex flex-col items-center gap-2">
+                    <svg class="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>Mengambil data checklist...</span>
+                </div>
+            </div>
+
+            <!-- Footer Modal -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end">
+                <button type="button" onclick="closeMasterMaintChecklistModal()" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold text-xs rounded-xl transition-colors">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openMasterMaintChecklistModal(machineId, machineName, selectedDate) {
+    const modal = document.getElementById('masterMaintChecklistModal');
+    const machineNameEl = document.getElementById('masterMaintMachineName');
+    const displayDateEl = document.getElementById('masterMaintDisplayDate');
+    const bodyEl = document.getElementById('masterMaintModalBody');
+
+    machineNameEl.textContent = machineName;
+    displayDateEl.textContent = selectedDate;
+    modal.classList.remove('hidden');
+
+    bodyEl.innerHTML = `
+        <div class="py-12 text-center text-gray-400 font-bold text-xs flex flex-col items-center gap-2">
+            <svg class="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <span>Mengambil data checklist Predictive Maintenance...</span>
+        </div>
+    `;
+
+    fetch(`/maintenance-checklist/today/${machineId}?date=${selectedDate}`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                bodyEl.innerHTML = `<div class="p-4 text-red-600 text-xs font-bold text-center">Gagal memuat data checklist.</div>`;
+                return;
+            }
+
+            displayDateEl.textContent = data.display_date;
+
+            if (!data.is_filled || !data.header) {
+                bodyEl.innerHTML = `
+                    <div class="py-12 px-6 text-center bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
+                        <div class="text-3xl">⏳</div>
+                        <h4 class="text-sm font-black text-amber-800 uppercase">Belum Ada Data Checklist</h4>
+                        <p class="text-xs text-amber-700 font-medium max-w-md mx-auto">
+                            Checklist Predictive Maintenance untuk mesin <span class="font-bold text-amber-900">${machineName}</span> pada tanggal <span class="font-bold text-amber-900">${data.display_date}</span> belum diisi oleh tim Maintenance.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            const header = data.header;
+            const detailsMap = {};
+            if (header.details) {
+                header.details.forEach(d => { detailsMap[d.item_id] = d; });
+            }
+
+            let html = `
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-200/80 mb-4">
+                    <div>
+                        <span class="text-[10px] font-black uppercase text-gray-400 block mb-0.5">Prepared BY (PIC Maintenance)</span>
+                        <span class="font-black text-gray-900 uppercase text-sm block">${header.prepared_by || '-'}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-black uppercase text-gray-400 block mb-0.5">Approved BY (Atasan)</span>
+                        <span class="font-black text-slate-800 uppercase text-sm block">${header.approved_by || '-'}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-black uppercase text-gray-400 block mb-0.5">Jam Pengecekan</span>
+                        <span class="font-black text-indigo-600 text-sm block">${header.check_time || '-'}</span>
+                    </div>
+                </div>
+            `;
+
+            const periods = ['Daily', 'Weekly', 'Two weeks'];
+            const periodBadges = {
+                'Daily': 'bg-blue-100 text-blue-800 border-blue-200',
+                'Weekly': 'bg-purple-100 text-purple-800 border-purple-200',
+                'Two weeks': 'bg-orange-100 text-orange-800 border-orange-200',
+            };
+
+            periods.forEach(p => {
+                const groupItems = data.items.filter(i => i.period === p);
+                if (groupItems.length === 0) return;
+
+                html += `
+                    <div class="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-2xs mb-4">
+                        <div class="bg-gray-100/80 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                            <span class="text-xs font-black uppercase tracking-wider text-gray-700 flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-black border ${periodBadges[p] || 'bg-gray-100'}">${p}</span>
+                                <span>Pengecekan ${p} (${groupItems.length} Item)</span>
+                            </span>
+                        </div>
+                        <div class="divide-y divide-gray-100 text-xs">
+                `;
+
+                groupItems.forEach(item => {
+                    const d = detailsMap[item.id];
+                    const val = d ? d.value : '-';
+                    const isNormal = d ? d.is_normal : true;
+
+                    let badgeHtml = '';
+                    if (val === 'OK') {
+                        badgeHtml = `<span class="px-3.5 py-1 rounded-xl bg-emerald-600 text-white font-black text-xs inline-block">✓ OK</span>`;
+                    } else if (val === '-') {
+                        badgeHtml = `<span class="px-3.5 py-1 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs inline-block border border-slate-200">- Lewati</span>`;
+                    } else if (!isNormal || val === 'NG') {
+                        badgeHtml = `<span class="px-3.5 py-1 rounded-xl bg-red-600 text-white font-black text-xs inline-block animate-pulse shadow-sm">⚠️ ${val} ${item.unit || ''} (ABNORMAL)</span>`;
+                    } else {
+                        badgeHtml = `<span class="px-3.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 font-black text-xs inline-block">✓ ${val} ${item.unit || ''} (Normal)</span>`;
+                    }
+
+                    html += `
+                        <div class="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-gray-50/50 transition-colors ${val !== '-' && (!isNormal || val === 'NG') ? 'bg-red-50/50' : ''}">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-black text-gray-400 text-[10px] w-5">${item.sort_order}.</span>
+                                    <span class="font-bold text-gray-800 text-xs">${item.item_name}</span>
+                                </div>
+                                <div class="ml-7 text-[10px] text-gray-400 font-medium">
+                                    Standar: <span class="text-gray-600 font-semibold">${item.standard}</span> | Kriteria: <span class="text-gray-600 font-semibold">${item.kriteria}</span>
+                                </div>
+                            </div>
+                            <div class="ml-7 md:ml-0">
+                                ${badgeHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            bodyEl.innerHTML = html;
+        })
+        .catch(err => {
+            console.error(err);
+            bodyEl.innerHTML = `<div class="p-4 text-red-600 text-xs font-bold text-center">Terjadi kesalahan server saat mengambil data.</div>`;
+        });
+}
+
+function closeMasterMaintChecklistModal() {
+    const modal = document.getElementById('masterMaintChecklistModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// Global click handler to toggle PIC dropdowns in Hourly Remarks
+document.addEventListener('click', function (e) {
+    const toggleBtn = e.target.closest('.pic-dropdown-btn');
+    const container = e.target.closest('.pic-dropdown-container');
+
+    if (toggleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const parent = toggleBtn.closest('.pic-dropdown-container');
+        const menu = parent ? parent.querySelector('.pic-dropdown-menu') : null;
+        if (!menu) return;
+
+        const isOpen = !menu.classList.contains('hidden');
+
+        // Close all open dropdowns first
+        document.querySelectorAll('.pic-dropdown-menu').forEach(m => m.classList.add('hidden'));
+
+        // Toggle current dropdown
+        if (!isOpen) {
+            menu.classList.remove('hidden');
+        }
+    } else if (!container) {
+        // Clicked outside any PIC dropdown container, close all
+        document.querySelectorAll('.pic-dropdown-menu').forEach(m => m.classList.add('hidden'));
+    }
+});
 </script>
 </x-dashboard-layout>

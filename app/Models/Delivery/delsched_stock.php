@@ -2,7 +2,6 @@
 
 namespace App\Models\Delivery;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class delsched_stock extends Model

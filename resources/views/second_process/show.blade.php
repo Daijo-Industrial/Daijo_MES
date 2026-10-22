@@ -10,12 +10,12 @@
                     class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition">
                     Print Report
                 </button>
-                @if ($report->status === 'draft')
+                @can('update', $report)
                     <a href="{{ route('second-process-reports.edit', $report->id) }}"
                         class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition">
                         Edit Report
                     </a>
-                @endif
+                @endcan
             </div>
         </div>
     </div>
@@ -52,15 +52,15 @@
                     @elseif($report->status === 'submitted')
                         <span
                             class="px-2.5 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800 uppercase">Submitted</span>
-                        <span class="text-xs text-gray-500">Pending Quality Inspection (PQC) sign-off.</span>
-                    @elseif($report->status === 'pqc_approved')
-                        <span
-                            class="px-2.5 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800 uppercase">PQC
-                            Approved</span>
                         <span class="text-xs text-gray-500">Pending Team Leader review.</span>
                     @elseif($report->status === 'leader_approved')
                         <span
                             class="px-2.5 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800 uppercase">Leader
+                            Approved</span>
+                        <span class="text-xs text-gray-500">Pending Supervisor acknowledgment (PQC review optional).</span>
+                    @elseif($report->status === 'pqc_approved')
+                        <span
+                            class="px-2.5 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800 uppercase">PQC
                             Approved</span>
                         <span class="text-xs text-gray-500">Pending Supervisor acknowledgment.</span>
                     @elseif($report->status === 'acknowledged')
@@ -73,52 +73,72 @@
 
             <div class="flex items-center space-x-2">
                 @if ($report->status === 'draft')
-                    <form action="{{ route('second-process-reports.sign', [$report->id, 'checker']) }}" method="POST">
-                        @csrf
-                        <button type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
-                            Submit Report
-                        </button>
-                    </form>
+                    @can('sign', [$report, 'checker'])
+                        <form action="{{ route('second-process-reports.sign', [$report->id, 'checker']) }}" method="POST">
+                            @csrf
+                            <button type="submit"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
+                                Submit Report
+                            </button>
+                        </form>
+                    @endcan
                 @elseif($report->status === 'submitted')
-                    <form action="{{ route('second-process-reports.sign', [$report->id, 'pqc']) }}" method="POST"
-                        class="inline">
-                        @csrf
-                        <button type="submit"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
-                            Sign as PQC
+                    @can('sign', [$report, 'leader'])
+                        <form action="{{ route('second-process-reports.sign', [$report->id, 'leader']) }}" method="POST"
+                            class="inline">
+                            @csrf
+                            <button type="submit"
+                                class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
+                                Sign as Leader
+                            </button>
+                        </form>
+                    @endcan
+                    @can('reject', $report)
+                        <button onclick="document.getElementById('reject-dialog').showModal()"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
+                            Reject
                         </button>
-                    </form>
-                    <button onclick="document.getElementById('reject-dialog').showModal()"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
-                        Reject
-                    </button>
-                @elseif($report->status === 'pqc_approved')
-                    <form action="{{ route('second-process-reports.sign', [$report->id, 'leader']) }}" method="POST"
-                        class="inline">
-                        @csrf
-                        <button type="submit"
-                            class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
-                            Sign as Leader
+                    @endcan
+                @elseif($report->status === 'leader_approved' || $report->status === 'pqc_approved')
+                    @if (!$report->pqc_signed_at)
+                        @can('sign', [$report, 'pqc'])
+                            <form action="{{ route('second-process-reports.sign', [$report->id, 'pqc']) }}" method="POST"
+                                class="inline">
+                                @csrf
+                                <button type="submit"
+                                    class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
+                                    Sign as PQC (Optional)
+                                </button>
+                            </form>
+                        @endcan
+                    @endif
+                    @can('sign', [$report, 'acknowledged'])
+                        <form action="{{ route('second-process-reports.sign', [$report->id, 'acknowledged']) }}"
+                            method="POST" class="inline">
+                            @csrf
+                            <button type="submit"
+                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
+                                Acknowledge (Supervisor)
+                            </button>
+                        </form>
+                    @endcan
+                    @can('reject', $report)
+                        <button onclick="document.getElementById('reject-dialog').showModal()"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
+                            Reject
                         </button>
-                    </form>
-                    <button onclick="document.getElementById('reject-dialog').showModal()"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
-                        Reject
-                    </button>
-                @elseif($report->status === 'leader_approved')
-                    <form action="{{ route('second-process-reports.sign', [$report->id, 'acknowledged']) }}"
-                        method="POST" class="inline">
-                        @csrf
-                        <button type="submit"
-                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
-                            Acknowledge (Supervisor)
-                        </button>
-                    </form>
-                    <button onclick="document.getElementById('reject-dialog').showModal()"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
-                        Reject
-                    </button>
+                    @endcan
+                @elseif($report->status === 'acknowledged' && !$report->pqc_signed_at)
+                    @can('sign', [$report, 'pqc'])
+                        <form action="{{ route('second-process-reports.sign', [$report->id, 'pqc']) }}" method="POST"
+                            class="inline">
+                            @csrf
+                            <button type="submit"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow transition text-sm mr-2">
+                                Sign as PQC (Optional)
+                            </button>
+                        </form>
+                    @endcan
                 @endif
             </div>
         </div>
@@ -150,6 +170,48 @@
             </div>
         </form>
     </dialog>
+
+    <!-- First Piece Gate Status Card -->
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 no-print mb-6">
+        <div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                @if($firstPiece && $firstPiece->isApproved())
+                    <div class="p-2.5 rounded-full bg-green-100 text-green-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">First Piece Gate Status</h4>
+                        <div class="text-sm font-bold text-green-800 flex items-center gap-2">
+                            <span>✅ Approved by QC Inspector ({{ $firstPiece->checked_by }})</span>
+                            <span class="text-xs font-normal text-gray-500">on {{ $firstPiece->checked_at ? $firstPiece->checked_at->format('d/m/Y H:i') : '' }}</span>
+                        </div>
+                    </div>
+                @else
+                    <div class="p-2.5 rounded-full bg-amber-100 text-amber-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">First Piece Gate Status</h4>
+                        <div class="text-sm font-bold text-amber-800">
+                            ⚠️ First Piece Inspection Pending / Not Approved by QC
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <div>
+                @if($firstPiece)
+                    <a href="{{ route('first-piece-inspections.show', $firstPiece->id) }}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs transition inline-block">
+                        View First Piece Inspection &rarr;
+                    </a>
+                @else
+                    <a href="{{ route('first-piece-inspections.create', ['part_number' => $report->part_number, 'date' => $report->date, 'part_name' => $report->part_name, 'model' => $report->model]) }}" target="_blank" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded text-xs transition inline-block">
+                        + Create First Piece Inspection &rarr;
+                    </a>
+                @endif
+            </div>
+        </div>
+    </div>
 
     <!-- Printable Area -->
     @php
@@ -247,6 +309,23 @@
                         <td class="border border-black p-2 font-bold bg-gray-50">Jml NG Lebur</td>
                         <td class="border border-black p-2">{{ $report->jml_ng_lebur }}</td>
                     </tr>
+                    <tr>
+                        <td colspan="4" class="border border-black"></td>
+                        <td class="border border-black p-2 font-bold bg-gray-50">Sisa Input</td>
+                        <td class="border border-black p-2 font-bold {{ ($report->sisa_input ?? 0) > 0 ? 'text-amber-700' : (($report->sisa_input ?? 0) < 0 ? 'text-red-700' : 'text-green-700') }}">
+                            {{ $report->sisa_input ?? 0 }} pcs
+                            @if (($report->sisa_input ?? 0) === 0)
+                                <span class="text-[10px] font-normal text-green-700 ml-1">(Ideal)</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @if (!empty($report->sisa_input_remark))
+                    <tr>
+                        <td colspan="4" class="border border-black"></td>
+                        <td class="border border-black p-2 font-bold bg-gray-50">Remark Sisa Input</td>
+                        <td class="border border-black p-2 text-xs italic">{{ $report->sisa_input_remark }}</td>
+                    </tr>
+                    @endif
                 </tbody>
             </table>
 
@@ -265,10 +344,11 @@
                                 <th class="border border-black p-1">Visco</th>
                                 <th class="border border-black p-1">Mixing Ratio</th>
                                 <th class="border border-black p-1">Qty</th>
+                                <th class="border border-black p-1">UOM</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($report->materials->where('type', 'paint') as $material)
+                            @forelse ($report->materials->where('type', 'paint') as $material)
                                 <tr>
                                     <td class="border border-black p-1 font-semibold">{{ $material->item_name }}</td>
                                     <td class="border border-black p-1 text-center">{{ $material->lot_number }}</td>
@@ -276,8 +356,15 @@
                                     <td class="border border-black p-1 text-center font-mono">
                                         {{ $material->mixing_ratio ?: '-' }}</td>
                                     <td class="border border-black p-1 text-center">{{ $material->qty }}</td>
+                                    <td class="border border-black p-1 text-center">{{ $material->uom ?: '-' }}</td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="border border-black p-2 text-center text-gray-400 italic">
+                                        No paint materials recorded
+                                    </td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
 
@@ -287,16 +374,24 @@
                                 <th class="border border-black p-1 text-left">Item Parts</th>
                                 <th class="border border-black p-1">Lot Number</th>
                                 <th class="border border-black p-1">Qty</th>
+                                <th class="border border-black p-1">UOM</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($report->materials->where('type', 'part') as $material)
+                            @forelse ($report->materials->where('type', 'part') as $material)
                                 <tr>
                                     <td class="border border-black p-1 font-semibold">{{ $material->item_name }}</td>
                                     <td class="border border-black p-1 text-center">{{ $material->lot_number }}</td>
                                     <td class="border border-black p-1 text-center">{{ $material->qty }}</td>
+                                    <td class="border border-black p-1 text-center">{{ $material->uom ?: '-' }}</td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="border border-black p-2 text-center text-gray-400 italic">
+                                        No item parts recorded
+                                    </td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -320,7 +415,8 @@
                                     $hData = $report->hourlyProductions->where('hour_ke', $hour)->first();
                                 @endphp
                                 <tr>
-                                    <td class="border border-black p-1 font-bold">{{ $hour }}</td>
+                                    <td class="border border-black p-1 font-bold whitespace-nowrap text-xs">
+                                        {{ $hour }}</td>
                                     <td class="border border-black p-1">
                                         {{ $hData && $hData->ok_qty !== null ? $hData->ok_qty : '-' }}</td>
                                     <td class="border border-black p-1 font-semibold">
@@ -341,32 +437,24 @@
             <!-- Manpower Section -->
             <div>
                 <h3 class="text-sm font-bold border-b border-black pb-1 mb-2">Manpower (MP)</h3>
-                <div class="grid grid-cols-3 gap-4 text-[11px]">
-                    <div class="border border-black">
-                        <div class="bg-gray-100 p-1 font-bold text-center border-b border-black">Loading / Input /
-                            packing</div>
-                        <ul class="divide-y divide-black p-1">
-                            @foreach ($report->manpowers->where('role', 'loading')->sortBy('no') as $mp)
-                                <li class="py-1 px-2">{{ $mp->no }}. {{ $mp->name ?: '-' }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                    <div class="border border-black">
-                        <div class="bg-gray-100 p-1 font-bold text-center border-b border-black">MP Sprayer</div>
-                        <ul class="divide-y divide-black p-1">
-                            @foreach ($report->manpowers->where('role', 'sprayer')->sortBy('no') as $mp)
-                                <li class="py-1 px-2">{{ $mp->no }}. {{ $mp->name ?: '-' }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                    <div class="border border-black">
-                        <div class="bg-gray-100 p-1 font-bold text-center border-b border-black">MP Checker</div>
-                        <ul class="divide-y divide-black p-1">
-                            @foreach ($report->manpowers->where('role', 'checker')->sortBy('no') as $mp)
-                                <li class="py-1 px-2">{{ $mp->no }}. {{ $mp->name ?: '-' }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
+                @php
+                    $mpGroups = $report->manpowers->sortBy('no')->groupBy('role');
+                @endphp
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-[11px]">
+                    @forelse($mpGroups as $role => $members)
+                        <div class="border border-black">
+                            <div class="bg-gray-100 p-1 font-bold text-center border-b border-black capitalize">
+                                {{ $role }}
+                            </div>
+                            <ul class="divide-y divide-black p-1">
+                                @foreach ($members as $mp)
+                                    <li class="py-1 px-2">{{ $mp->no }}. {{ $mp->name ?: '-' }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @empty
+                        <p class="text-gray-400 col-span-full text-center py-2">No manpower recorded.</p>
+                    @endforelse
                 </div>
             </div>
 
@@ -429,44 +517,50 @@
             <!-- Troubles section -->
             <div>
                 <h3 class="text-sm font-bold border-b border-black pb-1 mb-2">Trouble Report</h3>
-                <table class="w-full border-collapse border border-black text-[11px]">
-                    <thead class="bg-gray-100 font-bold">
-                        <tr>
-                            <th class="border border-black p-1 w-1/5">Category</th>
-                            <th class="border border-black p-1 w-1/3">Masalah (Problem)</th>
-                            <th class="border border-black p-1">Penanganan (Countermeasure)</th>
-                            <th class="border border-black p-1 w-1/6">Loss Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php
-                            $defaultTroubles = ['Man', 'Mesin', 'Part', 'PPS', 'Lingkungan'];
-                        @endphp
-                        @foreach ($defaultTroubles as $causes)
-                            @php
-                                $trouble = $report->troubles->where('penyebab', $causes)->first();
-                            @endphp
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[500px] md:min-w-0 border-collapse border border-black text-[11px]">
+                        <thead class="bg-gray-100 font-bold">
                             <tr>
-                                <td class="border border-black p-2 font-bold">{{ $causes }}</td>
-                                <td class="border border-black p-2">
-                                    {{ $trouble && $trouble->masalah ? $trouble->masalah : '-' }}</td>
-                                <td class="border border-black p-2">
-                                    {{ $trouble && $trouble->penanganan ? $trouble->penanganan : '-' }}</td>
-                                <td class="border border-black p-2 text-center">
-                                    @if ($trouble)
+                                <th class="border border-black p-1 w-10 text-center">#</th>
+                                <th class="border border-black p-1 w-2/5">Masalah (Problem)</th>
+                                <th class="border border-black p-1 w-1/5">Category</th>
+                                <th class="border border-black p-1 w-2/5">Penanganan (Countermeasure)</th>
+                                <th class="border border-black p-1 w-24 text-center">Loss Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($report->troubles as $idx => $trouble)
+                                <tr>
+                                    <td class="border border-black p-2 text-center font-bold">{{ $idx + 1 }}</td>
+                                    <td class="border border-black p-2">{{ $trouble->masalah ?: '-' }}</td>
+                                    <td class="border border-black p-2 font-bold">{{ $trouble->penyebab ?: ($trouble->category ?: '-') }}</td>
+                                    <td class="border border-black p-2">{{ $trouble->penanganan ?: '-' }}</td>
+                                    <td class="border border-black p-2 text-center">
                                         @if ($trouble->loss_time_minutes)
                                             {{ $trouble->loss_time_minutes }} mins
                                         @else
                                             {{ $trouble->loss_time ?: '-' }}
                                         @endif
-                                    @else
-                                        -
-                                    @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="border border-black p-3 text-center text-gray-500 italic">
+                                        No trouble / downtime reported for this shift.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                        <tfoot class="bg-gray-100 font-bold">
+                            <tr>
+                                <td colspan="4" class="border border-black p-1.5 text-right uppercase tracking-wider">Total Loss Time:</td>
+                                <td class="border border-black p-1.5 text-center font-bold">
+                                    {{ $report->troubles->sum('loss_time_minutes') }} mins
                                 </td>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
 
             <!-- Notes & Footer signature -->
@@ -501,6 +595,87 @@
                         </div>
                     </div>
 
+                    <!-- Linked IPQC Inspection -->
+                    @if($ipqcInspection)
+                        <div class="pt-6 border-t-2 border-black mt-6">
+                            <div class="text-center font-bold text-sm uppercase underline mb-3">IPQC INSPECTION REPORT (SECONDARY PROCESS)</div>
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 flex flex-col md:flex-row justify-between items-center gap-3 no-print">
+                                <div class="flex items-center space-x-3">
+                                    <div class="p-2 rounded-full {{ $ipqcInspection->overall_judgement === 'NG' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' }}">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-purple-800">IPQC Inspection Linked</div>
+                                        <div class="text-[11px] text-gray-600">
+                                            Status: <span class="font-bold {{ $ipqcInspection->status === 'completed' ? 'text-green-700' : 'text-blue-700' }} uppercase">{{ $ipqcInspection->status }}</span>
+                                            &middot; Overall: <span class="font-bold {{ $ipqcInspection->overall_judgement === 'NG' ? 'text-red-700' : 'text-green-700' }}">{{ $ipqcInspection->overall_judgement ?? 'OK' }}</span>
+                                            &middot; {{ $ipqcInspection->records->count() }} period(s) recorded
+                                        </div>
+                                    </div>
+                                </div>
+                                <a href="{{ route('ipqc-inspections.show', $ipqcInspection->id) }}" target="_blank"
+                                    class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded text-xs transition inline-block">
+                                    View Full Inspection &rarr;
+                                </a>
+                            </div>
+
+                            <!-- Inline summary table (print-friendly) -->
+                            <div class="mt-3 overflow-x-auto">
+                                <table class="w-full border-collapse border border-black text-[10px] text-center">
+                                    <thead>
+                                        <tr class="bg-gray-100 font-bold">
+                                            <th class="border border-black p-1">Period</th>
+                                            <th class="border border-black p-1">Fitting Test</th>
+                                            <th class="border border-black p-1">Tape Test</th>
+                                            <th class="border border-black p-1">Output</th>
+                                            <th class="border border-black p-1">Sample</th>
+                                            <th class="border border-black p-1">Rej Samp</th>
+                                            <th class="border border-black p-1">Rej %</th>
+                                            <th class="border border-black p-1">Pass Qty</th>
+                                            <th class="border border-black p-1">Rej Qty</th>
+                                            <th class="border border-black p-1">Judgement</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($ipqcInspection->records->sortBy('hour_ke') as $rec)
+                                            <tr>
+                                                <td class="border border-black p-1 font-bold">Hour {{ $rec->hour_ke }}</td>
+                                                <td class="border border-black p-1">{{ $rec->fitting_test ?? 'OK' }}</td>
+                                                <td class="border border-black p-1 font-bold {{ ($rec->tape_test_judgement ?? '') === 'NG' ? 'text-red-600' : 'text-green-700' }}">{{ $rec->tape_test_judgement ?? 'OK' }}</td>
+                                                <td class="border border-black p-1 font-bold">{{ number_format($rec->output_qty) }}</td>
+                                                <td class="border border-black p-1">{{ number_format($rec->sample_qty) }}</td>
+                                                <td class="border border-black p-1 font-bold text-red-600">{{ number_format($rec->reject_sample_qty) }}</td>
+                                                <td class="border border-black p-1 font-bold text-red-600">{{ number_format($rec->reject_rate, 2) }}%</td>
+                                                <td class="border border-black p-1 text-green-700 font-bold">{{ number_format($rec->pass_qty) }}</td>
+                                                <td class="border border-black p-1 text-red-700 font-bold">{{ number_format($rec->reject_qty) }}</td>
+                                                <td class="border border-black p-1 font-extrabold {{ ($rec->judgement ?? '') === 'NG' ? 'text-red-700' : 'text-green-700' }}">{{ $rec->judgement ?? 'OK' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="bg-gray-100 font-bold">
+                                            <td colspan="3" class="border border-black p-1 text-right">TOTAL / OVERALL:</td>
+                                            <td class="border border-black p-1 font-black">{{ number_format($ipqcInspection->total_output) }}</td>
+                                            <td class="border border-black p-1 font-black">{{ number_format($ipqcInspection->total_sample) }}</td>
+                                            <td class="border border-black p-1 font-black text-red-600">{{ number_format($ipqcInspection->total_reject_sample) }}</td>
+                                            <td class="border border-black p-1 font-black text-red-600">{{ number_format($ipqcInspection->total_reject_rate, 2) }}%</td>
+                                            <td class="border border-black p-1 font-black text-green-700">{{ number_format($ipqcInspection->total_pass) }}</td>
+                                            <td class="border border-black p-1 font-black text-red-700">{{ number_format($ipqcInspection->total_reject) }}</td>
+                                            <td class="border border-black p-1 font-black {{ ($ipqcInspection->overall_judgement ?? '') === 'NG' ? 'text-red-700' : 'text-green-700' }}">{{ $ipqcInspection->overall_judgement ?? 'OK' }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    @else
+                        <div class="pt-4 border-t border-gray-300 mt-4">
+                            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-xs text-gray-500 no-print">
+                                <p class="font-bold text-gray-600 mb-1">No IPQC Inspection Linked</p>
+                                <p>No IPQC inspection found for this report's date ({{ $report->date }}), part ({{ $report->part_number }}), shift ({{ $report->shift }}), and line ({{ $report->unit_line }}).</p>
+                            </div>
+                        </div>
+                    @endif
+
                     <!-- Signatures display -->
                     <div class="grid grid-cols-4 gap-2 text-center pt-4 border-t border-black mt-4 text-[10px]">
                         <div class="flex flex-col justify-between h-24">
@@ -520,22 +695,6 @@
                             </div>
                         </div>
                         <div class="flex flex-col justify-between h-24">
-                            <span class="font-bold">PQC (Quality Lane)</span>
-                            <div>
-                                @if ($report->pqc_signed_at)
-                                    <div
-                                        class="text-[8px] font-bold text-yellow-600 uppercase tracking-wider border border-dashed border-yellow-600 rounded px-1 py-0.5 max-w-xs mx-auto mb-1 leading-none">
-                                        DIGITALLY SIGNED</div>
-                                    <span
-                                        class="underline font-semibold block leading-tight">{{ $report->pqc_name }}</span>
-                                    <span
-                                        class="text-gray-500 text-[9px]">{{ \Carbon\Carbon::parse($report->pqc_signed_at)->format('d/m/Y H:i') }}</span>
-                                @else
-                                    <span class="underline font-semibold block text-gray-400">Not Signed</span>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="flex flex-col justify-between h-24">
                             <span class="font-bold">Diperiksa (Leader)</span>
                             <div>
                                 @if ($report->leader_signed_at)
@@ -548,6 +707,22 @@
                                         class="text-gray-500 text-[9px]">{{ \Carbon\Carbon::parse($report->leader_signed_at)->format('d/m/Y H:i') }}</span>
                                 @else
                                     <span class="underline font-semibold block text-gray-400">Not Signed</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="flex flex-col justify-between h-24">
+                            <span class="font-bold">PQC (Quality Lane)</span>
+                            <div>
+                                @if ($report->pqc_signed_at)
+                                    <div
+                                        class="text-[8px] font-bold text-yellow-600 uppercase tracking-wider border border-dashed border-yellow-600 rounded px-1 py-0.5 max-w-xs mx-auto mb-1 leading-none">
+                                        DIGITALLY SIGNED</div>
+                                    <span
+                                        class="underline font-semibold block leading-tight">{{ $report->pqc_name }}</span>
+                                    <span
+                                        class="text-gray-500 text-[9px]">{{ \Carbon\Carbon::parse($report->pqc_signed_at)->format('d/m/Y H:i') }}</span>
+                                @else
+                                    <span class="underline font-semibold block text-gray-400">Not Signed (Optional)</span>
                                 @endif
                             </div>
                         </div>

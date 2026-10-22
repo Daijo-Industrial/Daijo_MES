@@ -2,30 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\ProductionReport;
-use App\Models\ProductionScannedData;
-use App\Models\SpkMaster;
-use App\Models\Delivery\sapInventoryFg;
-use App\Models\User;
-use App\Models\MachineJob;
-use App\Models\OperatorUser;
 use App\Models\DailyItemCode;
-use App\Models\MouldChangeLog;
-use App\Models\AdjustMachineLog;
-use App\Models\MasterZone;
-use App\Models\MasterListItem;
-use App\Models\ZoneLog;
-use App\Models\ZonePengawas;
-use App\Models\RepairMachineLog;
+use App\Models\Delivery\sapInventoryFg;
 use App\Models\HourlyRemark;
+use App\Models\MachineJob;
+use App\Models\MasterListItem;
+use App\Models\MasterZone;
+use App\Models\MouldChangeLog;
+use App\Models\OperatorUser;
+use App\Models\User;
+use App\Models\ZoneLog;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\ProductionDashboardService;
-
-
-use App\Services\QualityDataService;
-
+use Illuminate\Http\Request;
 
 class ProductionDashboardController extends Controller
 {
@@ -35,6 +23,10 @@ class ProductionDashboardController extends Controller
         $machineName = $request->input('machine_name', '');
         $machineId = User::where('name', $machineName)->pluck('id')->first();
 
+        if ($machineId) {
+            MachineJob::firstOrCreate(['user_id' => $machineId]);
+        }
+
         // Calculate shift range: from 07:30 Jakarta time of selectedDate to 07:30 Jakarta time of next day
         $startDateStr = Carbon::parse($selectedDate . ' 07:30:00', 'Asia/Jakarta')->setTimezone('UTC');
         $endDateStr = Carbon::parse($selectedDate . ' 07:30:00', 'Asia/Jakarta')->addDay()->setTimezone('UTC');
@@ -42,7 +34,7 @@ class ProductionDashboardController extends Controller
         $machineJobs = MachineJob::with([
             'user',
             'dailyItemCode' => function ($query) use ($selectedDate) {
-                $query->where('schedule_date', $selectedDate)->with(['scannedData', 'hourlyRemarks','masterItem','delsched']);
+                $query->where('schedule_date', $selectedDate)->with(['scannedData', 'hourlyRemarks', 'masterItem', 'delsched']);
             },
             'mouldChangeLogs' => function ($query) use ($startDateStr, $endDateStr) {
                 $query->whereBetween('created_at', [$startDateStr, $endDateStr]);
@@ -52,16 +44,15 @@ class ProductionDashboardController extends Controller
             },
             'repairMachineLogs' => function ($query) use ($startDateStr, $endDateStr) {
                 $query->whereBetween('created_at', [$startDateStr, $endDateStr]);
-            }
+            },
         ])
-        ->when($machineId, function ($query) use ($machineId) {
-            return $query->whereHas('user', function ($query) use ($machineId) {
-                $query->where('id', $machineId);
-            });
-        })
-        ->get();
+            ->when($machineId, function ($query) use ($machineId) {
+                return $query->whereHas('user', function ($query) use ($machineId) {
+                    $query->where('id', $machineId);
+                });
+            })
+            ->get();
 
-        
         $structuredData = [];
 
         foreach ($machineJobs as $machineJob) {
@@ -96,15 +87,15 @@ class ProductionDashboardController extends Controller
                 ];
             }
 
-            if (!isset($structuredData[$userName])) {
+            if (! isset($structuredData[$userName])) {
                 $structuredData[$userName] = [
                     'pengawas' => $pengawas,
                     'mould_change_log' => [],
                     'adjust_machine_logs' => [],
-                    'repair_machine_logs' => [], 
+                    'repair_machine_logs' => [],
                     'daily_item_code' => [],
                     'hourly_production' => [],
-                    'hourly_remarks' => [] // 🔹 Add hourly_remarks array
+                    'hourly_remarks' => [], // 🔹 Add hourly_remarks array
                 ];
             }
 
@@ -116,8 +107,8 @@ class ProductionDashboardController extends Controller
                 $actualTime = $startTime->diffInMinutes($endTime);
 
                 $operatorUser = OperatorUser::where('name', $mouldChange->pic)->first();
-                $operatorProfilePath = $operatorUser && $operatorUser->profile_picture 
-                    ? asset('storage/' . $operatorUser->profile_picture) 
+                $operatorProfilePath = $operatorUser && $operatorUser->profile_picture
+                    ? asset('storage/' . $operatorUser->profile_picture)
                     : asset('images/default_profile.jpg');
 
                 $structuredData[$userName]['mould_change_log'][] = [
@@ -143,10 +134,10 @@ class ProductionDashboardController extends Controller
                 $actualTime = $startTime->diffInMinutes($endTime);
 
                 $operatorUser = OperatorUser::where('name', $adjustLog->pic)->first();
-                $operatorProfilePath = $operatorUser && $operatorUser->profile_picture 
-                    ? asset('storage/' . $operatorUser->profile_picture) 
+                $operatorProfilePath = $operatorUser && $operatorUser->profile_picture
+                    ? asset('storage/' . $operatorUser->profile_picture)
                     : asset('images/default_profile.jpg');
-                
+
                 $structuredData[$userName]['adjust_machine_logs'][] = [
                     'id' => $adjustLog->id,
                     'machine_name' => $adjustLog->user->name,
@@ -162,15 +153,15 @@ class ProductionDashboardController extends Controller
                 ];
             }
 
-             // Process repair machine logs
+            // Process repair machine logs
             foreach ($machineJob->repairMachineLogs as $repairLog) {
                 $startTime = Carbon::parse($repairLog->created_at);
                 $endTime = $repairLog->finish_repair ? Carbon::parse($repairLog->finish_repair) : null;
                 $actualTime = $endTime ? $startTime->diffInMinutes($endTime) : $startTime->diffInMinutes(now());
-                
+
                 $operatorUser = OperatorUser::where('name', $repairLog->pic)->first();
-                $operatorProfilePath = $operatorUser && $operatorUser->profile_picture 
-                    ? asset('storage/' . $operatorUser->profile_picture) 
+                $operatorProfilePath = $operatorUser && $operatorUser->profile_picture
+                    ? asset('storage/' . $operatorUser->profile_picture)
                     : asset('images/default_profile.jpg');
 
                 $structuredData[$userName]['repair_machine_logs'][] = [
@@ -181,19 +172,16 @@ class ProductionDashboardController extends Controller
                     'problem' => $repairLog->problem,
                     'remark' => $repairLog->remark,
                     'actual_time' => $actualTime,
-                    'is_completed' => !is_null($repairLog->finish_repair),
+                    'is_completed' => ! is_null($repairLog->finish_repair),
                     'pic' => $repairLog->pic,
                     'pic_profile_path' => $operatorProfilePath,
                     'status' => ($actualTime > 30) ? 'problem' : 'safe',
                 ];
             }
 
-
-
             // Process daily item codes
             foreach ($machineJob->dailyItemCode as $dailyItem) {
                 // $totalScannedQuantity = collect($dailyItem->scannedData)->sum('quantity');
-
 
                 $today = now()->startOfDay();
                 $fiveDaysLater = now()->addDays(5)->endOfDay();
@@ -212,7 +200,7 @@ class ProductionDashboardController extends Controller
                 $totalScannedQuantity = $dailyItem->hourlyRemarks->sum(function ($remark) {
                     return $remark->actual_production ?? 0;
                 });
-                
+
                 if ($dailyItem->temporal_cycle_time) {
                     $cycleTimeInSeconds = $dailyItem->temporal_cycle_time;
                 } else {
@@ -221,7 +209,7 @@ class ProductionDashboardController extends Controller
                 }
 
                 $sapCycleTime = MasterListItem::where('item_code', $dailyItem->item_code)
-                ->value('cycle_time');
+                    ->value('cycle_time');
 
                 $formattedDailyItem = [
                     'id' => $dailyItem->id,
@@ -239,10 +227,10 @@ class ProductionDashboardController extends Controller
                     'end_time' => Carbon::parse($dailyItem->end_time)->timezone('Asia/Jakarta')->format('H:i:s'),
                     'total_scanned_quantity' => $totalScannedQuantity,
                     'cycle_time_seconds' => $cycleTimeInSeconds,
-                    'sap_cycle_time' => $sapCycleTime,  
+                    'sap_cycle_time' => $sapCycleTime,
                     'scanned_data' => [],
                     'delsched' => $delschedData,
-                    'resin_usage' => $dailyItem->resin_usage
+                    'resin_usage' => $dailyItem->resin_usage,
                 ];
 
                 // Hourly production
@@ -251,28 +239,28 @@ class ProductionDashboardController extends Controller
                 foreach ($dailyItem->scannedData as $scan) {
                     $hour = Carbon::parse($scan->created_at)->timezone('Asia/Jakarta')->format('H:00');
                     $scanUser = $scan->user ?? 'Unknown';
-                
+
                     $scannedUser = OperatorUser::where('name', $scanUser)->first();
-                    $scannedUserProfilePath = $scannedUser && $scannedUser->profile_picture 
-                        ? asset('storage/' . $scannedUser->profile_picture) 
+                    $scannedUserProfilePath = $scannedUser && $scannedUser->profile_picture
+                        ? asset('storage/' . $scannedUser->profile_picture)
                         : asset('images/default_profile.jpg');
-                
+
                     $itemCode = $dailyItem->item_code;
 
-                    if (!isset($hourlyProduction[$hour])) {
+                    if (! isset($hourlyProduction[$hour])) {
                         $hourlyProduction[$hour] = [];
                     }
-                    if (!isset($hourlyProduction[$hour][$itemCode])) {
+                    if (! isset($hourlyProduction[$hour][$itemCode])) {
                         $hourlyProduction[$hour][$itemCode] = [];
                     }
-                    if (!isset($hourlyProduction[$hour][$itemCode][$scanUser])) {
+                    if (! isset($hourlyProduction[$hour][$itemCode][$scanUser])) {
                         $hourlyProduction[$hour][$itemCode][$scanUser] = [
                             'quantity' => 0,
-                            'user_profile_path' => $scannedUserProfilePath
+                            'user_profile_path' => $scannedUserProfilePath,
                         ];
                     }
                     $hourlyProduction[$hour][$itemCode][$scanUser]['quantity'] += $scan->quantity;
-                
+
                     $formattedDailyItem['scanned_data'][] = [
                         'id' => $scan->id,
                         'spk_code' => $scan->spk_code,
@@ -285,28 +273,60 @@ class ProductionDashboardController extends Controller
                         'scanned_at' => Carbon::parse($scan->created_at)->timezone('Asia/Jakarta')->format('Y-m-d H:i:s'),
                     ];
                 }
-                
+
                 foreach ($hourlyProduction as $hour => $items) {
                     foreach ($items as $itemCode => $userData) {
                         $structuredData[$userName]['hourly_production'][] = [
                             'hour' => $hour,
                             'item_code' => $itemCode,
-                            'users' => $userData
+                            'users' => $userData,
                         ];
                     }
                 }
-                
+
                 // Process hourly remarks for this daily item
+                $allRemarkPics = $dailyItem->hourlyRemarks->flatMap(function ($hr) {
+                    return [$hr->pic, $hr->pic_2, $hr->pic_3];
+                })->filter(fn ($p) => ! empty($p) && trim((string) $p) !== '-' && trim((string) $p) !== '0')->unique()->values();
+                $opUserMap = OperatorUser::whereIn('name', $allRemarkPics)->get()->keyBy('name');
+
                 foreach ($dailyItem->hourlyRemarks->sortBy('start_time') as $hourlyRemark) {
-                    $operatorUser = OperatorUser::where('name', $hourlyRemark->pic)->first();
-                    $operatorProfilePath = $operatorUser && $operatorUser->profile_picture 
-                        ? asset('storage/' . $operatorUser->profile_picture) 
-                        : asset('images/default_profile.jpg');
+                    $rawPics = array_values(array_filter([
+                        $hourlyRemark->pic,
+                        $hourlyRemark->pic_2,
+                        $hourlyRemark->pic_3,
+                    ], fn ($p) => ! empty($p) && trim((string) $p) !== '-' && trim((string) $p) !== '0'));
+
+                    $picsList = [];
+                    foreach ($rawPics as $pIdx => $pName) {
+                        $pUser = $opUserMap->get($pName);
+                        $picsList[] = [
+                            'name' => $pName,
+                            'profile_path' => $pUser && $pUser->profile_picture
+                                ? asset('storage/' . $pUser->profile_picture)
+                                : asset('images/default_profile.jpg'),
+                            'role' => 'PIC ' . ($pIdx + 1),
+                        ];
+                    }
+
+                    if (empty($picsList)) {
+                        $defaultUser = $opUserMap->get($hourlyRemark->pic);
+                        $picsList[] = [
+                            'name' => $hourlyRemark->pic ?: '-',
+                            'profile_path' => $defaultUser && $defaultUser->profile_picture
+                                ? asset('storage/' . $defaultUser->profile_picture)
+                                : asset('images/default_profile.jpg'),
+                            'role' => 'PIC 1',
+                        ];
+                    }
+
+                    $operatorProfilePath = $picsList[0]['profile_path'];
+                    $primaryPic = $picsList[0]['name'];
 
                     // Calculate achievement percentage
                     $achievementPercentage = 0;
                     if ($hourlyRemark->target > 0) {
-                         $achievementPercentage = round(
+                        $achievementPercentage = round(
                             min(($hourlyRemark->actual_production / $hourlyRemark->target) * 100, 100),
                             2
                         );
@@ -334,13 +354,17 @@ class ProductionDashboardController extends Controller
                         'actual' => $hourlyRemark->actual,
                         'achievement_percentage' => $achievementPercentage,
                         'actual_production' => $hourlyRemark->actual_production,
-                        'ng' =>$hourlyRemark->NG,
+                        'ng' => $hourlyRemark->NG,
                         'remark' => $hourlyRemark->remark ?: '-',
                         'is_achieve' => $hourlyRemark->is_achieve,
                         'status' => $status,
                         'shift' => $dailyItem->shift,
-                        'pic' => $hourlyRemark->pic,
+                        'pic' => $primaryPic,
+                        'pic_2' => $hourlyRemark->pic_2,
+                        'pic_3' => $hourlyRemark->pic_3,
                         'pic_profile_path' => $operatorProfilePath,
+                        'pics' => $picsList,
+                        'pics_count' => count($picsList),
                         'created_at' => Carbon::parse($hourlyRemark->created_at)->timezone('Asia/Jakarta')->format('Y-m-d H:i:s'),
                         'updated_at' => Carbon::parse($hourlyRemark->updated_at)->timezone('Asia/Jakarta')->format('Y-m-d H:i:s'),
                         'ng_details' => $hourlyRemark->ngDetails->map(function ($ng) {
@@ -351,7 +375,7 @@ class ProductionDashboardController extends Controller
                                 'ng_quantity' => $ng->ng_quantity,
                                 'ng_remarks' => $ng->ng_remarks,
                                 'created_at' => $ng->created_at?->format('Y-m-d H:i:s'),
-                                'updated_at' => $ng->updated_at?->format('Y-m-d H:i:s')
+                                'updated_at' => $ng->updated_at?->format('Y-m-d H:i:s'),
                             ];
                         }),
                     ];
@@ -360,55 +384,53 @@ class ProductionDashboardController extends Controller
                 $structuredData[$userName]['daily_item_code'][] = $formattedDailyItem;
             }
 
-
             $structuredData[$userName]['hourly_remarks'] = collect($structuredData[$userName]['hourly_remarks'])
-            ->sort(function ($a, $b) {
-                // Urutkan berdasarkan shift terlebih dahulu
-                if ($a['shift'] !== $b['shift']) {
-                    return $a['shift'] <=> $b['shift'];
-                }
-                
-                // Jika shift sama, urutkan secara kronologis berdasarkan start_time
-                // Menentukan jam dasar (base hour) per shift untuk menangani wrap-around tengah malam (shift 3)
-                $baseHour = 7; // Default Shift 1 (07:30 - 15:30)
-                if ($a['shift'] == 2) {
-                    $baseHour = 15; // Shift 2 (15:30 - 23:30)
-                } elseif ($a['shift'] == 3) {
-                    $baseHour = 23; // Shift 3 (23:30 - 07:30)
-                }
-
-                $getMinutesFromBase = function ($timeStr, $baseH) {
-                    $parts = explode(':', $timeStr);
-                    $hour = intval($parts[0] ?? 0);
-                    $minute = intval($parts[1] ?? 0);
-                    
-                    $totalMinutes = $hour * 60 + $minute;
-                    $baseMinutes = $baseH * 60;
-                    
-                    $diff = $totalMinutes - $baseMinutes;
-                    if ($diff < 0) {
-                        $diff += 1440; // Tambah 24 jam dalam menit jika melewati tengah malam
+                ->sort(function ($a, $b) {
+                    // Urutkan berdasarkan shift terlebih dahulu
+                    if ($a['shift'] !== $b['shift']) {
+                        return $a['shift'] <=> $b['shift'];
                     }
-                    
-                    return $diff;
-                };
 
-                $offsetA = $getMinutesFromBase($a['start_time'], $baseHour);
-                $offsetB = $getMinutesFromBase($b['start_time'], $baseHour);
+                    // Jika shift sama, urutkan secara kronologis berdasarkan start_time
+                    // Menentukan jam dasar (base hour) per shift untuk menangani wrap-around tengah malam (shift 3)
+                    $baseHour = 7; // Default Shift 1 (07:30 - 15:30)
+                    if ($a['shift'] == 2) {
+                        $baseHour = 15; // Shift 2 (15:30 - 23:30)
+                    } elseif ($a['shift'] == 3) {
+                        $baseHour = 23; // Shift 3 (23:30 - 07:30)
+                    }
 
-                if ($offsetA !== $offsetB) {
-                    return $offsetA <=> $offsetB;
-                }
-                
-                // Jika start_time sama, fallback ke created_at
-                $createdAtA = \Carbon\Carbon::parse($a['created_at']);
-                $createdAtB = \Carbon\Carbon::parse($b['created_at']);
-                
-                return $createdAtA <=> $createdAtB;
-            })
-            ->values()
-            ->all();
+                    $getMinutesFromBase = function ($timeStr, $baseH) {
+                        $parts = explode(':', $timeStr);
+                        $hour = intval($parts[0] ?? 0);
+                        $minute = intval($parts[1] ?? 0);
 
+                        $totalMinutes = $hour * 60 + $minute;
+                        $baseMinutes = $baseH * 60;
+
+                        $diff = $totalMinutes - $baseMinutes;
+                        if ($diff < 0) {
+                            $diff += 1440; // Tambah 24 jam dalam menit jika melewati tengah malam
+                        }
+
+                        return $diff;
+                    };
+
+                    $offsetA = $getMinutesFromBase($a['start_time'], $baseHour);
+                    $offsetB = $getMinutesFromBase($b['start_time'], $baseHour);
+
+                    if ($offsetA !== $offsetB) {
+                        return $offsetA <=> $offsetB;
+                    }
+
+                    // Jika start_time sama, fallback ke created_at
+                    $createdAtA = \Carbon\Carbon::parse($a['created_at']);
+                    $createdAtB = \Carbon\Carbon::parse($b['created_at']);
+
+                    return $createdAtA <=> $createdAtB;
+                })
+                ->values()
+                ->all();
 
             // 2. ← TARUH DISINI — re-evaluate achievement pakai cycle time
             $itemCodesInRemarks = collect($structuredData[$userName]['hourly_remarks'])
@@ -420,9 +442,9 @@ class ProductionDashboardController extends Controller
             $groupedByTimeRange = collect($structuredData[$userName]['hourly_remarks'])
                 ->groupBy('time_range');
 
-           foreach ($groupedByTimeRange as $timeRange => $remarks) {
+            foreach ($groupedByTimeRange as $timeRange => $remarks) {
                 $totalProdSeconds = 0;
-                $singleItem       = $remarks->count() === 1;
+                $singleItem = $remarks->count() === 1;
 
                 foreach ($remarks as $remark) {
                     $cycleTimeSec = $cycleTimeMap->get($remark['item_code']);
@@ -446,8 +468,8 @@ class ProductionDashboardController extends Controller
                 foreach ($structuredData[$userName]['hourly_remarks'] as &$remark) {
                     if ($remark['time_range'] === $timeRange) {
                         $remark['combined_actual_seconds'] = round($totalProdSeconds);
-                        $remark['combined_achieved']       = $combinedAchieved;
-                        $remark['is_multi_item']           = !$singleItem;
+                        $remark['combined_achieved'] = $combinedAchieved;
+                        $remark['is_multi_item'] = ! $singleItem;
                     }
                 }
                 unset($remark);
@@ -467,26 +489,26 @@ class ProductionDashboardController extends Controller
                 $remarks = collect($machineData['hourly_remarks'] ?? []);
 
                 // Preload cycle time dari MasterListItem
-                $itemCodes    = $remarks->pluck('item_code')->unique()->values()->toArray();
+                $itemCodes = $remarks->pluck('item_code')->unique()->values()->toArray();
                 $cycleTimeMap = MasterListItem::whereIn('item_code', $itemCodes)
                     ->pluck('cycle_time', 'item_code');
 
                 // Preload temporal_cycle_time dari DailyItemCode via dic_id
-                $dicIds          = $remarks->pluck('dic_id')->filter()->unique()->values()->toArray();
+                $dicIds = $remarks->pluck('dic_id')->filter()->unique()->values()->toArray();
                 $temporalCycleMap = DailyItemCode::whereIn('id', $dicIds)
                     ->pluck('temporal_cycle_time', 'id'); // key = dic_id
 
                 // Group by time_range
-                $groupedByHour  = $remarks->groupBy('time_range');
-                $totalJamAktif  = $groupedByHour->count();
+                $groupedByHour = $remarks->groupBy('time_range');
+                $totalJamAktif = $groupedByHour->count();
                 $totalProdDetik = 0;
 
                 foreach ($groupedByHour as $timeRange => $hourRemarks) {
                     $jamProdDetik = 0;
                     foreach ($hourRemarks as $remark) {
                         // Prioritas: temporal_cycle_time (dari dic_id) → MasterListItem cycle_time
-                        $dicId        = $remark['dic_id'] ?? null;
-                        $temporal     = $dicId ? $temporalCycleMap->get($dicId) : null;
+                        $dicId = $remark['dic_id'] ?? null;
+                        $temporal = $dicId ? $temporalCycleMap->get($dicId) : null;
                         $cycleTimeSec = ($temporal && $temporal > 0)
                             ? $temporal
                             : $cycleTimeMap->get($remark['item_code']);
@@ -496,42 +518,53 @@ class ProductionDashboardController extends Controller
                             $jamProdDetik += $totalQty * $cycleTimeSec;
                         }
                     }
-                    $totalProdDetik += min($jamProdDetik, 3600);
+                    $totalProdDetik += $jamProdDetik;
                 }
 
                 // Patokan berdasarkan shift aktif × 8 jam
                 $activeShifts = $remarks->pluck('shift')->unique()->count();
-                $patokanJam   = $activeShifts * 8;
+                $patokanJam = $activeShifts * 8;
 
                 // Hitung downtime dari mould change & adjust machine dalam detik
                 $mouldChangeMinutes = collect($machineData['mould_change_log'] ?? [])->sum('actual_time');
-                $adjustMinutes       = collect($machineData['adjust_machine_logs'] ?? [])->sum('actual_time');
+                $adjustMinutes = collect($machineData['adjust_machine_logs'] ?? [])->sum('actual_time');
                 $setupDowntimeSeconds = ($mouldChangeMinutes + $adjustMinutes) * 60;
 
-                $maxDetik     = max(($patokanJam * 3600) - $setupDowntimeSeconds, 0);
-                
-                $efficiency = $maxDetik > 0 ? ($totalProdDetik / $maxDetik) * 100 : 0;
+                $maxDetik = max(($patokanJam * 3600) - $setupDowntimeSeconds, 0);
 
-                $structuredData[$machineName]['machine_efficiency']   = round(min($efficiency, 100), 2);
-                $structuredData[$machineName]['total_jam_aktif']      = $totalJamAktif;
-                $structuredData[$machineName]['patokan_jam']          = $patokanJam;
-                $structuredData[$machineName]['total_prod_menit']     = round($totalProdDetik / 60, 1);
-                $structuredData[$machineName]['total_downtime_menit'] = round(($maxDetik - $totalProdDetik) / 60, 1);
+                // Capped agar total prod detik tidak melebihi jam aktif kerja mesin yang tersedia
+                $cappedProdDetik = min($totalProdDetik, $maxDetik);
+                $efficiency = $maxDetik > 0 ? ($cappedProdDetik / $maxDetik) * 100 : 0;
+
+                $structuredData[$machineName]['machine_efficiency'] = round(min($efficiency, 100), 2);
+                $structuredData[$machineName]['total_jam_aktif'] = $totalJamAktif;
+                $structuredData[$machineName]['patokan_jam'] = $patokanJam;
+                $structuredData[$machineName]['total_prod_menit'] = round($cappedProdDetik / 60, 1);
+                $structuredData[$machineName]['total_downtime_menit'] = round(($maxDetik - $cappedProdDetik) / 60, 1);
                 // dd($totalProdDetik);
                 // Daily percentage
                 $average = $remarks->avg(function ($remark) {
                     $achieved = $remark['combined_achieved'] ?? $remark['is_achieve'];
+
                     return $achieved ? 100 : ($remark['achievement_percentage'] ?? 0);
                 });
 
                 $structuredData[$machineName]['average_achievement'] = round($average ?? 0, 2);
             }
-                    
+
         }
-        
 
         $machineNames = [
+            '0150E',
+            '0150F',
+            '0300A',
+            '0300B',
             '0350F',
+            '0360A',
+            '0360B',
+            '0360C',
+            '0360D',
+            '0450B',
             '0450F',
             '0450G',
             '0450H',
@@ -541,29 +574,28 @@ class ProductionDashboardController extends Controller
             '0650D',
             '0650E',
             '0850D',
-            '0150E',
-            '0360A',
-            '0360D',
-            '0450B',
-            'K2800A',
-            'K2100A',
-            'K1400A',
-            'K1400B',
-            'K1400C',
-            'K0900A',
-            'K0900B',
+            '1050D',
+            '1300B',
+            '1300C',
+            'K0450A',
             'K0650A',
             'K0650B',
             'K0750A',
             'K0750B',
-            'K0450A',
+            'K0900A',
+            'K0900B',
+            'K1400A',
+            'K1400B',
+            'K1400C',
+            'K2100A',
+            'K2800A',
         ];
-        
+
         $machines = User::distinct()
-            // ->whereIn('id', MachineJob::pluck('user_id'))
             ->whereIn('name', $machineNames)
+            ->orderBy('name')
             ->pluck('name', 'id');
-        
+
         // Fetch all mould changes on the selected date to find the ones > 20 minutes
         $allMouldChanges = MouldChangeLog::whereDate('created_at', $selectedDate)
             ->with(['user', 'masterListItem'])
@@ -577,8 +609,8 @@ class ProductionDashboardController extends Controller
 
             if ($actualTime > 20) {
                 $operatorUser = OperatorUser::where('name', $mouldChange->pic)->first();
-                $operatorProfilePath = $operatorUser && $operatorUser->profile_picture 
-                    ? asset('storage/' . $operatorUser->profile_picture) 
+                $operatorProfilePath = $operatorUser && $operatorUser->profile_picture
+                    ? asset('storage/' . $operatorUser->profile_picture)
                     : asset('images/default_profile.jpg');
 
                 $longMouldChanges[] = [
@@ -602,19 +634,48 @@ class ProductionDashboardController extends Controller
         $allHourlyRemarks = HourlyRemark::whereHas('dailyItemCode', function ($query) use ($selectedDate) {
             $query->where('schedule_date', $selectedDate);
         })
-        ->where(function($q) {
-            $q->where('actual_production', 0)
-              ->orWhereNull('actual_production');
-        })
-        ->with(['dailyItemCode.user', 'dailyItemCode.masterItem'])
-        ->get();
+            ->where(function ($q) {
+                $q->where('actual_production', 0)
+                    ->orWhereNull('actual_production');
+            })
+            ->with(['dailyItemCode.user', 'dailyItemCode.masterItem'])
+            ->get();
 
         $zeroActualRemarks = [];
+        $allZeroPics = $allHourlyRemarks->flatMap(function ($hr) {
+            return [$hr->pic, $hr->pic_2, $hr->pic_3];
+        })->filter(fn ($p) => ! empty($p) && trim((string) $p) !== '-' && trim((string) $p) !== '0')->unique()->values();
+        $zeroOpMap = OperatorUser::whereIn('name', $allZeroPics)->get()->keyBy('name');
+
         foreach ($allHourlyRemarks as $remark) {
-            $operatorUser = OperatorUser::where('name', $remark->pic)->first();
-            $operatorProfilePath = $operatorUser && $operatorUser->profile_picture 
-                ? asset('storage/' . $operatorUser->profile_picture) 
-                : asset('images/default_profile.jpg');
+            $rawZPics = array_values(array_filter([
+                $remark->pic,
+                $remark->pic_2,
+                $remark->pic_3,
+            ], fn ($p) => ! empty($p) && trim((string) $p) !== '-' && trim((string) $p) !== '0'));
+
+            $zPicsList = [];
+            foreach ($rawZPics as $zIdx => $zName) {
+                $zUser = $zeroOpMap->get($zName);
+                $zPicsList[] = [
+                    'name' => $zName,
+                    'profile_path' => $zUser && $zUser->profile_picture
+                        ? asset('storage/' . $zUser->profile_picture)
+                        : asset('images/default_profile.jpg'),
+                    'role' => 'PIC ' . ($zIdx + 1),
+                ];
+            }
+
+            if (empty($zPicsList)) {
+                $defaultZUser = $zeroOpMap->get($remark->pic);
+                $zPicsList[] = [
+                    'name' => $remark->pic ?: '-',
+                    'profile_path' => $defaultZUser && $defaultZUser->profile_picture
+                        ? asset('storage/' . $defaultZUser->profile_picture)
+                        : asset('images/default_profile.jpg'),
+                    'role' => 'PIC 1',
+                ];
+            }
 
             $zeroActualRemarks[] = [
                 'id' => $remark->id,
@@ -627,8 +688,12 @@ class ProductionDashboardController extends Controller
                 'actual_production' => $remark->actual_production ?? 0,
                 'ng' => $remark->NG ?? 0,
                 'remark' => $remark->remark ?: '-',
-                'pic' => $remark->pic,
-                'pic_profile_path' => $operatorProfilePath,
+                'pic' => $zPicsList[0]['name'],
+                'pic_2' => $remark->pic_2,
+                'pic_3' => $remark->pic_3,
+                'pic_profile_path' => $zPicsList[0]['profile_path'],
+                'pics' => $zPicsList,
+                'pics_count' => count($zPicsList),
                 'shift' => $remark->dailyItemCode->shift ?? '-',
             ];
         }
@@ -641,6 +706,7 @@ class ProductionDashboardController extends Controller
             if ($a['machine_name'] !== $b['machine_name']) {
                 return $a['machine_name'] <=> $b['machine_name'];
             }
+
             return $a['time_range'] <=> $b['time_range'];
         });
 
@@ -653,16 +719,16 @@ class ProductionDashboardController extends Controller
         $itemCode = $request->input('item_code');
 
         $results = DailyItemCode::with('user')
-        ->where('item_code', $itemCode)
-        ->get()
-        ->map(function ($dic) {
-            return [
-                'machine' => $dic->user->name ?? 'Unknown',
-                'date' => Carbon::parse($dic->schedule_date)->format('Y-m-d'),
-            ];
-        })
-        ->unique(fn ($item) => $item['machine'] . '|' . $item['date'])
-        ->values(); // ⬅⬅ Ini penting biar bisa pakai forEach() di frontend
+            ->where('item_code', $itemCode)
+            ->get()
+            ->map(function ($dic) {
+                return [
+                    'machine' => $dic->user->name ?? 'Unknown',
+                    'date' => Carbon::parse($dic->schedule_date)->format('Y-m-d'),
+                ];
+            })
+            ->unique(fn ($item) => $item['machine'] . '|' . $item['date'])
+            ->values(); // ⬅⬅ Ini penting biar bisa pakai forEach() di frontend
 
         return response()->json($results);
     }
@@ -704,6 +770,4 @@ class ProductionDashboardController extends Controller
 
         return back()->with('success', 'Hourly remark berhasil dihapus.');
     }
-
-
 }

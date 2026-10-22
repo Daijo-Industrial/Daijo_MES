@@ -3,19 +3,21 @@
 namespace App\Livewire\Report;
 
 use App\Models\ApiLog;
-use Livewire\Component;
-use Livewire\WithPagination;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
-
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class ApiLogDashboard extends Component
 {
     use WithPagination;
 
     public $search = '';
+
     public $apiNameFilter = '';
+
     public $statusFilter = '';
+
     public $perPage = 20;
 
     protected $updatesQueryString = ['search', 'apiNameFilter', 'statusFilter'];
@@ -49,9 +51,11 @@ class ApiLogDashboard extends Component
             ->where('created_at', '>=', Carbon::now()->subDays(30)); // Batasi 30 hari terakhir biar enteng
 
         if ($this->search) {
-            $query->where(function($q) {
+            $query->where(function ($q) {
                 $q->where('endpoint', 'like', '%' . $this->search . '%')
-                  ->orWhere('message', 'like', '%' . $this->search . '%');
+                    ->orWhere('message', 'like', '%' . $this->search . '%')
+                    ->orWhere('api_name', 'like', '%' . $this->search . '%')
+                    ->orWhere('request_payload', 'like', '%' . $this->search . '%');
             });
         }
 
@@ -76,7 +80,7 @@ class ApiLogDashboard extends Component
 
         return view('livewire.report.api-log-dashboard', [
             'logs' => $logs,
-            'apiNames' => $apiNames
-        ])->layout('layouts.dashboard'); 
+            'apiNames' => $apiNames,
+        ])->layout('layouts.dashboard');
     }
 }

@@ -2,71 +2,206 @@
 <div class="bg-white shadow-xl rounded-lg overflow-hidden mb-6 border border-gray-200">
 
     <!-- Header Section -->
-    <div class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-6">
-        <div class="flex flex-wrap justify-between items-center">
+    <div class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-                <h1 class="text-3xl font-extrabold tracking-tight">PT. DAIJO INDUSTRIAL</h1>
-                <p class="text-sm font-semibold opacity-90 mt-1">Second Process Departement</p>
+                <h1 class="text-xl sm:text-3xl font-extrabold tracking-tight">PT. DAIJO INDUSTRIAL</h1>
+                <p class="text-xs sm:text-sm font-semibold opacity-90 mt-0.5 sm:mt-1">Second Process Departement</p>
             </div>
             <div
-                class="text-right text-xs md:text-sm space-y-1 bg-white/10 p-3 rounded-lg backdrop-blur-sm mt-4 md:mt-0">
-                <div><span class="font-bold">No. Dokumen:</span> DI-F-P/PR/07/SP-001</div>
-                <div><span class="font-bold">Tgl. Dikeluarkan:</span> 04 Januari 2023</div>
-                <div><span class="font-bold">Mulai berlaku:</span> 08 Desember 2025</div>
-                <div><span class="font-bold">Revisi / Halaman:</span> 2 / 1 of 1</div>
+                class="w-full sm:w-auto text-left sm:text-right text-[11px] sm:text-xs md:text-sm space-y-0.5 sm:space-y-1 bg-white/10 p-2.5 sm:p-3 rounded-lg backdrop-blur-sm">
+                <div class="flex sm:block justify-between"><span class="font-bold">No. Dokumen:</span> <span>DI-F-P/PR/07/SP-001</span></div>
+                <div class="flex sm:block justify-between"><span class="font-bold">Tgl. Dikeluarkan:</span> <span>04 Januari 2023</span></div>
+                <div class="flex sm:block justify-between"><span class="font-bold">Mulai berlaku:</span> <span>08 Desember 2025</span></div>
+                <div class="flex sm:block justify-between"><span class="font-bold">Revisi / Hal:</span> <span>2 / 1 of 1</span></div>
             </div>
         </div>
-        <div class="text-center mt-6">
-            <h2 class="text-2xl font-bold uppercase tracking-wider">
+        <div class="text-center mt-3 sm:mt-6">
+            <h2 class="text-lg sm:text-2xl font-bold uppercase tracking-wider">
                 {{ $report->exists ? 'Edit Laporan Produksi Harian' : 'Laporan Produksi Harian' }}</h2>
         </div>
     </div>
 
+@php
+    $tabErrorKeys = [
+        'setup' => ['date', 'unit_line', 'shift', 'process_prod', 'status', 'output_destination', 'part_number', 'part_name', 'model', 'customer', 'manpower'],
+        'materials' => ['materials'],
+        'production' => ['target_per_hour', 'jml_input_wip', 'repairan', 'hourly', 'ngs', 'ng_remarks', 'sisa_input', 'sisa_input_remark'],
+        'handover' => ['next_production_schedule', 'absent_employees', 'production_notes', 'troubles', 'created_by_name', 'leader_name', 'pqc_name', 'acknowledged_by_name'],
+    ];
+
+    $tabErrorCounts = [
+        'setup' => 0,
+        'materials' => 0,
+        'production' => 0,
+        'handover' => 0,
+    ];
+
+    $errorsByTab = [
+        'setup' => [],
+        'materials' => [],
+        'production' => [],
+        'handover' => [],
+    ];
+
+    if ($errors->any()) {
+        foreach ($errors->messages() as $field => $messages) {
+            $assignedTab = 'setup';
+            foreach ($tabErrorKeys as $tab => $keys) {
+                foreach ($keys as $key) {
+                    if ($field === $key || \Illuminate\Support\Str::startsWith($field, $key . '.') || \Illuminate\Support\Str::startsWith($field, $key . '[')) {
+                        $assignedTab = $tab;
+                        break 2;
+                    }
+                }
+            }
+            $tabErrorCounts[$assignedTab] += count($messages);
+            foreach ($messages as $msg) {
+                $errorsByTab[$assignedTab][] = [
+                    'field' => $field,
+                    'message' => $msg,
+                ];
+            }
+        }
+    }
+
+    $firstErrorTab = null;
+    if ($errors->any()) {
+        foreach (['setup', 'materials', 'production', 'handover'] as $tName) {
+            if ($tabErrorCounts[$tName] > 0) {
+                $firstErrorTab = $tName;
+                break;
+            }
+        }
+    }
+@endphp
+
     <!-- Option 2: Sticky Tabbed Navigation -->
-    <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
-        <nav class="-mb-px flex flex-wrap justify-between sm:justify-start gap-2 md:gap-6" aria-label="Tabs"
+    <div class="border-b border-gray-200 bg-gray-50 px-2 sm:px-6 py-1.5 sm:py-3 overflow-x-auto no-scrollbar scroll-smooth">
+        <nav class="-mb-px flex flex-nowrap items-center gap-1.5 sm:gap-4" aria-label="Tabs"
             id="form-tabs-navigation">
             <button type="button" data-tab="setup"
-                class="tab-btn active border-blue-600 text-blue-600 whitespace-nowrap py-3 px-3 border-b-2 font-bold text-sm flex items-center transition-all">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="tab-btn active shrink-0 border-blue-600 text-blue-600 whitespace-nowrap py-2 sm:py-3 px-2.5 sm:px-3 border-b-2 font-bold text-xs sm:text-sm flex items-center transition-all {{ $tabErrorCounts['setup'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
+                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                     </path>
                 </svg>
                 1. Setup & Manpower
+                @if ($tabErrorCounts['setup'] > 0)
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['setup'] }} error(s)">
+                        {{ $tabErrorCounts['setup'] }}
+                    </span>
+                @endif
             </button>
             <button type="button" data-tab="materials"
-                class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-3 border-b-2 font-bold text-sm flex items-center transition-all">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="tab-btn shrink-0 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 sm:py-3 px-2.5 sm:px-3 border-b-2 font-bold text-xs sm:text-sm flex items-center transition-all {{ $tabErrorCounts['materials'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
+                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
                     </path>
                 </svg>
                 2. Materials
+                @if ($tabErrorCounts['materials'] > 0)
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['materials'] }} error(s)">
+                        {{ $tabErrorCounts['materials'] }}
+                    </span>
+                @endif
             </button>
             <button type="button" data-tab="production"
-                class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-3 border-b-2 font-bold text-sm flex items-center transition-all">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="tab-btn shrink-0 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 sm:py-3 px-2.5 sm:px-3 border-b-2 font-bold text-xs sm:text-sm flex items-center transition-all {{ $tabErrorCounts['production'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
+                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
                     </path>
                 </svg>
                 3. Production Logs & NG
+                @if ($tabErrorCounts['production'] > 0)
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['production'] }} error(s)">
+                        {{ $tabErrorCounts['production'] }}
+                    </span>
+                @endif
             </button>
             <button type="button" data-tab="handover"
-                class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-3 border-b-2 font-bold text-sm flex items-center transition-all">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="tab-btn shrink-0 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 sm:py-3 px-2.5 sm:px-3 border-b-2 font-bold text-xs sm:text-sm flex items-center transition-all {{ $tabErrorCounts['handover'] > 0 ? 'text-red-600 !border-red-500' : '' }}">
+                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
                     </path>
                 </svg>
                 4. Handover & Signs
+                @if ($tabErrorCounts['handover'] > 0)
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['handover'] }} error(s)">
+                        {{ $tabErrorCounts['handover'] }}
+                    </span>
+                @endif
             </button>
         </nav>
     </div>
 
     <!-- Form Content Body -->
-    <div class="p-6">
+    <div class="p-3 sm:p-6">
+
+        <!-- Top Error Summary Banner -->
+        @if ($errors->any())
+            <div id="form-error-summary" class="mb-6 bg-red-50 border-l-4 border-red-600 p-4 rounded-r-lg shadow-sm">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 pt-0.5">
+                        <svg class="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-bold text-red-900">
+                                Terdapat {{ $errors->count() }} kesalahan input yang perlu diperbaiki:
+                            </h3>
+                            <span class="text-[11px] text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded">
+                                Klik tautan di bawah untuk langsung menuju kolom
+                            </span>
+                        </div>
+                        <div class="mt-3 space-y-3 text-xs">
+                            @php
+                                $tabLabels = [
+                                    'setup' => 'Tab 1: Setup & Manpower',
+                                    'materials' => 'Tab 2: Materials',
+                                    'production' => 'Tab 3: Production Logs & NG',
+                                    'handover' => 'Tab 4: Handover & Signs',
+                                ];
+                            @endphp
+                            @foreach ($errorsByTab as $tabKey => $tabErrs)
+                                @if (count($tabErrs) > 0)
+                                    <div class="bg-white/90 rounded border border-red-200 p-2.5 shadow-xs">
+                                        <div class="flex items-center justify-between font-bold text-red-900 border-b border-red-100 pb-1.5 mb-1.5">
+                                            <span class="flex items-center gap-1.5">
+                                                <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+                                                {{ $tabLabels[$tabKey] }} ({{ count($tabErrs) }} error)
+                                            </span>
+                                            <button type="button" onclick="switchTabAndFocus('{{ $tabKey }}')"
+                                                class="text-[11px] bg-red-100 hover:bg-red-200 text-red-800 font-bold px-2 py-0.5 rounded transition inline-flex items-center gap-1">
+                                                Buka Tab &rarr;
+                                            </button>
+                                        </div>
+                                        <ul class="space-y-1 pl-1">
+                                            @foreach ($tabErrs as $errItem)
+                                                <li class="flex items-start gap-1.5 text-red-800">
+                                                    <span class="text-red-500 font-bold">&bull;</span>
+                                                    <button type="button" onclick="switchTabAndFocus('{{ $tabKey }}', '{{ $errItem['field'] }}')"
+                                                        class="text-left underline hover:text-red-950 font-medium cursor-pointer focus:outline-none">
+                                                        {{ $errItem['message'] }}
+                                                    </button>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <!-- Validation Warnings Banner (Chronological Validation) -->
         <div id="totals-validation-message" class="mb-6"></div>
@@ -75,33 +210,52 @@
         <div id="tab-content-setup" class="tab-pane space-y-8">
 
             <!-- Header Logistics Section -->
-            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="bg-gray-50 p-3.5 sm:p-5 rounded-lg border border-gray-200">
+                <h3 class="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4 border-b pb-2 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                         </path>
                     </svg>
                     Shift Logistics & Setup
                 </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tanggal</label>
                         <input type="date" name="date" value="{{ old('date', $report->date ?? date('Y-m-d')) }}"
-                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm @error('date') border-red-500 ring-1 ring-red-500 @enderror"
                             required>
+                        @error('date')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Unit /
                             Line</label>
-                        <input type="text" name="unit_line" value="{{ old('unit_line', $report->unit_line) }}"
-                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                        <select name="unit_line"
+                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm @error('unit_line') border-red-500 ring-1 ring-red-500 @enderror"
                             required>
+                            <option value="">-- Select Unit / Line --</option>
+                            @php
+                                $unitLineOptions = array_values(config('mes.sp_lines'));
+                                $currentUnitLine = old('unit_line', $report->unit_line);
+                            @endphp
+                            @foreach ($unitLineOptions as $opt)
+                                <option value="{{ $opt }}" {{ $currentUnitLine == $opt ? 'selected' : '' }}>
+                                    {{ $opt }}</option>
+                            @endforeach
+                            @if ($currentUnitLine && !in_array($currentUnitLine, $unitLineOptions))
+                                <option value="{{ $currentUnitLine }}" selected>{{ $currentUnitLine }}</option>
+                            @endif
+                        </select>
+                        @error('unit_line')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Shift</label>
                         <select name="shift"
-                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm @error('shift') border-red-500 ring-1 ring-red-500 @enderror"
                             required>
                             <option value="1" {{ old('shift', $report->shift) == '1' ? 'selected' : '' }}>Shift 1
                             </option>
@@ -110,32 +264,31 @@
                             <option value="3" {{ old('shift', $report->shift) == '3' ? 'selected' : '' }}>Shift 3
                             </option>
                         </select>
+                        @error('shift')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Proses
                             Prod</label>
-                        <select name="process_prod"
-                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                        <select name="process_prod" id="process_prod"
+                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm @error('process_prod') border-red-500 ring-1 ring-red-500 @enderror"
                             required>
-                            <option value="Painting"
-                                {{ old('process_prod', $report->process_prod ?? 'Painting') == 'Painting' ? 'selected' : '' }}>
-                                Painting</option>
-                            <option value="Buffing"
-                                {{ old('process_prod', $report->process_prod) == 'Buffing' ? 'selected' : '' }}>
-                                Buffing</option>
-                            <option value="Amplas"
-                                {{ old('process_prod', $report->process_prod) == 'Amplas' ? 'selected' : '' }}>
-                                Amplas</option>
-                            <option value="Treatment"
-                                {{ old('process_prod', $report->process_prod) == 'Treatment' ? 'selected' : '' }}>
-                                Treatment</option>
-                            <option value="Packing"
-                                {{ old('process_prod', $report->process_prod) == 'Packing' ? 'selected' : '' }}>
-                                Packing</option>
-                            <option value="Rework"
-                                {{ old('process_prod', $report->process_prod) == 'Rework' ? 'selected' : '' }}>
-                                Rework</option>
+                            @php
+                                $spProcesses = config('mes.sp_processes');
+                                $currentProcess = old('process_prod', $report->process_prod ?? 'Painting');
+                            @endphp
+                            @foreach ($spProcesses as $proc)
+                                <option value="{{ $proc }}" {{ $currentProcess == $proc ? 'selected' : '' }}>
+                                    {{ $proc }}</option>
+                            @endforeach
+                            @if ($currentProcess && !in_array($currentProcess, $spProcesses))
+                                <option value="{{ $currentProcess }}" selected>{{ $currentProcess }}</option>
+                            @endif
                         </select>
+                        @error('process_prod')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
                     </div>
                     <input type="hidden" name="status" id="status-field"
                         value="{{ old('status', $report->status) }}">
@@ -143,173 +296,210 @@
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tujuan
                             Output</label>
                         <select name="output_destination"
-                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm @error('output_destination') border-red-500 ring-1 ring-red-500 @enderror">
                             <option value=""
                                 {{ empty(old('output_destination', $report->output_destination)) ? 'selected' : '' }}>
                                 -- Select Next Step --</option>
-                            <option value="fg"
-                                {{ old('output_destination', $report->output_destination) == 'fg' ? 'selected' : '' }}>
-                                Finished Goods (FG)</option>
-                            <option value="buffing"
-                                {{ old('output_destination', $report->output_destination) == 'buffing' ? 'selected' : '' }}>
-                                Buffing</option>
-                            <option value="packing"
-                                {{ old('output_destination', $report->output_destination) == 'packing' ? 'selected' : '' }}>
-                                Packing</option>
-                            <option value="amplas"
-                                {{ old('output_destination', $report->output_destination) == 'amplas' ? 'selected' : '' }}>
-                                Amplas</option>
-                            <option value="treatment"
-                                {{ old('output_destination', $report->output_destination) == 'treatment' ? 'selected' : '' }}>
-                                Treatment</option>
-                            <option value="assy"
-                                {{ old('output_destination', $report->output_destination) == 'assy' ? 'selected' : '' }}>
-                                Assembly (Assy)</option>
-                            <option value="rework"
-                                {{ old('output_destination', $report->output_destination) == 'rework' ? 'selected' : '' }}>
-                                Rework</option>
+                            @php
+                                $spDestinations = config('mes.sp_output_destinations');
+                                $currentDest = old('output_destination', $report->output_destination);
+                            @endphp
+                            @foreach ($spDestinations as $destKey => $destLabel)
+                                <option value="{{ $destKey }}" {{ $currentDest == $destKey ? 'selected' : '' }}>
+                                    {{ $destLabel }}
+                                </option>
+                            @endforeach
                         </select>
+                        @error('output_destination')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Part
-                            Number</label>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Part Number <span class="text-red-500">*</span></label>
+                            <span class="text-[10px] text-gray-400 font-medium">Searchable</span>
+                        </div>
                         <div class="relative">
                             <input type="text" name="part_number" id="part_number"
                                 value="{{ old('part_number', $report->part_number) }}"
                                 placeholder="Search Part Number..."
-                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm transition @error('part_number') border-red-500 ring-1 ring-red-500 @enderror"
                                 required autocomplete="off">
                             <div id="part-number-dropdown"
-                                class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded shadow-lg z-50 hidden">
+                                class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl z-50 hidden divide-y divide-gray-100">
                             </div>
                         </div>
+                        @error('part_number')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Part
-                            Name</label>
-                        <input type="text" name="part_name" value="{{ old('part_name', $report->part_name) }}"
-                            placeholder="Auto-filled from Part Number"
-                            class="w-full rounded border-gray-300 bg-gray-50 focus:border-blue-500 focus:ring-blue-500 text-sm"
-                            required>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Part Name</label>
+                            <span class="text-[10px] text-gray-400 font-medium">Searchable</span>
+                        </div>
+                        <div class="relative">
+                            <input type="text" name="part_name" id="part_name"
+                                value="{{ old('part_name', $report->part_name) }}"
+                                placeholder="Search Part Name..."
+                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm transition @error('part_name') border-red-500 ring-1 ring-red-500 @enderror"
+                                autocomplete="off">
+                            <div id="part-name-dropdown"
+                                class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl z-50 hidden divide-y divide-gray-100">
+                            </div>
+                        </div>
+                        @error('part_name')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Model</label>
                         <input type="text" name="model" value="{{ old('model', $report->model) }}"
                             placeholder="Model"
                             class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
-                            required>
+                            >
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Customer</label>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Customer</label>
+                            <span class="text-[10px] text-gray-400 font-medium">Nama Resmi / N/A</span>
+                        </div>
                         <div class="relative">
                             <input type="text" name="customer" id="customer"
-                                value="{{ old('customer', $report->customer) }}" placeholder="Search Customer..."
-                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
-                                required autocomplete="off">
+                                value="{{ old('customer', $report->customer) }}" placeholder="Search Customer atau N/A"
+                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm @error('customer') border-red-500 ring-1 ring-red-500 @enderror"
+                                autocomplete="off">
                             <div id="customer-dropdown"
                                 class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded shadow-lg z-50 hidden">
                             </div>
                         </div>
+                        @error('customer')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
             </div>
 
             <!-- Manpower Section -->
             <div class="space-y-4">
-                <h3 class="text-lg font-bold text-gray-800 border-b pb-2 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-teal-600" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-                        </path>
-                    </svg>
-                    Manpower (MP)
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- MP Loading -->
-                    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
-                            <h4 class="text-sm font-bold text-gray-700">MP Loading / Input / Blow /
-                                Packing</h4>
-                        </div>
-                        <div class="p-3 space-y-2">
-                            @for ($i = 1; $i <= 4; $i++)
-                                @php
-                                    $match = $report->manpowers->where('role', 'loading')->where('no', $i)->first();
-                                @endphp
-                                <div class="flex items-center space-x-2">
-                                    <span
-                                        class="text-xs font-bold text-gray-500 w-6 text-right">{{ $i }}</span>
-                                    <input type="hidden" name="manpower[{{ $i }}][role]"
-                                        value="loading">
-                                    <input type="hidden" name="manpower[{{ $i }}][no]"
-                                        value="{{ $i }}">
-                                    <input type="text" name="manpower[{{ $i }}][name]"
-                                        value="{{ $match ? $match->name : '' }}" placeholder="Operator Name"
-                                        class="w-full text-xs rounded border-gray-300 py-1">
-                                </div>
-                            @endfor
-                        </div>
-                    </div>
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-teal-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                            </path>
+                        </svg>
+                        Manpower (MP)
+                    </h3>
+                    <button type="button" onclick="addManpowerRow()"
+                        class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-1.5 px-4 rounded text-xs transition shadow-sm">
+                        + Add Manpower
+                    </button>
+                </div>
 
-                    <!-- MP Sprayer -->
-                    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
-                            <h4 class="text-sm font-bold text-gray-700">MP Sprayer</h4>
-                        </div>
-                        <div class="p-3 space-y-2">
-                            @for ($i = 1; $i <= 4; $i++)
-                                @php
-                                    $sprIndex = 4 + $i;
-                                    $match = $report->manpowers->where('role', 'sprayer')->where('no', $i)->first();
-                                @endphp
-                                <div class="flex items-center space-x-2">
-                                    <span
-                                        class="text-xs font-bold text-gray-500 w-6 text-right">{{ $i }}</span>
-                                    <input type="hidden" name="manpower[{{ $sprIndex }}][role]"
-                                        value="sprayer">
-                                    <input type="hidden" name="manpower[{{ $sprIndex }}][no]"
-                                        value="{{ $i }}">
-                                    <input type="text" name="manpower[{{ $sprIndex }}][name]"
-                                        value="{{ $match ? $match->name : '' }}" placeholder="Sprayer Name"
-                                        class="w-full text-xs rounded border-gray-300 py-1">
-                                </div>
-                            @endfor
-                        </div>
-                    </div>
-
-                    <!-- MP Checker -->
-                    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
-                            <h4 class="text-sm font-bold text-gray-700">MP Checker</h4>
-                        </div>
-                        <div class="p-3 space-y-2">
-                            @for ($i = 1; $i <= 4; $i++)
-                                @php
-                                    $chkIndex = 8 + $i;
-                                    $match = $report->manpowers->where('role', 'checker')->where('no', $i)->first();
-                                @endphp
-                                <div class="flex items-center space-x-2">
-                                    <span
-                                        class="text-xs font-bold text-gray-500 w-6 text-right">{{ $i }}</span>
-                                    <input type="hidden" name="manpower[{{ $chkIndex }}][role]"
-                                        value="checker">
-                                    <input type="hidden" name="manpower[{{ $chkIndex }}][no]"
-                                        value="{{ $i }}">
-                                    <input type="text" name="manpower[{{ $chkIndex }}][name]"
-                                        value="{{ $match ? $match->name : '' }}" placeholder="Checker Name"
-                                        class="w-full text-xs rounded border-gray-300 py-1">
-                                </div>
-                            @endfor
-                        </div>
+                <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[440px] divide-y divide-gray-200" id="manpower-table">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-bold text-gray-600 w-12">No</th>
+                                    <th class="px-4 py-2 text-left text-xs font-bold text-gray-600 w-1/3">Role</th>
+                                    <th class="px-4 py-2 text-left text-xs font-bold text-gray-600">Name</th>
+                                    <th class="px-4 py-2 text-center text-xs font-bold text-gray-600 w-16">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200" id="manpower-tbody">
+                                @forelse($report->manpowers->sortBy('no') as $index => $mp)
+                                    <tr class="manpower-row">
+                                        <td class="px-4 py-2 text-center font-bold text-gray-500 mp-no">
+                                            {{ $loop->iteration }}</td>
+                                        <td class="px-4 py-2">
+                                            <input type="hidden" name="manpower[{{ $index }}][no]"
+                                                class="mp-no-input" value="{{ $loop->iteration }}">
+                                            @php
+                                                $spRoles = config('mes.sp_manpower_roles');
+                                                $isCustom = !array_key_exists($mp->role, $spRoles);
+                                            @endphp
+                                            <select
+                                                class="w-full text-xs rounded border-gray-300 py-1 mb-1 role-select"
+                                                onchange="toggleCustomRole(this, {{ $index }})">
+                                                @foreach($spRoles as $roleKey => $roleLabel)
+                                                    <option value="{{ $roleKey }}" {{ $mp->role == $roleKey ? 'selected' : '' }}>{{ $roleLabel }}</option>
+                                                @endforeach
+                                                <option value="__custom__" {{ $isCustom ? 'selected' : '' }}>Other (custom)...</option>
+                                            </select>
+                                            <input type="text" name="manpower[{{ $index }}][role]"
+                                                value="{{ $mp->role }}"
+                                                class="w-full text-xs rounded border-gray-300 py-1 role-input {{ $isCustom ? '' : 'hidden' }}"
+                                                placeholder="Type custom role..." {{ $isCustom ? '' : 'readonly' }}>
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <input type="text" name="manpower[{{ $index }}][name]"
+                                                value="{{ $mp->name }}" placeholder="Operator Name"
+                                                class="w-full text-xs rounded border-gray-300 py-1">
+                                        </td>
+                                        <td class="px-4 py-2 text-center">
+                                            <button type="button" onclick="removeManpowerRow(this)"
+                                                class="text-red-500 hover:text-red-700 p-1">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                    </path>
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <!-- Initial empty row if no data -->
+                                    <tr class="manpower-row">
+                                        <td class="px-4 py-2 text-center font-bold text-gray-500 mp-no">1</td>
+                                        <td class="px-4 py-2">
+                                            <input type="hidden" name="manpower[0][no]" class="mp-no-input"
+                                                value="1">
+                                            <select
+                                                class="w-full text-xs rounded border-gray-300 py-1 mb-1 role-select"
+                                                onchange="toggleCustomRole(this, 0)">
+                                                @foreach(config('mes.sp_manpower_roles') as $roleKey => $roleLabel)
+                                                    <option value="{{ $roleKey }}">{{ $roleLabel }}</option>
+                                                @endforeach
+                                                <option value="__custom__">Other (custom)...</option>
+                                            </select>
+                                            <input type="text" name="manpower[0][role]" value="loading"
+                                                class="w-full text-xs rounded border-gray-300 py-1 role-input hidden"
+                                                placeholder="Type custom role..." readonly>
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <input type="text" name="manpower[0][name]"
+                                                placeholder="Operator Name"
+                                                class="w-full text-xs rounded border-gray-300 py-1">
+                                        </td>
+                                        <td class="px-4 py-2 text-center">
+                                            <button type="button" onclick="removeManpowerRow(this)"
+                                                class="text-red-500 hover:text-red-700 p-1">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                    </path>
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
             <!-- Navigation Tab 1 -->
-            <div class="flex justify-end pt-4 border-t border-gray-200 mt-6">
+            <div class="flex justify-stretch sm:justify-end pt-4 border-t border-gray-200 mt-6">
                 <button type="button" onclick="switchTab('materials')"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
+                    class="w-full sm:w-auto text-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
                     Next: Materials &rarr;
                 </button>
             </div>
@@ -318,334 +508,475 @@
         <!-- TAB 2: MATERIALS -->
         <div id="tab-content-materials" class="tab-pane hidden space-y-8">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                @php
+                    $materialGlobalIndex = 0;
+                    $paintMaterials = collect();
+                    if (old('materials')) {
+                        foreach (old('materials') as $m) {
+                            if (($m['type'] ?? '') === 'paint') {
+                                $paintMaterials->push((object)$m);
+                            }
+                        }
+                    } elseif ($report->materials && $report->materials->where('type', 'paint')->isNotEmpty()) {
+                        $paintMaterials = $report->materials->where('type', 'paint')->values();
+                    }
+
+                    if ($paintMaterials->isEmpty()) {
+                        $defaultPaints = config('mes.sp_default_paint_materials', ['Paint', 'Paint Basecoat', 'Paint Topcoat', 'Hardener', 'Thinner']);
+                        foreach ($defaultPaints as $pName) {
+                            $paintMaterials->push((object)[
+                                'item_name' => $pName,
+                                'lot_number' => '',
+                                'visco' => '',
+                                'mixing_ratio' => '',
+                                'qty' => '',
+                                'uom' => '',
+                            ]);
+                        }
+                    }
+                @endphp
+
+                @php
+                    $isPaintApplicable = in_array(old('process_prod', $report->process_prod ?? 'Painting'), ['Painting', 'Painting Basecoat', 'Painting Topcoat', 'Repair']);
+                @endphp
+
                 <!-- Item Paint Table -->
-                <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                    <div class="bg-gray-100 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-                        <h4 class="text-sm font-bold text-gray-700">Item Paint (Viscosity & Mixing
-                            Ratio)</h4>
-                        <span class="text-[10px] text-gray-500">Filled during prep stage</span>
-                    </div>
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-2 text-left font-bold text-gray-600">Item Paint</th>
-                                <th class="px-4 py-2 text-left font-bold text-gray-600 w-1/4">Lot
-                                    Number</th>
-                                <th class="px-4 py-2 text-left font-bold text-gray-600">Visco</th>
-                                <th class="px-4 py-2 text-left font-bold text-gray-600 w-1/4">Mixing
-                                    Ratio</th>
-                                <th class="px-4 py-2 text-left font-bold text-gray-600">Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            @php
-                                $defaultPaints = [
-                                    'Paint Primer',
-                                    'Hardener',
-                                    'Paint Basecoat',
-                                    'Hardener',
-                                    'Paint Topcoat',
-                                    'Hardener',
-                                ];
-                            @endphp
-                            @foreach ($defaultPaints as $index => $paint)
-                                @php
-                                    $match =
-                                        $report->materials
-                                            ->where('type', 'paint')
-                                            ->where('item_name', $paint)
-                                            ->values()
-                                            ->get($index) ??
-                                        $report->materials->where('type', 'paint')->where('item_name', $paint)->first();
-                                    if ($paint == 'Hardener') {
-                                        $hardeners = $report->materials
-                                            ->where('type', 'paint')
-                                            ->where('item_name', 'Hardener')
-                                            ->values();
-                                        if ($index == 1) {
-                                            $match = $hardeners->get(0);
-                                        }
-                                        if ($index == 3) {
-                                            $match = $hardeners->get(1);
-                                        }
-                                        if ($index == 5) {
-                                            $match = $hardeners->get(2);
-                                        }
-                                    }
-                                @endphp
-                                <tr>
-                                    <td class="px-4 py-2">
-                                        <span class="text-gray-700 font-semibold">{{ $paint }}</span>
-                                        <input type="hidden" name="materials[{{ $index }}][type]"
-                                            value="paint">
-                                        <input type="hidden" name="materials[{{ $index }}][item_name]"
-                                            value="{{ $paint }}">
-                                    </td>
-                                    <td class="px-4 py-2">
-                                        <input type="text" name="materials[{{ $index }}][lot_number]"
-                                            value="{{ $match ? $match->lot_number : '' }}" placeholder="Lot"
-                                            class="w-full text-xs rounded border-gray-300 py-1">
-                                    </td>
-                                    <td class="px-4 py-2">
-                                        <input type="text" name="materials[{{ $index }}][visco]"
-                                            value="{{ $match ? $match->visco : '' }}" placeholder="Visco"
-                                            class="w-full text-xs rounded border-gray-300 py-1">
-                                    </td>
-                                    <td class="px-4 py-2">
-                                        <input type="text" name="materials[{{ $index }}][mixing_ratio]"
-                                            value="{{ $match ? $match->mixing_ratio : '' }}"
-                                            placeholder="Ratio (e.g. 1:1.5)"
-                                            class="w-full text-xs rounded border-gray-300 py-1">
-                                    </td>
-                                    <td class="px-4 py-2">
-                                        <input type="number" name="materials[{{ $index }}][qty]"
-                                            value="{{ $match ? $match->qty : '' }}" placeholder="Qty"
-                                            class="w-full text-xs rounded border-gray-300 py-1">
-                                    </td>
-                                </tr>
+                <div id="paint-materials-card" class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between transition-all duration-200 {{ !$isPaintApplicable ? 'opacity-60 bg-gray-50' : '' }}">
+                    <div>
+                        <div class="bg-gray-100 px-3 sm:px-4 py-2 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-xs sm:text-sm font-bold text-gray-700">Item Paint (Viscosity & Mixing Ratio)</h4>
+                                <span id="paint-process-badge" class="{{ $isPaintApplicable ? 'hidden' : '' }} text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                    Hanya untuk Proses Painting & Repair
+                                </span>
+                            </div>
+                            <span class="text-[10px] text-gray-500">Filled during prep stage</span>
+                        </div>
+                        <div id="paint-disabled-notice" class="{{ $isPaintApplicable ? 'hidden' : '' }} p-2.5 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs flex items-center justify-between">
+                            <span>Item Paint dinonaktifkan karena Proses Prod bukan <strong>Painting</strong> atau <strong>Repair</strong>.</span>
+                            <button type="button" onclick="switchTab('setup')" class="text-blue-700 underline font-bold ml-2">Ubah di Tab 1 &rarr;</button>
+                        </div>
+                        <div id="mixing-ratio-suggestion" class="px-3 sm:px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs flex flex-wrap justify-between items-center gap-2 {{ !$isPaintApplicable ? 'hidden' : '' }}">
+                            <div class="text-gray-700">
+                                <span class="font-semibold text-gray-600">Formula Rasio:</span>
+                                <span id="mixing-ratio-live-formula" class="font-mono font-bold text-gray-900 ml-1">-</span>
+                            </div>
+                            <span class="text-[11px] text-gray-500">Isi angka rasio untuk masing-masing item (misal: Paint 4, Hardener 1, Thinner 2)</span>
+                        </div>
+                        <datalist id="paint-item-suggestions">
+                            @foreach (config('mes.sp_default_paint_materials', ['Paint', 'Paint Basecoat', 'Paint Topcoat', 'Hardener', 'Thinner']) as $sug)
+                                <option value="{{ $sug }}">
                             @endforeach
-                        </tbody>
-                    </table>
+                            <option value="Paint Primer">
+                            <option value="Paint Clear">
+                        </datalist>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[560px] divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left font-bold text-gray-600 min-w-[130px]">Item Paint</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-1/5 min-w-[85px]">Lot Number</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-16 min-w-[65px]">Visco</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-24 min-w-[85px]">Mixing Ratio</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-20 min-w-[70px]">Qty</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-20 min-w-[60px]">UOM</th>
+                                        <th class="px-1 py-2 text-center font-bold text-gray-600 w-8"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paint-materials-tbody" class="divide-y divide-gray-200">
+                                    @foreach ($paintMaterials as $mat)
+                                        @php $currIdx = $materialGlobalIndex++; @endphp
+                                        <tr>
+                                            <td class="px-3 py-2">
+                                                <input type="hidden" name="materials[{{ $currIdx }}][type]" value="paint" {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                                <input type="text" name="materials[{{ $currIdx }}][item_name]"
+                                                    value="{{ old('materials.' . $currIdx . '.item_name', $mat->item_name ?? '') }}"
+                                                    placeholder="Paint Item Name"
+                                                    list="paint-item-suggestions"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800 {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                                @if ($errors->has('materials.' . $currIdx . '.item_name'))
+                                                    <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('materials.' . $currIdx . '.item_name') }}</p>
+                                                 @endif
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <input type="text" name="materials[{{ $currIdx }}][lot_number]"
+                                                    value="{{ old('materials.' . $currIdx . '.lot_number', $mat->lot_number ?? '') }}"
+                                                    placeholder="Lot"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <input type="text" name="materials[{{ $currIdx }}][visco]"
+                                                    value="{{ old('materials.' . $currIdx . '.visco', $mat->visco ?? '') }}"
+                                                    placeholder="Visco"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                @php
+                                                    $matLower = strtolower($mat->item_name ?? '');
+                                                    $ratioPlaceholder = str_contains($matLower, 'hardener') ? 'Misal 1' : (str_contains($matLower, 'thinner') ? 'Misal 2' : 'Misal 4');
+                                                @endphp
+                                                <input type="text" inputmode="decimal" name="materials[{{ $currIdx }}][mixing_ratio]"
+                                                    value="{{ old('materials.' . $currIdx . '.mixing_ratio', $mat->mixing_ratio ?? '') }}"
+                                                    placeholder="{{ $ratioPlaceholder }}"
+                                                    oninput="updateMixingRatioSuggestion()"
+                                                    class="mixing-ratio-val w-full text-xs rounded border-gray-300 py-1 font-mono font-semibold {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <input type="number" step="any" name="materials[{{ $currIdx }}][qty]"
+                                                    value="{{ old('materials.' . $currIdx . '.qty', $mat->qty ?? '') }}"
+                                                    placeholder="Qty"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 {{ $errors->has('materials.' . $currIdx . '.qty') ? 'border-red-500 ring-1 ring-red-500' : '' }} {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <input type="text" name="materials[{{ $currIdx }}][uom]"
+                                                    value="{{ old('materials.' . $currIdx . '.uom', $mat->uom ?? '') }}"
+                                                    placeholder="UOM"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 {{ !$isPaintApplicable ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                                    {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                                            </td>
+                                            <td class="px-1 py-2 text-center">
+                                                <button type="button" onclick="removePaintMaterialRow(this)"
+                                                    class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition {{ !$isPaintApplicable ? 'cursor-not-allowed opacity-50' : '' }}"
+                                                    title="Remove Row" {{ !$isPaintApplicable ? 'disabled' : '' }}>&times;</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-gray-50 border-t border-gray-200">
+                        <button type="button" id="add-paint-item-btn" onclick="addPaintMaterialRow()"
+                            class="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 py-1 px-2 rounded hover:bg-blue-50 transition {{ !$isPaintApplicable ? 'cursor-not-allowed opacity-50' : '' }}"
+                            {{ !$isPaintApplicable ? 'disabled' : '' }}>
+                            + Add Paint Item
+                        </button>
+                    </div>
                 </div>
+
+                @php
+                    $partMaterials = $report->materials ? $report->materials->where('type', 'part')->values() : collect();
+                    if ($partMaterials->isEmpty() && !$report->exists) {
+                        $partMaterials = collect([
+                            (object)['item_name' => 'WIP #1', 'lot_number' => '', 'qty' => '', 'uom' => 'PCS'],
+                            (object)['item_name' => 'Repairan #1', 'lot_number' => '', 'qty' => '', 'uom' => 'PCS'],
+                        ]);
+                    }
+                @endphp
 
                 <!-- Item Parts Table -->
-                <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                    <div class="bg-gray-100 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-                        <h4 class="text-sm font-bold text-gray-700">Item Parts / WIP Lots</h4>
-                        <span class="text-[10px] text-gray-500">Lot values from Plastic/FG IQC</span>
+                <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="bg-gray-100 px-3 sm:px-4 py-2 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <h4 class="text-xs sm:text-sm font-bold text-gray-700">Item Parts / WIP Lots</h4>
+                            <span class="text-[10px] text-gray-500">Lot values from Plastic/FG IQC</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[460px] divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left font-bold text-gray-600 min-w-[130px]">Item Parts</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-1/3 min-w-[100px]">Lot Number</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-24 min-w-[75px]">Qty</th>
+                                        <th class="px-2 py-2 text-left font-bold text-gray-600 w-24 min-w-[65px]">UOM</th>
+                                        <th class="px-1 py-2 text-center font-bold text-gray-600 w-8"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="part-materials-tbody" class="divide-y divide-gray-200">
+                                    @foreach ($partMaterials as $mat)
+                                        @php $currIdx = $materialGlobalIndex++; @endphp
+                                        <tr>
+                                            <td class="px-3 py-2">
+                                                <input type="hidden" name="materials[{{ $currIdx }}][type]" value="part">
+                                                <input type="text" name="materials[{{ $currIdx }}][item_name]"
+                                                    value="{{ old('materials.' . $currIdx . '.item_name', $mat->item_name ?? '') }}"
+                                                    placeholder="Part / WIP Item Name"
+                                                    class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800 {{ $errors->has('materials.' . $currIdx . '.item_name') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
+                                                    readonly>
+                                            @if ($errors->has('materials.' . $currIdx . '.item_name'))
+                                                <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('materials.' . $currIdx . '.item_name') }}</p>
+                                            @endif
+                                        </td>
+                                        <td class="px-2 py-2">
+                                            <input type="text" name="materials[{{ $currIdx }}][lot_number]"
+                                                value="{{ old('materials.' . $currIdx . '.lot_number', $mat->lot_number ?? '') }}"
+                                                placeholder="Lot"
+                                                class="w-full text-xs rounded border-gray-300 py-1">
+                                        </td>
+                                        <td class="px-2 py-2">
+                                            <input type="number" step="any" name="materials[{{ $currIdx }}][qty]"
+                                                value="{{ old('materials.' . $currIdx . '.qty', $mat->qty ?? '') }}"
+                                                placeholder="Qty"
+                                                class="w-full text-xs rounded border-gray-300 py-1 {{ $errors->has('materials.' . $currIdx . '.qty') ? 'border-red-500 ring-1 ring-red-500' : '' }}">
+                                        </td>
+                                        <td class="px-2 py-2">
+                                            <input type="text" name="materials[{{ $currIdx }}][uom]"
+                                                value="{{ old('materials.' . $currIdx . '.uom', $mat->uom ?? '') }}"
+                                                placeholder="UOM"
+                                                class="w-full text-xs rounded border-gray-300 py-1">
+                                        </td>
+                                        <td class="px-1 py-2 text-center">
+                                            <button type="button" onclick="removePartMaterialRow(this)"
+                                                class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition"
+                                                title="Remove Row">&times;</button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-2 text-left font-bold text-gray-600">Item Parts</th>
-                                <th class="px-4 py-2 text-left font-bold text-gray-600 w-1/3">Lot
-                                    Number</th>
-                                <th class="px-4 py-2 text-left font-bold text-gray-600">Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            @php
-                                $defaultParts = ['WIP 1', 'WIP 2', 'WIP 3', 'Repairan 1', 'Repairan 2', 'Repairan 3'];
-                            @endphp
-                            @foreach ($defaultParts as $index => $part)
-                                @php
-                                    $ptIndex = count($defaultPaints) + $index;
-                                    $match = $report->materials
-                                        ->where('type', 'part')
-                                        ->where('item_name', $part)
-                                        ->first();
-                                @endphp
-                                <tr>
-                                    <td class="px-4 py-2">
-                                        <span class="text-gray-700 font-semibold">{{ $part }}</span>
-                                        <input type="hidden" name="materials[{{ $ptIndex }}][type]"
-                                            value="part">
-                                        <input type="hidden" name="materials[{{ $ptIndex }}][item_name]"
-                                            value="{{ $part }}">
-                                    </td>
-                                    <td class="px-4 py-2">
-                                        <input type="text" name="materials[{{ $ptIndex }}][lot_number]"
-                                            value="{{ $match ? $match->lot_number : '' }}" placeholder="Lot"
-                                            class="w-full text-xs rounded border-gray-300 py-1">
-                                    </td>
-                                    <td class="px-4 py-2">
-                                        <input type="number" name="materials[{{ $ptIndex }}][qty]"
-                                            value="{{ $match ? $match->qty : '' }}" placeholder="Qty"
-                                            class="w-full text-xs rounded border-gray-300 py-1">
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                </div>
+                <!-- Live Breakdown Summary Bar -->
+                <div class="px-3 sm:px-4 py-2.5 bg-slate-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div class="text-gray-500 font-medium">
+                        Breakdown Summary:
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-4 font-mono font-bold text-xs">
+                        <span class="text-blue-700">WIP: <span id="summary-wip-qty">0</span> Pcs</span>
+                        <span class="text-amber-700">Repairan: <span id="summary-repairan-qty">0</span> Pcs</span>
+                        <span class="text-slate-800 border-l border-gray-300 pl-2 sm:pl-4">Total: <span id="summary-total-input-qty">0</span> Pcs</span>
+                    </div>
+                </div>
+                <div class="p-3 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center gap-2 sm:gap-3">
+                    <button type="button" onclick="addPartBatch('WIP')"
+                        class="flex-1 sm:flex-none justify-center text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold flex items-center gap-1.5 py-2 sm:py-1.5 px-3 rounded border border-blue-300 shadow-sm transition">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Batch WIP
+                    </button>
+                    <button type="button" onclick="addPartBatch('Repairan')"
+                        class="flex-1 sm:flex-none justify-center text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold flex items-center gap-1.5 py-2 sm:py-1.5 px-3 rounded border border-amber-300 shadow-sm transition">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Batch Repairan
+                    </button>
                 </div>
             </div>
+        </div>
 
-            <!-- Navigation Tab 2 -->
-            <div class="flex justify-between pt-4 border-t border-gray-200 mt-6">
-                <button type="button" onclick="switchTab('setup')"
-                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition">
-                    &larr; Back to Setup
-                </button>
-                <button type="button" onclick="switchTab('production')"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
-                    Next: Production Logs &rarr;
-                </button>
-            </div>
+        <!-- Navigation Tab 2 -->
+        <div class="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-4 items-stretch sm:items-center justify-between pt-4 border-t border-gray-200 mt-6">
+            <button type="button" onclick="switchTab('setup')"
+                class="w-full sm:w-auto text-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
+                &larr; Back to Setup
+            </button>
+            <button type="button" onclick="switchTab('production')"
+                class="w-full sm:w-auto text-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
+                Next: Production Logs &rarr;
+            </button>
+        </div>
         </div> <!-- END TAB 2 -->
 
         <!-- TAB 3: PRODUCTION & NG LOGS -->
         <div id="tab-content-production" class="tab-pane hidden space-y-8">
 
-            <!-- Shift Production Calculations Header -->
-            <div class="mb-8">
-                <h4 class="text-lg font-extrabold text-gray-800 mb-4 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
-                        </path>
-                    </svg>
-                    Target & Shift Accumulation
-                </h4>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <!-- Input Parameters Group -->
-                    <div class="col-span-2 md:col-span-4 lg:col-span-2 grid grid-cols-2 gap-4">
-                        <div
-                            class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-blue-300 transition-colors">
-                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target
-                                Perjam</label>
-                            <input type="number" name="target_per_hour" id="target_per_hour"
-                                value="{{ $report->target_per_hour }}"
-                                class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm font-semibold transition-all"
-                                placeholder="0">
+            <!-- Unified Production & Reconciliation Command Bar (Responsive & Direct) -->
+            <div id="reconcile-summary-card" class="bg-white rounded-xl border border-gray-200 shadow-sm mb-5 overflow-hidden transition-all duration-200">
+                <input type="hidden" name="sisa_input" id="sisa_input" value="{{ old('sisa_input', $report->sisa_input ?? 0) }}">
+                
+                <!-- Hidden inputs preserved for form persistence and JS calculations -->
+                <input type="hidden" name="jml_input_wip" id="jml_input_wip" value="{{ $report->jml_input_wip }}">
+                <input type="hidden" name="repairan" id="repairan" value="{{ $report->repairan }}">
+                <input type="hidden" name="jumlah_ok" id="jumlah_ok" value="{{ $report->jumlah_ok }}">
+                <input type="hidden" name="jumlah_ng" id="jumlah_ng" value="{{ $report->jumlah_ng }}">
+                <input type="hidden" name="jumlah_output" id="jumlah_output" value="{{ $report->jumlah_output }}">
+                <input type="hidden" name="ng_prosentase" id="ng_prosentase" value="{{ $report->ng_prosentase }}">
+
+                @php
+                    $calcTotalReportInput = ($report->jml_input_wip ?? 0) + ($report->repairan ?? 0);
+                    $calcTotalReportOutput = ($report->jumlah_ok ?? 0) + ($report->jumlah_ng ?? 0) + ($report->jml_ng_lebur ?? 0);
+                    $calcSisaInput = $calcTotalReportInput - $calcTotalReportOutput;
+                @endphp
+
+                <!-- Tier 1: Read-Only KPI Monitoring (Responsive 3-Col / 1-Col Grid) -->
+                <div class="p-3 sm:p-4 bg-slate-50/80 border-b border-gray-200/80 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-stretch">
+                    
+                    <!-- Card 1: Input Material -->
+                    <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col justify-between space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Input Material</span>
+                            <button type="button" onclick="switchTab('materials')" class="text-xs text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer" title="Periksa Item Parts di Tab 2">Tab 2 &rarr;</button>
                         </div>
-                        <div
-                            class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-blue-300 transition-colors">
-                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Jml
-                                Input WIP</label>
-                            <input type="number" name="jml_input_wip" id="jml_input_wip"
-                                value="{{ $report->jml_input_wip }}"
-                                class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm font-semibold transition-all"
-                                placeholder="0">
-                        </div>
-                        <div
-                            class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-blue-300 transition-colors">
-                            <label
-                                class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Repairan</label>
-                            <input type="number" name="repairan" id="repairan" value="{{ $report->repairan }}"
-                                class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm font-semibold transition-all"
-                                placeholder="0">
-                        </div>
-                        <div
-                            class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-blue-300 transition-colors">
-                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Jml
-                                NG Lebur</label>
-                            <input type="number" name="jml_ng_lebur" id="jml_ng_lebur"
-                                value="{{ $report->jml_ng_lebur }}"
-                                class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm font-semibold transition-all"
-                                placeholder="0">
+                        <div class="flex items-baseline justify-between gap-2">
+                            <div class="text-2xl sm:text-3xl font-black font-mono text-gray-900 leading-none">
+                                <span id="reconcile-total-input">{{ number_format($calcTotalReportInput) }}</span> <span class="text-xs font-semibold text-gray-500">pcs</span>
+                            </div>
+                            <div class="text-right text-xs font-mono font-semibold text-gray-600 space-y-0.5 border-l border-gray-100 pl-2.5">
+                                <div>WIP: <strong id="reconcile-wip-qty" class="text-blue-700">{{ number_format($report->jml_input_wip ?? 0) }}</strong></div>
+                                <div>Rep: <strong id="reconcile-repairan-qty" class="text-amber-700">{{ number_format($report->repairan ?? 0) }}</strong></div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Calculated Stats Group -->
-                    <div class="col-span-2 md:col-span-4 lg:col-span-2 grid grid-cols-2 gap-4">
-                        <div
-                            class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl shadow-sm border border-blue-200 relative overflow-hidden group">
-                            <div
-                                class="absolute top-0 right-0 -mr-4 -mt-4 text-blue-200 opacity-50 group-hover:scale-110 transition-transform">
-                                <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
-                                    </path>
-                                </svg>
-                            </div>
-                            <label
-                                class="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-2 relative z-10">Total
-                                Output</label>
-                            <input type="number" name="jumlah_output" id="jumlah_output"
-                                value="{{ $report->jumlah_output }}"
-                                class="w-full bg-transparent border-none text-3xl font-extrabold text-blue-900 p-0 focus:ring-0 relative z-10"
-                                readonly>
+                    <!-- Card 2: Total Output -->
+                    <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col justify-between space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Output</span>
+                            <span class="text-xs font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                                <span id="ng_prosentase_display">{{ number_format($report->ng_prosentase ?? 0, 2) }}</span>% NG
+                            </span>
                         </div>
-                        <div
-                            class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl shadow-sm border border-green-200 relative overflow-hidden group">
-                            <div
-                                class="absolute top-0 right-0 -mr-4 -mt-4 text-green-200 opacity-50 group-hover:scale-110 transition-transform">
-                                <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
+                        <div class="flex items-baseline justify-between gap-2">
+                            <div class="text-2xl sm:text-3xl font-black font-mono text-gray-900 leading-none">
+                                <span id="reconcile-total-output">{{ number_format($calcTotalReportOutput) }}</span> <span class="text-xs font-semibold text-gray-500">pcs</span>
                             </div>
-                            <label
-                                class="block text-xs font-bold text-green-800 uppercase tracking-wider mb-2 relative z-10">Jumlah
-                                OK</label>
-                            <input type="number" name="jumlah_ok" id="jumlah_ok" value="{{ $report->jumlah_ok }}"
-                                class="w-full bg-transparent border-none text-3xl font-extrabold text-green-700 p-0 focus:ring-0 relative z-10"
-                                readonly>
+                            <div class="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-mono font-bold border-l border-gray-100 pl-2 sm:pl-2.5">
+                                <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200" title="Total OK">OK:<span id="reconcile-ok-qty" class="ml-0.5">{{ number_format($report->jumlah_ok ?? 0) }}</span></span>
+                                <span class="px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200" title="Total NG">NG:<span id="reconcile-ng-qty" class="ml-0.5">{{ number_format($report->jumlah_ng ?? 0) }}</span></span>
+                                <span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200" title="Scrap lebur">Scrap:<span id="reconcile-scrap-qty" class="ml-0.5">{{ number_format($report->jml_ng_lebur ?? 0) }}</span></span>
+                            </div>
                         </div>
-                        <div
-                            class="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl shadow-sm border border-red-200 relative overflow-hidden group">
-                            <div
-                                class="absolute top-0 right-0 -mr-4 -mt-4 text-red-200 opacity-50 group-hover:scale-110 transition-transform">
-                                <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z">
-                                    </path>
-                                </svg>
-                            </div>
-                            <label
-                                class="block text-xs font-bold text-red-800 uppercase tracking-wider mb-2 relative z-10">Jumlah
-                                NG</label>
-                            <input type="number" name="jumlah_ng" id="jumlah_ng" value="{{ $report->jumlah_ng }}"
-                                class="w-full bg-transparent border-none text-3xl font-extrabold text-red-700 p-0 focus:ring-0 relative z-10"
-                                readonly>
+                    </div>
+
+                    <!-- Card 3: Sisa Material & Balance -->
+                    <div id="reconcile-balance-pill" class="p-3.5 sm:p-4 rounded-xl border flex flex-col justify-between space-y-2 transition-colors duration-200 {{ $calcTotalReportInput < $calcTotalReportOutput ? 'bg-red-50 border-red-300 text-red-900' : ($calcSisaInput > 0 ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-emerald-50 border-emerald-300 text-emerald-900') }}">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider opacity-80">Sisa Material</span>
+                            <span id="reconcile-status-badge" class="text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border {{ $calcTotalReportInput < $calcTotalReportOutput ? 'bg-red-200 text-red-900 border-red-300' : ($calcSisaInput > 0 ? 'bg-amber-200 text-amber-900 border-amber-300' : 'bg-emerald-200 text-emerald-900 border-emerald-300') }}">
+                                {{ $calcTotalReportInput < $calcTotalReportOutput ? '⛔ Defisit' : ($calcSisaInput > 0 ? '⚠️ Ada Sisa' : '✓ Ideal') }}
+                            </span>
                         </div>
-                        <div
-                            class="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl shadow-sm border border-orange-200 relative overflow-hidden group">
-                            <div
-                                class="absolute top-0 right-0 -mr-4 -mt-4 text-orange-200 opacity-50 group-hover:scale-110 transition-transform">
-                                <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
-                                    <path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
-                                </svg>
+                        <div class="flex items-baseline justify-between gap-2">
+                            <div class="text-2xl sm:text-3xl font-black font-mono leading-none">
+                                <span id="reconcile-sisa-qty">{{ number_format(abs($calcSisaInput)) }}</span> <span class="text-xs font-semibold opacity-75">pcs</span>
                             </div>
-                            <label
-                                class="block text-xs font-bold text-orange-800 uppercase tracking-wider mb-2 relative z-10">NG
-                                %</label>
-                            <div class="flex items-center relative z-10">
-                                <input type="number" name="ng_prosentase" id="ng_prosentase" step="0.01"
-                                    value="{{ $report->ng_prosentase }}"
-                                    class="w-2/3 bg-transparent border-none text-3xl font-extrabold text-orange-700 p-0 focus:ring-0"
-                                    readonly>
-                                <span class="text-xl font-bold text-orange-600">%</span>
+                            <div id="reconcile-inline-note" class="text-xs font-semibold text-right leading-tight max-w-[190px]">
+                                @if ($calcTotalReportInput < $calcTotalReportOutput)
+                                    Output melebihi Input! Submission diblokir.
+                                @elseif ($calcSisaInput > 0)
+                                    Ada sisa input. Remark wajib diisi.
+                                @else
+                                    Material seimbang (Ideal).
+                                @endif
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Deficit Alert Banner (Responsive Flex Layout) -->
+                <div id="reconcile-state-deficit" class="{{ $calcTotalReportInput >= $calcTotalReportOutput ? 'hidden' : '' }} px-4 py-2.5 bg-red-100 border-b border-red-300 text-xs sm:text-sm text-red-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-red-700">⛔ Peringatan Defisit:</span>
+                        <span>Output melebihi Input sebesar <strong class="reconcile-deficit-amount font-mono text-red-950 font-black">{{ number_format(max(0, $calcTotalReportOutput - $calcTotalReportInput)) }}</strong> pcs.</span>
+                    </div>
+                    <button type="button" onclick="switchTab('materials')" class="text-xs sm:text-sm font-bold text-red-900 underline hover:text-red-950 whitespace-nowrap">
+                        Sesuaikan di Tab 2 (Materials) &rarr;
+                    </button>
+                </div>
+
+                <!-- Tier 2: Interactive Inputs Strip (Touch-Friendly Responsive Grid) -->
+                <div class="p-3.5 sm:p-4 bg-white border-t border-gray-100">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
+                        <!-- Target Produksi / Jam -->
+                        <div>
+                            <label for="target_per_hour" class="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">
+                                Target Produksi / Jam
+                            </label>
+                            <div class="relative rounded-lg shadow-2xs">
+                                <input type="number" name="target_per_hour" id="target_per_hour"
+                                    value="{{ $report->target_per_hour }}"
+                                    placeholder="0"
+                                    class="w-full text-sm sm:text-base font-bold font-mono py-2.5 pl-3.5 pr-20 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs sm:text-sm text-gray-400 font-semibold">
+                                    pcs / jam
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scrap / NG Lebur -->
+                        <div>
+                            <label for="jml_ng_lebur" class="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                                <span>Kuantitas Scrap (Lebur)</span>
+                                <span class="text-xs text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">+ ke Total Output</span>
+                            </label>
+                            <div class="relative rounded-lg shadow-2xs">
+                                <input type="number" name="jml_ng_lebur" id="jml_ng_lebur"
+                                    value="{{ $report->jml_ng_lebur }}"
+                                    placeholder="0"
+                                    class="w-full text-sm sm:text-base font-bold font-mono py-2.5 pl-3.5 pr-14 rounded-lg border-gray-300 focus:border-amber-500 focus:ring-amber-500 bg-white"
+                                    title="Part rusak lebur/scrap. Otomatis menambah Total Output.">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs sm:text-sm text-gray-400 font-semibold">
+                                    pcs
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tier 3: Sisa Input Remark (Expands conditionally when Sisa > 0) -->
+                @php
+                    $hasRemainingInput = old('sisa_input_remark', $report->sisa_input_remark ?? '') !== ''
+                        || ($calcTotalReportInput > $calcTotalReportOutput);
+                @endphp
+                <div id="reconcile-remark-container" class="{{ !$hasRemainingInput ? 'hidden' : '' }} px-4 py-3 bg-amber-50/90 border-t border-amber-200">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="sisa_input_remark" class="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5">
+                            <span>Alasan / Remark Sisa Input</span>
+                            <span class="text-red-600 font-black text-xs">* (Wajib diisi jika ada sisa)</span>
+                        </label>
+                        <span class="text-xs text-amber-700 font-medium">Jelaskan penanganan sisa WIP</span>
+                    </div>
+                    <textarea name="sisa_input_remark" id="sisa_input_remark" rows="2"
+                        placeholder="Contoh: Sisa 20 pcs belum selesai di-spray karena waktu shift habis, dilanjutkan shift berikutnya."
+                        class="w-full text-xs sm:text-sm rounded-lg border-amber-300 focus:border-amber-500 focus:ring-amber-500 bg-white py-2 px-3 {{ $errors->has('sisa_input_remark') ? 'border-red-500 ring-1 ring-red-500' : '' }}">{{ old('sisa_input_remark', $report->sisa_input_remark ?? '') }}</textarea>
+                    @if ($errors->has('sisa_input_remark'))
+                        <p class="text-xs text-red-600 font-bold mt-1">{{ $errors->first('sisa_input_remark') }}</p>
+                    @endif
+                </div>
             </div>
 
             @php
-                $currentHoursCount = max(1, $report->hourlyProductions->count());
+                $currentHoursCount = max(8, $report->hourlyProductions->count());
                 $defaultNgs = $report->ngRecords->isNotEmpty()
                     ? $report->ngRecords->pluck('ng_name')->unique()->toArray()
-                    : ['SCRATCH', 'DIRTY', 'HAIR MARK', 'DENTED', 'OVER CUT'];
+                    : config('mes.sp_default_ng_types');
             @endphp
             <!-- Unified Production & NG Log Grid -->
             <div class="space-y-6">
                 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
                     <div
-                        class="bg-gradient-to-r from-blue-700 to-indigo-800 px-5 py-3 border-b border-gray-200 flex justify-between items-center text-white">
-                        <h4 class="text-sm font-bold flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 17v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2m0 0h2a2 2 0 002-2v-3a2 2 0 110-4m0 0V5a2 2 0 012-2h2a2 2 0 012 2v3m0 0a2 2 0 110 4m0 0v3a2 2 0 01-2 2h-2m-4-3H9m4 0h2m-4 0v2m0-4V7">
-                                </path>
-                            </svg>
-                            Production & NG Hourly Spreadsheet
-                        </h4>
-                        <div class="flex space-x-2">
+                        class="bg-gradient-to-r from-blue-700 to-indigo-800 px-3 sm:px-5 py-2.5 sm:py-3 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 text-white">
+                        <div class="flex items-center justify-between w-full sm:w-auto">
+                            <h4 class="text-xs sm:text-sm font-bold flex items-center">
+                                <svg class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 17v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2m0 0h2a2 2 0 002-2v-3a2 2 0 110-4m0 0V5a2 2 0 012-2h2a2 2 0 012 2v3m0 0a2 2 0 110 4m0 0v3a2 2 0 01-2 2h-2m-4-3H9m4 0h2m-4 0v2m0-4V7">
+                                    </path>
+                                </svg>
+                                <span>Production & NG Hourly Spreadsheet</span>
+                            </h4>
+                            <span class="sm:hidden text-[11px] text-blue-200 font-semibold flex items-center gap-1 shrink-0">
+                                ↔ Geser Tabel
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-1.5 sm:space-x-2 w-full sm:w-auto">
                             <button type="button" id="remove-hour-btn"
-                                class="bg-red-800 hover:bg-red-900 text-white font-bold text-xs px-3 py-1.5 rounded shadow-sm border border-red-900 transition-colors flex items-center">
+                                class="flex-1 sm:flex-none justify-center bg-red-800 hover:bg-red-900 text-white font-bold text-xs px-2.5 sm:px-3 py-1.5 rounded shadow-sm border border-red-900 transition-colors flex items-center">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M20 12H4"></path>
-                                </svg> Hour
+                                </svg> - Hour
                             </button>
                             <button type="button" id="add-hour-btn"
-                                class="bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-3 py-1.5 rounded shadow-sm border border-green-700 transition-colors flex items-center">
+                                class="flex-1 sm:flex-none justify-center bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-2.5 sm:px-3 py-1.5 rounded shadow-sm border border-green-700 transition-colors flex items-center">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 4v16m8-8H4"></path>
-                                </svg> Hour
+                                </svg> + Hour
                             </button>
                             <button type="button" id="add-ng-type-btn"
-                                class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded shadow-sm border border-indigo-700 transition-colors flex items-center">
+                                class="flex-1 sm:flex-none justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-2.5 sm:px-3 py-1.5 rounded shadow-sm border border-indigo-700 transition-colors flex items-center">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 4v16m8-8H4"></path>
-                                </svg> NG Type
+                                </svg> + NG Type
                             </button>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto touch-pan-x" style="-webkit-overflow-scrolling: touch;">
                         <!-- ponytail: apply minimum width to all spreadsheet number inputs cleanly via CSS -->
                         <style>
                             #unified-production-table tbody input[type="number"] {
@@ -663,86 +994,56 @@
                             <thead class="bg-gray-50 text-gray-500 font-semibold text-xs tracking-wider uppercase">
                                 <tr id="production-header-row">
                                     <th
-                                        class="px-3 py-3 w-16 text-center sticky left-0 bg-gray-50 z-20 shadow-[1px_0_0_0_#e5e7eb]">
+                                        class="px-3 py-3 w-20 text-center sticky left-0 bg-gray-50 z-20 shadow-[1px_0_0_0_#e5e7eb] uppercase tracking-wider text-xs">
                                         Hour</th>
                                     <th
-                                        class="px-3 py-3 w-28 text-center bg-green-50 text-green-800 font-bold border-l border-green-100">
-                                        OK Qty</th>
+                                        class="px-3 py-2.5 w-28 text-center bg-green-50 text-green-800 font-bold border-l border-green-100">
+                                        <div class="leading-tight text-xs sm:text-sm">OK Qty</div>
+                                        <span class="inline-block text-[10px] font-bold text-green-800 bg-green-200/70 px-1.5 py-0.5 rounded mt-0.5 uppercase tracking-wider">Input</span>
+                                    </th>
                                     <th
-                                        class="px-3 py-3 w-28 text-center bg-green-50 text-green-700 border-r border-green-100">
-                                        Accum OK</th>
+                                        class="px-3 py-2.5 w-28 text-center bg-green-50/60 text-green-700 border-r border-green-100">
+                                        <div class="leading-tight text-xs sm:text-sm">Accum OK</div>
+                                        <span class="inline-block text-[10px] font-bold text-gray-500 bg-gray-200/70 px-1.5 py-0.5 rounded mt-0.5 uppercase tracking-wider">Auto</span>
+                                    </th>
                                     <th
-                                        class="px-3 py-3 w-24 text-center bg-red-50 text-red-800 font-bold border-r border-red-100">
-                                        Total NG</th>
+                                        class="px-3 py-2.5 w-24 text-center bg-red-50/60 text-red-800 font-bold border-r border-red-100">
+                                        <div class="leading-tight text-xs sm:text-sm">Total NG</div>
+                                        <span class="inline-block text-[10px] font-bold text-gray-500 bg-gray-200/70 px-1.5 py-0.5 rounded mt-0.5 uppercase tracking-wider">Auto</span>
+                                    </th>
                                     @foreach ($defaultNgs as $index => $ng)
                                         @php
                                             $ngRecord = $report->ngRecords->where('ng_name', $ng)->first();
+                                            $colTotalNg = (int) old("ngs.{$index}.total_ng", $ngRecord ? $ngRecord->total_ng : 0);
+                                            $currentCategory = old("ngs.{$index}.ng_category", $ngRecord ? $ngRecord->ng_category : 'NG-PROCESS');
+                                            if (empty($currentCategory)) {
+                                                $currentCategory = 'NG-PROCESS';
+                                            }
                                         @endphp
-                                        <th class="group px-3 py-2 w-32 text-center ng-type-header relative select-none border-b border-gray-200"
+                                        <th class="group px-3 py-2 w-36 text-center ng-type-header relative select-none border-b border-gray-200"
                                             data-ng="{{ $ng }}">
-                                            <div class="flex flex-col space-y-1">
+                                            <div class="flex flex-col space-y-1.5">
                                                 <div class="flex items-center justify-center space-x-1">
                                                     <span
-                                                        class="font-bold text-xs uppercase">{{ $ng }}</span>
+                                                        class="font-bold text-xs uppercase text-gray-800">{{ $ng }}</span>
                                                     <button type="button"
                                                         class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity delete-ng-col-btn text-[10px] font-bold"
                                                         data-ng="{{ $ng }}"
                                                         title="Delete {{ $ng }}">&times;</button>
                                                 </div>
-                                                @php
-                                                    $hasRemark =
-                                                        $ngRecord &&
-                                                        (!empty($ngRecord->ng_input_item) ||
-                                                            ($ngRecord->ng_input_qty !== null &&
-                                                                $ngRecord->ng_input_qty !== ''));
-                                                    $btnClass = $hasRemark
-                                                        ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 font-bold'
-                                                        : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-700 font-semibold';
-
-                                                    $labelText = 'Add Remark';
-                                                    if ($hasRemark) {
-                                                        $item = $ngRecord->ng_input_item;
-                                                        $qty = $ngRecord->ng_input_qty;
-                                                        if ($item && $qty !== null) {
-                                                            $prettified = preg_replace(
-                                                                '/\[(\d+)\]\s*([^\|]+)/',
-                                                                '$1x $2',
-                                                                $item,
-                                                            );
-                                                            $prettified = str_replace(' | ', ', ', $prettified);
-                                                            $labelText = $prettified;
-                                                        } elseif ($item) {
-                                                            $labelText = $item;
-                                                        } elseif ($qty !== null) {
-                                                            $labelText = "Qty: {$qty}";
-                                                        }
-                                                    }
-                                                @endphp
-                                                <button type="button"
-                                                    class="ng-remark-btn mt-1 flex items-center justify-between w-full px-2 py-1.5 text-[10px] rounded border transition-all select-none {{ $btnClass }}"
-                                                    data-ng-name="{{ $ng }}"
-                                                    data-ng-index="{{ $index }}">
-                                                    <span
-                                                        class="truncate remark-preview-label">{{ $labelText }}</span>
-                                                    <svg class="w-3 h-3 ml-1 text-gray-400 flex-shrink-0"
-                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                                                        </path>
-                                                    </svg>
-                                                </button>
-                                                <input type="hidden" name="ngs[{{ $index }}][ng_input_item]"
-                                                    value="{{ $ngRecord ? $ngRecord->ng_input_item : '' }}"
-                                                    class="ng-input-item-hidden">
-                                                <input type="hidden" name="ngs[{{ $index }}][ng_input_qty]"
-                                                    value="{{ $ngRecord ? $ngRecord->ng_input_qty : '' }}"
-                                                    class="ng-input-qty-hidden">
+                                                <div class="relative">
+                                                    <select name="ngs[{{ $index }}][ng_category]"
+                                                        class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select {{ $currentCategory === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300' }}"
+                                                        onchange="updateNgCategoryStyle(this)">
+                                                        <option value="NG-PROCESS" {{ $currentCategory === 'NG-PROCESS' ? 'selected' : '' }}>NG-PROCESS</option>
+                                                        <option value="NG-INPUT" {{ $currentCategory === 'NG-INPUT' ? 'selected' : '' }}>NG-INPUT</option>
+                                                    </select>
+                                                </div>
                                                 <input type="hidden" name="ngs[{{ $index }}][ng_name]"
                                                     value="{{ $ng }}">
                                                 <input type="hidden" name="ngs[{{ $index }}][total_ng]"
                                                     id="ng-total-hidden-{{ $index }}"
-                                                    value="{{ $ngRecord ? $ngRecord->total_ng : 0 }}">
+                                                    value="{{ $colTotalNg }}">
                                             </div>
                                         </th>
                                     @endforeach
@@ -757,7 +1058,8 @@
                                         data-hour="{{ $hour }}">
                                         <!-- Hour sticky left -->
                                         <td
-                                            class="px-3 py-2 text-center font-bold text-gray-600 bg-gray-50 sticky left-0 z-10 shadow-[1px_0_0_0_#e5e7eb]">
+                                            class="px-3 py-2 text-center font-bold text-gray-700 bg-gray-50 sticky left-0 z-10 shadow-[1px_0_0_0_#e5e7eb] whitespace-nowrap hour-cell text-xs"
+                                            data-hour="{{ $hour }}">
                                             {{ $hour }}</td>
 
                                         <!-- OK Qty -->
@@ -796,7 +1098,7 @@
                                                 $ngDetail = $ngRecord
                                                     ? $ngRecord->hourlyDetails->where('hour_ke', $hour)->first()
                                                     : null;
-                                                $ngVal = $ngDetail ? $ngDetail->qty : '';
+                                                $ngVal = old("ngs.{$index}.hours.{$hour}", $ngDetail ? $ngDetail->qty : '');
                                             @endphp
                                             <td class="px-1.5 py-1.5 ng-cell transition-colors duration-100"
                                                 data-ng="{{ $ng }}">
@@ -818,13 +1120,13 @@
             </div>
 
             <!-- Navigation Tab 3 -->
-            <div class="flex justify-between pt-4 border-t border-gray-200 mt-6">
+            <div class="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-4 items-stretch sm:items-center justify-between pt-4 border-t border-gray-200 mt-6">
                 <button type="button" onclick="switchTab('materials')"
-                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition">
+                    class="w-full sm:w-auto text-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
                     &larr; Back to Materials
                 </button>
                 <button type="button" onclick="switchTab('handover')"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
+                    class="w-full sm:w-auto text-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
                     Next: Handover &rarr;
                 </button>
             </div>
@@ -835,66 +1137,149 @@
 
             <!-- Troubles Section -->
             <div class="space-y-4">
-                <h3 class="text-lg font-bold text-gray-800 border-b pb-2 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-orange-600" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
-                        </path>
-                    </svg>
-                    Trouble / Downtime Report
-                </h3>
-                <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50 font-bold text-gray-600">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-2 gap-2">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800">Trouble / Downtime Report</h3>
+                    </div>
+                    <div class="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase">Total Downtime:</span>
+                            <span id="total-downtime-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                <span id="total-downtime-minutes">0</span> Mins (<span id="total-downtime-hours">0.0</span> hrs)
+                            </span>
+                        </div>
+                        <button type="button" onclick="addTroubleRow()"
+                            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition cursor-pointer">
+                            + Tambah Masalah
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 md:bg-white rounded-xl border border-gray-200 overflow-x-auto shadow-sm">
+                    <table class="w-full block md:table text-sm">
+                        <thead class="hidden md:table-header-group bg-gray-50 font-bold text-gray-600 border-b border-gray-200">
                             <tr>
-                                <th class="px-4 py-2 text-left w-1/5">Penyebab (Category)</th>
-                                <th class="px-4 py-2 text-left w-1/3">Masalah (Problem)</th>
-                                <th class="px-4 py-2 text-left">Penanganan (Countermeasure)</th>
-                                <th class="px-4 py-2 text-left w-1/4">Loss Time</th>
+                                <th class="px-3 py-2.5 text-center w-12">#</th>
+                                <th class="px-3 py-2.5 text-left w-3/12 min-w-[180px]">Masalah</th>
+                                <th class="px-3 py-2.5 text-left w-2/12 min-w-[160px]">Kategori</th>
+                                <th class="px-3 py-2.5 text-left w-4/12 min-w-[180px]">Penanganan</th>
+                                <th class="px-3 py-2.5 text-right w-1/12 min-w-[140px]">Loss Time</th>
+                                <th class="px-2 py-2.5 text-center w-12"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-200">
+                        <tbody id="troubles-tbody" class="block md:table-row-group p-3 md:p-0 space-y-3 md:space-y-0 md:divide-y md:divide-gray-200">
                             @php
-                                $defaultTroubles = ['Man', 'Mesin', 'Part', 'PPS', 'Lingkungan'];
+                                $categoriesList = config('mes.sp_trouble_categories');
                             @endphp
-                            @foreach ($defaultTroubles as $index => $trouble)
+
+                            {{-- Empty State Row --}}
+                            <tr id="troubles-empty-row" class="block md:table-row" @if ($report->troubles->count() > 0) style="display: none;" @endif>
+                                <td colspan="6" class="block md:table-cell px-4 py-4 text-center text-xs text-gray-400 italic">
+                                    Tidak ada kendala / trouble yang dicatat.
+                                </td>
+                            </tr>
+
+                            {{-- Render existing troubles --}}
+                            @foreach ($report->troubles as $index => $trouble)
                                 @php
-                                    $match = $report->troubles->where('penyebab', $trouble)->first();
+                                    $currentCat = $trouble->penyebab ?: ($trouble->category ?: 'Mesin');
                                 @endphp
-                                <tr>
-                                    <td class="px-4 py-2 font-semibold text-gray-700">
-                                        {{ $trouble }}
-                                        <input type="hidden" name="troubles[{{ $index }}][penyebab]"
-                                            value="{{ $trouble }}">
+                                <tr class="trouble-row block md:table-row bg-white rounded-xl md:rounded-none border border-gray-200 md:border-0 p-4 md:p-0 shadow-xs md:shadow-none hover:bg-slate-50/70 transition">
+                                    <td class="block md:table-cell p-0 pb-2.5 md:px-3 md:py-3 align-top text-xs font-bold text-gray-500 border-b md:border-b-0 border-gray-100 mb-3 md:mb-0">
+                                        <div class="flex items-center justify-between md:justify-center">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-bold text-xs md:bg-transparent md:border-0 md:p-0 md:text-gray-500">
+                                                <span class="md:hidden">Masalah #</span><span class="trouble-row-num">{{ $loop->iteration }}</span>
+                                            </span>
+                                            <button type="button" onclick="removeTroubleRow(this)"
+                                                class="md:hidden text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-0.5 rounded bg-red-50 hover:bg-red-100 transition cursor-pointer">
+                                                Hapus
+                                            </button>
+                                        </div>
                                     </td>
-                                    <td class="px-4 py-2">
-                                        <textarea name="troubles[{{ $index }}][masalah]" rows="1"
-                                            class="w-full rounded border-gray-300 text-xs py-1" placeholder="Problem description...">{{ $match ? $match->masalah : '' }}</textarea>
+                                    <td class="block md:table-cell p-0 mb-3 md:mb-0 md:px-3 md:py-3 align-top">
+                                        <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
+                                            Masalah <span class="text-red-500">*</span>
+                                        </label>
+                                        <textarea name="troubles[{{ $index }}][masalah]" rows="2"
+                                            class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 focus:border-blue-500 focus:ring-blue-500 transition shadow-xs {{ $errors->has('troubles.' . $index . '.masalah') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
+                                            placeholder="Jelaskan kendala / masalah yang terjadi...">{{ old('troubles.' . $index . '.masalah', $trouble->masalah) }}</textarea>
+                                        @if ($errors->has('troubles.' . $index . '.masalah'))
+                                            <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('troubles.' . $index . '.masalah') }}</p>
+                                        @endif
                                     </td>
-                                    <td class="px-4 py-2">
-                                        <textarea name="troubles[{{ $index }}][penanganan]" rows="1"
-                                            class="w-full rounded border-gray-300 text-xs py-1" placeholder="Describe actions...">{{ $match ? $match->penanganan : '' }}</textarea>
+                                    <td class="block md:table-cell p-0 mb-3 md:mb-0 md:px-3 md:py-3 align-top">
+                                        <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
+                                            Kategori <span class="text-red-500">*</span>
+                                        </label>
+                                        <select name="troubles[{{ $index }}][penyebab]"
+                                            class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 font-medium focus:border-blue-500 focus:ring-blue-500 transition shadow-xs">
+                                            @foreach ($categoriesList as $catKey => $catLabel)
+                                                <option value="{{ $catKey }}" {{ strcasecmp($currentCat, $catKey) === 0 ? 'selected' : '' }}>
+                                                    {{ $catLabel }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </td>
-                                    <td class="px-4 py-2 flex space-x-1 items-center">
-                                        <input type="number"
-                                            name="troubles[{{ $index }}][loss_time_minutes]"
-                                            value="{{ $match ? $match->loss_time_minutes : '' }}" placeholder="Mins"
-                                            class="w-1/2 text-xs rounded border-gray-300 py-1">
-                                        <input type="text" name="troubles[{{ $index }}][loss_time]"
-                                            value="{{ $match ? $match->loss_time : '' }}" placeholder="e.g. 15 mins"
-                                            class="w-1/2 text-xs rounded border-gray-300 py-1">
+                                    <td class="block md:table-cell p-0 mb-3 md:mb-0 md:px-3 md:py-3 align-top">
+                                        <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
+                                            Penanganan
+                                        </label>
+                                        <textarea name="troubles[{{ $index }}][penanganan]" rows="2"
+                                            class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 focus:border-blue-500 focus:ring-blue-500 transition shadow-xs"
+                                            placeholder="Tindakan penanganan / perbaikan...">{{ old('troubles.' . $index . '.penanganan', $trouble->penanganan) }}</textarea>
+                                    </td>
+                                    <td class="block md:table-cell p-0 md:px-3 md:py-3 align-top">
+                                        <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
+                                            Loss Time (Menit)
+                                        </label>
+                                        <div class="relative rounded-lg shadow-xs">
+                                            <input type="number"
+                                                name="troubles[{{ $index }}][loss_time_minutes]"
+                                                value="{{ old('troubles.' . $index . '.loss_time_minutes', $trouble->loss_time_minutes ?: '') }}"
+                                                min="0"
+                                                max="1440"
+                                                placeholder="0"
+                                                class="trouble-loss-minutes w-full text-xs md:text-sm rounded-lg border-gray-300 py-1.5 md:py-2 pr-12 text-right font-mono font-bold focus:border-blue-500 focus:ring-blue-500 {{ $errors->has('troubles.' . $index . '.loss_time_minutes') ? 'border-red-500 ring-1 ring-red-500' : '' }}">
+                                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                                <span class="text-xs font-bold text-gray-400 uppercase">min</span>
+                                            </div>
+                                        </div>
+                                        @if ($errors->has('troubles.' . $index . '.loss_time_minutes'))
+                                            <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('troubles.' . $index . '.loss_time_minutes') }}</p>
+                                        @endif
+                                    </td>
+                                    <td class="hidden md:table-cell px-2 py-3 align-top text-center">
+                                        <button type="button" onclick="removeTroubleRow(this)"
+                                            class="text-red-500 hover:text-red-700 font-bold p-1 rounded-lg hover:bg-red-50 transition cursor-pointer text-base leading-none"
+                                            title="Hapus masalah ini">&times;</button>
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
+                        <tfoot class="block md:table-footer-group bg-gray-50 border-t border-gray-200">
+                            <tr class="flex justify-between items-center md:table-row p-3 md:p-0">
+                                <td colspan="4" class="inline-block md:table-cell text-xs font-bold text-gray-600 uppercase tracking-wider md:px-4 md:py-2.5 md:text-right">
+                                    Total Loss Time:
+                                </td>
+                                <td class="inline-block md:table-cell font-mono font-black text-xs text-amber-900 md:px-4 md:py-2.5 md:text-right">
+                                    <span id="footer-total-downtime-minutes">0</span> mins
+                                </td>
+                                <td class="hidden md:table-cell"></td>
+                            </tr>
+                        </tfoot>
                     </table>
+                    <div class="p-3 bg-gray-50/70 border-t border-gray-200 flex justify-between items-center">
+                        <button type="button" onclick="addTroubleRow()"
+                            class="w-full sm:w-auto px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-amber-50 text-amber-700 border border-amber-300 shadow-2xs transition cursor-pointer">
+                            + Tambah Masalah
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- Notes, Attendance, & Schedule Section -->
             <div
-                class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-5 rounded-lg border border-gray-200 text-sm">
+                class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 bg-gray-50 p-3.5 sm:p-5 rounded-lg border border-gray-200 text-sm">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan
@@ -955,64 +1340,34 @@
             </div>
 
             <!-- Navigation Tab 4 -->
-            <div class="flex justify-between pt-4 border-t border-gray-200 mt-6">
+            <div class="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-4 items-stretch sm:items-center justify-between pt-4 border-t border-gray-200 mt-6">
                 <button type="button" onclick="switchTab('production')"
-                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition">
+                    class="w-full sm:w-auto text-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow transition">
                     &larr; Back to Production
                 </button>
-                <div>
+                <div class="w-full sm:w-auto">
                     <button type="button" onclick="submitProductionReport()" id="submit-btn"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-md transition">
+                        class="w-full sm:w-auto text-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 sm:py-2 px-6 rounded shadow-md transition">
                         Submit Production Report
                     </button>
                 </div>
             </div>
         </div> <!-- END TAB 4 -->
 
+
     </div>
 
     <!-- Sticky Footer (For Global Save Draft utility) -->
-    <div class="bg-gray-100 px-6 py-4 flex justify-between items-center border-t border-gray-200">
+    <div class="bg-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center border-t border-gray-200">
         <a href="{{ $report->exists ? route('second-process-reports.show', $report->id) : route('second-process-reports.index') }}"
             class="text-gray-600 hover:text-gray-800 text-sm font-semibold transition">Cancel</a>
         <button type="button" onclick="saveAsDraft()"
-            class="bg-gray-600 hover:bg-gray-700 text-white text-xs font-bold py-1.5 px-4 rounded shadow transition">
+            class="bg-gray-600 hover:bg-gray-700 text-white text-xs font-bold py-2 sm:py-1.5 px-4 rounded shadow transition">
             Save Draft
         </button>
     </div>
 
 </div>
-
-<!-- Defect Remark Drilldown Dialog -->
-<dialog id="ng-remark-modal"
-    class="rounded-xl shadow-2xl w-full max-w-md p-0 overflow-hidden backdrop:bg-black/50 backdrop:backdrop-blur-sm">
-    <div class="flex flex-col bg-white">
-        <div
-            class="bg-gradient-to-r from-blue-700 to-indigo-800 px-6 py-4 text-white flex justify-between items-center">
-            <h3 class="font-bold text-lg" id="modal-ng-title">Defect Detail</h3>
-            <button type="button"
-                class="text-white hover:text-gray-200 text-xl font-bold close-modal-btn">&times;</button>
-        </div>
-        <div class="p-6 space-y-4">
-            <div id="modal-rows-container" class="space-y-3 max-h-60 overflow-y-auto">
-                <!-- Dynamic rows injected here -->
-            </div>
-            <button type="button" id="add-modal-row-btn"
-                class="w-full py-1.5 border border-dashed border-blue-400 hover:border-blue-600 text-blue-600 hover:text-blue-800 text-xs font-bold rounded flex items-center justify-center transition select-none">
-                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg> Add Detail Row
-            </button>
-        </div>
-        <div class="bg-gray-50 px-6 py-3 flex justify-end space-x-2 border-t border-gray-100">
-            <button type="button"
-                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-semibold rounded transition close-modal-btn">Cancel</button>
-            <button type="button" id="save-modal-remark-btn"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded shadow transition">Save
-                Details</button>
-        </div>
-    </div>
-</dialog>
 
 <!-- Script calculations & interactions -->
 <script>
@@ -1031,6 +1386,14 @@
     </svg> Saving...`;
         });
 
+        // Tab Names Map for User Feedback
+        const tabNamesMap = {
+            'setup': '1. Setup & Manpower',
+            'materials': '2. Materials',
+            'production': '3. Production Logs & NG',
+            'handover': '4. Handover & Signs'
+        };
+
         // Tab Navigation Logic
         window.switchTab = function(tabId) {
             // Hide all tab panes
@@ -1038,7 +1401,10 @@
                 el.classList.add('hidden');
             });
             // Show requested tab pane
-            document.getElementById('tab-content-' + tabId).classList.remove('hidden');
+            const targetPane = document.getElementById('tab-content-' + tabId);
+            if (targetPane) {
+                targetPane.classList.remove('hidden');
+            }
 
             // Update tab buttons style
             document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1053,14 +1419,65 @@
             });
 
             // Highlight active warnings on tab shift
-            validateTotals();
+            if (typeof validateTotals === 'function') {
+                validateTotals();
+            }
 
             // Scroll tabs into view smoothly
-            document.getElementById('form-tabs-navigation').scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest'
-            });
+            const tabNav = document.getElementById('form-tabs-navigation');
+            if (tabNav) {
+                tabNav.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest'
+                });
+            }
+
+            // Scroll active tab button into center view horizontally on mobile
+            const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+            if (activeBtn) {
+                activeBtn.scrollIntoView({
+                    behavior: 'smooth',
+                    inline: 'center',
+                    block: 'nearest'
+                });
+            }
         };
+
+        // Switch to Tab and focus invalid field
+        window.switchTabAndFocus = function(tabId, fieldName) {
+            window.switchTab(tabId);
+            if (fieldName) {
+                setTimeout(() => {
+                    let el = document.querySelector(`[name="${fieldName}"]`);
+                    if (!el) {
+                        // Support Laravel dot notation to bracket notation: materials.0.item_name -> materials[0][item_name]
+                        const bracketName = fieldName.replace(/\.([^\.]+)/g, '[$1]');
+                        el = document.querySelector(`[name="${bracketName}"]`);
+                    }
+                    if (!el) {
+                        el = document.getElementById(fieldName);
+                    }
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        try { el.focus(); } catch (e) {}
+                        el.classList.add('ring-2', 'ring-red-500');
+                    }
+                }, 100);
+            }
+        };
+
+        // Auto-switch to first error tab on redirect
+        @if ($errors->any() && !empty($firstErrorTab))
+            document.addEventListener('DOMContentLoaded', function() {
+                window.switchTab('{{ $firstErrorTab }}');
+                const errBanner = document.getElementById('form-error-summary');
+                if (errBanner) {
+                    setTimeout(() => {
+                        errBanner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 150);
+                }
+            });
+        @endif
 
         // Direct tab button event listeners
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1079,19 +1496,24 @@
             // Highlight checking of required inputs
             const formInputs = form.querySelectorAll('input[required], select[required]');
             let valid = true;
+            let firstInvalid = null;
 
             formInputs.forEach(input => {
                 if (!input.value) {
                     valid = false;
                     input.classList.add('border-red-500');
+                    if (!firstInvalid) firstInvalid = input;
                 } else {
                     input.classList.remove('border-red-500');
                 }
             });
 
-            if (!valid) {
-                switchTab('setup');
-                alert('Please fill out all required shift details on Setup tab to save a draft.');
+            if (!valid && firstInvalid) {
+                const pane = firstInvalid.closest('.tab-pane');
+                const tabId = pane ? pane.id.replace('tab-content-', '') : 'setup';
+                switchTab(tabId);
+                firstInvalid.focus();
+                alert(`Harap lengkapi kolom yang wajib diisi pada ${tabNamesMap[tabId] || tabId} untuk menyimpan draft.`);
                 return;
             }
 
@@ -1105,32 +1527,114 @@
                 statusField.value = 'submitted';
             }
 
-            // Highlight checking of inputs before submit
+            // 1. Highlight checking of inputs before submit
             const formInputs = form.querySelectorAll('input[required], select[required]');
             let valid = true;
+            let firstInvalid = null;
 
             formInputs.forEach(input => {
                 if (!input.value) {
                     valid = false;
                     input.classList.add('border-red-500');
+                    if (!firstInvalid) firstInvalid = input;
                 } else {
                     input.classList.remove('border-red-500');
                 }
             });
 
-            if (!valid) {
-                switchTab('setup');
-                alert('Please fill out all required details on the Setup tab to submit the report.');
+            if (!valid && firstInvalid) {
+                const pane = firstInvalid.closest('.tab-pane');
+                const tabId = pane ? pane.id.replace('tab-content-', '') : 'setup';
+                switchTab(tabId);
+                firstInvalid.focus();
+                alert(`Harap lengkapi kolom yang wajib diisi pada ${tabNamesMap[tabId] || tabId} untuk mengirim laporan.`);
                 return;
+            }
+
+            // 2. Target per hour validation for painting processes
+            const processSelect = document.getElementById('process_prod');
+            const processVal = processSelect ? processSelect.value : '';
+            const paintingProcesses = ['Painting', 'Painting Basecoat', 'Painting Topcoat'];
+            if (paintingProcesses.includes(processVal)) {
+                const targetPerHourInput = document.getElementById('target_per_hour');
+                const targetVal = targetPerHourInput ? parseInt(targetPerHourInput.value) || 0 : 0;
+                if (targetVal <= 0) {
+                    switchTab('production');
+                    if (targetPerHourInput) {
+                        targetPerHourInput.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        targetPerHourInput.focus();
+                        setTimeout(() => {
+                            targetPerHourInput.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
+                        }, 4000);
+                    }
+                    alert(`Target per jam wajib diisi (lebih dari 0) untuk proses ${processVal}.`);
+                    return;
+                }
+            }
+
+            // 3. Strict Material Input vs Production Output Reconciliation (Output = OK + NG + Scrap)
+            const wipVal = parseInt(document.getElementById('jml_input_wip')?.value) || 0;
+            const repVal = parseInt(document.getElementById('repairan')?.value) || 0;
+            const totalInputVal = wipVal + repVal;
+
+            const okVal = parseInt(document.getElementById('jumlah_ok')?.value) || 0;
+            const ngVal = parseInt(document.getElementById('jumlah_ng')?.value) || 0;
+            const scrapVal = parseInt(document.getElementById('jml_ng_lebur')?.value) || 0;
+            const totalOutputVal = okVal + ngVal + scrapVal;
+
+            const sisaInputVal = totalInputVal - totalOutputVal;
+
+            if (totalInputVal < totalOutputVal) {
+                switchTab('production');
+                const reconcileCard = document.getElementById('reconcile-summary-card');
+                if (reconcileCard) {
+                    reconcileCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    reconcileCard.classList.add('ring-4', 'ring-red-500');
+                    setTimeout(() => reconcileCard.classList.remove('ring-4', 'ring-red-500'), 6000);
+                }
+                const deficit = totalOutputVal - totalInputVal;
+                alert(`Pengiriman laporan DITOLAK!\n\nTotal Output (${totalOutputVal.toLocaleString()} pcs) MELEBIHI Total Input (${totalInputVal.toLocaleString()} pcs) sebesar ${deficit.toLocaleString()} pcs.\n\nKuantitas output tidak boleh melebihi material masuk. Silakan periksa kembali WIP / Repairan di Tab 2 atau input hasil produksi di Tab 3.`);
+                return;
+            }
+
+            if (sisaInputVal > 0) {
+                const remarkInput = document.getElementById('sisa_input_remark');
+                const remarkVal = remarkInput ? remarkInput.value.trim() : '';
+
+                if (!remarkVal) {
+                    switchTab('production');
+                    const reconcileCard = document.getElementById('reconcile-summary-card');
+                    if (reconcileCard) {
+                        reconcileCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    if (remarkInput) {
+                        remarkInput.classList.add('ring-2', 'ring-red-500', 'border-red-500');
+                        remarkInput.focus();
+                        setTimeout(() => remarkInput.classList.remove('ring-2', 'ring-red-500', 'border-red-500'), 6000);
+                    }
+                    alert(`Pengiriman laporan belum dapat diproses!\n\nTerdapat SISA INPUT sebanyak ${sisaInputVal.toLocaleString()} pcs (Total Input: ${totalInputVal.toLocaleString()} pcs, Total Output: ${totalOutputVal.toLocaleString()} pcs).\n\nAlasan/remark sisa input wajib diisi sebelum laporan disubmit. Silakan isi kolom 'Alasan / Remark Sisa Input' di Tab 3.`);
+                    return;
+                }
+            }
+
+            // Set loading state on submit button
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg> Submitting...`;
             }
 
             form.submit();
         };
 
         // 2. Autocomplete helper
-        function setupAutocomplete(inputId, dropdownId, url, onSelect) {
+        function setupAutocomplete(inputId, dropdownId, url, onSelect, getSearchBy = 'all') {
             const input = document.getElementById(inputId);
             const dropdown = document.getElementById(dropdownId);
+            if (!input || !dropdown) return;
             let debounceTimer;
 
             input.addEventListener('input', function() {
@@ -1144,23 +1648,51 @@
                 }
 
                 debounceTimer = setTimeout(() => {
-                    fetch(`${url}?query=${encodeURIComponent(query)}`)
+                    const searchBy = typeof getSearchBy === 'function' ? getSearchBy() : (getSearchBy || 'all');
+                    const fetchUrl = `${url}?query=${encodeURIComponent(query)}&by=${encodeURIComponent(searchBy)}`;
+
+                    fetch(fetchUrl)
                         .then(res => res.json())
                         .then(data => {
                             dropdown.innerHTML = '';
                             if (data.length === 0) {
-                                dropdown.classList.add('hidden');
+                                const emptyDiv = document.createElement('div');
+                                emptyDiv.className = 'px-4 py-2.5 text-xs text-gray-400 italic bg-gray-50/50';
+                                emptyDiv.textContent = 'Tidak ada hasil ditemukan.';
+                                dropdown.appendChild(emptyDiv);
+                                dropdown.classList.remove('hidden');
                                 return;
                             }
 
                             data.forEach(item => {
                                 const div = document.createElement('div');
                                 div.className =
-                                    'px-4 py-2 hover:bg-blue-50 cursor-pointer text-xs border-b border-gray-100 last:border-b-0 text-gray-800 transition';
+                                    'px-4 py-2.5 hover:bg-blue-50 cursor-pointer text-xs border-b border-gray-100 last:border-b-0 text-gray-800 transition';
 
-                                if (item.item_code) {
-                                    div.innerHTML =
-                                        `<span class="font-bold text-blue-700">${item.item_code}</span> - <span class="text-gray-500">${item.item_description || ''}</span>`;
+                                if (searchBy === 'name' || inputId === 'part_name') {
+                                    div.innerHTML = `
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-bold text-blue-700 text-xs">${escapeHtml(item.item_name || item.item_description || '-')}</span>
+                                            <span class="font-mono bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold px-1.5 py-0.5 rounded">${escapeHtml(item.item_code)}</span>
+                                        </div>
+                                        <div class="text-gray-500 text-[11px] flex items-center gap-1.5 mt-1">
+                                            ${item.project_code && item.project_code !== 'N/A' ? `<span class="bg-gray-100 text-gray-700 px-1 rounded text-[10px]">Model: ${escapeHtml(item.project_code)}</span>` : ''}
+                                            ${item.customer_name && item.customer_name !== 'N/A' ? `<span class="bg-gray-100 text-gray-700 px-1 rounded text-[10px]">Cust: ${escapeHtml(item.customer_name)}</span>` : ''}
+                                        </div>
+                                    `;
+                                } else if (item.item_code) {
+                                    div.innerHTML = `
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-bold text-blue-700 font-mono text-xs">${escapeHtml(item.item_code)}</span>
+                                            ${item.customer_name && item.customer_name !== 'N/A' ? `<span class="bg-gray-100 text-gray-700 px-1 rounded text-[10px]">Cust: ${escapeHtml(item.customer_name)}</span>` : ''}
+                                        </div>
+                                        <div class="text-gray-600 text-[11px] mt-0.5">
+                                            ${escapeHtml(item.item_name || item.item_description || '')}
+                                            ${item.project_code && item.project_code !== 'N/A' ? `<span class="text-gray-400 ml-1">• Model: ${escapeHtml(item.project_code)}</span>` : ''}
+                                        </div>
+                                    `;
+                                } else if (item.display_label) {
+                                    div.textContent = item.display_label;
                                 } else if (item.name) {
                                     div.textContent = item.name;
                                 }
@@ -1178,24 +1710,54 @@
             });
 
             document.addEventListener('click', function(e) {
-                if (e.target !== input && e.target !== dropdown) {
+                if (e.target !== input && e.target !== dropdown && !dropdown.contains(e.target)) {
                     dropdown.classList.add('hidden');
                 }
             });
         }
 
-        // Initialize Autocompletes
+        // Shared handler for selecting an item from either Part Number or Part Name dropdown
+        function handlePartSelect(item) {
+            const partNumInput = document.getElementById('part_number');
+            const partNameInput = document.getElementById('part_name');
+            const modelInput = document.querySelector('input[name="model"]');
+            const customerInput = document.getElementById('customer');
+
+            if (partNumInput) partNumInput.value = item.item_code || '';
+            if (partNameInput) partNameInput.value = item.item_name || item.item_description || '';
+            if (modelInput && item.project_code && item.project_code !== 'N/A') {
+                modelInput.value = item.project_code;
+            }
+            if (customerInput && item.customer_name && item.customer_name !== 'N/A') {
+                customerInput.value = item.customer_name;
+            }
+
+            // Immediately trigger First Piece Inspection gate check
+            if (typeof checkFirstPieceGate === 'function') {
+                checkFirstPieceGate();
+            }
+        }
+
+        // Initialize Autocompletes for Part Number and Part Name
         setupAutocomplete('part_number', 'part-number-dropdown',
             '{{ route('second-process-reports.search-items') }}',
-            function(item) {
-                document.getElementById('part_number').value = item.item_code;
-                document.querySelector('input[name="part_name"]').value = item.item_description || '';
-            });
+            handlePartSelect,
+            'number'
+        );
+
+        setupAutocomplete('part_name', 'part-name-dropdown',
+            '{{ route('second-process-reports.search-items') }}',
+            handlePartSelect,
+            'name'
+        );
+
         setupAutocomplete('customer', 'customer-dropdown',
             '{{ route('second-process-reports.search-customers') }}',
             function(item) {
-                document.getElementById('customer').value = item.name;
+                document.getElementById('customer').value = item.customer_name || item.name || '';
             });
+
+
 
         // 3. Dynamic Hour Management (Unified Production Table Sync)
         const addHourBtn = document.getElementById('add-hour-btn');
@@ -1228,7 +1790,7 @@
 
             const newRow = `
     <tr class="production-row hover:bg-blue-50/50 transition-colors duration-100" data-hour="${newHour}">
-        <td class="px-3 py-2 text-center font-bold text-gray-600 bg-gray-50 sticky left-0 z-10 shadow-[1px_0_0_0_#e5e7eb]">${newHour}</td>
+        <td class="px-3 py-2 text-center font-bold text-gray-700 bg-gray-50 sticky left-0 z-10 shadow-[1px_0_0_0_#e5e7eb] whitespace-nowrap hour-cell text-xs" data-hour="${newHour}">${newHour}</td>
         <td class="px-2 py-1.5 bg-green-50/30 border-l border-green-100">
             <input type="number" name="hourly[${newHour}][hour_ke]" value="${newHour}" class="hidden">
             <input type="number" inputmode="numeric" name="hourly[${newHour}][ok_qty]" placeholder="-" class="w-full text-center text-sm font-bold text-green-800 rounded-md border-gray-200 focus:border-green-500 focus:ring-green-500 py-2 hourly-ok-input shadow-inner bg-white">
@@ -1278,26 +1840,21 @@
             const headerRow = document.getElementById('production-header-row');
             const th = document.createElement('th');
             th.className =
-                'group px-3 py-2 w-32 text-center ng-type-header relative select-none border-b border-gray-200';
+                'group px-3 py-2 w-36 text-center ng-type-header relative select-none border-b border-gray-200';
             th.dataset.ng = uppercaseName;
             th.innerHTML = `
-                <div class="flex flex-col space-y-1">
+                <div class="flex flex-col space-y-1.5">
                     <div class="flex items-center justify-center space-x-1">
-                        <span class="font-bold text-xs uppercase">${uppercaseName}</span>
-                        <button type="button" class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity delete-ng-col-btn text-[10px] font-bold" data-ng="${uppercaseName}" title="Delete ${uppercaseName}">&times;</button>
+                        <span class="font-bold text-xs uppercase text-gray-800">${escapeHtml(uppercaseName)}</span>
+                        <button type="button" class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity delete-ng-col-btn text-[10px] font-bold" data-ng="${escapeHtml(uppercaseName)}" title="Delete ${escapeHtml(uppercaseName)}">&times;</button>
                     </div>
-                    <button type="button" 
-                        class="ng-remark-btn mt-1 flex items-center justify-between w-full px-2 py-1.5 text-[10px] font-semibold bg-gray-50 border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded transition-all select-none"
-                        data-ng-name="${uppercaseName}"
-                        data-ng-index="${newNgIndex}">
-                        <span class="truncate remark-preview-label">Add Remark</span>
-                        <svg class="w-3 h-3 ml-1 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                    </button>
-                    <input type="hidden" name="ngs[${newNgIndex}][ng_input_item]" value="" class="ng-input-item-hidden">
-                    <input type="hidden" name="ngs[${newNgIndex}][ng_input_qty]" value="" class="ng-input-qty-hidden">
-                    <input type="hidden" name="ngs[${newNgIndex}][ng_name]" value="${uppercaseName}">
+                    <div class="relative">
+                        <select name="ngs[${newNgIndex}][ng_category]" class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select bg-blue-50 text-blue-800 border-blue-300" onchange="updateNgCategoryStyle(this)">
+                            <option value="NG-PROCESS" selected>NG-PROCESS</option>
+                            <option value="NG-INPUT">NG-INPUT</option>
+                        </select>
+                    </div>
+                    <input type="hidden" name="ngs[${newNgIndex}][ng_name]" value="${escapeHtml(uppercaseName)}">
                     <input type="hidden" name="ngs[${newNgIndex}][total_ng]" id="ng-total-hidden-${newNgIndex}" value="0">
                 </div>
             `;
@@ -1378,14 +1935,8 @@
                         totalHidden.id = `ng-total-hidden-${newIndex}`;
                     }
 
-                    const itemInput = th.querySelector('input[name$="[ng_input_item]"]');
-                    if (itemInput) itemInput.name = `ngs[${newIndex}][ng_input_item]`;
-
-                    const qtyInput = th.querySelector('input[name$="[ng_input_qty]"]');
-                    if (qtyInput) qtyInput.name = `ngs[${newIndex}][ng_input_qty]`;
-
-                    const remarkBtn = th.querySelector('.ng-remark-btn');
-                    if (remarkBtn) remarkBtn.setAttribute('data-ng-index', newIndex);
+                    const catSelect = th.querySelector('select[name$="[ng_category]"]');
+                    if (catSelect) catSelect.name = `ngs[${newIndex}][ng_category]`;
                 }
             });
         }
@@ -1452,7 +2003,9 @@
         function calculateSummaryTotals() {
             const totalOk = parseInt(totalOkField.value) || 0;
             const totalNg = parseInt(totalNgField.value) || 0;
-            const totalOutput = totalOk + totalNg;
+            const ngLeburField = document.getElementById('jml_ng_lebur');
+            const totalScrap = ngLeburField ? (parseInt(ngLeburField.value) || 0) : 0;
+            const totalOutput = totalOk + totalNg + totalScrap;
 
             totalOutputField.value = totalOutput;
 
@@ -1463,27 +2016,145 @@
                 ngPercentageField.value = '0.00';
             }
 
+            const ngPctDisplay = document.getElementById('ng_prosentase_display');
+            if (ngPctDisplay) {
+                ngPctDisplay.textContent = ngPercentageField.value;
+            }
+
             validateTotals();
+            updateMaterialReconciliation();
         }
 
         function validateTotals() {
             const totalOk = parseInt(totalOkField.value) || 0;
             const totalNg = parseInt(totalNgField.value) || 0;
-            const expectedOutput = totalOk + totalNg;
+            const ngLeburField = document.getElementById('jml_ng_lebur');
+            const totalScrap = ngLeburField ? (parseInt(ngLeburField.value) || 0) : 0;
+            const expectedOutput = totalOk + totalNg + totalScrap;
             const inputOutput = parseInt(totalOutputField.value) || 0;
             const validationMessage = document.getElementById('totals-validation-message');
 
-            if (inputOutput > 0 && (totalOk + totalNg !== inputOutput)) {
+            if (inputOutput > 0 && (expectedOutput !== inputOutput)) {
                 validationMessage.innerHTML = `
         <div class="p-3 bg-yellow-50 text-yellow-800 border border-yellow-200 rounded text-xs flex items-center shadow-sm">
             <svg class="w-4 h-4 mr-2 text-yellow-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            <span><strong>Peringatan Validasi:</strong> Total OK (${totalOk}) + Total NG (${totalNg}) = ${totalOk + totalNg}, tidak sama dengan Jumlah Output (${inputOutput}). Silakan periksa kembali input hasil produksi Anda.</span>
+            <span><strong>Peringatan Validasi:</strong> Total OK (${totalOk}) + Total NG (${totalNg}) + Scrap (${totalScrap}) = ${expectedOutput}, tidak sama dengan Jumlah Output (${inputOutput}). Silakan periksa kembali input hasil produksi Anda.</span>
         </div>
     `;
             } else {
                 validationMessage.innerHTML = '';
             }
         }
+
+        function updateMaterialReconciliation() {
+            const wipField = document.getElementById('jml_input_wip');
+            const repField = document.getElementById('repairan');
+            const totalOkField = document.getElementById('jumlah_ok');
+            const totalNgField = document.getElementById('jumlah_ng');
+            const ngLeburField = document.getElementById('jml_ng_lebur');
+            const sisaInputField = document.getElementById('sisa_input');
+
+            const wip = wipField ? (parseInt(wipField.value) || 0) : 0;
+            const rep = repField ? (parseInt(repField.value) || 0) : 0;
+            const totalInput = wip + rep;
+
+            const totalOk = totalOkField ? (parseInt(totalOkField.value) || 0) : 0;
+            const totalNg = totalNgField ? (parseInt(totalNgField.value) || 0) : 0;
+            const scrap = ngLeburField ? (parseInt(ngLeburField.value) || 0) : 0;
+            const totalOutput = totalOk + totalNg + scrap;
+
+            const sisa = totalInput - totalOutput;
+
+            if (sisaInputField) {
+                sisaInputField.value = sisa;
+            }
+
+            // Update badge / text numbers
+            const totalInputLabel = document.getElementById('reconcile-total-input');
+            const totalOutputLabel = document.getElementById('reconcile-total-output');
+            const sisaLabel = document.getElementById('reconcile-sisa-qty');
+            const wipLabel = document.getElementById('reconcile-wip-qty');
+            const repLabel = document.getElementById('reconcile-repairan-qty');
+            const okLabel = document.getElementById('reconcile-ok-qty');
+            const ngLabel = document.getElementById('reconcile-ng-qty');
+            const scrapLabel = document.getElementById('reconcile-scrap-qty');
+            const balancePill = document.getElementById('reconcile-balance-pill');
+            const statusBadge = document.getElementById('reconcile-status-badge');
+            const inlineNote = document.getElementById('reconcile-inline-note');
+
+            if (totalInputLabel) totalInputLabel.textContent = totalInput.toLocaleString();
+            if (totalOutputLabel) totalOutputLabel.textContent = totalOutput.toLocaleString();
+            if (sisaLabel) sisaLabel.textContent = Math.abs(sisa).toLocaleString();
+            if (wipLabel) wipLabel.textContent = wip.toLocaleString();
+            if (repLabel) repLabel.textContent = rep.toLocaleString();
+            if (okLabel) okLabel.textContent = totalOk.toLocaleString();
+            if (ngLabel) ngLabel.textContent = totalNg.toLocaleString();
+            if (scrapLabel) scrapLabel.textContent = scrap.toLocaleString();
+
+            // Update balance pill styling preserving grid layout classes
+            const pillBaseClasses = 'p-3.5 sm:p-4 rounded-xl border flex flex-col justify-between space-y-2 transition-colors duration-200 ';
+            if (balancePill) {
+                balancePill.className = pillBaseClasses +
+                    (totalInput < totalOutput ? 'bg-red-50 border-red-300 text-red-900' :
+                    (sisa > 0 ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-emerald-50 border-emerald-300 text-emerald-900'));
+            }
+
+            // Update status badge & inline note
+            if (statusBadge) {
+                if (totalInput < totalOutput) {
+                    statusBadge.className = 'text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border bg-red-200 text-red-900 border-red-300';
+                    statusBadge.textContent = '⛔ Defisit';
+                } else if (sisa > 0) {
+                    statusBadge.className = 'text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border bg-amber-200 text-amber-900 border-amber-300';
+                    statusBadge.textContent = '⚠️ Ada Sisa';
+                } else {
+                    statusBadge.className = 'text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border bg-emerald-200 text-emerald-900 border-emerald-300';
+                    statusBadge.textContent = '✓ Ideal';
+                }
+            }
+
+            if (inlineNote) {
+                if (totalInput < totalOutput) {
+                    inlineNote.textContent = 'Output melebihi Input! Submission diblokir.';
+                } else if (sisa > 0) {
+                    inlineNote.textContent = 'Ada sisa input. Remark wajib diisi.';
+                } else {
+                    inlineNote.textContent = 'Material seimbang (Ideal).';
+                }
+            }
+
+            // Dynamic State Indicators (Deficit banner & Remark container)
+            const stateDeficit = document.getElementById('reconcile-state-deficit');
+            const remarkContainer = document.getElementById('reconcile-remark-container');
+
+            if (totalInput < totalOutput) {
+                if (stateDeficit) {
+                    stateDeficit.classList.remove('hidden');
+                    const defAmount = totalOutput - totalInput;
+                    const defSpan = stateDeficit.querySelector('.reconcile-deficit-amount');
+                    if (defSpan) defSpan.textContent = defAmount.toLocaleString();
+                }
+                if (remarkContainer) {
+                    remarkContainer.classList.add('hidden');
+                }
+            } else if (sisa > 0) {
+                if (stateDeficit) {
+                    stateDeficit.classList.add('hidden');
+                }
+                if (remarkContainer) {
+                    remarkContainer.classList.remove('hidden');
+                }
+            } else {
+                if (stateDeficit) {
+                    stateDeficit.classList.add('hidden');
+                }
+                const remarkInput = document.getElementById('sisa_input_remark');
+                if (remarkContainer && (!remarkInput || !remarkInput.value.trim())) {
+                    remarkContainer.classList.add('hidden');
+                }
+            }
+        }
+        window.updateMaterialReconciliation = updateMaterialReconciliation;
 
         document.addEventListener('input', function(e) {
             if (e.target.classList.contains('hourly-ok-input')) {
@@ -1496,6 +2167,14 @@
                 } else {
                     e.target.classList.remove('bg-red-50', 'text-red-700', 'font-bold', 'shadow-inner');
                 }
+            }
+            if (e.target.id === 'jml_ng_lebur') {
+                calculateSummaryTotals();
+            }
+        });
+        document.addEventListener('change', function(e) {
+            if (e.target.id === 'jml_ng_lebur') {
+                calculateSummaryTotals();
             }
         });
 
@@ -1606,178 +2285,654 @@
             });
         }
 
-        // Defect Remark Modal Handling
-        const remarkModal = document.getElementById('ng-remark-modal');
-        const modalTitle = document.getElementById('modal-ng-title');
-        const saveModalBtn = document.getElementById('save-modal-remark-btn');
-        let activeRemarkButton = null;
-
-        // Function to add a row to the modal dynamically
-        function addModalRow(item = '', qty = '') {
-            const container = document.getElementById('modal-rows-container');
-            const div = document.createElement('div');
-            div.className = 'flex items-center space-x-2 modal-row';
-            div.innerHTML = `
-                <input type="text" class="flex-1 rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-xs py-1.5 px-2 modal-row-item" placeholder="Remark detail..." value="${escapeHtml(item)}">
-                <input type="number" class="w-20 rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-xs py-1.5 px-2 modal-row-qty" placeholder="Qty" value="${qty}">
-                <button type="button" class="text-red-500 hover:text-red-700 font-bold delete-row-btn text-base px-1" title="Delete row">&times;</button>
-            `;
-            container.appendChild(div);
-        }
-
-        // Helper to escape HTML tags in strings
-        function escapeHtml(str) {
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        // Manage row removal using event delegation
-        document.getElementById('modal-rows-container').addEventListener('click', function(e) {
-            const deleteBtn = e.target.closest('.delete-row-btn');
-            if (deleteBtn) {
-                const row = deleteBtn.closest('.modal-row');
-                const allRows = document.querySelectorAll('.modal-row');
-                // Keep at least one row
-                if (allRows.length > 1) {
-                    row.remove();
-                } else {
-                    row.querySelector('.modal-row-item').value = '';
-                    row.querySelector('.modal-row-qty').value = '';
-                }
-            }
-        });
-
-        // Add row button listener
-        document.getElementById('add-modal-row-btn').addEventListener('click', function() {
-            addModalRow('', '');
-        });
-
-        // Click event using event delegation for dynamic headers
-        document.getElementById('production-header-row').addEventListener('click', function(e) {
-            const btn = e.target.closest('.ng-remark-btn');
-            if (!btn) return;
-
-            activeRemarkButton = btn;
-            const ngName = btn.getAttribute('data-ng-name');
-            const th = btn.closest('th');
-
-            const itemHidden = th.querySelector('.ng-input-item-hidden');
-            const qtyHidden = th.querySelector('.ng-input-qty-hidden');
-
-            modalTitle.textContent = `Defect Detail: ${ngName}`;
-
-            // Clear existing rows
-            document.getElementById('modal-rows-container').innerHTML = '';
-
-            const rawItem = itemHidden.value.trim();
-            const rawQty = qtyHidden.value.trim();
-
-            if (rawItem) {
-                // Try to parse structured items like [8] X | [3] Y
-                const parts = rawItem.split(' | ');
-                let parsedAny = false;
-
-                parts.forEach(part => {
-                    const match = part.match(/^\[(\d+)\]\s*(.*)$/);
-                    if (match) {
-                        addModalRow(match[2], match[1]);
-                        parsedAny = true;
-                    }
-                });
-
-                // If parsing failed or it's legacy data, load as a single row
-                if (!parsedAny) {
-                    addModalRow(rawItem, rawQty);
-                }
+        // Defect NG Category Dynamic Color Handling
+        window.updateNgCategoryStyle = function(selectEl) {
+            if (!selectEl) return;
+            selectEl.classList.remove(
+                'bg-blue-50', 'text-blue-800', 'border-blue-300',
+                'bg-amber-50', 'text-amber-800', 'border-amber-300'
+            );
+            if (selectEl.value === 'NG-INPUT') {
+                selectEl.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-300');
             } else {
-                // Default to one empty row
-                addModalRow('', '');
+                selectEl.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-300');
             }
-
-            remarkModal.showModal();
-        });
-
-        // Close handlers
-        const closeModal = () => {
-            remarkModal.close();
-            activeRemarkButton = null;
         };
-
-        remarkModal.querySelectorAll('.close-modal-btn').forEach(btn => {
-            btn.addEventListener('click', closeModal);
-        });
-
-        remarkModal.addEventListener('click', function(e) {
-            if (e.target === remarkModal) {
-                closeModal();
-            }
-        });
-
-        // Save details
-        saveModalBtn.addEventListener('click', function() {
-            if (!activeRemarkButton) return;
-
-            const th = activeRemarkButton.closest('th');
-            const itemHidden = th.querySelector('.ng-input-item-hidden');
-            const qtyHidden = th.querySelector('.ng-input-qty-hidden');
-
-            const rows = document.querySelectorAll('.modal-row');
-            let serializedParts = [];
-            let totalQty = 0;
-
-            rows.forEach(row => {
-                const itemVal = row.querySelector('.modal-row-item').value.trim();
-                const qtyVal = parseInt(row.querySelector('.modal-row-qty').value) || 0;
-
-                if (itemVal || qtyVal > 0) {
-                    // Serialize as [qty] item or just item if qty is 0
-                    if (qtyVal > 0) {
-                        serializedParts.push(`[${qtyVal}] ${itemVal}`);
-                        totalQty += qtyVal;
-                    } else {
-                        serializedParts.push(itemVal);
-                    }
-                }
-            });
-
-            const finalItemVal = serializedParts.join(' | ');
-
-            // Save values back to hidden inputs
-            itemHidden.value = finalItemVal;
-            qtyHidden.value = totalQty > 0 ? totalQty : '';
-
-            // Update button UI & Label
-            const previewLabel = activeRemarkButton.querySelector('.remark-preview-label');
-            const hasVal = finalItemVal !== '';
-
-            if (hasVal) {
-                activeRemarkButton.classList.remove('bg-gray-50', 'border-gray-200', 'text-gray-500',
-                    'hover:bg-blue-50', 'hover:text-blue-700', 'font-semibold');
-                activeRemarkButton.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700',
-                    'hover:bg-blue-100', 'font-bold');
-
-                // Format label prettily for preview: e.g. 8x X, 3x Y
-                let prettyLabel = finalItemVal
-                    .replace(/\[(\d+)\]\s*([^\|]+)/g, '$1x $2')
-                    .replace(/\s*\|\s*/g, ', ');
-                previewLabel.textContent = prettyLabel;
-            } else {
-                activeRemarkButton.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700',
-                    'hover:bg-blue-100', 'font-bold');
-                activeRemarkButton.classList.add('bg-gray-50', 'border-gray-200', 'text-gray-500',
-                    'hover:bg-blue-50', 'hover:text-blue-700', 'font-semibold');
-                previewLabel.textContent = 'Add Remark';
-            }
-
-            closeModal();
-        });
 
         // Initial Calculations
         calculateHourlyAccumulation();
         calculateNgTotals();
     });
+</script>
+
+<!-- Manpower Script -->
+<script>
+    let manpowerIndex = document.querySelectorAll('.manpower-row').length;
+
+    function toggleCustomRole(select, index) {
+        const input = select.nextElementSibling;
+        if (select.value === '__custom__') {
+            input.classList.remove('hidden');
+            input.removeAttribute('readonly');
+            input.value = ''; // clear previous value
+            input.focus();
+        } else {
+            input.classList.add('hidden');
+            input.setAttribute('readonly', 'readonly');
+            input.value = select.value;
+        }
+    }
+
+    function addManpowerRow() {
+        const tbody = document.getElementById('manpower-tbody');
+        const rows = tbody.querySelectorAll('.manpower-row');
+        const nextNo = rows.length + 1;
+
+        const tr = document.createElement('tr');
+        tr.className = 'manpower-row';
+        tr.innerHTML = `
+            <td class="px-4 py-2 text-center font-bold text-gray-500 mp-no">${nextNo}</td>
+            <td class="px-4 py-2">
+                <input type="hidden" name="manpower[${manpowerIndex}][no]" class="mp-no-input" value="${nextNo}">
+                <select class="w-full text-xs rounded border-gray-300 py-1 mb-1 role-select" onchange="toggleCustomRole(this, ${manpowerIndex})">
+                    @foreach(config('mes.sp_manpower_roles') as $roleKey => $roleLabel)
+                        <option value="{{ $roleKey }}">{{ $roleLabel }}</option>
+                    @endforeach
+                    <option value="__custom__">Other (custom)...</option>
+                </select>
+                <input type="text" name="manpower[${manpowerIndex}][role]" value="loading" class="w-full text-xs rounded border-gray-300 py-1 role-input hidden" placeholder="Type custom role..." readonly>
+            </td>
+            <td class="px-4 py-2">
+                <input type="text" name="manpower[${manpowerIndex}][name]" placeholder="Operator Name" class="w-full text-xs rounded border-gray-300 py-1">
+            </td>
+            <td class="px-4 py-2 text-center">
+                <button type="button" onclick="removeManpowerRow(this)" class="text-red-500 hover:text-red-700 p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        manpowerIndex++;
+        updateManpowerNumbers();
+    }
+
+    function removeManpowerRow(btn) {
+        const tr = btn.closest('tr');
+        tr.remove();
+        updateManpowerNumbers();
+    }
+
+    function updateManpowerNumbers() {
+        const rows = document.querySelectorAll('.manpower-row');
+        rows.forEach((row, index) => {
+            const no = index + 1;
+            row.querySelector('.mp-no').textContent = no;
+            row.querySelector('.mp-no-input').value = no;
+        });
+    }
+
+    // IPQC Measurement Toggles
+    document.querySelectorAll('.meas-toggle-cb').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const key = this.dataset.key;
+            const cols = document.querySelectorAll('.meas-col-' + key);
+            cols.forEach(col => {
+                if (this.checked) {
+                    col.classList.remove('hidden');
+                } else {
+                    col.classList.add('hidden');
+                }
+            });
+        });
+    });
+
+    // IPQC Reject Rate Auto Calculation
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('ipqc-sample-input') || e.target.classList.contains(
+                'ipqc-rejsample-input')) {
+            const tr = e.target.closest('tr');
+            if (tr) {
+                const sample = parseFloat(tr.querySelector('.ipqc-sample-input')?.value || 0);
+                const rejSample = parseFloat(tr.querySelector('.ipqc-rejsample-input')?.value || 0);
+                const rejRateCell = tr.querySelector('.ipqc-rejrate-cell');
+                if (rejRateCell) {
+                    const rate = sample > 0 ? ((rejSample / sample) * 100).toFixed(2) : 0;
+                    rejRateCell.textContent = rate + '%';
+                }
+            }
+        }
+    });
+
+    // First Piece Live Gate Check
+    function checkFirstPieceGate() {
+        const partInput = document.querySelector('input[name="part_number"]');
+        const dateInput = document.querySelector('input[name="date"]');
+        const partNameInput = document.querySelector('input[name="part_name"]');
+        const modelInput = document.querySelector('input[name="model"]');
+
+        const banner = document.getElementById('first-piece-gate-banner');
+        const icon = document.getElementById('first-piece-gate-icon');
+        const text = document.getElementById('first-piece-gate-text');
+        const action = document.getElementById('first-piece-gate-action');
+
+        if (!partInput || !dateInput || !text) return;
+
+        const partNumber = partInput.value.trim();
+        const date = dateInput.value.trim();
+        const partName = partNameInput ? encodeURIComponent(partNameInput.value.trim()) : '';
+        const model = modelInput ? encodeURIComponent(modelInput.value.trim()) : '';
+
+        if (!partNumber || !date) {
+            text.innerHTML =
+                '<span class="text-gray-500">Please enter Date and Part Number in Tab 1 to check First Piece gate status.</span>';
+            action.innerHTML = '';
+            return;
+        }
+
+        fetch(
+                `/first-piece-inspections/check-approval?part_number=${encodeURIComponent(partNumber)}&date=${encodeURIComponent(date)}`
+            )
+            .then(res => res.json())
+            .then(data => {
+                if (data.approved) {
+                    banner.className =
+                        'bg-green-50 border border-green-300 p-4 rounded-lg flex flex-col md:flex-row justify-between items-center gap-4';
+                    icon.className = 'p-2 rounded-full bg-green-200 text-green-700';
+                    text.innerHTML =
+                        `<span class="text-green-800 font-bold">✅ APPROVED</span> — Checked by <strong>${data.inspection.checked_by || 'QC'}</strong> on ${data.inspection.checked_at || ''}`;
+                    action.innerHTML =
+                        `<a href="/first-piece-inspections/${data.inspection.id}" target="_blank" class="bg-green-700 hover:bg-green-800 text-white text-xs font-bold py-1.5 px-4 rounded shadow transition inline-block">View First Piece Inspection &rarr;</a>`;
+                } else {
+                    banner.className =
+                        'bg-amber-50 border border-amber-300 p-4 rounded-lg flex flex-col md:flex-row justify-between items-center gap-4';
+                    icon.className = 'p-2 rounded-full bg-amber-200 text-amber-700';
+                    text.innerHTML =
+                        `<span class="text-amber-800 font-bold">⚠️ NOT YET APPROVED</span> — First Piece Inspection for part <strong>${partNumber}</strong> on ${date} is pending or missing.`;
+                    action.innerHTML =
+                        `<a href="/first-piece-inspections/create?part_number=${encodeURIComponent(partNumber)}&date=${encodeURIComponent(date)}&part_name=${partName}&model=${model}" target="_blank" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-1.5 px-4 rounded shadow transition inline-block">+ Create First Piece Inspection &rarr;</a>`;
+                }
+            })
+            .catch(err => {
+                console.error('Error checking First Piece gate:', err);
+            });
+    }
+
+    const partInputEl = document.querySelector('input[name="part_number"]');
+    const dateInputEl = document.querySelector('input[name="date"]');
+    if (partInputEl) partInputEl.addEventListener('change', checkFirstPieceGate);
+    if (dateInputEl) dateInputEl.addEventListener('change', checkFirstPieceGate);
+
+    // Initial check on load
+    setTimeout(checkFirstPieceGate, 300);
+    setTimeout(function() {
+        if (typeof updateMixingRatioSuggestion === 'function') {
+            updateMixingRatioSuggestion();
+        }
+    }, 350);
+
+    // Tab 2 Materials Dynamic Rows Logic
+    let materialRowIndex = {{ $materialGlobalIndex ?? 100 }};
+    @php
+        $jsDefaultPaints = config('mes.sp_default_paint_materials', ['Paint', 'Paint Basecoat', 'Paint Topcoat', 'Hardener', 'Thinner']);
+    @endphp
+    const defaultPaintList = @json($jsDefaultPaints);
+
+    window.addPaintMaterialRow = function() {
+        const processSelect = document.getElementById('process_prod');
+        if (processSelect && !['Painting', 'Painting Basecoat', 'Painting Topcoat', 'Repair'].includes(processSelect.value)) {
+            return;
+        }
+        const tbody = document.getElementById('paint-materials-tbody');
+        if (!tbody) return;
+
+        const existingNames = [];
+        tbody.querySelectorAll('input[name*="[item_name]"]').forEach(input => {
+            const val = input.value.trim();
+            if (val) existingNames.push(val);
+        });
+
+        const missing = defaultPaintList.filter(item => !existingNames.includes(item));
+        let nextItem = '';
+        if (missing.length > 0) {
+            nextItem = missing[0];
+        } else {
+            let count = 1;
+            while (existingNames.some(n => n.toLowerCase() === `paint #${count}`.toLowerCase() || n.toLowerCase() === `paint ${count}`.toLowerCase())) {
+                count++;
+            }
+            nextItem = `Paint #${count}`;
+        }
+
+        const nextLower = nextItem.toLowerCase();
+        let ratioPlaceholder = 'Misal 4';
+        if (nextLower.includes('hardener')) {
+            ratioPlaceholder = 'Misal 1';
+        } else if (nextLower.includes('thinner')) {
+            ratioPlaceholder = 'Misal 2';
+        } else if (nextLower.includes('basecoat') || nextLower.includes('topcoat')) {
+            ratioPlaceholder = 'Misal 4';
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-3 py-2">
+                <input type="hidden" name="materials[${materialRowIndex}][type]" value="paint">
+                <input type="text" name="materials[${materialRowIndex}][item_name]" value="${nextItem}" placeholder="Paint Item Name" list="paint-item-suggestions" class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800">
+            </td>
+            <td class="px-2 py-2">
+                <input type="text" name="materials[${materialRowIndex}][lot_number]" value="" placeholder="Lot" class="w-full text-xs rounded border-gray-300 py-1">
+            </td>
+            <td class="px-2 py-2">
+                <input type="text" name="materials[${materialRowIndex}][visco]" value="" placeholder="Visco" class="w-full text-xs rounded border-gray-300 py-1">
+            </td>
+            <td class="px-2 py-2">
+                <input type="text" inputmode="decimal" name="materials[${materialRowIndex}][mixing_ratio]" value="" placeholder="${ratioPlaceholder}" oninput="updateMixingRatioSuggestion()" class="mixing-ratio-val w-full text-xs rounded border-gray-300 py-1 font-mono font-semibold">
+            </td>
+            <td class="px-2 py-2">
+                <input type="number" step="any" name="materials[${materialRowIndex}][qty]" value="" placeholder="Qty" class="w-full text-xs rounded border-gray-300 py-1">
+            </td>
+            <td class="px-2 py-2">
+                <input type="text" name="materials[${materialRowIndex}][uom]" value="KG" placeholder="UOM" class="w-full text-xs rounded border-gray-300 py-1">
+            </td>
+            <td class="px-1 py-2 text-center">
+                <button type="button" onclick="removePaintMaterialRow(this)" class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition" title="Remove Row">&times;</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        materialRowIndex++;
+        updateMixingRatioSuggestion();
+    };
+
+    window.removePaintMaterialRow = function(btn) {
+        const tr = btn.closest('tr');
+        if (tr) {
+            tr.remove();
+            updateMixingRatioSuggestion();
+        }
+    };
+
+    function updateMixingRatioSuggestion() {
+        const tbody = document.getElementById('paint-materials-tbody');
+        if (!tbody) return;
+        const rows = tbody.querySelectorAll('tr');
+        const items = [];
+        rows.forEach(tr => {
+            const nameInput = tr.querySelector('input[name*="[item_name]"]');
+            const ratioInput = tr.querySelector('input[name*="[mixing_ratio]"]');
+            if (nameInput) {
+                const name = nameInput.value.trim();
+                const ratio = ratioInput ? ratioInput.value.trim() : '';
+                if (name) {
+                    items.push({ name, ratio });
+                }
+            }
+        });
+
+        const formulaEl = document.getElementById('mixing-ratio-live-formula');
+        if (formulaEl) {
+            if (items.length > 0) {
+                const formulaValues = items.map(it => it.ratio ? it.ratio : '-').join(' : ');
+                formulaEl.textContent = formulaValues;
+            } else {
+                formulaEl.textContent = '-';
+            }
+        }
+
+        const addBtn = document.getElementById('add-paint-item-btn');
+        if (addBtn) {
+            const processSelect = document.getElementById('process_prod');
+            const isApplicable = processSelect ? ['Painting', 'Painting Basecoat', 'Painting Topcoat', 'Repair'].includes(processSelect.value) : true;
+            if (isApplicable) {
+                addBtn.disabled = false;
+                addBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                const names = items.map(it => it.name);
+                const missing = defaultPaintList.filter(item => !names.includes(item));
+                if (missing.length > 0) {
+                    addBtn.innerHTML = `+ Tambah Item Cat (${missing[0]})`;
+                } else {
+                    addBtn.innerHTML = '+ Tambah Item Cat Ekstra';
+                }
+            }
+        }
+    }
+    window.updateMixingRatioSuggestion = updateMixingRatioSuggestion;
+
+    function togglePaintMaterialsByProcess() {
+        const processSelect = document.getElementById('process_prod');
+        const isPaintApplicable = processSelect ? ['Painting', 'Painting Basecoat', 'Painting Topcoat', 'Repair'].includes(processSelect.value) : true;
+
+        const paintCard = document.getElementById('paint-materials-card');
+        const paintBadge = document.getElementById('paint-process-badge');
+        const paintNotice = document.getElementById('paint-disabled-notice');
+        const addPaintBtn = document.getElementById('add-paint-item-btn');
+        const paintTbody = document.getElementById('paint-materials-tbody');
+
+        if (!paintCard) return;
+
+        if (isPaintApplicable) {
+            paintCard.classList.remove('opacity-60', 'bg-gray-50');
+            if (paintBadge) paintBadge.classList.add('hidden');
+            if (paintNotice) paintNotice.classList.add('hidden');
+            if (addPaintBtn) {
+                addPaintBtn.disabled = false;
+                addPaintBtn.classList.remove('cursor-not-allowed', 'opacity-50');
+            }
+            if (paintTbody) {
+                paintTbody.querySelectorAll('input, button').forEach(function(el) {
+                    el.disabled = false;
+                    el.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                });
+            }
+            updateMixingRatioSuggestion();
+        } else {
+            paintCard.classList.add('opacity-60', 'bg-gray-50');
+            if (paintBadge) paintBadge.classList.remove('hidden');
+            if (paintNotice) paintNotice.classList.remove('hidden');
+            if (addPaintBtn) {
+                addPaintBtn.disabled = true;
+                addPaintBtn.classList.add('cursor-not-allowed', 'opacity-50');
+            }
+            if (paintTbody) {
+                paintTbody.querySelectorAll('input, button').forEach(function(el) {
+                    el.disabled = true;
+                    el.classList.add('bg-gray-100', 'cursor-not-allowed');
+                });
+            }
+        }
+    }
+    window.togglePaintMaterialsByProcess = togglePaintMaterialsByProcess;
+
+    window.addPartBatch = function(type) {
+        const tbody = document.getElementById('part-materials-tbody');
+        if (!tbody) return;
+
+        let count = 0;
+        tbody.querySelectorAll('input[name*="[item_name]"]').forEach(input => {
+            if (input.value.trim().toLowerCase().startsWith(type.toLowerCase())) {
+                count++;
+            }
+        });
+
+        const nextBatchName = `${type} #${count + 1}`;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-3 py-2">
+                <input type="hidden" name="materials[${materialRowIndex}][type]" value="part">
+                <input type="text" name="materials[${materialRowIndex}][item_name]" value="${nextBatchName}" placeholder="Part / WIP Item Name" class="w-full text-xs rounded border-gray-300 py-1 font-bold bg-gray-50 text-gray-800" readonly>
+            </td>
+            <td class="px-2 py-2">
+                <input type="text" name="materials[${materialRowIndex}][lot_number]" value="" placeholder="Lot" class="w-full text-xs rounded border-gray-300 py-1">
+            </td>
+            <td class="px-2 py-2">
+                <input type="number" step="any" name="materials[${materialRowIndex}][qty]" value="" placeholder="Qty" class="w-full text-xs rounded border-gray-300 py-1" oninput="updatePartMaterialsBreakdown()">
+            </td>
+            <td class="px-2 py-2">
+                <input type="text" name="materials[${materialRowIndex}][uom]" value="PCS" placeholder="UOM" class="w-full text-xs rounded border-gray-300 py-1">
+            </td>
+            <td class="px-1 py-2 text-center">
+                <button type="button" onclick="removePartMaterialRow(this)" class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 text-sm rounded hover:bg-red-50 transition" title="Remove Row">&times;</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        materialRowIndex++;
+        updatePartMaterialsBreakdown();
+    };
+
+    window.removePartMaterialRow = function(btn) {
+        const tr = btn.closest('tr');
+        if (tr) {
+            tr.remove();
+            reindexPartBatches();
+            updatePartMaterialsBreakdown();
+        }
+    };
+
+    window.reindexPartBatches = function() {
+        const tbody = document.getElementById('part-materials-tbody');
+        if (!tbody) return;
+        let wipIdx = 1;
+        let repairanIdx = 1;
+        tbody.querySelectorAll('input[name*="[item_name]"]').forEach(input => {
+            const val = input.value.trim().toLowerCase();
+            if (val.startsWith('repair')) {
+                input.value = `Repairan #${repairanIdx++}`;
+            } else if (val.startsWith('wip')) {
+                input.value = `WIP #${wipIdx++}`;
+            }
+        });
+    };
+
+    function updatePartMaterialsBreakdown() {
+        let totalWip = 0;
+        let totalRepairan = 0;
+
+        const tbody = document.getElementById('part-materials-tbody');
+        if (tbody) {
+            tbody.querySelectorAll('tr').forEach(function(row) {
+                const nameInput = row.querySelector('input[name*="[item_name]"]');
+                const qtyInput = row.querySelector('input[name*="[qty]"]');
+
+                const name = (nameInput ? nameInput.value : '').trim().toLowerCase();
+                const qty = parseFloat(qtyInput ? qtyInput.value : 0);
+
+                if (!isNaN(qty) && qty > 0) {
+                    if (name.includes('repair')) {
+                        totalRepairan += qty;
+                    } else {
+                        totalWip += qty;
+                    }
+                }
+            });
+        }
+
+        const wipField = document.getElementById('jml_input_wip');
+        const repField = document.getElementById('repairan');
+        const sumWipBadge = document.getElementById('summary-wip-qty');
+        const sumRepBadge = document.getElementById('summary-repairan-qty');
+        const sumTotalBadge = document.getElementById('summary-total-input-qty');
+
+        if (wipField) wipField.value = totalWip;
+        if (repField) repField.value = totalRepairan;
+        if (sumWipBadge) sumWipBadge.textContent = totalWip.toLocaleString();
+        if (sumRepBadge) sumRepBadge.textContent = totalRepairan.toLocaleString();
+        if (sumTotalBadge) sumTotalBadge.textContent = (totalWip + totalRepairan).toLocaleString();
+
+        if (typeof updateMaterialReconciliation === 'function') {
+            updateMaterialReconciliation();
+        }
+    }
+    window.updatePartMaterialsBreakdown = updatePartMaterialsBreakdown;
+
+    // Helper to safely escape HTML
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+    window.escapeHtml = escapeHtml;
+
+    // Trouble / Downtime Problem-Approach Repeater
+    let troubleRowIndex = Math.max(document.querySelectorAll('#troubles-tbody tr.trouble-row').length, {{ $report->troubles->count() }});
+
+    window.addTroubleRow = function(masalah = '', category = 'Mesin', penanganan = '', lossTimeMinutes = '') {
+        // Defensive check against event objects passed by inline event handlers
+        if (typeof masalah !== 'string') masalah = '';
+        if (typeof category !== 'string') category = 'Mesin';
+        if (typeof penanganan !== 'string') penanganan = '';
+        if (typeof lossTimeMinutes !== 'string' && typeof lossTimeMinutes !== 'number') lossTimeMinutes = '';
+
+        const tbody = document.getElementById('troubles-tbody');
+        if (!tbody) {
+            console.error('troubles-tbody not found');
+            return;
+        }
+
+        const emptyRow = document.getElementById('troubles-empty-row');
+        if (emptyRow) {
+            emptyRow.style.display = 'none';
+            emptyRow.classList.add('hidden');
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'trouble-row block md:table-row bg-white rounded-xl md:rounded-none border border-gray-200 md:border-0 p-4 md:p-0 shadow-xs md:shadow-none hover:bg-slate-50/70 transition';
+        tr.innerHTML = `
+            <td class="block md:table-cell p-0 pb-2.5 md:px-3 md:py-3 align-top text-xs font-bold text-gray-500 border-b md:border-b-0 border-gray-100 mb-3 md:mb-0">
+                <div class="flex items-center justify-between md:justify-center">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-bold text-xs md:bg-transparent md:border-0 md:p-0 md:text-gray-500">
+                        <span class="md:hidden">Masalah #</span><span class="trouble-row-num"></span>
+                    </span>
+                    <button type="button" onclick="removeTroubleRow(this)"
+                        class="md:hidden text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-0.5 rounded bg-red-50 hover:bg-red-100 transition cursor-pointer">
+                        Hapus
+                    </button>
+                </div>
+            </td>
+            <td class="block md:table-cell p-0 mb-3 md:mb-0 md:px-3 md:py-3 align-top">
+                <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
+                    Masalah <span class="text-red-500">*</span>
+                </label>
+                <textarea name="troubles[${troubleRowIndex}][masalah]" rows="2"
+                    class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 focus:border-blue-500 focus:ring-blue-500 transition shadow-xs"
+                    placeholder="Jelaskan kendala / masalah yang terjadi...">${escapeHtml(masalah)}</textarea>
+            </td>
+            <td class="block md:table-cell p-0 mb-3 md:mb-0 md:px-3 md:py-3 align-top">
+                <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
+                    Kategori <span class="text-red-500">*</span>
+                </label>
+                <select name="troubles[${troubleRowIndex}][penyebab]"
+                    class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 font-medium focus:border-blue-500 focus:ring-blue-500 transition shadow-xs">
+                    @foreach (config('mes.sp_trouble_categories') as $catKey => $catLabel)
+                        <option value="{{ $catKey }}" ${category === '{{ $catKey }}' ? 'selected' : ''}>{{ $catLabel }}</option>
+                    @endforeach
+                </select>
+            </td>
+            <td class="block md:table-cell p-0 mb-3 md:mb-0 md:px-3 md:py-3 align-top">
+                <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
+                    Penanganan
+                </label>
+                <textarea name="troubles[${troubleRowIndex}][penanganan]" rows="2"
+                    class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 focus:border-blue-500 focus:ring-blue-500 transition shadow-xs"
+                    placeholder="Tindakan penanganan / perbaikan...">${escapeHtml(penanganan)}</textarea>
+            </td>
+            <td class="block md:table-cell p-0 md:px-3 md:py-3 align-top">
+                <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
+                    Loss Time (Menit)
+                </label>
+                <div class="relative rounded-lg shadow-xs">
+                    <input type="number"
+                        name="troubles[${troubleRowIndex}][loss_time_minutes]"
+                        value="${lossTimeMinutes}"
+                        min="0"
+                        max="1440"
+                        placeholder="0"
+                        class="trouble-loss-minutes w-full text-xs md:text-sm rounded-lg border-gray-300 py-1.5 md:py-2 pr-12 text-right font-mono font-bold focus:border-blue-500 focus:ring-blue-500">
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                        <span class="text-xs font-bold text-gray-400 uppercase">min</span>
+                    </div>
+                </div>
+            </td>
+            <td class="hidden md:table-cell px-2 py-3 align-top text-center">
+                <button type="button" onclick="removeTroubleRow(this)"
+                    class="text-red-500 hover:text-red-700 font-bold p-1 rounded-lg hover:bg-red-50 transition cursor-pointer text-base leading-none"
+                    title="Hapus masalah ini">&times;</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        troubleRowIndex++;
+
+        const input = tr.querySelector('.trouble-loss-minutes');
+        if (input) {
+            input.addEventListener('input', updateTotalDowntime);
+            input.addEventListener('change', updateTotalDowntime);
+        }
+
+        reindexTroubleRows();
+        updateTotalDowntime();
+    };
+
+    window.removeTroubleRow = function(btn) {
+        const tr = btn.closest('tr');
+        if (tr) {
+            tr.remove();
+            reindexTroubleRows();
+            updateTotalDowntime();
+        }
+    };
+
+    function reindexTroubleRows() {
+        const rows = document.querySelectorAll('#troubles-tbody tr.trouble-row');
+        const emptyRow = document.getElementById('troubles-empty-row');
+        if (emptyRow) {
+            if (rows.length === 0) {
+                emptyRow.style.display = '';
+                emptyRow.classList.remove('hidden');
+            } else {
+                emptyRow.style.display = 'none';
+                emptyRow.classList.add('hidden');
+            }
+        }
+        rows.forEach(function(row, i) {
+            const numCols = row.querySelectorAll('.trouble-row-num');
+            numCols.forEach(function(numCol) {
+                numCol.textContent = i + 1;
+            });
+        });
+    }
+
+    // Trouble / Downtime Real-Time Recalculation
+    function updateTotalDowntime() {
+        let totalMins = 0;
+        document.querySelectorAll('.trouble-loss-minutes').forEach(function(input) {
+            const val = parseInt(input.value, 10);
+            if (!isNaN(val) && val > 0) {
+                totalMins += val;
+            }
+        });
+        const totalHours = (totalMins / 60).toFixed(1);
+
+        const badgeMin = document.getElementById('total-downtime-minutes');
+        const badgeHr = document.getElementById('total-downtime-hours');
+        const footerMin = document.getElementById('footer-total-downtime-minutes');
+
+        if (badgeMin) badgeMin.textContent = totalMins;
+        if (badgeHr) badgeHr.textContent = totalHours;
+        if (footerMin) footerMin.textContent = totalMins;
+    }
+
+    document.querySelectorAll('.trouble-loss-minutes').forEach(function(input) {
+        input.addEventListener('input', updateTotalDowntime);
+        input.addEventListener('change', updateTotalDowntime);
+    });
+    reindexTroubleRows();
+    updateTotalDowntime();
+
+    // Part Materials (WIP & Repairan) Real-Time Breakdown Recalculation
+    const partMaterialsTbody = document.getElementById('part-materials-tbody');
+    if (partMaterialsTbody) {
+        partMaterialsTbody.addEventListener('input', function(e) {
+            if (e.target && e.target.matches('input[name*="[qty]"], input[name*="[item_name]"]')) {
+                updatePartMaterialsBreakdown();
+            }
+        });
+        partMaterialsTbody.addEventListener('change', function(e) {
+            if (e.target && e.target.matches('input[name*="[qty]"], input[name*="[item_name]"]')) {
+                updatePartMaterialsBreakdown();
+            }
+        });
+    }
+    updatePartMaterialsBreakdown();
+    if (typeof updateMaterialReconciliation === 'function') {
+        updateMaterialReconciliation();
+    }
+
+    // Item Paint Conditional Toggling based on Proses Prod
+    const processProdEl = document.getElementById('process_prod');
+    if (processProdEl) {
+        processProdEl.addEventListener('change', togglePaintMaterialsByProcess);
+    }
+    togglePaintMaterialsByProcess();
 </script>

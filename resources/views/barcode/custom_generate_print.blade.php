@@ -116,62 +116,114 @@
             flex-direction: column;
             overflow: hidden;
             box-sizing: border-box;
+            background-color: #ffffff;
         }
 
-        /* Row 1: Header */
-        .label-header {
-            height: 7.5mm;
+        /* Top Section: Header + Item Info + Top-Right Sequence & Code Box */
+        .label-top-container {
+            height: 17mm;
             display: flex;
             border-bottom: 1.5px solid #000000;
             box-sizing: border-box;
-            align-items: center;
         }
 
-        .header-left {
+        .top-left-content {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .company-header {
+            height: 6.5mm;
             display: flex;
             align-items: center;
             padding-left: 2mm;
+            border-bottom: 1px solid #000000;
+            box-sizing: border-box;
         }
 
-        .header-right {
-            width: 16mm;
-            height: 100%;
-            border-left: 1.5px solid #000000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11pt;
-            font-weight: 900;
-            background-color: #fafafa;
+        .company-logo {
+            height: 4.8mm;
+            width: auto;
+            max-width: 9mm;
+            object-fit: contain;
+            vertical-align: middle;
+            margin-right: 1.5mm;
+            display: inline-block;
         }
 
-        /* Row 2: Item Code & Name */
-        .label-item-info {
-            height: 9.5mm;
+        .item-info-header {
+            flex: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            border-bottom: 1.5px solid #000000;
-            box-sizing: border-box;
             line-height: 1.15;
             text-align: center;
+            box-sizing: border-box;
+            padding: 0.5mm 0;
         }
 
         .item-code {
-            font-size: 12pt;
+            font-size: 11pt;
             font-weight: 900;
             letter-spacing: 0.5px;
         }
 
         .item-name {
-            font-size: 7pt;
+            font-size: 6.8pt;
             font-weight: 900;
             text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 77mm;
         }
 
-        /* Row 3: Bottom grid section */
+        .top-right-box {
+            width: 18mm;
+            height: 100%;
+            border-left: 1.5px solid #000000;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            background-color: #fafafa;
+        }
+
+        .default-seq-no {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11pt;
+            font-weight: 900;
+        }
+
+        .sharp-seq-no {
+            height: 6mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8pt;
+            font-weight: 900;
+            border-bottom: 1.5px solid #000000;
+        }
+
+        .sharp-code-box {
+            height: 11mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11pt;
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: 0.5px;
+        }
+
+        /* Bottom Section: Form Details + QR Code */
         .label-body {
             flex: 1;
             display: flex;
@@ -189,6 +241,7 @@
             font-size: 6.8pt;
             font-weight: 900;
             line-height: 1.2;
+            box-sizing: border-box;
         }
 
         .detail-row {
@@ -228,6 +281,7 @@
             justify-content: center;
             padding: 1mm 0;
             flex-shrink: 0;
+            box-sizing: border-box;
         }
 
         .qr-image {
@@ -248,12 +302,519 @@
             text-transform: uppercase;
         }
 
+        /* ITSP Specific Layout (8 labels per sheet: 2 cols x 4 rows, printer-safe A4) */
+        .a4-sheet.itsp-sheet {
+            width: 200mm;
+            height: 278mm;
+            grid-template-columns: 98mm 98mm;
+            grid-template-rows: repeat(4, 66.5mm);
+            gap: 2mm 2mm;
+            padding: 2mm 1mm;
+            box-sizing: border-box;
+        }
+
+        .sticker-label.sticker-label-itsp {
+            width: 98mm;
+            height: 66.5mm;
+            box-sizing: border-box;
+        }
+
+        .itsp-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            font-size: 7pt;
+            font-weight: 900;
+        }
+
+        .itsp-top-header {
+            border-bottom: 1.5px solid #000000;
+            padding: 0.8mm 1.5mm 0.3mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            background-color: #ffffff;
+            height: 13.5mm;
+            justify-content: space-between;
+        }
+
+        .itsp-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .itsp-main-code {
+            text-align: center;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+        }
+
+        .itsp-body {
+            flex: 1;
+            display: flex;
+            box-sizing: border-box;
+            overflow: hidden;
+            height: calc(66.5mm - 13.5mm);
+        }
+
+        .itsp-left-table {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1.5px solid #000000;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .itsp-row {
+            display: flex;
+            border-bottom: 1.2px solid #000000;
+            box-sizing: border-box;
+            height: 5.4mm;
+            align-items: stretch;
+            line-height: 1.1;
+        }
+
+        .itsp-cell-label {
+            width: 16mm;
+            border-right: 1.2px solid #000000;
+            padding: 0.3mm 0.8mm;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            background-color: #fafafa;
+            font-size: 6.2pt;
+            font-weight: 900;
+        }
+
+        .itsp-cell-val {
+            flex: 1;
+            padding: 0.3mm 0.8mm;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            font-size: 7pt;
+            font-weight: 900;
+        }
+
+        .itsp-bottom-grid {
+            flex: 1;
+            display: flex;
+            box-sizing: border-box;
+            height: calc(66.5mm - 13.5mm - (5.4mm * 5));
+        }
+
+        .itsp-color-pos-box {
+            width: 24mm;
+            border-right: 1.2px solid #000000;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        .itsp-color-cell {
+            flex: 1;
+            border-bottom: 1.2px solid #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10pt;
+            font-weight: 900;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .itsp-pos-cell {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13pt;
+            font-weight: 900;
+            text-align: center;
+        }
+
+        .itsp-stamp-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .itsp-stamp-cols {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            box-sizing: border-box;
+        }
+
+        .itsp-stamp-col {
+            border-right: 1.2px solid #000000;
+            display: flex;
+            flex-direction: column;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .itsp-stamp-col:last-child {
+            border-right: none;
+        }
+
+        .itsp-stamp-head {
+            border-bottom: 1.2px solid #000000;
+            padding: 0.3mm 0;
+            font-size: 6pt;
+            background-color: #fafafa;
+            font-weight: 900;
+        }
+
+        .itsp-stamp-body {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 6.8pt;
+            font-weight: 900;
+        }
+
+        .itsp-stamp-foot {
+            border-top: 1.2px solid #000000;
+            padding: 0.3mm 0.8mm;
+            font-size: 5pt;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 900;
+        }
+
+        .itsp-right-qr {
+            width: 24mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.8mm 0.5mm;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        /* VinFast Specific Layout (3 labels per sheet: 1 col x 3 rows) */
+        .a4-sheet.vinfast-sheet {
+            width: 200mm;
+            height: 278mm;
+            grid-template-columns: 200mm;
+            grid-template-rows: repeat(3, 89mm);
+            gap: 3.5mm 0;
+            padding: 2mm 0;
+            box-sizing: border-box;
+        }
+
+        .sticker-label.sticker-label-vinfast {
+            width: 200mm;
+            height: 89mm;
+            box-sizing: border-box;
+            border: 1.5px solid #000000;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            font-family: Arial, Helvetica, sans-serif;
+            overflow: hidden;
+        }
+
+        .vf-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        /* Row 1: Header */
+        .vf-row-header {
+            height: 20mm;
+            border-bottom: 1.5px solid #000000;
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .vf-col-logo {
+            width: 26mm;
+            border-right: 1.2px solid #000000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5mm;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .vf-logo-img {
+            max-height: 18mm;
+            max-width: 24mm;
+            object-fit: contain;
+            display: block;
+        }
+
+        .vf-col-from {
+            width: 60mm;
+            border-right: 1.2px solid #000000;
+            padding: 1mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            font-size: 6pt;
+            line-height: 1.25;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .vf-col-to {
+            flex: 1;
+            border-right: 1.2px solid #000000;
+            padding: 1mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            font-size: 6pt;
+            line-height: 1.25;
+            box-sizing: border-box;
+        }
+
+        .vf-col-individual {
+            width: 38mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13pt;
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        /* Row 2: Specs */
+        .vf-row-specs {
+            height: 15mm;
+            border-bottom: 1.5px solid #000000;
+            display: grid;
+            grid-template-columns: 42mm 50mm 60mm 1fr;
+            box-sizing: border-box;
+        }
+
+        .vf-spec-col {
+            border-right: 1.2px solid #000000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.8mm 1mm;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .vf-spec-col:last-child {
+            border-right: none;
+        }
+
+        .vf-spec-label {
+            font-size: 6.5pt;
+            font-weight: 900;
+            line-height: 1;
+            text-align: center;
+            width: 100%;
+        }
+
+        .vf-spec-val-lg {
+            font-size: 20pt;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .vf-spec-val-md {
+            font-size: 14pt;
+            font-weight: 900;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        /* Row 3: Part Number */
+        .vf-row-partno {
+            height: 15mm;
+            border-bottom: 1.5px solid #000000;
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .vf-partno-label {
+            width: 32mm;
+            border-right: 1.2px solid #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 7.5pt;
+            font-weight: 900;
+            line-height: 1.15;
+            padding: 0.5mm;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .vf-partno-val {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28pt;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            font-family: 'Arial Black', Arial, sans-serif;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 1mm;
+            box-sizing: border-box;
+        }
+
+        /* Row 4: Description & Dates */
+        .vf-row-desc {
+            height: 23mm;
+            border-bottom: 1.5px solid #000000;
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .vf-desc-left {
+            width: 102mm;
+            border-right: 1.2px solid #000000;
+            padding: 1mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .vf-desc-title {
+            font-size: 6.5pt;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 0.5mm;
+        }
+
+        .vf-desc-name {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 13pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            line-height: 1.25;
+            word-break: break-word;
+            padding: 0 1mm;
+        }
+
+        .vf-desc-mid {
+            width: 48mm;
+            border-right: 1.2px solid #000000;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .vf-desc-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        .vf-subrow-top {
+            height: 50%;
+            border-bottom: 1.2px solid #000000;
+            padding: 0.8mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .vf-subrow-bot {
+            height: 50%;
+            padding: 0.8mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .vf-sub-lbl {
+            font-size: 6pt;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .vf-sub-val {
+            font-size: 11pt;
+            font-weight: 900;
+            text-align: center;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Row 5: Footer blank inspection boxes */
+        .vf-row-footer {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            box-sizing: border-box;
+        }
+
+        .vf-foot-col {
+            border-right: 1.2px solid #000000;
+            box-sizing: border-box;
+        }
+
+        .vf-foot-col:last-child {
+            border-right: none;
+        }
+
         /* Print media styles */
         @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+
             body {
                 background-color: #ffffff;
                 padding: 0;
                 margin: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             .no-print-bar {
@@ -270,11 +831,37 @@
                 box-shadow: none;
                 margin-bottom: 0;
                 border: none;
-                padding: 5mm 6mm 24mm 6mm;
+                padding: 5mm 6mm 15mm 6mm;
                 width: 210mm;
                 height: 297mm;
                 box-sizing: border-box;
                 overflow: hidden;
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+
+            .a4-sheet:last-child {
+                page-break-after: auto;
+            }
+
+            .a4-sheet.itsp-sheet {
+                padding: 6mm 5mm 6mm 5mm;
+                grid-template-columns: 98mm 98mm;
+                grid-template-rows: repeat(4, 66.5mm);
+                gap: 2mm 2mm;
+                width: 210mm;
+                height: 297mm;
+                box-sizing: border-box;
+            }
+
+            .a4-sheet.vinfast-sheet {
+                padding: 6mm 5mm;
+                grid-template-columns: 200mm;
+                grid-template-rows: repeat(3, 89mm);
+                gap: 4mm 0;
+                width: 210mm;
+                height: 297mm;
+                box-sizing: border-box;
             }
         }
     </style>
@@ -284,8 +871,21 @@
     <!-- Print Navigation Bar -->
     <div class="no-print-bar">
         <a href="{{ route('barcode.custom.form') }}" class="btn btn-secondary">
-            ⬅️ Back to Form
+            ⬅️ Kembali ke Form
         </a>
+        <div style="font-size: 13px; font-weight: bold; color: #4338ca;">
+            @if(($barcodeType ?? 'default') === 'sharp')
+                Format: Customer SHARP (QR Code & Kode Bulan-Tahun)
+            @elseif(($barcodeType ?? 'default') === 'yanfeng')
+                Format: Customer YANFENG (QR Code & QAD / Foreign Name)
+            @elseif(($barcodeType ?? 'default') === 'itsp')
+                Format: Customer PT. ITSP (Part Tag: 8 label/sheet, Model, Color, Position, SP)
+            @elseif(($barcodeType ?? 'default') === 'vinfast')
+                Format: Customer VINFAST (3 label/sheet: 1 baris 1 label, Part No, Std Pack, Gross Weight, Made in, Batch#)
+            @else
+                Format: Standard Default (QR Code)
+            @endif
+        </div>
         <button onclick="window.print()" class="btn btn-primary">
             🖨️ Print Now
         </button>
@@ -294,101 +894,370 @@
     <!-- Sticker Labels Grid container -->
     <div class="a4-sheet-container">
         @php
-            $chunks = array_chunk($labels, 12);
+            $chunkSize = ($barcodeType === 'vinfast') ? 3 : (($barcodeType === 'itsp') ? 8 : 12);
+            $chunks = array_chunk($labels, $chunkSize);
         @endphp
 
         @foreach($chunks as $chunk)
-            <div class="a4-sheet">
+            <div class="a4-sheet {{ ($barcodeType === 'itsp') ? 'itsp-sheet' : (($barcodeType === 'vinfast') ? 'vinfast-sheet' : '') }}">
                 @foreach($chunk as $label)
-                    <div class="sticker-label">
-                        
-                        <!-- Row 1: Header -->
-                        <div class="label-header">
-                            <div class="header-left">
-                                <!-- circular dj logo badge -->
-                                <svg viewBox="0 0 100 100" style="width: 5mm; height: 5mm; fill: none; stroke: #000000; stroke-width: 8; margin-right: 1.5mm; display: inline-block; vertical-align: middle;">
-                                    <circle cx="50" cy="50" r="42"/>
-                                    <text x="50" y="65" font-family="'Arial Black', sans-serif" font-weight="900" font-size="45" text-anchor="middle" fill="#000000" stroke="none">dj</text>
-                                </svg>
-                                <span style="font-size: 8.5pt; font-weight: 900; letter-spacing: 0.2px; text-transform: uppercase;">PT DAIJO INDUSTRIAL</span>
-                            </div>
-                            <div class="header-right">
-                                {{ $label['label_no'] }}
-                            </div>
-                        </div>
-
-                        <!-- Row 2: Item Info -->
-                        <div class="label-item-info">
-                            <div class="item-code">{{ $label['item_code'] }}</div>
-                            <div class="item-name">{{ $label['item_name'] }}</div>
-                        </div>
-
-                        <!-- Row 3: Logistics details & QR -->
-                        <div class="label-body">
-                            
-                            <!-- Left: Form details -->
-                            <div class="body-details">
-                                <div class="detail-row">
-                                    <div class="detail-label">SPK NO</div>
-                                    <div class="detail-divider">:</div>
-                                    <div class="detail-value" style="display: flex; justify-content: space-between; width: 100%;">
-                                        <span style="display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
-                                            <span>{{ $label['spk_number'] }}</span>
-                                            @if(!empty($label['is_trial']))
-                                                <span style="color: #dc2626; border: 1px solid #dc2626; font-size: 5.5pt; font-weight: 900; padding: 0 3px; border-radius: 2px; line-height: 1.2;">TRIAL</span>
-                                            @endif
-                                        </span>
-                                        <span style="font-weight: 900; margin-right: 1mm;">FROM : {{ $label['warehouse'] }}</span>
+                    @if(($label['barcode_type'] ?? 'default') === 'vinfast')
+                        <div class="sticker-label sticker-label-vinfast">
+                            <div class="vf-container">
+                                <!-- Row 1: Header -->
+                                <div class="vf-row-header">
+                                    <div class="vf-col-logo">
+                                        @if(!empty($vinfastLogoBase64))
+                                            <img src="data:image/png;base64,{{ $vinfastLogoBase64 }}" alt="VinFast" class="vf-logo-img">
+                                        @else
+                                            <img src="{{ asset('picture/vinfast-logo.png') }}" alt="VinFast" class="vf-logo-img" onerror="this.src='{{ asset('images/vinfast-logo.png') }}'">
+                                        @endif
+                                    </div>
+                                    <div class="vf-col-from">
+                                        <div style="font-weight: bold; font-size: 6pt;">FROM:</div>
+                                        <div style="font-weight: 900; font-size: 7.5pt; margin: 0.5mm 0;">PT. CHANGMING AUTO INDONESIA</div>
+                                        <div style="font-size: 6pt; color: #111;">Kawasan Industri MM2100<br>Jl. Sulawesi Blok I No. 2-5 Cibitung</div>
+                                    </div>
+                                    <div class="vf-col-to">
+                                        <div style="display: flex; gap: 3px;">
+                                            <span style="font-weight: bold; font-size: 6pt;">TO:</span>
+                                            <span style="font-weight: 900; font-size: 7.2pt;">VINFAST TRADING AND PRODUCTION JSC</span>
+                                        </div>
+                                        <div style="font-size: 5.8pt; color: #111; margin-top: 0.5mm;">Dinh Vu – Cat Hai Economic Zone, Cat Hai Island, Cat Hai Special Zone, Hai Phong City, Viet Nam.</div>
+                                    </div>
+                                    <div class="vf-col-individual">
+                                        INDIVIDUAL
                                     </div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="detail-label">PROD DATE</div>
-                                    <div class="detail-divider">:</div>
-                                    <div class="detail-value">{{ $label['prod_date'] }}</div>
+
+                                <!-- Row 2: Specs Strip -->
+                                <div class="vf-row-specs">
+                                    <div class="vf-spec-col">
+                                        <div class="vf-spec-label">STD PACK (PCS):</div>
+                                        <div class="vf-spec-val-lg">{{ $label['std_pack'] ?? $label['quantity'] }}</div>
+                                    </div>
+                                    <div class="vf-spec-col">
+                                        <div class="vf-spec-label">MADE IN:</div>
+                                        <div class="vf-spec-val-md">{{ $label['made_in'] ?: 'Indonesia' }}</div>
+                                    </div>
+                                    <div class="vf-spec-col">
+                                        <div class="vf-spec-label">TYPE (MODEL) OF PART:</div>
+                                        <div class="vf-spec-val-md">{{ $label['model'] ?: '-' }}</div>
+                                    </div>
+                                    <div class="vf-spec-col">
+                                        <div class="vf-spec-label">GROSS WEIGHT (KG)</div>
+                                        <div class="vf-spec-val-lg">{{ $label['part_weight'] ? rtrim(rtrim(number_format((float)$label['part_weight'], 3, '.', ''), '0'), '.') : '-' }}</div>
+                                    </div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="detail-label">OPERATOR</div>
-                                    <div class="detail-divider">:</div>
-                                    <div class="detail-value">{{ $label['operator'] }}</div>
+
+                                <!-- Row 3: Part Number -->
+                                <div class="vf-row-partno">
+                                    <div class="vf-partno-label">PART<br>NUMBER:</div>
+                                    <div class="vf-partno-val">{{ $label['item_code'] }}</div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="detail-label">QTY</div>
-                                    <div class="detail-divider">:</div>
-                                    <div class="detail-value" style="display: flex; justify-content: space-between; width: 100%;">
-                                        <span style="font-size: 8pt; font-weight: 900;">{{ $label['quantity'] }}</span>
-                                        <span style="font-weight: 900; margin-right: 1mm;">
-                                            SHIFT : 
-                                            @if ($label['shift'] === 'I')
-                                                <span class="shift-active">I</span> / II / III
-                                            @elseif ($label['shift'] === 'II')
-                                                I / <span class="shift-active">II</span> / III
+
+                                <!-- Row 4: Description & Dates -->
+                                <div class="vf-row-desc">
+                                    <div class="vf-desc-left">
+                                        <div class="vf-desc-title">PART DESCRIPTION:</div>
+                                        <div class="vf-desc-name">{{ $label['item_name'] }}</div>
+                                    </div>
+                                    <div class="vf-desc-mid">
+                                        <div class="vf-subrow-top">
+                                            <div class="vf-sub-lbl">PRODUCE DATE:</div>
+                                            <div class="vf-sub-val">{{ $label['prod_date_formatted'] ?: ($label['prod_date'] ?: '-') }}</div>
+                                        </div>
+                                        <div class="vf-subrow-bot">
+                                            <div class="vf-sub-lbl">EXPIRY DATE:</div>
+                                            <div class="vf-sub-val">{{ $label['expiry_date'] ?: '' }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="vf-desc-right">
+                                        <div class="vf-subrow-top">
+                                            <div class="vf-sub-lbl">BATCH#:</div>
+                                            <div class="vf-sub-val">{{ ($label['spk_number'] && $label['spk_number'] !== '-') ? $label['spk_number'] : '-' }}</div>
+                                        </div>
+                                        <div class="vf-subrow-bot">
+                                            <div class="vf-sub-lbl">SHIPMENT DATE:</div>
+                                            <div class="vf-sub-val">{{ $label['shipment_date'] ?: '' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Row 5: Footer Empty Inspection Boxes (Blank) -->
+                                <div class="vf-row-footer">
+                                    <div class="vf-foot-col"></div>
+                                    <div class="vf-foot-col"></div>
+                                    <div class="vf-foot-col"></div>
+                                </div>
+                            </div>
+                        </div>
+                    @elseif(($label['barcode_type'] ?? 'default') === 'itsp')
+                        <div class="sticker-label sticker-label-itsp">
+                            <div class="itsp-container">
+                                <!-- Top Header -->
+                                <div class="itsp-top-header">
+                                    <div class="itsp-header-row">
+                                        <div style="display: flex; align-items: center;">
+                                            @if(!empty($logoBase64))
+                                                <img src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo" class="company-logo">
                                             @else
-                                                I / II / <span class="shift-active">III</span>
+                                                <img src="{{ asset('picture/logo-dj.png') }}" alt="Logo" class="company-logo" onerror="this.style.display='none'">
                                             @endif
-                                        </span>
+                                            <span style="font-size: 8pt; font-weight: 900; letter-spacing: 0.2px; text-transform: uppercase;">PT DAIJO INDUSTRIAL</span>
+                                        </div>
+                                        <span style="font-size: 6.8pt; font-weight: 900; letter-spacing: 0.3px;">PART TAG</span>
+                                    </div>
+                                    <div class="itsp-main-code">
+                                        @if(!empty($label['half_code_1']) || !empty($label['half_code_2']))
+                                            @php
+                                                $posClean = strtoupper(trim((string)($label['position'] ?? '')));
+                                                if (isset($label['enlarged_half_code'])) {
+                                                    $enlarged = (int)$label['enlarged_half_code'];
+                                                    $isLeft   = ($enlarged === 1);
+                                                    $isRight  = ($enlarged === 2);
+                                                    $isCenter = ($enlarged === 0);
+                                                } else {
+                                                    $isCenter = in_array($posClean, ['CENTER', 'C', 'CTR', 'MIDDLE'])
+                                                        || str_contains($posClean, 'CENTER')
+                                                        || str_contains($posClean, 'CTR');
+
+                                                    $isLeft = !$isCenter && (
+                                                        in_array($posClean, ['LH', 'LEFT', 'L', '1'])
+                                                        || str_contains($posClean, 'LEFT')
+                                                        || str_contains($posClean, 'LH')
+                                                    );
+
+                                                    $isRight = !$isCenter && (
+                                                        in_array($posClean, ['RH', 'RIGHT', 'R', '2'])
+                                                        || str_contains($posClean, 'RIGHT')
+                                                        || str_contains($posClean, 'RH')
+                                                    );
+                                                }
+                                            @endphp
+                                            @if($isLeft)
+                                                <span style="font-size: 16pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 11pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
+                                            @elseif($isRight)
+                                                <span style="font-size: 11pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 16pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
+                                            @else
+                                                <span style="font-size: 13.5pt; font-weight: 900;">{{ $label['half_code_1'] }}</span><span style="font-size: 13.5pt; font-weight: 900;">{{ $label['half_code_2'] }}</span>
+                                            @endif
+                                        @else
+                                            <span style="font-size: 13.5pt; font-weight: 900;">{{ $label['itsp_code'] }}</span>
+                                        @endif
                                     </div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="detail-label">CUSTOMER</div>
-                                    <div class="detail-divider">:</div>
-                                    <div class="detail-value">{{ $label['customer'] }}</div>
+
+                                <!-- Body -->
+                                <div class="itsp-body">
+                                    <!-- Left Table -->
+                                    <div class="itsp-left-table">
+                                        <!-- Part Name -->
+                                        <div class="itsp-row">
+                                            <div class="itsp-cell-label">PART NAME</div>
+                                            <div class="itsp-cell-val" style="font-weight: 900; font-size: 7.2pt; text-transform: uppercase;">
+                                                {{ $label['item_name'] }}
+                                            </div>
+                                        </div>
+
+                                        <!-- Model & Qty -->
+                                        <div class="itsp-row">
+                                            <div class="itsp-cell-label">MODEL</div>
+                                            <div class="itsp-cell-val" style="width: 20mm; flex-shrink: 0; border-right: 1.2px solid #000000; font-size: 7.2pt;">
+                                                {{ $label['model'] ?: '-' }}
+                                            </div>
+                                            <div class="itsp-cell-val" style="font-size: 8pt; font-weight: 900;">
+                                                QTY : {{ $label['quantity'] }}
+                                            </div>
+                                        </div>
+
+                                        <!-- Part Code & SPK -->
+                                        <div class="itsp-row">
+                                            <div class="itsp-cell-label">PART CODE</div>
+                                            <div class="itsp-cell-val" style="width: 20mm; flex-shrink: 0; border-right: 1.2px solid #000000; font-size: 7.5pt;">
+                                                {{ $label['qad'] ?: '-' }}
+                                            </div>
+                                            <div class="itsp-cell-val" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                                <span style="font-size: 7.2pt; font-weight: 900; white-space: nowrap;">NO SPK: {{ $label['spk_number'] }}</span>
+                                                @if(!empty($label['is_sp']))
+                                                    <span style="background-color: #000000; color: #ffffff; padding: 0.5px 3px; font-size: 5.8pt; font-weight: 900; border-radius: 1px; line-height: 1.2; flex-shrink: 0; margin-left: 2px;">SP</span>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <!-- Customer -->
+                                        <div class="itsp-row">
+                                            <div class="itsp-cell-label">CUSTOMER</div>
+                                            <div class="itsp-cell-val" style="width: 20mm; flex-shrink: 0; border-right: 1.2px solid #000000; font-size: 7.2pt;">
+                                                {{ $label['customer'] ?: 'PT. ITSP' }}
+                                            </div>
+                                            <div class="itsp-cell-val" style="font-size: 6.8pt; font-weight: 900;">
+                                                FROM: {{ $label['warehouse'] }}
+                                            </div>
+                                        </div>
+
+                                        <!-- Prod Date -->
+                                        <div class="itsp-row">
+                                            <div class="itsp-cell-label">PROD. DATE</div>
+                                            <div class="itsp-cell-val" style="font-size: 6.8pt; font-weight: 900;">
+                                                {{ $label['prod_date'] }}
+                                            </div>
+                                        </div>
+
+                                        <!-- Bottom Grid: Color/Pos + Stamp -->
+                                        <div class="itsp-bottom-grid">
+                                            <div class="itsp-color-pos-box">
+                                                <div class="itsp-color-cell">{{ $label['color'] ?: '-' }}</div>
+                                                <div class="itsp-pos-cell">{{ $label['rh_lh'] ?: ($label['position'] ?: '-') }}</div>
+                                            </div>
+                                            <div class="itsp-stamp-box">
+                                                <div class="itsp-stamp-cols">
+                                                    <div class="itsp-stamp-col">
+                                                        <div class="itsp-stamp-head">PROD</div>
+                                                        <div class="itsp-stamp-body">&nbsp;</div>
+                                                    </div>
+                                                    <div class="itsp-stamp-col">
+                                                        <div class="itsp-stamp-head">QUALITY</div>
+                                                        <div class="itsp-stamp-body">&nbsp;</div>
+                                                    </div>
+                                                    <div class="itsp-stamp-col">
+                                                        <div class="itsp-stamp-head">WH</div>
+                                                        <div class="itsp-stamp-body">&nbsp;</div>
+                                                    </div>
+                                                </div>
+                                                <div class="itsp-stamp-foot">
+                                                    <span>Rev.01</span>
+                                                    <span>Effective Date :</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right QR Code -->
+                                    <div class="itsp-right-qr">
+                                        <div style="font-size: 8.5pt; font-weight: 900;">#{{ $label['label_no'] }}</div>
+                                        <img src="data:image/png;base64,{{ $label['qr_code_base64'] }}" alt="QR" class="qr-image" style="width: 17mm; height: 17mm;">
+                                        <div class="rohs-box" style="width: 20mm; font-size: 6pt; padding: 1.5px 0; margin-top: 0;">RoHS FREE</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        <div class="sticker-label">
+                            
+                            <!-- Top Section: Header + Item Info + Top-Right Sequence & Code Box -->
+                            <div class="label-top-container">
+                                <div class="top-left-content">
+                                    <div class="company-header">
+                                        @if(!empty($logoBase64))
+                                            <img src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo" class="company-logo">
+                                        @else
+                                            <img src="{{ asset('picture/logo-dj.png') }}" alt="Logo" class="company-logo" onerror="this.style.display='none'">
+                                        @endif
+                                        <span style="font-size: 8pt; font-weight: 900; letter-spacing: 0.2px; text-transform: uppercase;">PT DAIJO INDUSTRIAL</span>
+                                    </div>
+                                    <div class="item-info-header">
+                                        @if(($label['barcode_type'] ?? 'default') === 'yanfeng' && !empty($label['qad']))
+                                            <div style="display: flex; justify-content: space-between; align-items: baseline; width: 100%; padding: 0 2mm;">
+                                                <div class="item-code" style="text-align: left;">{{ $label['item_code'] }}</div>
+                                                <div style="font-size: 8.5pt; font-weight: 900; letter-spacing: 0.3px; text-align: right;">{{ $label['qad'] }}</div>
+                                            </div>
+                                            <div class="item-name" style="text-align: left; padding-left: 2mm; max-width: 77mm;">{{ $label['item_name'] }}</div>
+                                        @else
+                                            <div class="item-code">{{ $label['item_code'] }}</div>
+                                            <div class="item-name">{{ $label['item_name'] }}</div>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="top-right-box">
+                                    @if(($label['barcode_type'] ?? 'default') === 'sharp')
+                                        <div class="sharp-seq-no">{{ $label['label_no'] }}</div>
+                                        <div class="sharp-code-box">
+                                            <div>{{ $label['year_code'] }}</div>
+                                            <div>{{ $label['month_code'] }}</div>
+                                        </div>
+                                    @else
+                                        <div class="default-seq-no">{{ $label['label_no'] }}</div>
+                                    @endif
                                 </div>
                             </div>
 
-                            <!-- Right: QR Code & RoHS FREE -->
-                            <div class="body-qr-container">
-                                <img src="data:image/png;base64,{{ $label['qr_code_base64'] }}" alt="QR" class="qr-image">
-                                <div class="rohs-box">RoHS FREE</div>
-                            </div>
-                        </div>
+                            <!-- Bottom Section: Logistics details & QR -->
+                            <div class="label-body">
+                                
+                                <!-- Left: Form details -->
+                                <div class="body-details">
+                                    <div class="detail-row">
+                                        <div class="detail-label">SPK NO</div>
+                                        <div class="detail-divider">:</div>
+                                        <div class="detail-value" style="display: flex; justify-content: space-between; width: 100%;">
+                                            <span style="display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
+                                                <span>{{ $label['spk_number'] }}</span>
+                                                @if(!empty($label['is_trial']))
+                                                    <span style="color: #dc2626; border: 1px solid #dc2626; font-size: 5.5pt; font-weight: 900; padding: 0 3px; border-radius: 2px; line-height: 1.2;">TRIAL</span>
+                                                @endif
+                                            </span>
+                                            <span style="font-weight: 900; margin-right: 1mm;">FROM : {{ $label['warehouse'] }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-label">PROD DATE</div>
+                                        <div class="detail-divider">:</div>
+                                        <div class="detail-value">
+                                            @if(($label['barcode_type'] ?? 'default') === 'sharp')
+                                                <div style="display: flex; justify-content: flex-end; width: 100%; padding-right: 2mm;">
+                                                    <span>{{ $label['prod_date_formatted'] }}</span>
+                                                </div>
+                                            @else
+                                                {{ $label['prod_date'] }}
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-label">OPERATOR</div>
+                                        <div class="detail-divider">:</div>
+                                        <div class="detail-value">{{ $label['operator'] }}</div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-label">QTY</div>
+                                        <div class="detail-divider">:</div>
+                                        <div class="detail-value" style="display: flex; justify-content: space-between; width: 100%;">
+                                            <span style="font-size: 8pt; font-weight: 900;">{{ $label['quantity'] }}</span>
+                                            <span style="font-weight: 900; margin-right: 1mm;">
+                                                SHIFT : 
+                                                @if ($label['shift'] === 'I')
+                                                    <span class="shift-active">I</span> / II / III
+                                                @elseif ($label['shift'] === 'II')
+                                                    I / <span class="shift-active">II</span> / III
+                                                @else
+                                                    I / II / <span class="shift-active">III</span>
+                                                @endif
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-label">CUSTOMER</div>
+                                        <div class="detail-divider">:</div>
+                                        <div class="detail-value">{{ $label['customer'] }}</div>
+                                    </div>
+                                </div>
 
-                    </div>
+                                <!-- Right: QR Code & RoHS FREE -->
+                                <div class="body-qr-container">
+                                    <img src="data:image/png;base64,{{ $label['qr_code_base64'] }}" alt="QR" class="qr-image">
+                                    <div class="rohs-box">RoHS FREE</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    @endif
                 @endforeach
 
-                <!-- If current page chunk has less than 12 items, fill with invisible/empty slots to preserve grid placement -->
-                @if(count($chunk) < 12)
-                    @for($i = 0; $i < (12 - count($chunk)); $i++)
-                        <div class="sticker-label" style="visibility: hidden;"></div>
+                <!-- If current page chunk has less than $chunkSize items, fill with invisible/empty slots to preserve grid placement -->
+                @if(count($chunk) < $chunkSize)
+                    @for($i = 0; $i < ($chunkSize - count($chunk)); $i++)
+                        <div class="sticker-label {{ ($barcodeType === 'itsp') ? 'sticker-label-itsp' : (($barcodeType === 'vinfast') ? 'sticker-label-vinfast' : '') }}" style="visibility: hidden;"></div>
                     @endfor
                 @endif
             </div>

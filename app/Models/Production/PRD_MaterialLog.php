@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class PRD_MaterialLog extends Model
 {
-    use HasFactory, BroadcastsDashboardModelUpdates;
+    use BroadcastsDashboardModelUpdates, HasFactory;
+
     protected $table = 'prd_material_logs';
 
     protected $fillable = [
@@ -31,5 +32,4 @@ class PRD_MaterialLog extends Model
     {
         return $this->hasMany(PRD_MouldingUserLog::class, 'material_log_id');
     }
-
 }

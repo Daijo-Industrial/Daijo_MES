@@ -2,15 +2,14 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class LineProductionService extends BaseSapService
 {
-  
-   public function getLineProduction($startDate = '2025-12-01')
+    public function getLineProduction($startDate = '2025-12-01')
     {
-         $routes = [
+        $routes = [
             '/api/sap_lineproduction/list',
             '/api/sap_lineproduction_semi/list',
             '/api/sap_lineproduction_semi_wip/list',
@@ -24,7 +23,7 @@ class LineProductionService extends BaseSapService
                 'startDate' => $startDate,
             ]);
 
-            $data = $this->normalizeResponse($response, "Line Production");
+            $data = $this->normalizeResponse($response, 'Line Production');
             // foreach ($data as &$item) {
             //     $item['item_code'] = $item['item_code'] ?? $item['Code'] ?? null;
             //     unset($item['Code']); // hapus 'Code' biar gak dobel
@@ -37,24 +36,23 @@ class LineProductionService extends BaseSapService
         }
 
         return $allData;
-   
+
     }
 
-
     private function normalizeResponse($response, $tag = 'SAP')
-        {
-            if (!is_array($response)) {
-                Log::warning("[{$tag}] Response bukan array", ['response' => $response]);
-                return [];
-            }
+    {
+        if (! is_array($response)) {
+            Log::warning("[{$tag}] Response bukan array", ['response' => $response]);
 
-            if (array_key_exists('data', $response)) {
-                return is_array($response['data']) ? $response['data'] : [];
-            }
-
-            return $response;
+            return [];
         }
 
+        if (array_key_exists('data', $response)) {
+            return is_array($response['data']) ? $response['data'] : [];
+        }
+
+        return $response;
+    }
 
     public function SyncData()
     {
@@ -65,20 +63,20 @@ class LineProductionService extends BaseSapService
         // dd($LineProduction);
 
         $LineProduction = array_map(function ($item) {
-        if (isset($item['Code']) && !isset($item['ItemCode'])) {
-            $item['ItemCode'] = $item['Code'];
-            unset($item['Code']); // hapus key lama
-        }
-        return $item;
+            if (isset($item['Code']) && ! isset($item['ItemCode'])) {
+                $item['ItemCode'] = $item['Code'];
+                unset($item['Code']); // hapus key lama
+            }
+
+            return $item;
         }, $LineProduction);
 
-
         DB::table('sap_lineproduction')->truncate();
-       $data = array_map(function ($item) {
+        $data = array_map(function ($item) {
             return [
-                'item_code'          => $item['ItemCode'],
-                'line_production'    => $item['LineProduction'],
-                'priority'           => $item['Priority'],
+                'item_code' => $item['ItemCode'],
+                'line_production' => $item['LineProduction'],
+                'priority' => $item['Priority'],
             ];
         }, $LineProduction);
 
@@ -90,7 +88,7 @@ class LineProductionService extends BaseSapService
             'message' => 'Data Line Production berhasil disinkronkan',
             'data' => [
                 'lineproduction' => $LineProduction,
-            ]
+            ],
         ]);
 
     }

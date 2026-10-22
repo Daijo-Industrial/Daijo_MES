@@ -2,17 +2,20 @@
 
 namespace App\Livewire\Report;
 
-use Livewire\Component;
 use App\Models\Asakai;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
+use Livewire\Component;
 
 #[Layout('layouts.dashboard')]
 class DailyReport extends Component
 {
     public $date;
+
     public $customerFilter = '';
+
     public $partFilter = '';
+
     public $shiftFilter = '';
 
     public function mount()
@@ -40,9 +43,9 @@ class DailyReport extends Component
     {
         $asakais = Asakai::with(['pics', 'rcas', 'correctiveActions', 'creator'])
             ->daily($this->date)
-            ->when($this->customerFilter, fn($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
-            ->when($this->partFilter, fn($q) => $q->where('part_no', 'like', "%{$this->partFilter}%"))
-            ->when($this->shiftFilter, fn($q) => $q->where('lot_shift', $this->shiftFilter))
+            ->when($this->customerFilter, fn ($q) => $q->where('customer', 'like', "%{$this->customerFilter}%"))
+            ->when($this->partFilter, fn ($q) => $q->where('part_no', 'like', "%{$this->partFilter}%"))
+            ->when($this->shiftFilter, fn ($q) => $q->where('lot_shift', $this->shiftFilter))
             ->get();
 
         $customers = Asakai::distinct()->pluck('customer')->sort();

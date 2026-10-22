@@ -3,14 +3,14 @@
 namespace App\Imports;
 
 use App\Models\Delivery\DeliveryScheduleNew;
-use Maatwebsite\Excel\Concerns\ToModel;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
-use Carbon\Carbon;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class DeliveryScheduleImport implements ToModel, WithHeadingRow, WithBatchInserts, WithChunkReading
+class DeliveryScheduleImport implements ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow
 {
     private $existingCodes;
 
@@ -23,11 +23,11 @@ class DeliveryScheduleImport implements ToModel, WithHeadingRow, WithBatchInsert
     public function model(array $row)
     {
         return new DeliveryScheduleNew([
-            'code'              => $this->generateUniqueCode(),
-            'so_number'         => $row['so_number'] ?? null,
-            'customer_code'     => $row['customer_code'] ?? null,
-            'delivery_date'     => $this->convertExcelDate($row['delivery_date']),
-            'item_code'         => $row['item_code'],
+            'code' => $this->generateUniqueCode(),
+            'so_number' => $row['so_number'] ?? null,
+            'customer_code' => $row['customer_code'] ?? null,
+            'delivery_date' => $this->convertExcelDate($row['delivery_date']),
+            'item_code' => $row['item_code'],
             'delivery_quantity' => $row['delivery_quantity'],
         ]);
     }

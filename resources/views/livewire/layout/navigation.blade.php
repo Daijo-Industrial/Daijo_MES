@@ -10,14 +10,15 @@ new class extends Component {
      */
     public function logout(Logout $logout): void
     {
-        if (auth()->user()->role_id === 1) {
+        $user = auth()->user();
+        if ($user && $user->role_id === 1) {
             // Set username to null for the logged-out user with the WORKSHOP role
             User::where('role_id', 1)->update(['username' => null]);
         }
 
         $logout();
 
-        $this->redirect('/', navigate: true);
+        $this->redirect('/login', navigate: true);
     }
 }; ?>
 
@@ -39,7 +40,7 @@ new class extends Component {
                         {{ __('Dashboard') }}
                     </x-nav-link>
                 </div>
-                @if (auth()->user()->can('view-warehouse-links'))
+                @if (auth()->user()?->can('view-warehouse-links'))
                     <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                         <x-nav-link :href="route('production.bom.index')" :active="request()->routeIs('production.bom.index')" wire:navigate>
                             {{ __('Production BOM') }}
@@ -54,7 +55,7 @@ new class extends Component {
                     <x-slot name="trigger">
                         <button
                             class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name"
+                            <div x-data="{{ json_encode(['name' => auth()->user()?->name ?? 'Guest']) }}" x-text="name"
                                 x-on:profile-updated.window="name = $event.detail.name"></div>
 
                             <div class="ms-1">
@@ -113,9 +114,9 @@ new class extends Component {
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200">
             <div class="px-4">
-                <div class="font-medium text-base text-gray-800" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name"
+                <div class="font-medium text-base text-gray-800" x-data="{{ json_encode(['name' => auth()->user()?->name ?? 'Guest']) }}" x-text="name"
                     x-on:profile-updated.window="name = $event.detail.name"></div>
-                <div class="font-medium text-sm text-gray-500">{{ auth()->user()->email }}</div>
+                <div class="font-medium text-sm text-gray-500">{{ auth()->user()?->email ?? '' }}</div>
             </div>
 
             <div class="mt-3 space-y-1">

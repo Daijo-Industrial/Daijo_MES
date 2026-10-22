@@ -2,16 +2,19 @@
 
 namespace App\Livewire;
 
-use App\Services\MachineMonitoringService;
 use App\Models\MasterZone;
-use Livewire\Component;
+use App\Services\MachineMonitoringService;
 use Livewire\Attributes\Layout;
+use Livewire\Component;
 
 class MachineStatusPublic extends Component
 {
     public $zones = [];
+
     public $currentZoneIndex = 0;
+
     public $selectedZoneId = null;
+
     public $currentZoneName = '';
 
     protected MachineMonitoringService $machineService;
@@ -35,10 +38,12 @@ class MachineStatusPublic extends Component
      */
     public function nextZone()
     {
-        if ($this->zones->count() === 0) return;
+        if ($this->zones->count() === 0) {
+            return;
+        }
 
         $this->currentZoneIndex++;
-        
+
         // Loop back to start if at the end
         if ($this->currentZoneIndex >= $this->zones->count()) {
             $this->currentZoneIndex = 0;
@@ -55,7 +60,7 @@ class MachineStatusPublic extends Component
     public function render()
     {
         $machines = $this->machineService->getMachineStatuses(
-            $this->selectedZoneId ? (string)$this->selectedZoneId : null
+            $this->selectedZoneId ? (string) $this->selectedZoneId : null
         );
 
         return view('livewire.machine-status-public', [

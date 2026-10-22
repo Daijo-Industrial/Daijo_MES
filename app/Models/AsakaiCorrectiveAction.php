@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class AsakaiCorrectiveAction extends Model
 {
     protected $table = 'asakai_corrective_actions';
-    
+
     protected $fillable = [
         'asakai_id',
         'action',
-        'order_no'
+        'order_no',
     ];
 
     protected $casts = [

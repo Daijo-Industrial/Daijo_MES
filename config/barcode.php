@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'store_path' => public_path("/barcode"),
+    'store_path' => public_path('/barcode'),
 ];

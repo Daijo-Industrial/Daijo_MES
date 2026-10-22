@@ -15,4 +15,9 @@ class StoreBoxData extends Model
         'part_no',
         'part_name',
     ];
+
+    public function details()
+    {
+        return $this->hasMany(StoreBoxDetail::class, 'part_no', 'part_no');
+    }
 }

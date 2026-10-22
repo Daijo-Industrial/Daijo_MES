@@ -2,6 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Models\Delivery\delsched_stock;
+use Carbon\Carbon;
+use DateTime;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -9,15 +12,13 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Delivery\delsched_stock;
-use Carbon\Carbon;
-use DateTime;
 
 class ProcessDelschedStep4 implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 300;
+
     public $tries = 1;
 
     public function handle()
@@ -50,7 +51,7 @@ class ProcessDelschedStep4 implements ShouldQueue
                     ->where('item_code', '=', $val_item_code)
                     ->first();
 
-                if (!$tab_sap_inventoryfg) {
+                if (! $tab_sap_inventoryfg) {
                     Log::warning("Step4: sap_inventory_fg not found for item_code: {$val_item_code}");
                     continue;
                 }
@@ -58,8 +59,8 @@ class ProcessDelschedStep4 implements ShouldQueue
                 $val_stock = $tab_sap_inventoryfg->stock;
 
                 delsched_stock::insert([
-                    'item_code'   => $val_item_code,
-                    'quantity'    => $val_stock,
+                    'item_code' => $val_item_code,
+                    'quantity' => $val_stock,
                     'total_after' => $val_stock,
                 ]);
             }
@@ -73,46 +74,48 @@ class ProcessDelschedStep4 implements ShouldQueue
                 ->get();
 
             foreach ($tab_delsched_final as $delsched_final) {
-                $today         = Carbon::today();
-                $final_id      = $delsched_final->id;
-                $dept          = $delsched_final->departement;
-                $item_code     = $delsched_final->item_code;
+                $today = Carbon::today();
+                $final_id = $delsched_final->id;
+                $dept = $delsched_final->departement;
+                $item_code = $delsched_final->item_code;
                 $delivery_date = Carbon::parse($delsched_final->delivery_date);
-                $outstanding   = $delsched_final->outstanding;
-                $deliver_qty   = $delsched_final->delivery_qty;
-                $delivered     = $delsched_final->delivered;
+                $outstanding = $delsched_final->outstanding;
+                $deliver_qty = $delsched_final->delivery_qty;
+                $delivered = $delsched_final->delivered;
 
                 // GET STOCK (LIVE VALUE)
                 $stock = DB::table('delsched_stock')
                     ->where('item_code', $item_code)
                     ->first();
 
-                if (!$stock) continue;
+                if (! $stock) {
+                    continue;
+                }
 
-                $stock_id    = $stock->id;
-                $stock_qty   = $stock->quantity;
+                $stock_id = $stock->id;
+                $stock_qty = $stock->quantity;
                 $total_after = $stock->total_after;
 
                 // CEK CLOSE
                 if ($deliver_qty == $delivered) {
                     DB::table('delsched_final')->where('id', $final_id)->update([
-                        'stock'   => $stock_qty,
+                        'stock' => $stock_qty,
                         'balance' => $total_after,
-                        'status'  => 'SUCCESS',
-                        'remark'  => 'FINISHED',
+                        'status' => 'SUCCESS',
+                        'remark' => 'FINISHED',
                     ]);
                     continue;
                 }
 
                 // HITUNG SISA STOCK
                 if ($total_after >= $outstanding) {
-                    $cal_outstanding_st  = 0;
+                    $cal_outstanding_st = 0;
                     $cal_total_after_now = $total_after - $outstanding;
-                    $stock_ready         = true;
+                    $stock_ready = true;
                 } else {
-                    $cal_outstanding_st  = $outstanding - $total_after;
+                    $cal_outstanding_st = $outstanding - $total_after;
                     $cal_total_after_now = $total_after - $outstanding;
-                    $stock_ready         = false;
+                    $stock_ready = false;
                 }
 
                 // TENTUKAN DAY LIMIT
@@ -141,16 +144,16 @@ class ProcessDelschedStep4 implements ShouldQueue
 
                 // UPDATE FINAL
                 DB::table('delsched_final')->where('id', $final_id)->update([
-                    'stock'           => $stock_qty,
-                    'balance'         => $cal_total_after_now,
+                    'stock' => $stock_qty,
+                    'balance' => $cal_total_after_now,
                     'outstanding_stk' => $cal_outstanding_st,
-                    'status'          => $rcd_status,
-                    'remark'          => $rcd_remark,
+                    'status' => $rcd_status,
+                    'remark' => $rcd_remark,
                 ]);
             }
 
             // UPDATE TIMESTAMP
-            $now = new DateTime();
+            $now = new DateTime;
             $now->modify('+420 minutes');
             DB::table('uti_date_list')->where('id', '13')->update([
                 'updated_at' => $now,

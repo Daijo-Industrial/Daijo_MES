@@ -7,7 +7,7 @@
                 <p class="text-gray-500 text-sm">Scan barcode ID palet untuk melihat rincian isi dan lokasi.</p>
             </div>
             <div class="flex space-x-2">
-                <a href="{{ route('wms.pallet-form.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center transition-all shadow-lg shadow-blue-100">
+                <a href="{{ route('wms.pallet-form.create-delivery') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center transition-all shadow-lg shadow-blue-100">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                     NEW PALLET
                 </a>
@@ -102,9 +102,43 @@
 
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Warehouse Location</label>
-                                <div class="flex items-center p-3 bg-slate-800 rounded-xl text-white">
-                                    <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                    <span class="font-bold text-lg">{{ $palletForm->position?->position_code ?? 'NOT MAPPED' }}</span>
+                                <div class="flex items-center p-3 bg-slate-800 rounded-xl text-white justify-between">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                        <span class="font-bold text-lg">{{ $palletForm->position?->position_code ?? 'NOT MAPPED' }}</span>
+                                    </div>
+                                    @if($palletForm->is_overaged)
+                                        <span class="px-2.5 py-1 bg-rose-600 text-white font-black text-[10px] rounded-lg animate-pulse" title="Tersimpan selama {{ $palletForm->age_days }} Hari di Gudang">
+                                            ⚠️ {{ $palletForm->age_days }} HARI DI GUDANG
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- Lead Time Timeline Widget -->
+                            <div class="p-3.5 bg-indigo-50/80 border border-indigo-100 rounded-2xl space-y-2">
+                                <span class="text-[10px] font-black text-indigo-900 uppercase tracking-widest block">⏱️ Putaway Timeline & Lead Time</span>
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <span class="text-[10px] text-gray-400 font-bold block uppercase">Scan Delivery:</span>
+                                        <span class="font-bold text-gray-800">{{ $palletForm->created_at ? $palletForm->created_at->timezone('Asia/Jakarta')->format('d M Y H:i') : '-' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-gray-400 font-bold block uppercase">Masuk Rak:</span>
+                                        <span class="font-bold text-gray-800">{{ $palletForm->assigned_at ? $palletForm->assigned_at->timezone('Asia/Jakarta')->format('d M Y H:i') : 'Belum Assign' }}</span>
+                                    </div>
+                                </div>
+                                <div class="pt-2 border-t border-indigo-200/60 flex justify-between items-center text-xs font-bold">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-indigo-900">Lead Time:</span>
+                                        <span class="px-2 py-0.5 bg-indigo-600 text-white font-black rounded-md font-mono text-[11px]">
+                                            {{ $palletForm->putaway_lead_time }}
+                                        </span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-slate-500 font-normal text-[10px]">Umur Stok: </span>
+                                        <span class="font-black {{ $palletForm->is_overaged ? 'text-rose-600' : 'text-slate-800' }}">{{ $palletForm->age_days }} Hari</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -123,6 +157,12 @@
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                     REPRINT FORM
                                 </a>
+                                <button wire:click="deletePallet"
+                                    wire:confirm="Apakah Anda yakin ingin menghapus Pallet {{ $palletForm->pallet_id }} beserta seluruh item di dalamnya? Tindakan ini tidak bisa dibatalkan."
+                                    class="w-full py-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white text-center font-bold rounded-xl transition-all border border-red-200 hover:border-transparent flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    DELETE PALLET
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -145,28 +185,30 @@
                                         <th class="px-6 py-3 text-[10px] font-black text-gray-400 uppercase">SPK / Label</th>
                                         <th class="px-6 py-3 text-[10px] font-black text-gray-400 uppercase text-right">Qty</th>
                                         <th class="px-6 py-3 text-[10px] font-black text-gray-400 uppercase">Warehouse</th>
+                                        <th class="px-6 py-3 text-[10px] font-black text-gray-400 uppercase">Status / Tgl Keluar</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
                                     @foreach($palletForm->details as $item)
                                         @php
-                                            $isOut = $item->deleted_at !== null;
+                                            $isOut = $item->deleted_at !== null || $palletForm->status === 'OUT';
+                                            $outDate = $item->deleted_at ?? ($palletForm->status === 'OUT' ? $palletForm->updated_at : null);
                                         @endphp
-                                        <tr class="hover:bg-blue-50/30 transition-colors {{ $isOut ? 'opacity-40 bg-gray-50/50 line-through text-gray-400' : '' }}">
+                                        <tr class="hover:bg-blue-50/30 transition-colors {{ $isOut ? 'opacity-75 bg-gray-50/50 text-gray-500' : '' }}">
                                             <td class="px-6 py-4">
                                                 <div class="flex items-center">
-                                                    <div class="font-black text-sm {{ $isOut ? 'text-gray-400' : 'text-gray-900' }}">{{ $item->part_no }}</div>
+                                                    <div class="font-black text-sm {{ $isOut ? 'text-gray-500 line-through' : 'text-gray-900' }}">{{ $item->part_no }}</div>
                                                     @if($isOut)
                                                         <span class="ml-2 px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-bold rounded uppercase">OUT</span>
                                                     @endif
                                                 </div>
-                                                <div class="text-xs font-bold {{ $isOut ? 'text-gray-400' : 'text-gray-600' }}">{{ $item->model_name }}</div>
+                                                <div class="text-xs font-bold {{ $isOut ? 'text-gray-400 line-through' : 'text-gray-600' }}">{{ $item->model_name }}</div>
                                             </td>
                                             <td class="px-6 py-4">
                                                 @if($item->is_no_label)
                                                     <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-black rounded uppercase border border-orange-200">No Label</span>
                                                 @else
-                                                    <div class="text-sm font-black {{ $isOut ? 'text-gray-400' : 'text-gray-900' }}">{{ $item->spk_no }}</div>
+                                                    <div class="text-sm font-black {{ $isOut ? 'text-gray-500' : 'text-gray-900' }}">{{ $item->spk_no }}</div>
                                                     <div class="text-xs font-mono font-bold {{ $isOut ? 'text-gray-400' : 'text-gray-500' }}">{{ $item->label }}</div>
                                                 @endif
                                             </td>
@@ -175,6 +217,20 @@
                                             </td>
                                             <td class="px-6 py-4">
                                                 <span class="px-3 py-1 bg-slate-100 text-slate-800 text-sm font-black rounded-xl border border-slate-200">{{ $item->warehouse }}</span>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                @if($isOut && $outDate)
+                                                    <div class="flex flex-col">
+                                                        <span class="text-xs font-bold text-red-600">
+                                                            {{ \Carbon\Carbon::parse($outDate)->timezone('Asia/Jakarta')->format('d M Y') }}
+                                                        </span>
+                                                        <span class="text-[10px] font-medium text-red-400">
+                                                            {{ \Carbon\Carbon::parse($outDate)->timezone('Asia/Jakarta')->format('H:i:s') }} WIB
+                                                        </span>
+                                                    </div>
+                                                @else
+                                                    <span class="px-2 py-0.5 bg-green-100 text-green-800 text-[10px] font-bold rounded uppercase">STORED</span>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach
@@ -186,14 +242,15 @@
                         <div class="block md:hidden space-y-4">
                             @foreach($palletForm->details as $item)
                                 @php
-                                    $isOut = $item->deleted_at !== null;
+                                    $isOut = $item->deleted_at !== null || $palletForm->status === 'OUT';
+                                    $outDate = $item->deleted_at ?? ($palletForm->status === 'OUT' ? $palletForm->updated_at : null);
                                 @endphp
-                                <div class="p-4 bg-white rounded-xl border {{ $isOut ? 'border-gray-200 opacity-50 bg-gray-50 line-through' : 'border-gray-200 shadow-sm' }} space-y-2">
+                                <div class="p-4 bg-white rounded-xl border {{ $isOut ? 'border-gray-200 bg-gray-50' : 'border-gray-200 shadow-sm' }} space-y-2">
                                     <div class="flex justify-between items-start">
                                         <div>
                                             <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Part & Model</span>
-                                            <span class="font-black text-gray-800 text-sm block">{{ $item->part_no }}</span>
-                                            <span class="text-[10px] text-gray-500 block leading-tight">{{ $item->model_name }}</span>
+                                            <span class="font-black text-gray-800 text-sm block {{ $isOut ? 'line-through text-gray-400' : '' }}">{{ $item->part_no }}</span>
+                                            <span class="text-[10px] text-gray-500 block leading-tight {{ $isOut ? 'line-through text-gray-400' : '' }}">{{ $item->model_name }}</span>
                                         </div>
                                         <div class="text-right">
                                             <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Kuantitas</span>
@@ -216,6 +273,12 @@
                                             <span class="px-2 py-0.5 bg-slate-100 text-slate-800 font-bold rounded uppercase inline-block border border-slate-200 mt-1">{{ $item->warehouse }}</span>
                                         </div>
                                     </div>
+                                    @if($isOut && $outDate)
+                                        <div class="mt-2 pt-2 border-t border-red-100 flex justify-between items-center text-xs">
+                                            <span class="text-[9px] font-bold text-red-500 uppercase">Tgl Keluar:</span>
+                                            <span class="font-bold text-red-600">{{ \Carbon\Carbon::parse($outDate)->timezone('Asia/Jakarta')->format('d M Y H:i:s') }} WIB</span>
+                                        </div>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>

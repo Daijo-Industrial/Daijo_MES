@@ -11,7 +11,7 @@ class MasterListItem extends Model
 
     public $timestamps = false;
 
-     protected $fillable = [
+    protected $fillable = [
         'item_code',
         'item_name',
         'tipe_mesin',
@@ -22,8 +22,24 @@ class MasterListItem extends Model
         'customer_code',
         'cycle_time',
         'project_code',
+        'family',
+        'part_weight',
+        'description_in_foreign_lang',
+        'color',
+        'half_code_1',
+        'half_code_2',
+        'position',
     ];
-    
+
+    public function getItemDescriptionAttribute(): ?string
+    {
+        return $this->item_name;
+    }
+
+    public function getDescriptionAttribute(): ?string
+    {
+        return $this->item_name;
+    }
 
     public function files()
     {
@@ -41,6 +57,15 @@ class MasterListItem extends Model
             MasterCustomerDelivery::class,
             'customer_code',   // foreign key di master_list_items
             'customer_code'    // owner key di master_customer_delivery
+        );
+    }
+
+    public function businessPartner()
+    {
+        return $this->belongsTo(
+            MasterBusinessPartner::class,
+            'customer_code',
+            'bp_code'
         );
     }
 }

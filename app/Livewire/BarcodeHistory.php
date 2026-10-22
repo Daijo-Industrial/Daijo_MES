@@ -2,25 +2,28 @@
 
 namespace App\Livewire;
 
+use App\Models\StoreBoxDetail;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\StoreBoxDetail;
-use App\Models\StoreBoxData;
-use Illuminate\Support\Facades\DB;
 
 class BarcodeHistory extends Component
 {
     use WithPagination;
 
     public $part_no = '';
+
     public $remark = '';
+
     public $date_from = '';
+
     public $date_to = '';
-    
+
     public $selected = [];
+
     public $selectAll = false;
-    
+
     public $rangeFrom = '';
+
     public $rangeTo = '';
 
     protected $queryString = [
@@ -38,7 +41,7 @@ class BarcodeHistory extends Component
     public function updatedSelectAll($value)
     {
         if ($value) {
-            $this->selected = $this->records->pluck('id')->map(fn($id) => (string)$id)->toArray();
+            $this->selected = $this->records->pluck('id')->map(fn ($id) => (string) $id)->toArray();
         } else {
             $this->selected = [];
         }
@@ -46,12 +49,14 @@ class BarcodeHistory extends Component
 
     public function selectRange()
     {
-        if (!$this->rangeFrom || !$this->rangeTo) return;
+        if (! $this->rangeFrom || ! $this->rangeTo) {
+            return;
+        }
 
         $rangeIds = StoreBoxDetail::whereBetween('label', [$this->rangeFrom, $this->rangeTo])
-            ->when($this->part_no, fn($q) => $q->where('part_no', 'like', '%' . $this->part_no . '%'))
+            ->when($this->part_no, fn ($q) => $q->where('part_no', 'like', '%' . $this->part_no . '%'))
             ->pluck('id')
-            ->map(fn($id) => (string)$id)
+            ->map(fn ($id) => (string) $id)
             ->toArray();
 
         $this->selected = array_unique(array_merge($this->selected, $rangeIds));
@@ -68,10 +73,10 @@ class BarcodeHistory extends Component
     public function getRecordsProperty()
     {
         return StoreBoxDetail::query()
-            ->when($this->part_no, fn($q) => $q->where('part_no', 'like', '%' . $this->part_no . '%'))
-            ->when($this->remark, fn($q) => $q->where('remark', 'like', '%' . $this->remark . '%'))
-            ->when($this->date_from, fn($q) => $q->whereDate('created_at', '>=', $this->date_from))
-            ->when($this->date_to, fn($q) => $q->whereDate('created_at', '<=', $this->date_to))
+            ->when($this->part_no, fn ($q) => $q->where('part_no', 'like', '%' . $this->part_no . '%'))
+            ->when($this->remark, fn ($q) => $q->where('remark', 'like', '%' . $this->remark . '%'))
+            ->when($this->date_from, fn ($q) => $q->whereDate('created_at', '>=', $this->date_from))
+            ->when($this->date_to, fn ($q) => $q->whereDate('created_at', '<=', $this->date_to))
             ->orderBy('part_no', 'asc')
             ->orderBy('label', 'asc')
             ->paginate(50);
@@ -80,7 +85,7 @@ class BarcodeHistory extends Component
     public function render()
     {
         return view('livewire.barcode-history', [
-            'history' => $this->records
+            'history' => $this->records,
         ]);
     }
 }

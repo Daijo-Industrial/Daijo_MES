@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Asakai;
 
-use Livewire\Component;
-use Livewire\WithPagination;
 use App\Models\Asakai;
 use Livewire\Attributes\Layout;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.dashboard')]
 class AsakaiList extends Component
@@ -13,11 +13,17 @@ class AsakaiList extends Component
     use WithPagination;
 
     public $search = '';
+
     public $statusFilter = '';
+
     public $customerFilter = '';
+
     public $shiftFilter = '';
+
     public $dateFrom = '';
+
     public $dateTo = '';
+
     public $perPage = 10;
 
     protected $queryString = [
@@ -40,9 +46,10 @@ class AsakaiList extends Component
     public function delete($id)
     {
         $asakai = Asakai::findOrFail($id);
-        
+
         if ($asakai->status === 'closed') {
             session()->flash('error', 'Data dengan status CLOSED tidak dapat dihapus!');
+
             return;
         }
         // Check permission
@@ -58,7 +65,7 @@ class AsakaiList extends Component
     public function changeStatus($id, $status)
     {
         $asakai = Asakai::findOrFail($id);
-        
+
         if ($status === 'closed') {
             $asakai->markAsClosed();
         } else {
@@ -71,21 +78,21 @@ class AsakaiList extends Component
     public function render()
     {
         $asakais = Asakai::with(['pics', 'creator'])
-            ->when($this->search, function($query) {
-                $query->where(function($q) {
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
                     $q->where('part_no', 'like', '%' . $this->search . '%')
-                      ->orWhere('issue', 'like', '%' . $this->search . '%')
-                      ->orWhere('customer', 'like', '%' . $this->search . '%');
+                        ->orWhere('issue', 'like', '%' . $this->search . '%')
+                        ->orWhere('customer', 'like', '%' . $this->search . '%');
                 });
             })
-            ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
-            ->when($this->customerFilter, fn($q) => $q->where('customer', 'like', '%' . $this->customerFilter . '%'))
-            ->when($this->shiftFilter, fn($q) => $q->where('lot_shift', $this->shiftFilter))
-            ->when($this->dateFrom, fn($q) => $q->whereDate('date_issue', '>=', $this->dateFrom))
-            ->when($this->dateTo, fn($q) => $q->whereDate('date_issue', '<=', $this->dateTo))
+            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->customerFilter, fn ($q) => $q->where('customer', 'like', '%' . $this->customerFilter . '%'))
+            ->when($this->shiftFilter, fn ($q) => $q->where('lot_shift', $this->shiftFilter))
+            ->when($this->dateFrom, fn ($q) => $q->whereDate('date_issue', '>=', $this->dateFrom))
+            ->when($this->dateTo, fn ($q) => $q->whereDate('date_issue', '<=', $this->dateTo))
             ->latest('date_issue')
             ->paginate($this->perPage);
-            
+
         // Get unique customers for filter dropdown
         $customers = Asakai::distinct()->pluck('customer')->sort();
 
