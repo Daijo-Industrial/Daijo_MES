@@ -235,19 +235,19 @@
 
         <!-- Scrollable Table with Frozen Columns (No & Machine) -->
         <div class="overflow-x-auto table-scroll-container relative">
-            <table class="w-full text-left border-collapse text-xs">
+            <table class="w-full min-w-[1250px] text-left border-collapse text-xs">
                 <thead class="sticky top-0 z-20 bg-slate-100 shadow-2xs">
                     <tr class="bg-slate-100 text-slate-600 text-[10px] uppercase font-black tracking-wider border-b border-slate-200">
-                        <th class="py-2.5 px-1.5 text-center w-9 sticky-col-no bg-slate-100 border-r border-slate-200 z-25">No</th>
+                        <th class="py-2.5 px-1.5 text-center w-9 min-w-[36px] sticky-col-no bg-slate-100 border-r border-slate-200 z-25">No</th>
                         <th class="py-2.5 px-2 w-28 min-w-[110px] sticky-col-machine bg-slate-100 border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] z-25">Machine</th>
                         <th class="py-2.5 px-2.5 w-40 min-w-[140px]">Part No</th>
                         <th class="py-2.5 px-2.5 w-44 max-w-[180px]">Description</th>
                         <th class="py-2.5 px-2 w-28 min-w-[100px]">M'trial Type</th>
                         <th class="py-2.5 px-2 w-44 min-w-[155px] text-center">SPK No</th>
-                        <th class="py-2.5 px-1.5 w-12 text-center">Cav</th>
-                        <th class="py-2.5 px-1.5 w-12 text-center">C/T</th>
-                        <th class="py-2.5 px-1.5 w-14 text-center">Targ/H</th>
-                        <th class="py-2.5 px-2 w-32 min-w-[120px] text-center bg-indigo-50/70 border-x border-indigo-100">
+                        <th class="py-2.5 px-1.5 w-12 min-w-[48px] text-center whitespace-nowrap">Cav</th>
+                        <th class="py-2.5 px-1.5 w-12 min-w-[48px] text-center whitespace-nowrap">C/T</th>
+                        <th class="py-2.5 px-1.5 w-14 min-w-[56px] text-center whitespace-nowrap">Targ/H</th>
+                        <th class="py-2.5 px-2 w-32 min-w-[125px] text-center bg-indigo-50/70 border-x border-indigo-100 whitespace-nowrap">
                             <div>Operator</div>
                             <div class="grid grid-cols-3 gap-0.5 text-[9px] text-indigo-700 font-extrabold mt-0.5">
                                 <span>I</span>
@@ -255,10 +255,10 @@
                                 <span>III</span>
                             </div>
                         </th>
-                        <th class="py-2.5 px-2.5 w-24 text-center">QTY TO RUN</th>
+                        <th class="py-2.5 px-2.5 w-28 min-w-[115px] text-center whitespace-nowrap bg-indigo-50/40 border-r border-indigo-100">QTY TO RUN</th>
                         <th class="py-2.5 px-2.5 w-36 min-w-[130px]">Alokasi / Shift</th>
                         <th class="py-2.5 px-2.5 w-36 min-w-[120px]">Reason</th>
-                        <th class="py-2.5 px-1 text-center w-10 sticky-col-action bg-slate-100 border-l border-slate-200 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] z-25">Aksi</th>
+                        <th class="py-2.5 px-1 text-center w-10 min-w-[40px] sticky-col-action bg-slate-100 border-l border-slate-200 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] z-25">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium">
@@ -442,50 +442,46 @@
                             </td>
 
                             <!-- Operator (I, II, III) -->
-                            <td class="py-2 px-1.5 bg-indigo-50/30 border-x border-indigo-100">
+                            <td class="py-2 px-1.5 w-32 min-w-[125px] bg-indigo-50/30 border-x border-indigo-100">
                                 <div class="grid grid-cols-3 gap-1">
                                     <div class="relative">
                                         <input type="number" min="0" max="99"
                                                wire:key="op1-{{ $index }}-{{ $row['id'] ?? 'temp' }}"
                                                wire:model.live.debounce.250ms="rows.{{ $index }}.operator_shift_1" 
-                                               value="{{ $row['operator_shift_1'] ?? '' }}"
                                                placeholder="0"
                                                @disabled($isLocked)
-                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1 px-0.5 text-xs font-black text-center text-indigo-950 outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
+                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1 px-0.5 text-xs font-black text-center text-indigo-950 placeholder:text-slate-300 placeholder:font-normal outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
                                                title="Jumlah Operator Shift 1">
                                     </div>
                                     <div class="relative">
                                         <input type="number" min="0" max="99"
                                                wire:key="op2-{{ $index }}-{{ $row['id'] ?? 'temp' }}"
                                                wire:model.live.debounce.250ms="rows.{{ $index }}.operator_shift_2" 
-                                               value="{{ $row['operator_shift_2'] ?? '' }}"
                                                placeholder="0"
                                                @disabled($isLocked)
-                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1 px-0.5 text-xs font-black text-center text-indigo-950 outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
+                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1 px-0.5 text-xs font-black text-center text-indigo-950 placeholder:text-slate-300 placeholder:font-normal outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
                                                title="Jumlah Operator Shift 2">
                                     </div>
                                     <div class="relative">
                                         <input type="number" min="0" max="99"
                                                wire:key="op3-{{ $index }}-{{ $row['id'] ?? 'temp' }}"
                                                wire:model.live.debounce.250ms="rows.{{ $index }}.operator_shift_3" 
-                                               value="{{ $row['operator_shift_3'] ?? '' }}"
                                                placeholder="0"
                                                @disabled($isLocked)
-                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1 px-0.5 text-xs font-black text-center text-indigo-950 outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
+                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1 px-0.5 text-xs font-black text-center text-indigo-950 placeholder:text-slate-300 placeholder:font-normal outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
                                                title="Jumlah Operator Shift 3">
                                     </div>
                                 </div>
                             </td>
 
                             <!-- QTY TO RUN -->
-                            <td class="py-2 px-2.5">
+                            <td class="py-2 px-2.5 w-28 min-w-[115px] bg-indigo-50/10 border-r border-indigo-100">
                                 <input type="number" min="0" 
                                        wire:key="qty-{{ $index }}-{{ $row['id'] ?? 'temp' }}"
                                        wire:model.live.debounce.250ms="rows.{{ $index }}.qty_to_run" 
-                                       value="{{ $row['qty_to_run'] ?? '' }}"
                                        @disabled($isLocked)
                                        placeholder="0"
-                                       class="w-full bg-white border-2 border-indigo-300 rounded-lg px-2 py-1 text-xs font-black text-right text-indigo-900 focus:border-indigo-600 outline-none transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
+                                       class="w-full min-w-[90px] bg-white border-2 border-indigo-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg px-2 py-1 text-xs font-black text-right text-indigo-900 placeholder:text-slate-300 placeholder:font-normal outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}">
                             </td>
 
                             <!-- Alokasi / Shift Preview -->
