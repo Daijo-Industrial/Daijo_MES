@@ -1,4 +1,4 @@
-<div class="p-4 sm:p-6 lg:p-8 bg-slate-50 min-h-screen space-y-6">
+<div class="p-2.5 sm:p-4 lg:p-5 bg-slate-50 min-h-screen space-y-4">
     <style>
         /* Hilangkan spinner number bawaan browser agar angka tidak tertutup panah */
         input[type=number]::-webkit-inner-spin-button, 
@@ -9,39 +9,101 @@
         input[type=number] { 
             -moz-appearance: textfield; 
         }
+
+        /* Custom scrollbar horizontal yang ramping, kontras, dan mudah digeser */
+        .table-scroll-container::-webkit-scrollbar {
+            height: 9px;
+            width: 8px;
+        }
+        .table-scroll-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 6px;
+        }
+        .table-scroll-container::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 6px;
+            border: 2px solid #f1f5f9;
+        }
+        .table-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Freeze / Sticky Columns saat zoom atau layar sempit */
+        .sticky-col-no {
+            position: sticky;
+            left: 0;
+        }
+        .sticky-col-machine {
+            position: sticky;
+            left: 36px;
+        }
+        .sticky-col-action {
+            position: sticky;
+            right: 0;
+        }
     </style>
 
-    <!-- Top Action Card & Header -->
-    <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 space-y-4">
-        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            
+    <!-- Top Action Card & Header (Responsive 2-Tier Layout) -->
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/80 space-y-3.5">
+        
+        <!-- Header Tier 1: Title, Status & Primary CTAs -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-indigo-200">
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-md shadow-indigo-100 shrink-0">
                     📋
                 </div>
                 <div>
-                    <div class="flex items-center gap-2">
-                        <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                             List Up Production Machine
                         </h1>
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider {{ $status === 'GENERATED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300' }}">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider {{ $status === 'GENERATED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300' }}">
                             {{ $status === 'GENERATED' ? '✓ GENERATED (Jadwal Sah)' : '📝 DRAFT (Sedang Diedit)' }}
                         </span>
                     </div>
-                    <p class="text-xs text-slate-500 font-semibold mt-0.5">
+                    <p class="text-[11px] text-slate-500 font-semibold mt-0.5">
                         Perencanaan jadwal produksi per mesin PPIC dengan auto-generate ke <strong>Daily Item Codes</strong>.
                     </p>
                 </div>
             </div>
 
-            <!-- Date Controls, History & Actions -->
-            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-                
+            <!-- Primary Action Buttons (Pinned together, never dangling) -->
+            <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                @if(!$isLocked)
+                    <button wire:click="saveDraft" 
+                            type="button"
+                            class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 shrink-0">
+                        <span>💾</span>
+                        <span>Simpan Draft</span>
+                    </button>
+
+                    <button wire:click="generateToDailyItemCodes" 
+                            type="button"
+                            wire:confirm="Generate jadwal ke Daily Item Codes untuk seluruh shift aktif? Data yang cocok akan diupdate."
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm shadow-indigo-200 cursor-pointer active:scale-95 shrink-0">
+                        <span>⚡</span>
+                        <span>Generate ke Daily Item Codes</span>
+                    </button>
+                @else
+                    <button wire:click="reopenDraft" 
+                            type="button"
+                            wire:confirm="Buka kunci kembali jadwal ini ke status DRAFT agar dapat diedit?"
+                            class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 shrink-0">
+                        <span>🔓</span>
+                        <span>Buka Kunci (Edit)</span>
+                    </button>
+                @endif
+            </div>
+        </div>
+
+        <!-- Header Tier 2: Date Navigation, History & Badges -->
+        <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex flex-wrap items-center gap-2">
                 <!-- Quick Date Nav & Picker -->
-                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
                     <button wire:click="goToPreviousDay" 
                             type="button"
-                            class="px-2 py-1 bg-white hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition cursor-pointer"
+                            class="px-2 py-1 bg-white hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition cursor-pointer"
                             title="Kemarin">
                         &larr;
                     </button>
@@ -51,7 +113,7 @@
 
                     <button wire:click="goToNextDay" 
                             type="button"
-                            class="px-2 py-1 bg-white hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition cursor-pointer"
+                            class="px-2 py-1 bg-white hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition cursor-pointer"
                             title="Besok">
                         &rarr;
                     </button>
@@ -61,12 +123,12 @@
                 <div class="flex items-center gap-1">
                     <button wire:click="goToToday" 
                             type="button"
-                            class="px-2.5 py-1.5 {{ $selectedDate === now()->format('Y-m-d') ? 'bg-indigo-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700' }} rounded-xl text-xs font-bold transition cursor-pointer">
+                            class="px-2.5 py-1.5 {{ $selectedDate === now()->format('Y-m-d') ? 'bg-indigo-600 text-white font-black' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold' }} rounded-xl text-xs transition cursor-pointer">
                         Hari Ini
                     </button>
                     <button wire:click="setDate('{{ now()->addDay()->format('Y-m-d') }}')" 
                             type="button"
-                            class="px-2.5 py-1.5 {{ $selectedDate === now()->addDay()->format('Y-m-d') ? 'bg-indigo-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700' }} rounded-xl text-xs font-bold transition cursor-pointer">
+                            class="px-2.5 py-1.5 {{ $selectedDate === now()->addDay()->format('Y-m-d') ? 'bg-indigo-600 text-white font-black' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold' }} rounded-xl text-xs transition cursor-pointer">
                         Besok
                     </button>
                 </div>
@@ -74,65 +136,46 @@
                 <!-- Button Riwayat List Up -->
                 <button wire:click="openHistory" 
                         type="button"
-                        class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95">
+                        class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer active:scale-95">
                     <span>📅</span>
                     <span>Riwayat List Up</span>
                 </button>
 
                 <!-- Status Badge -->
                 @if($isLocked)
-                    <div class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-black">
+                    <div class="flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-black">
                         <span>🔒</span>
                         <span>FINAL</span>
                     </div>
                 @else
-                    <div class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-black">
+                    <div class="flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[11px] font-black">
                         <span>📝</span>
                         <span>DRAFT</span>
                     </div>
                 @endif
-
-                @if(!$isLocked)
-                    <!-- Save Draft Button -->
-                    <button wire:click="saveDraft" 
-                            type="button"
-                            class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95">
-                        <span>💾</span>
-                        <span>Simpan Draft</span>
-                    </button>
-
-                    <!-- Generate Button -->
-                    <button wire:click="generateToDailyItemCodes" 
-                            type="button"
-                            wire:confirm="Generate jadwal ke Daily Item Codes untuk seluruh shift aktif? Data yang cocok akan diupdate."
-                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-indigo-200 cursor-pointer active:scale-95">
-                        <span>⚡</span>
-                        <span>Generate ke Daily Item Codes</span>
-                    </button>
-                @else
-                    <button wire:click="reopenDraft" 
-                            type="button"
-                            wire:confirm="Buka kunci kembali jadwal ini ke status DRAFT agar dapat diedit?"
-                            class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95">
-                        <span>🔓</span>
-                        <span>Buka Kunci (Edit)</span>
-                    </button>
-                @endif
-
             </div>
 
+            <!-- Summary Chips -->
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                <span class="bg-slate-100 px-2.5 py-1 rounded-lg text-slate-700 font-bold">
+                    {{ count($rows) }} Mesin
+                </span>
+                <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-lg font-black">
+                    {{ number_format(collect($rows)->sum(fn($r) => (int) ($r['qty_to_run'] ?? 0))) }} pcs
+                </span>
+            </div>
         </div>
 
         <!-- Alert Notification Banner -->
         @if($alertMessage)
-            <div class="p-4 rounded-2xl border flex items-center justify-between gap-3 animate-in fade-in duration-300 {{ $alertType === 'success' ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : ($alertType === 'info' ? 'bg-blue-50 border-blue-300 text-blue-900' : 'bg-red-50 border-red-300 text-red-900') }}">
+            <div class="p-3.5 rounded-xl border flex items-center justify-between gap-3 animate-in fade-in duration-300 {{ $alertType === 'success' ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : ($alertType === 'info' ? 'bg-blue-50 border-blue-300 text-blue-900' : 'bg-red-50 border-red-300 text-red-900') }}">
                 <div class="flex items-center gap-2.5">
-                    <span class="text-lg">{{ $alertType === 'success' ? '✅' : ($alertType === 'info' ? 'ℹ️' : '⚠️') }}</span>
+                    <span class="text-base">{{ $alertType === 'success' ? '✅' : ($alertType === 'info' ? 'ℹ️' : '⚠️') }}</span>
                     <span class="text-xs font-bold">{{ $alertMessage }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <a href="{{ route('daily-item-code.daily', ['date' => $selectedDate]) }}" target="_blank" 
-                       class="px-3 py-1 bg-white hover:bg-slate-50 text-indigo-700 font-black text-[11px] rounded-xl border border-indigo-200 transition shadow-2xs">
+                       class="px-2.5 py-1 bg-white hover:bg-slate-50 text-indigo-700 font-black text-[11px] rounded-lg border border-indigo-200 transition shadow-2xs">
                         Lihat Jadwal Harian &rarr;
                     </a>
                     <button wire:click="$set('alertMessage', null)" class="text-slate-400 hover:text-slate-600 text-sm font-bold">&times;</button>
@@ -142,13 +185,13 @@
     </div>
 
     <!-- Main Spreadsheet Table Card -->
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
         
         @if($isLocked)
             <!-- Finalized / Locked Banner -->
-            <div class="m-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-emerald-900 font-bold">
+            <div class="m-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-3 text-xs text-emerald-900 font-bold">
                 <div class="flex items-center gap-2.5">
-                    <span class="text-xl">🔒</span>
+                    <span class="text-lg">🔒</span>
                     <div>
                         <span class="font-black uppercase tracking-wider block">List Up Sudah Difinalisasi (Read-Only)</span>
                         <span class="text-[11px] text-emerald-700 font-semibold">Jadwal tanggal ini sudah digenerate ke Daily Item Codes dan terkunci dari perubahan.</span>
@@ -157,15 +200,16 @@
                 <button wire:click="reopenDraft" 
                         type="button"
                         wire:confirm="Buka kunci kembali jadwal ini ke status DRAFT agar dapat diedit?"
-                        class="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-black transition shadow-xs cursor-pointer">
+                        class="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-lg text-xs font-black transition shadow-xs cursor-pointer">
                     🔓 Buka Kunci (Edit Kembali)
                 </button>
             </div>
         @endif
 
-        <div class="p-4 bg-slate-50/80 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2">
+        <!-- Table Toolbar -->
+        <div class="p-3 sm:p-4 bg-slate-50/80 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2">
             <div class="flex items-center gap-2">
-                <span class="text-xs font-black text-slate-700 uppercase tracking-wider">
+                <span class="text-xs font-black text-slate-800 uppercase tracking-wider">
                     Daftar Mesin & Rencana Part ({{ count($rows) }} Baris)
                 </span>
                 <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">
@@ -173,41 +217,48 @@
                 </span>
             </div>
 
-            @if(!$isLocked)
-                <button wire:click="addRow" 
-                        type="button"
-                        class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-black transition flex items-center gap-1 cursor-pointer">
-                    <span>➕</span>
-                    <span>Tambah Baris Baru</span>
-                </button>
-            @endif
+            <div class="flex items-center gap-3">
+                <span class="text-[10px] text-slate-400 font-semibold hidden md:inline-flex items-center gap-1">
+                    <span>💡</span>
+                    <span>No & Mesin terkunci di kiri</span>
+                </span>
+                @if(!$isLocked)
+                    <button wire:click="addRow" 
+                            type="button"
+                            class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-black transition flex items-center gap-1 cursor-pointer">
+                        <span>➕</span>
+                        <span>Tambah Baris Baru</span>
+                    </button>
+                @endif
+            </div>
         </div>
 
-        <div class="overflow-x-auto">
+        <!-- Scrollable Table with Frozen Columns (No & Machine) -->
+        <div class="overflow-x-auto table-scroll-container relative">
             <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                    <tr class="bg-slate-100/90 text-slate-600 text-[10px] uppercase font-black tracking-wider border-b border-slate-200">
-                        <th class="py-3 px-2 text-center w-10">No</th>
-                        <th class="py-3 px-3 w-32">Machine</th>
-                        <th class="py-3 px-3 w-48">Part No</th>
-                        <th class="py-3 px-3 min-w-[200px]">Description</th>
-                        <th class="py-3 px-3 w-40">M'trial Type</th>
-                        <th class="py-3 px-2 min-w-[200px] w-52 text-center">SPK No</th>
-                        <th class="py-3 px-2 w-16 text-center">Cav</th>
-                        <th class="py-3 px-2 w-16 text-center">C/T</th>
-                        <th class="py-3 px-2 w-20 text-center">Targ/H</th>
-                        <th class="py-3 px-2 w-44 min-w-[160px] text-center bg-indigo-50/60 border-x border-indigo-100">
+                <thead class="sticky top-0 z-20 bg-slate-100 shadow-2xs">
+                    <tr class="bg-slate-100 text-slate-600 text-[10px] uppercase font-black tracking-wider border-b border-slate-200">
+                        <th class="py-2.5 px-1.5 text-center w-9 sticky-col-no bg-slate-100 border-r border-slate-200 z-25">No</th>
+                        <th class="py-2.5 px-2 w-28 min-w-[110px] sticky-col-machine bg-slate-100 border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] z-25">Machine</th>
+                        <th class="py-2.5 px-2.5 w-40 min-w-[140px]">Part No</th>
+                        <th class="py-2.5 px-2.5 w-44 max-w-[180px]">Description</th>
+                        <th class="py-2.5 px-2 w-28 min-w-[100px]">M'trial Type</th>
+                        <th class="py-2.5 px-2 w-44 min-w-[155px] text-center">SPK No</th>
+                        <th class="py-2.5 px-1.5 w-12 text-center">Cav</th>
+                        <th class="py-2.5 px-1.5 w-12 text-center">C/T</th>
+                        <th class="py-2.5 px-1.5 w-14 text-center">Targ/H</th>
+                        <th class="py-2.5 px-2 w-32 min-w-[120px] text-center bg-indigo-50/70 border-x border-indigo-100">
                             <div>Operator</div>
-                            <div class="grid grid-cols-3 gap-1 text-[9px] text-indigo-700 font-extrabold mt-0.5">
+                            <div class="grid grid-cols-3 gap-0.5 text-[9px] text-indigo-700 font-extrabold mt-0.5">
                                 <span>I</span>
                                 <span>II</span>
                                 <span>III</span>
                             </div>
                         </th>
-                        <th class="py-3 px-3 w-28 text-center">QTY TO RUN</th>
-                        <th class="py-3 px-3 w-44">Alokasi / Shift</th>
-                        <th class="py-3 px-3 min-w-[140px]">Reason</th>
-                        <th class="py-3 px-2 text-center w-12">Aksi</th>
+                        <th class="py-2.5 px-2.5 w-24 text-center">QTY TO RUN</th>
+                        <th class="py-2.5 px-2.5 w-36 min-w-[130px]">Alokasi / Shift</th>
+                        <th class="py-2.5 px-2.5 w-36 min-w-[120px]">Reason</th>
+                        <th class="py-2.5 px-1 text-center w-10 sticky-col-action bg-slate-100 border-l border-slate-200 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] z-25">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium">
@@ -221,22 +272,23 @@
                             $qtyToRun = (int) ($row['qty_to_run'] ?? 0);
                             $baseQty = $countActive > 0 ? intdiv($qtyToRun, $countActive) : 0;
                             $remQty = $countActive > 0 ? ($qtyToRun % $countActive) : 0;
+                            $rowBg = ($row['is_change_to'] ?? false) ? 'bg-amber-50/70' : 'bg-white';
                         @endphp
-                        <tr class="hover:bg-slate-50/80 transition-colors {{ $row['is_change_to'] ?? false ? 'bg-amber-50/30' : '' }}" wire:key="row-{{ $index }}">
+                        <tr class="hover:bg-slate-50 transition-colors {{ $rowBg }}" wire:key="row-{{ $index }}">
                             
-                            <!-- No -->
-                            <td class="py-2 px-2 text-center text-slate-400 font-black text-[11px]">
+                            <!-- No (Sticky Frozen Column 1) -->
+                            <td class="py-2 px-1 text-center text-slate-400 font-black text-[11px] sticky-col-no {{ $rowBg }} border-r border-slate-200 z-10">
                                 {{ $index + 1 }}
                             </td>
 
-                            <!-- Machine -->
-                            <td class="py-2 px-3">
-                                <div class="space-y-1">
+                            <!-- Machine (Sticky Frozen Column 2) -->
+                            <td class="py-2 px-1.5 sticky-col-machine {{ $rowBg }} border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)] z-10">
+                                <div class="space-y-0.5">
                                     <div class="flex items-center gap-1">
                                         <select wire:model.live="rows.{{ $index }}.machine_name" 
                                                 wire:change="onMachineChange({{ $index }})"
                                                 @disabled($isLocked)
-                                                class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-black text-slate-800 uppercase focus:border-indigo-500 outline-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-80' : '' }}">
+                                                class="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-xs font-black text-slate-800 uppercase focus:border-indigo-500 outline-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-80' : '' }}">
                                             <option value="">-- Pilih --</option>
                                             @foreach($availableMachines as $m)
                                                 <option value="{{ $m['name'] }}">{{ $m['name'] }}</option>
@@ -259,7 +311,7 @@
                             </td>
 
                             <!-- Part No -->
-                            <td class="py-2 px-3">
+                            <td class="py-2 px-2.5">
                                 <div class="flex items-center gap-1">
                                     <input type="text" 
                                            wire:model.lazy="rows.{{ $index }}.part_no" 
@@ -280,14 +332,14 @@
                             </td>
 
                             <!-- Description -->
-                            <td class="py-2 px-3">
-                                <span class="text-xs font-bold text-slate-800 block truncate max-w-xs" title="{{ $row['description'] ?? '' }}">
+                            <td class="py-2 px-2.5 max-w-[180px]">
+                                <span class="text-xs font-bold text-slate-800 block truncate" title="{{ $row['description'] ?? '' }}">
                                     {{ $row['description'] ?: '-' }}
                                 </span>
                             </td>
 
                             <!-- M'trial Type -->
-                            <td class="py-2 px-3">
+                            <td class="py-2 px-2">
                                 <input type="text" 
                                        wire:model.defer="rows.{{ $index }}.material_type" 
                                        @disabled($isLocked)
@@ -322,11 +374,11 @@
                                         @endif
                                     @else
                                         <input type="text" 
-                                               wire:model.defer="rows.{{ $index }}.spk_no" 
-                                               @disabled($isLocked)
-                                               placeholder="Ketik SPK..." 
-                                               class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-extrabold text-indigo-700 uppercase focus:border-indigo-500 outline-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}"
-                                               title="SPK No">
+                                                wire:model.defer="rows.{{ $index }}.spk_no" 
+                                                @disabled($isLocked)
+                                                placeholder="Ketik SPK..." 
+                                                class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-extrabold text-indigo-700 uppercase focus:border-indigo-500 outline-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}"
+                                                title="SPK No">
 
                                         @if(!empty($row['available_spks']) && !$isLocked)
                                             <button wire:click="toggleManualSpk({{ $index }})" 
@@ -362,36 +414,36 @@
                             </td>
 
                             <!-- Cavity -->
-                            <td class="py-2 px-2 text-center">
+                            <td class="py-2 px-1.5 text-center">
                                 <input type="number" min="1"
                                        wire:key="cav-{{ $index }}-{{ $row['id'] ?? 'temp' }}"
                                        wire:model.blur="rows.{{ $index }}.cavity" 
                                        value="{{ $row['cavity'] ?? 1 }}"
                                        @disabled($isLocked)
-                                       class="w-14 bg-white border border-slate-200 rounded-lg px-1 py-1 text-xs font-bold text-center focus:border-indigo-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
+                                       class="w-11 bg-white border border-slate-200 rounded-lg px-1 py-1 text-xs font-bold text-center focus:border-indigo-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
                             </td>
 
                             <!-- Cycle Time -->
-                            <td class="py-2 px-2 text-center">
+                            <td class="py-2 px-1.5 text-center">
                                 <input type="number" min="0"
                                        wire:key="ct-{{ $index }}-{{ $row['id'] ?? 'temp' }}"
                                        wire:model.blur="rows.{{ $index }}.cycle_time" 
                                        wire:change="onCycleTimeChanged({{ $index }})"
                                        value="{{ $row['cycle_time'] ?? 0 }}"
                                        @disabled($isLocked)
-                                       class="w-14 bg-white border border-slate-200 rounded-lg px-1 py-1 text-xs font-bold text-center focus:border-indigo-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
+                                       class="w-11 bg-white border border-slate-200 rounded-lg px-1 py-1 text-xs font-bold text-center focus:border-indigo-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
                             </td>
 
                             <!-- Target/H -->
-                            <td class="py-2 px-2 text-center">
-                                <span class="inline-block bg-slate-100 text-slate-800 px-2 py-1 rounded-lg text-xs font-black">
+                            <td class="py-2 px-1.5 text-center">
+                                <span class="inline-block bg-slate-100 text-slate-800 px-1.5 py-1 rounded-lg text-xs font-black">
                                     {{ $row['target_per_hour'] ?? 0 }}
                                 </span>
                             </td>
 
                             <!-- Operator (I, II, III) -->
-                            <td class="py-2 px-2 bg-indigo-50/30 border-x border-indigo-100">
-                                <div class="grid grid-cols-3 gap-1.5">
+                            <td class="py-2 px-1.5 bg-indigo-50/30 border-x border-indigo-100">
+                                <div class="grid grid-cols-3 gap-1">
                                     <div class="relative">
                                         <input type="number" min="0" max="99"
                                                wire:key="op1-{{ $index }}-{{ $row['id'] ?? 'temp' }}"
@@ -399,7 +451,7 @@
                                                value="{{ $row['operator_shift_1'] ?? '' }}"
                                                placeholder="0"
                                                @disabled($isLocked)
-                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1.5 px-0.5 text-xs font-black text-center text-indigo-950 outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
+                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1 px-0.5 text-xs font-black text-center text-indigo-950 outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
                                                title="Jumlah Operator Shift 1">
                                     </div>
                                     <div class="relative">
@@ -409,7 +461,7 @@
                                                value="{{ $row['operator_shift_2'] ?? '' }}"
                                                placeholder="0"
                                                @disabled($isLocked)
-                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1.5 px-0.5 text-xs font-black text-center text-indigo-950 outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
+                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1 px-0.5 text-xs font-black text-center text-indigo-950 outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
                                                title="Jumlah Operator Shift 2">
                                     </div>
                                     <div class="relative">
@@ -419,25 +471,25 @@
                                                value="{{ $row['operator_shift_3'] ?? '' }}"
                                                placeholder="0"
                                                @disabled($isLocked)
-                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1.5 px-0.5 text-xs font-black text-center text-indigo-950 outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
+                                               class="w-full bg-white border border-indigo-200 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 rounded-lg py-1 px-0.5 text-xs font-black text-center text-indigo-950 outline-none transition shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed opacity-75' : '' }}"
                                                title="Jumlah Operator Shift 3">
                                     </div>
                                 </div>
                             </td>
 
                             <!-- QTY TO RUN -->
-                            <td class="py-2 px-3">
+                            <td class="py-2 px-2.5">
                                 <input type="number" min="0" 
                                        wire:key="qty-{{ $index }}-{{ $row['id'] ?? 'temp' }}"
                                        wire:model.live.debounce.250ms="rows.{{ $index }}.qty_to_run" 
                                        value="{{ $row['qty_to_run'] ?? '' }}"
                                        @disabled($isLocked)
                                        placeholder="0"
-                                       class="w-full bg-white border-2 border-indigo-300 rounded-lg px-2 py-1.5 text-xs font-black text-right text-indigo-900 focus:border-indigo-600 outline-none transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
+                                       class="w-full bg-white border-2 border-indigo-300 rounded-lg px-2 py-1 text-xs font-black text-right text-indigo-900 focus:border-indigo-600 outline-none transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
                             </td>
 
                             <!-- Alokasi / Shift Preview -->
-                            <td class="py-2 px-3">
+                            <td class="py-2 px-2.5">
                                 @if($countActive > 0 && $qtyToRun > 0)
                                     <div class="space-y-0.5">
                                         <div class="flex items-center gap-1 flex-wrap">
@@ -460,16 +512,16 @@
                             </td>
 
                             <!-- Reason -->
-                            <td class="py-2 px-3">
+                            <td class="py-2 px-2.5">
                                 <input type="text" 
                                        wire:model.defer="rows.{{ $index }}.reason" 
                                        @disabled($isLocked)
-                                       placeholder="Ex: LGS, MOULD C294..." 
+                                       placeholder="Ex: LGS, MOULD..." 
                                        class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-800 focus:border-indigo-500 outline-none {{ $isLocked ? 'bg-slate-100 cursor-not-allowed' : '' }}">
                             </td>
 
-                            <!-- Aksi -->
-                            <td class="py-2 px-2 text-center">
+                            <!-- Aksi (Sticky Frozen Column Right) -->
+                            <td class="py-2 px-1 text-center sticky-col-action {{ $rowBg }} border-l border-slate-200 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)] z-10">
                                 @if(!$isLocked)
                                     <button wire:click="removeRow({{ $index }})" 
                                             type="button"
@@ -496,7 +548,7 @@
         </div>
 
         <!-- Table Footer Summary -->
-        <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div class="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
             <div class="text-xs text-slate-500 font-medium">
                 Total Baris: <strong class="text-slate-800">{{ count($rows) }}</strong> | 
                 Total Qty Produksi: <strong class="text-indigo-700">{{ number_format(collect($rows)->sum(fn($r) => (int) ($r['qty_to_run'] ?? 0))) }} Pcs</strong>
