@@ -39,6 +39,22 @@ class SyncMachineJobs extends Command
         $roleId = (int) $this->option('role');
         $isDryRun = (bool) $this->option('dry-run');
 
+        // 1. Bersihkan duplikat machine_jobs jika ada (misal akibat seeder yang dijalankan ulang)
+        $duplicateCount = MachineJob::select('user_id', \DB::raw('count(*) as count'))
+            ->groupBy('user_id')
+            ->having('count', '>', 1)
+            ->count();
+
+        if ($duplicateCount > 0) {
+            $this->warn("⚠️ Ditemukan {$duplicateCount} user dengan record machine_jobs ganda/duplikat.");
+            if ($isDryRun) {
+                $this->comment('Mode --dry-run: simulasi, duplikat tidak dihapus.');
+            } else {
+                \DB::statement('DELETE m1 FROM machine_jobs m1 INNER JOIN machine_jobs m2 WHERE m1.id > m2.id AND m1.user_id = m2.user_id');
+                $this->info("✅ Seluruh duplikat di machine_jobs berhasil dibersihkan!");
+            }
+        }
+
         $this->info("Memeriksa user dengan role_id = {$roleId} yang belum memiliki machine_jobs...");
 
         // Ambil ID user yang sudah terdaftar di machine_jobs

@@ -9,7 +9,17 @@
         </div>
 
         {{-- Filters Section --}}
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6 relative">
+            {{-- Loading State Indicator --}}
+            <div wire:loading.delay class="absolute inset-0 bg-white/75 backdrop-blur-[1px] z-30 flex items-center justify-center rounded-lg">
+                <div class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg text-sm font-semibold">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    Memperbarui Filter Dashboard...
+                </div>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                 {{-- Plant Filter --}}
                 <div>
@@ -110,7 +120,7 @@
                     <div class="relative">
                         <input 
                             type="text" 
-                            wire:model.live="itemCodeSearch"
+                            wire:model.live.debounce.300ms="itemCodeSearch"
                             wire:focus="showItemCodeDropdown = true"
                             placeholder="Search item code..."
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8"
@@ -844,7 +854,7 @@
                 </div>
                 <div class="space-y-3 max-h-[600px] overflow-y-auto pr-1">
                     @forelse($ngBreakdown as $ngIndex => $ng)
-                        <div x-data="{ open: false, selectedModel: 'ALL' }" 
+                        <div x-data="{ open: false, selectedModel: 'ALL', openModel: null }" 
                              class="border-l-4 border-red-500 bg-white rounded-r-lg transition border border-gray-100 shadow-2xs">
                             <div class="p-3 cursor-pointer hover:bg-gray-50/80 transition" @click="open = !open">
                                 <div class="flex justify-between items-center gap-2">
@@ -902,17 +912,15 @@
                                     <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
                                         @foreach($ng['models'] as $mItem)
                                             <div x-show="selectedModel === 'ALL' || selectedModel === '{{ $mItem['item_code'] }}'" 
-                                                 x-data="{ modelOpen: false }"
-                                                 x-init="$watch('selectedModel', val => { if (val === '{{ $mItem['item_code'] }}') { modelOpen = true; } else if (val === 'ALL') { modelOpen = false; } })"
                                                  class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-2xs transition">
                                                 
                                                 {{-- Header Model: Selalu ditutup secara default, klik untuk buka/tutup (dropdown) --}}
                                                 <button type="button" 
-                                                        @click="modelOpen = !modelOpen"
+                                                        @click="openModel = (openModel === '{{ $mItem['item_code'] }}' ? null : '{{ $mItem['item_code'] }}')"
                                                         class="w-full p-2.5 flex items-center justify-between gap-2 hover:bg-gray-50/90 text-left transition select-none group">
                                                     <div class="flex items-center gap-2 min-w-0">
                                                         <span class="w-5 h-5 rounded flex items-center justify-center text-gray-400 group-hover:text-gray-700 bg-gray-100 transition-transform duration-200 shrink-0"
-                                                              :class="{ 'rotate-180 bg-red-50 text-red-600': modelOpen }">
+                                                              :class="{ 'rotate-180 bg-red-50 text-red-600': openModel === '{{ $mItem['item_code'] }}' || selectedModel === '{{ $mItem['item_code'] }}' }">
                                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                                             </svg>
@@ -920,7 +928,7 @@
                                                         <div class="truncate">
                                                             <div class="font-mono font-black text-xs text-gray-900 flex items-center gap-1.5">
                                                                 <span>{{ $mItem['item_code'] }}</span>
-                                                                <span class="text-[10px] font-normal text-gray-400">({{ count($mItem['records']) }} data)</span>
+                                                                <span class="text-[10px] font-normal text-gray-400">({{ $mItem['total_records'] ?? count($mItem['records']) }} data)</span>
                                                             </div>
                                                             <div class="text-[11px] text-gray-600 font-medium truncate" title="{{ $mItem['item_name'] }}">
                                                                 {{ $mItem['item_name'] }}
@@ -942,10 +950,10 @@
                                                 </button>
 
                                                 {{-- Detail Table: Ditutup secara default, hanya terbuka saat diklik drop down --}}
-                                                <div x-show="modelOpen" x-cloak class="border-t border-gray-100 p-2.5 bg-gray-50/60">
+                                                <div x-show="openModel === '{{ $mItem['item_code'] }}' || selectedModel === '{{ $mItem['item_code'] }}'" x-cloak class="border-t border-gray-100 p-2.5 bg-gray-50/60">
                                                     <div class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5 flex items-center justify-between">
-                                                        <span>📜 Data &amp; Remark ({{ count($mItem['records']) }} data):</span>
-                                                        <button type="button" @click.stop="modelOpen = false" class="text-gray-400 hover:text-red-500 text-[10px] font-semibold flex items-center gap-0.5">
+                                                        <span>📜 Data &amp; Remark ({{ $mItem['total_records'] ?? count($mItem['records']) }} data):</span>
+                                                        <button type="button" @click.stop="openModel = null" class="text-gray-400 hover:text-red-500 text-[10px] font-semibold flex items-center gap-0.5">
                                                             <span>Tutup Detail</span>
                                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
                                                         </button>
@@ -1111,6 +1119,11 @@
                 return;
             }
 
+            if (productionChart) {
+                productionChart.destroy();
+                productionChart = null;
+            }
+
             if (!data || data.length === 0) {
                 console.warn('⚠️ No data to display');
                 return;
@@ -1120,17 +1133,6 @@
             const targetData = data.map(d => d.target);
             const actualData = data.map(d => d.actual);
             const ngRateData = data.map(d => d.ng_rate);
-
-            if (productionChart) {
-                console.log('🔄 Updating existing chart...');
-                productionChart.data.labels = labels;
-                productionChart.data.datasets[0].data = targetData;
-                productionChart.data.datasets[1].data = actualData;
-                productionChart.data.datasets[2].data = ngRateData;
-                productionChart.update('active');
-                console.log('✅ Chart updated!');
-                return;
-            }
 
             console.log('🆕 Creating new chart...');
             productionChart = new Chart(ctx, {
@@ -1257,21 +1259,13 @@
                 return;
             }
 
-            if (!chartData || !chartData.datasets || chartData.datasets.length === 0) {
-                console.warn('⚠️ No adjuster chart data to display');
-                if (adjusterNgChart) {
-                    adjusterNgChart.destroy();
-                    adjusterNgChart = null;
-                }
-                return;
+            if (adjusterNgChart) {
+                adjusterNgChart.destroy();
+                adjusterNgChart = null;
             }
 
-            if (adjusterNgChart) {
-                console.log('🔄 Updating existing adjuster chart...');
-                adjusterNgChart.data.labels = chartData.labels;
-                adjusterNgChart.data.datasets = chartData.datasets;
-                adjusterNgChart.update('active');
-                console.log('✅ Adjuster chart updated!');
+            if (!chartData || !chartData.datasets || chartData.datasets.length === 0) {
+                console.warn('⚠️ No adjuster chart data to display');
                 return;
             }
 
@@ -1341,11 +1335,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📄 DOM Content Loaded');
             const initialData = @json($chartData);
-            console.log('📊 Initial chart data:', initialData);
             initChart(initialData);
 
             const initialAdjusterData = @json($adjusterNgTrend);
-            console.log('📊 Initial adjuster chart data:', initialAdjusterData);
             initAdjusterChart(initialAdjusterData);
         });
 
@@ -1353,16 +1345,14 @@
             console.log('⚡ Livewire initialized, setting up event listener...');
             
             Livewire.on('chartDataUpdated', (event) => {
-                console.log('🎯 chartDataUpdated event received!');
-                const data = event.chartData;
+                const data = (event && event.chartData !== undefined) ? event.chartData : (event && event[0] ? event[0].chartData : null);
                 if (data) {
                     initChart(data);
                 }
             });
 
             Livewire.on('adjusterChartDataUpdated', (event) => {
-                console.log('🎯 adjusterChartDataUpdated event received!');
-                const adjData = event.adjusterChartData;
+                const adjData = (event && event.adjusterChartData !== undefined) ? event.adjusterChartData : (event && event[0] ? event[0].adjusterChartData : null);
                 if (adjData) {
                     initAdjusterChart(adjData);
                 }

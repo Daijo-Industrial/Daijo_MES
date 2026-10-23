@@ -17,7 +17,7 @@ class MachineJobsTableSeeder extends Seeder
             $query->where('name', 'OPERATOR');
         })->get();
         foreach ($users as $user) {
-            MachineJob::create(['user_id' => $user->id]);
+            MachineJob::firstOrCreate(['user_id' => $user->id]);
         }
     }
 }

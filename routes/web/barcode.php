@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::post('packaging-barcode-generate', [BarcodeController::class, 'generateBarcode'])->name('generatepackagingbarcode');
     Route::post('packaging-barcode-zebra', [BarcodeController::class, 'generateLabelZebra'])->name('generate.zebra.barcode');
     Route::post('packaging-barcode-zebra-40x15', [BarcodeController::class, 'generateLabelZebra40x15'])->name('generate.zebra.barcode40x15');
+    Route::post('packaging-barcode-zebra-30x20', [BarcodeController::class, 'generateLabelZebra30x20'])->name('generate.zebra.barcode30x20');
     Route::get('barcode/list', [BarcodeController::class, 'barcodelist'])->name('list.barcode');
     Route::get('barcode/latest/item', [BarcodeController::class, 'latestitemdetails'])->name('updated.barcode.item.position');
     Route::get('barcode/historytable', [BarcodeController::class, 'historybarcodelist'])->name('barcode.historytable');

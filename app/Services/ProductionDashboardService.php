@@ -179,10 +179,36 @@ class ProductionDashboardService
             })->pluck('id')->toArray();
         }
 
-        // 1. Single database query for DailyItemCodes
+        // 1. Single database query for DailyItemCodes with constrained columns
         $dicQuery = DailyItemCode::query()
+            ->select([
+                'id',
+                'user_id',
+                'item_code',
+                'start_date',
+                'shift',
+                'resin_usage',
+                'schedule_date',
+                'temporal_cycle_time',
+            ])
             ->with([
-                'hourlyRemarks.ngDetails.ngType',
+                'hourlyRemarks' => fn ($q) => $q->select([
+                    'id',
+                    'dic_id',
+                    'start_time',
+                    'end_time',
+                    'target',
+                    'actual_production',
+                    'remark',
+                ]),
+                'hourlyRemarks.ngDetails' => fn ($q) => $q->select([
+                    'id',
+                    'hourly_remark_id',
+                    'ng_type_id',
+                    'ng_quantity',
+                    'ng_remarks',
+                ]),
+                'hourlyRemarks.ngDetails.ngType:id,ng_type',
                 'user:id,name',
             ])
             ->whereBetween('start_date', [$startDateStr, $endDateStr]);
@@ -199,10 +225,13 @@ class ProductionDashboardService
 
         $dailyData = $dicQuery->get();
 
-        // 2. Fetch Master Items mapped by item_code
+        // 2. Fetch Master Items mapped by item_code (only needed columns)
         $neededItemCodes = $dailyData->pluck('item_code')->filter()->unique()->values()->toArray();
         $masterItems = ! empty($neededItemCodes)
-            ? MasterListItem::whereIn('item_code', $neededItemCodes)->get()->keyBy('item_code')
+            ? MasterListItem::whereIn('item_code', $neededItemCodes)
+                ->select(['item_code', 'item_name', 'cycle_time', 'setup_time_minute'])
+                ->get()
+                ->keyBy('item_code')
             : collect();
 
         // 3. Fetch Adjust Logs & Mould Change Logs in precise local timestamp window
@@ -220,16 +249,19 @@ class ProductionDashboardService
         }
 
         $adjustQuery = AdjustMachineLog::query()
+            ->select(['id', 'user_id', 'item_code', 'pic', 'start_time', 'end_time', 'remark', 'created_at'])
             ->with(['user:id,name'])
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
 
         $mouldQuery = MouldChangeLog::query()
+            ->select(['id', 'user_id', 'item_code', 'pic', 'start_time', 'end_time', 'remark', 'created_at'])
             ->with(['user:id,name'])
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
 
         $repairQuery = RepairMachineLog::query()
+            ->select(['id', 'user_id', 'item_code', 'pic', 'problem', 'remark', 'finish_repair', 'created_at'])
             ->with(['user:id,name'])
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
@@ -245,16 +277,20 @@ class ProductionDashboardService
             $mouldQuery->where('user_id', $machineUserId);
             $repairQuery->where('user_id', $machineUserId);
         } elseif ($effectivePlant === 'karawang') {
-            $krwMachineIds = ($plant === 'karawang' && $plantMachineIds !== null) ? $plantMachineIds : User::where(function ($q) {
-                $q->where('name', 'LIKE', 'K%')->orWhereHas('branch', fn ($b) => $b->where('code', 'KRW'));
-            })->pluck('id')->toArray();
+            $krwMachineIds = ($plant === 'karawang' && $plantMachineIds !== null)
+                ? $plantMachineIds
+                : User::where(function ($q) {
+                    $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%');
+                })->pluck('id')->toArray();
             $adjustQuery->whereIn('user_id', $krwMachineIds);
             $mouldQuery->whereIn('user_id', $krwMachineIds);
             $repairQuery->whereIn('user_id', $krwMachineIds);
         } elseif ($effectivePlant === 'kbn') {
-            $kbnMachineIds = ($plant === 'kbn' && $plantMachineIds !== null) ? $plantMachineIds : User::where(function ($q) {
-                $q->where('name', 'NOT LIKE', 'K%')->whereDoesntHave('branch', fn ($b) => $b->where('code', 'KRW'));
-            })->pluck('id')->toArray();
+            $kbnMachineIds = ($plant === 'kbn' && $plantMachineIds !== null)
+                ? $plantMachineIds
+                : User::where(function ($q) {
+                    $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%');
+                })->pluck('id')->toArray();
             $adjustQuery->whereIn('user_id', $kbnMachineIds);
             $mouldQuery->whereIn('user_id', $kbnMachineIds);
             $repairQuery->whereIn('user_id', $kbnMachineIds);
@@ -563,21 +599,27 @@ class ProductionDashboardService
                                 'item_code' => $itemCode,
                                 'item_name' => $itemName,
                                 'total' => 0,
+                                'total_records' => 0,
                                 'records' => [],
                             ];
                         }
 
                         $ngBreakdown[$ngTypeName]['models'][$itemCode]['total'] += $qty;
-                        $ngBreakdown[$ngTypeName]['models'][$itemCode]['records'][] = [
-                            'date' => $dateStr,
-                            'shift' => $shift,
-                            'hour' => $hourLabel,
-                            'machine' => $machineName,
-                            'quantity' => $qty,
-                            'remark' => $displayRemark,
-                            'ng_remark' => $ngRemarkText ?: null,
-                            'hourly_remark' => $hourlyRemarkText ?: null,
-                        ];
+                        $ngBreakdown[$ngTypeName]['models'][$itemCode]['total_records']++;
+
+                        // Cap records to 25 per model to keep DOM and memory footprint lightweight
+                        if (count($ngBreakdown[$ngTypeName]['models'][$itemCode]['records']) < 25) {
+                            $ngBreakdown[$ngTypeName]['models'][$itemCode]['records'][] = [
+                                'date' => $dateStr,
+                                'shift' => $shift,
+                                'hour' => $hourLabel,
+                                'machine' => $machineName,
+                                'quantity' => $qty,
+                                'remark' => $displayRemark,
+                                'ng_remark' => $ngRemarkText ?: null,
+                                'hourly_remark' => $hourlyRemarkText ?: null,
+                            ];
+                        }
                     }
                 }
             }
@@ -1636,9 +1678,13 @@ class ProductionDashboardService
     /**
      * Get unique item codes for filter using indexed start_date
      */
-    public function getItemCodes(?int $year = null, ?int $month = null, ?string $plant = null, ?string $date = null): array
+    public function getItemCodes(?int $year = null, ?int $month = null, ?string $plant = null, ?string $date = null, ?string $search = null, int $limit = 50): array
     {
         $query = DailyItemCode::select('item_code')->distinct();
+
+        if (! empty($search)) {
+            $query->where('item_code', 'LIKE', '%' . $search . '%');
+        }
 
         if ($date) {
             $query->whereDate('start_date', $date);
@@ -1664,6 +1710,10 @@ class ProductionDashboardService
                 $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%');
             })->pluck('id')->toArray();
             $query->whereIn('user_id', $kbnIds);
+        }
+
+        if ($limit > 0) {
+            $query->limit($limit);
         }
 
         return $query->orderBy('item_code')

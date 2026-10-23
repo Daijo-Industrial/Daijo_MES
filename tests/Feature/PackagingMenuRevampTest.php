@@ -197,4 +197,64 @@ class PackagingMenuRevampTest extends TestCase
         $response->assertSee('BOX-REPRINT-001');
         $response->assertSee('#1');
     }
+
+    public function test_generate_zebra_30x20_barcode_repeats_each_label_twice(): void
+    {
+        $response = $this->actingAs($this->user)->post(route('generate.zebra.barcode30x20'), [
+            'partNo' => 'BOX-30X20-001/Small Box Name',
+            'print_quantity' => 2,
+            'remark' => 'Testing 30x20 2x repetition',
+        ]);
+
+        $response->assertOk();
+        $response->assertViewIs('barcodeinandout.zebra_label_30x20');
+        $response->assertViewHas('barcodes');
+
+        $barcodes = $response->viewData('barcodes');
+        $this->assertCount(2, $barcodes);
+        $this->assertStringStartsWith('data:image/png;base64,', $barcodes[0]['barcodeUrl']);
+        $this->assertEquals('BOX-30X20-001', $barcodes[0]['partno']);
+        $this->assertEquals('Small Box Name', $barcodes[0]['partname']);
+
+        // Check that view contains 30x20 styling
+        $content = $response->getContent();
+        $response->assertSee('30mm 20mm');
+        $response->assertSee('BOX-30X20-001');
+
+        // Verify each label is rendered exactly 2 times (2x per label)
+        $this->assertEquals(2, substr_count($content, '<span class="label-badge">#1</span>'));
+        $this->assertEquals(2, substr_count($content, '<span class="label-badge">#2</span>'));
+
+        // Database stores the actual 2 unique box records
+        $this->assertDatabaseHas('store_box_details', [
+            'part_no' => 'BOX-30X20-001',
+            'label' => 1,
+            'status' => 'active',
+            'remark' => 'Testing 30x20 2x repetition',
+        ]);
+        $this->assertDatabaseHas('store_box_details', [
+            'part_no' => 'BOX-30X20-001',
+            'label' => 2,
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_reprint_zebra_30x20_format_works(): void
+    {
+        $box = StoreBoxData::create(['part_no' => 'BOX-REPRINT-30X20', 'part_name' => 'Reprint 30x20 Box']);
+        $detail = StoreBoxDetail::create(['part_no' => 'BOX-REPRINT-30X20', 'label' => 10, 'status' => 'active']);
+
+        $response = $this->actingAs($this->user)->post(route('barcode.reprint'), [
+            'ids' => [$detail->id],
+            'format' => 'zebra30x20',
+        ]);
+
+        $response->assertOk();
+        $response->assertViewIs('barcodeinandout.zebra_label_30x20');
+        $response->assertViewHas('barcodes');
+
+        $content = $response->getContent();
+        $response->assertSee('BOX-REPRINT-30X20');
+        $this->assertEquals(2, substr_count($content, '#10'));
+    }
 }

@@ -797,4 +797,57 @@ class ProductionDashboardOptimizationTest extends TestCase
             ->assertSee('Repair Machine')
             ->assertSee('Pemanas heater mati');
     }
+
+    public function test_production_dashboard_filtering_and_search_item_code()
+    {
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::create([
+            'name' => 'Admin Filter Tester',
+            'email' => 'admin_filter@example.com',
+            'role_id' => $role->id,
+            'password' => bcrypt('password'),
+        ]);
+
+        $machineK = User::create(['name' => 'K0450A', 'email' => 'k0450a_flt@example.com', 'password' => 'secret']);
+        $machine0 = User::create(['name' => '0150E', 'email' => '0150e_flt@example.com', 'password' => 'secret']);
+
+        DailyItemCode::create([
+            'user_id' => $machineK->id,
+            'item_code' => 'PART-KRW-SPECIAL',
+            'start_date' => '2026-10-06',
+            'shift' => 1,
+        ]);
+
+        DailyItemCode::create([
+            'user_id' => $machine0->id,
+            'item_code' => 'PART-KBN-COMMON',
+            'start_date' => '2026-10-06',
+            'shift' => 1,
+        ]);
+
+        $this->actingAs($user);
+
+        // Test Livewire component lifecycle & filter reactions
+        $component = Livewire::test(ProductionDashboard::class)
+            ->assertOk()
+            ->set('plant', 'karawang')
+            ->assertSet('plant', 'karawang')
+            ->set('viewType', 'daily')
+            ->set('selectedDate', '2026-10-06')
+            ->set('itemCodeSearch', 'KRW')
+            ->assertSet('showItemCodeDropdown', true)
+            ->call('selectItemCode', 'PART-KRW-SPECIAL')
+            ->assertSet('itemCode', 'PART-KRW-SPECIAL')
+            ->assertSet('itemCodeSearch', 'PART-KRW-SPECIAL')
+            ->assertSet('showItemCodeDropdown', false)
+            ->call('clearItemCode')
+            ->assertSet('itemCode', null)
+            ->assertSet('itemCodeSearch', '')
+            ->set('machineUserId', $machineK->id)
+            ->assertSet('machineUserId', $machineK->id)
+            ->call('resetFilters')
+            ->assertSet('plant', '')
+            ->assertSet('itemCode', null)
+            ->assertSet('machineUserId', null);
+    }
 }
