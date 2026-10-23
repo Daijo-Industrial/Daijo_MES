@@ -272,6 +272,63 @@ class BarcodeController extends Controller
         ]);
     }
 
+    public function generateLabelZebra30x20(Request $request)
+    {
+        $partno = $request->partNo;
+        $print_quantity = (int) $request->print_quantity;
+
+        // Split partno and partname if it comes from the master list string
+        $partDetails = preg_split('/\//', $partno, 2);
+        $partNumber = trim($partDetails[0]);
+        $partName = isset($partDetails[1]) ? trim($partDetails[1]) : '';
+
+        // AUTO-INITIALIZATION: Check and create in StoreBoxData Part Master
+        $masterBox = StoreBoxData::firstOrCreate(
+            ['part_no' => $partNumber],
+            ['part_name' => $partName]
+        );
+
+        // SMART CALCULATION: Find last label number from individual box master
+        $lastLabel = StoreBoxDetail::where('part_no', $partNumber)->max('label') ?? 0;
+        $startnum = $lastLabel + 1;
+
+        $barcodes = [];
+
+        for ($i = 0; $i < $print_quantity; $i++) {
+            $currentLabelNo = $startnum + $i;
+            $qrData = $partNumber . "\t" . $currentLabelNo . "\tTRIAL";
+
+            // Generate QR Code in memory as Base64 Data URI (Zero disk write)
+            $barcode = new DNS2D;
+            $barcodeBase64 = $barcode->getBarcodePNG($qrData, 'QRCODE', 5, 5);
+            $barcodeUrl = 'data:image/png;base64,' . $barcodeBase64;
+
+            StoreBoxDetail::create([
+                'part_no' => $partNumber,
+                'label' => $currentLabelNo,
+                'status' => 'active',
+                'remark' => $request->remark ?? null,
+            ]);
+
+            $barcodes[] = [
+                'partno' => $partNumber,
+                'partname' => $masterBox->part_name,
+                'label' => $currentLabelNo,
+                'barcodeUrl' => $barcodeUrl,
+                'qrData' => $qrData,
+            ];
+        }
+
+        return view('barcodeinandout.zebra_label_30x20', [
+            'barcodes' => $barcodes,
+            'partno' => $partNumber,
+            'quantity' => $print_quantity,
+            'startnum' => $startnum,
+            'endnum' => $startnum + $print_quantity - 1,
+            'generated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
     //index page untuk scan box datang dan box keluar dengan memilih spesifikasi masuk atau keluar dan customer
     public function inandoutpage()
     {
@@ -1418,7 +1475,9 @@ class BarcodeController extends Controller
             ];
         }
 
-        if ($request->format == 'zebra40x15') {
+        if ($request->format == 'zebra30x20') {
+            $view = 'barcodeinandout.zebra_label_30x20';
+        } elseif ($request->format == 'zebra40x15') {
             $view = 'barcodeinandout.zebra_label_40x15';
         } elseif ($request->format == 'zebra') {
             $view = 'barcodeinandout.zebra_label';

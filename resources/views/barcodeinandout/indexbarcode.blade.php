@@ -133,7 +133,7 @@
                                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">
                                     4. Pilih Format & Ukuran Label
                                 </label>
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {{-- Option 1: Zebra 40x15 Thermal (Kembar 2-Up) --}}
                                     <button type="submit" formaction="{{ route('generate.zebra.barcode40x15') }}"
                                         class="p-4 sm:p-5 border-2 border-indigo-500 bg-indigo-50/30 hover:bg-indigo-50 rounded-2xl flex items-center gap-3.5 text-left transition group shadow-sm hover:shadow">
@@ -147,7 +147,20 @@
                                         </div>
                                     </button>
 
-                                    {{-- Option 2: Zebra 50x35 Thermal --}}
+                                    {{-- Option 2: Zebra 30x20 Thermal (1 Label per baris, 2x Tiap Label) --}}
+                                    <button type="submit" formaction="{{ route('generate.zebra.barcode30x20') }}"
+                                        class="p-4 sm:p-5 border-2 border-amber-500 bg-amber-50/30 hover:bg-amber-50 rounded-2xl flex items-center gap-3.5 text-left transition group shadow-sm hover:shadow">
+                                        <span class="p-3 bg-amber-600 text-white rounded-xl text-2xl group-hover:scale-110 transition transform">🏷️</span>
+                                        <div>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="block font-black text-amber-950 text-sm">Zebra / Argox (30 x 20 mm)</span>
+                                                <span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">2x Tiap Label</span>
+                                            </div>
+                                            <span class="block text-xs text-amber-800 mt-0.5">1 label per baris, otomatis cetak 2x per box</span>
+                                        </div>
+                                    </button>
+
+                                    {{-- Option 3: Zebra 50x35 Thermal --}}
                                     <button type="submit" formaction="{{ route('generate.zebra.barcode') }}"
                                         class="p-4 sm:p-5 border-2 border-emerald-500 bg-emerald-50/30 hover:bg-emerald-50 rounded-2xl flex items-center gap-3.5 text-left transition group shadow-sm hover:shadow">
                                         <span class="p-3 bg-emerald-600 text-white rounded-xl text-2xl group-hover:scale-110 transition transform">🏷️</span>
@@ -157,7 +170,7 @@
                                         </div>
                                     </button>
 
-                                    {{-- Option 3: A4 Standard Sheet --}}
+                                    {{-- Option 4: A4 Standard Sheet --}}
                                     <button type="submit" formaction="{{ route('generatepackagingbarcode') }}"
                                         class="p-4 sm:p-5 border-2 border-blue-500 bg-blue-50/30 hover:bg-blue-50 rounded-2xl flex items-center gap-3.5 text-left transition group shadow-sm hover:shadow">
                                         <span class="p-3 bg-blue-600 text-white rounded-xl text-2xl group-hover:scale-110 transition transform">📄</span>
@@ -186,6 +199,7 @@
                             <div class="flex items-center gap-2">
                                 <select x-model="format" class="text-xs border-gray-300 rounded-lg py-1.5 px-3">
                                     <option value="zebra40x15">Format: Zebra Thermal 40x15 (Kembar)</option>
+                                    <option value="zebra30x20">Format: Zebra / Argox Thermal 30x20 (2x per Label)</option>
                                     <option value="zebra">Format: Zebra Thermal 50x35</option>
                                     <option value="a4">Format: Kertas A4 Lembar</option>
                                 </select>

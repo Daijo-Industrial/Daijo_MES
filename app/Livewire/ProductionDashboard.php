@@ -61,8 +61,6 @@ class ProductionDashboard extends Component
 
     public array $weeks = [];
 
-    public array $itemCodes = [];
-
     public array $filteredItemCodes = [];
 
     public array $allMachines = [];
@@ -173,8 +171,14 @@ class ProductionDashboard extends Component
     private function updateItemCodes()
     {
         $dateParam = ($this->viewType === 'daily') ? $this->selectedDate : null;
-        $this->itemCodes = $this->productionService->getItemCodes($this->year, $this->month, $this->plant, $dateParam);
-        $this->filteredItemCodes = array_slice($this->itemCodes, 0, 50);
+        $this->filteredItemCodes = $this->productionService->getItemCodes(
+            (int) $this->year,
+            (int) $this->month,
+            $this->plant,
+            $dateParam,
+            $this->itemCodeSearch ?: null,
+            50
+        );
     }
 
     public function updatedPlant()
@@ -189,16 +193,8 @@ class ProductionDashboard extends Component
 
     public function updatedItemCodeSearch()
     {
-        if (empty($this->itemCodeSearch)) {
-            $this->filteredItemCodes = array_slice($this->itemCodes, 0, 50);
-            $this->showItemCodeDropdown = false;
-        } else {
-            $matches = array_values(array_filter($this->itemCodes, function ($code) {
-                return stripos($code, $this->itemCodeSearch) !== false;
-            }));
-            $this->filteredItemCodes = array_slice($matches, 0, 50);
-            $this->showItemCodeDropdown = true;
-        }
+        $this->updateItemCodes();
+        $this->showItemCodeDropdown = ! empty($this->itemCodeSearch);
     }
 
     public function selectItemCode($code)
@@ -213,7 +209,7 @@ class ProductionDashboard extends Component
     {
         $this->itemCode = null;
         $this->itemCodeSearch = '';
-        $this->filteredItemCodes = $this->itemCodes;
+        $this->updateItemCodes();
         $this->showItemCodeDropdown = false;
         $this->loadData();
     }
