@@ -28,3 +28,10 @@ yarn-error.log
 *.docx
 PANDUAN_RECOVERY_DAN_SETUP_SERVER_BARU_DAIJO_MES.docx
 .agents/ecc-install-state.json
+
+# Local database dumps & Windows metadata
+/daijo_mes/
+*.Zone.Identifier
+*.frm
+*.ibd
+

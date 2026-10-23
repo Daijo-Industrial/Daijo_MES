@@ -179,36 +179,10 @@ class ProductionDashboardService
             })->pluck('id')->toArray();
         }
 
-        // 1. Single database query for DailyItemCodes with constrained columns
+        // 1. Single database query for DailyItemCodes
         $dicQuery = DailyItemCode::query()
-            ->select([
-                'id',
-                'user_id',
-                'item_code',
-                'start_date',
-                'shift',
-                'resin_usage',
-                'schedule_date',
-                'temporal_cycle_time',
-            ])
             ->with([
-                'hourlyRemarks' => fn ($q) => $q->select([
-                    'id',
-                    'dic_id',
-                    'start_time',
-                    'end_time',
-                    'target',
-                    'actual_production',
-                    'remark',
-                ]),
-                'hourlyRemarks.ngDetails' => fn ($q) => $q->select([
-                    'id',
-                    'hourly_remark_id',
-                    'ng_type_id',
-                    'ng_quantity',
-                    'ng_remarks',
-                ]),
-                'hourlyRemarks.ngDetails.ngType:id,ng_type',
+                'hourlyRemarks.ngDetails.ngType',
                 'user:id,name',
             ])
             ->whereBetween('start_date', [$startDateStr, $endDateStr]);
@@ -225,11 +199,10 @@ class ProductionDashboardService
 
         $dailyData = $dicQuery->get();
 
-        // 2. Fetch Master Items mapped by item_code (only needed columns)
+        // 2. Fetch Master Items mapped by item_code
         $neededItemCodes = $dailyData->pluck('item_code')->filter()->unique()->values()->toArray();
         $masterItems = ! empty($neededItemCodes)
             ? MasterListItem::whereIn('item_code', $neededItemCodes)
-                ->select(['item_code', 'item_name', 'cycle_time', 'setup_time_minute'])
                 ->get()
                 ->keyBy('item_code')
             : collect();
@@ -249,19 +222,16 @@ class ProductionDashboardService
         }
 
         $adjustQuery = AdjustMachineLog::query()
-            ->select(['id', 'user_id', 'item_code', 'pic', 'start_time', 'end_time', 'remark', 'created_at'])
             ->with(['user:id,name'])
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
 
         $mouldQuery = MouldChangeLog::query()
-            ->select(['id', 'user_id', 'item_code', 'pic', 'start_time', 'end_time', 'remark', 'created_at'])
             ->with(['user:id,name'])
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
 
         $repairQuery = RepairMachineLog::query()
-            ->select(['id', 'user_id', 'item_code', 'pic', 'problem', 'remark', 'finish_repair', 'created_at'])
             ->with(['user:id,name'])
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
