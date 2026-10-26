@@ -546,7 +546,7 @@ class ProductionDashboardService
                 'item_code' => $dic->item_code,
                 'resin_usage' => (float) $dic->resin_usage,
             ];
-        })->values()->toArray();
+        })->values()->take(50)->toArray();
 
         return [
             'chart_data' => $chartData,
@@ -633,8 +633,8 @@ class ProductionDashboardService
                         $ngBreakdown[$ngTypeName]['models'][$itemCode]['total'] += $qty;
                         $ngBreakdown[$ngTypeName]['models'][$itemCode]['total_records']++;
 
-                        // Cap records to 25 per model to keep DOM and memory footprint lightweight
-                        if (count($ngBreakdown[$ngTypeName]['models'][$itemCode]['records']) < 25) {
+                        // Cap records to 5 per model to keep DOM and memory footprint ultra-lightweight
+                        if (count($ngBreakdown[$ngTypeName]['models'][$itemCode]['records']) < 5) {
                             $ngBreakdown[$ngTypeName]['models'][$itemCode]['records'][] = [
                                 'date' => $dateStr,
                                 'shift' => $shift,
@@ -651,15 +651,18 @@ class ProductionDashboardService
             }
         }
 
-        // Urutkan models di dalam setiap defect type berdasarkan total desc
+        // Urutkan models di dalam setiap defect type berdasarkan total desc dan batasi ke top 10
         foreach ($ngBreakdown as &$typeData) {
             $models = array_values($typeData['models']);
             usort($models, fn ($a, $b) => $b['total'] <=> $a['total']);
-            $typeData['models'] = $models;
             $typeData['models_count'] = count($models);
+            // Cap to top 10 models per defect type to prevent massive DOM footprint
+            $typeData['models'] = array_slice($models, 0, 10);
         }
         unset($typeData);
 
+        // Hanya sertakan defect type yang memiliki NG (> 0)
+        $ngBreakdown = array_filter($ngBreakdown, fn ($t) => ($t['total'] ?? 0) > 0);
         usort($ngBreakdown, fn ($a, $b) => $b['total'] <=> $a['total']);
 
         return array_values($ngBreakdown);
