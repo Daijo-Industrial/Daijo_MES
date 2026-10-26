@@ -1,10 +1,22 @@
 <div x-data="{ showPurgingModal: false }">
     <div class="container mx-auto px-4 py-6">
         {{-- Header --}}
-        <div class="mb-6 flex justify-between items-center">
+        <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-gray-800">Production Dashboard</h1>
                 <p class="text-gray-600 mt-1">Monitor production performance and NG rates</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button wire:click="refreshData" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 shadow-sm transition active:scale-95 disabled:opacity-50">
+                    <svg wire:loading.remove wire:target="refreshData" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <svg wire:loading wire:target="refreshData" class="animate-spin w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <span>Refresh Data</span>
+                </button>
             </div>
         </div>
 
