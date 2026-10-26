@@ -1021,6 +1021,11 @@
                                                 </div>
                                             </div>
                                         @endforeach
+                                        @if(($ng['models_count'] ?? 0) > 10)
+                                            <div class="text-[10px] text-gray-400 text-center py-1.5 italic bg-gray-50 border border-gray-200 rounded">
+                                                Menampilkan 10 model dengan NG tertinggi dari {{ $ng['models_count'] }} model.
+                                            </div>
+                                        @endif
                                     </div>
                                 @endif
                             </div>
