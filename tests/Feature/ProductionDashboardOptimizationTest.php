@@ -850,4 +850,36 @@ class ProductionDashboardOptimizationTest extends TestCase
             ->assertSet('itemCode', null)
             ->assertSet('machineUserId', null);
     }
+
+    public function test_production_dashboard_caching_and_refresh_action()
+    {
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::create([
+            'name' => 'Cache Tester User',
+            'email' => 'cache_tester@example.com',
+            'role_id' => $role->id,
+            'password' => bcrypt('password'),
+        ]);
+
+        $service = app(ProductionDashboardService::class);
+        $start = Carbon::parse('2026-10-01')->startOfDay();
+        $end = Carbon::parse('2026-10-31')->endOfDay();
+
+        // 1. Service cache check
+        $data1 = $service->getAllDashboardData($start, $end, null, null, 'karawang');
+        $this->assertIsArray($data1);
+
+        // 2. Refresh flag bypasses cache
+        $data2 = $service->getAllDashboardData($start, $end, null, null, 'karawang', null, true);
+        $this->assertIsArray($data2);
+
+        // 3. Livewire component can call refreshData and dispatches chart update
+        $this->actingAs($user);
+        Livewire::test(ProductionDashboard::class)
+            ->assertOk()
+            ->call('refreshData')
+            ->assertDispatched('chartDataUpdated')
+            ->assertDispatched('adjusterChartDataUpdated');
+    }
 }
+

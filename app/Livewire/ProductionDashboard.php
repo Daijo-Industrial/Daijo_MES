@@ -41,19 +41,7 @@ class ProductionDashboard extends Component
 
     public array $summary = [];
 
-    public array $ngBreakdown = [];
-
-    public array $downtimeAnalysis = [];
-
-    public array $topRemarks = [];
-
-    public array $machineWorkingHours = [];
-
-    public array $purgingDetails = [];
-
-    public array $shiftPersonnelAnalysis = [];
-
-    public array $adjusterNgTrend = [];
+    protected ?array $cachedDashboardData = null;
 
     public array $years = [];
 
@@ -285,8 +273,26 @@ class ProductionDashboard extends Component
         }
     }
 
-    public function loadData()
+    public function loadData(bool $forceRefresh = false)
     {
+        $this->cachedDashboardData = null;
+        $data = $this->getDashboardData($forceRefresh);
+
+        $this->dispatch('chartDataUpdated', chartData: $this->chartData);
+        $this->dispatch('adjusterChartDataUpdated', adjusterChartData: $data['adjuster_ng_trend'] ?? []);
+    }
+
+    public function refreshData()
+    {
+        $this->loadData(forceRefresh: true);
+    }
+
+    private function getDashboardData(bool $forceRefresh = false): array
+    {
+        if ($this->cachedDashboardData !== null && ! $forceRefresh) {
+            return $this->cachedDashboardData;
+        }
+
         [$startDate, $endDate] = $this->getDateRange();
 
         if ($this->viewType === 'daily') {
@@ -306,21 +312,15 @@ class ProductionDashboard extends Component
             $this->itemCode,
             $this->machineUserId,
             $this->plant,
-            $halfDayParam
+            $halfDayParam,
+            $forceRefresh
         );
 
-        $this->chartData = $data['chart_data'] ?? [];
         $this->summary = $data['summary'] ?? [];
-        $this->purgingDetails = $data['purging_details'] ?? [];
-        $this->ngBreakdown = $data['ng_breakdown'] ?? [];
-        $this->downtimeAnalysis = $data['downtime_analysis'] ?? [];
-        $this->topRemarks = $data['top_remarks'] ?? [];
-        $this->machineWorkingHours = $data['machine_working_hours'] ?? [];
-        $this->shiftPersonnelAnalysis = $data['shift_personnel_analysis'] ?? [];
-        $this->adjusterNgTrend = $data['adjuster_ng_trend'] ?? [];
+        $this->chartData = $data['chart_data'] ?? [];
+        $this->cachedDashboardData = $data;
 
-        $this->dispatch('chartDataUpdated', chartData: $this->chartData);
-        $this->dispatch('adjusterChartDataUpdated', adjusterChartData: $this->adjusterNgTrend);
+        return $data;
     }
 
     private function getDateRange(): array
@@ -384,6 +384,18 @@ class ProductionDashboard extends Component
 
     public function render()
     {
-        return view('livewire.Production-dashboard');
+        $data = $this->getDashboardData();
+
+        return view('livewire.Production-dashboard', array_merge([
+            'summary' => $this->summary,
+            'chartData' => $this->chartData,
+            'purgingDetails' => $data['purging_details'] ?? [],
+            'ngBreakdown' => $data['ng_breakdown'] ?? [],
+            'downtimeAnalysis' => $data['downtime_analysis'] ?? [],
+            'topRemarks' => $data['top_remarks'] ?? [],
+            'machineWorkingHours' => $data['machine_working_hours'] ?? [],
+            'shiftPersonnelAnalysis' => $data['shift_personnel_analysis'] ?? [],
+            'adjusterNgTrend' => $data['adjuster_ng_trend'] ?? [],
+        ]));
     }
 }

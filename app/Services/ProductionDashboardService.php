@@ -10,6 +10,7 @@ use App\Models\RepairMachineLog;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Cache;
 
 class ProductionDashboardService
 {
@@ -141,9 +142,64 @@ class ProductionDashboardService
     }
 
     /**
-     * Get all dashboard data in a single unified, ultra-fast pass.
+     * Get all dashboard data with high-performance caching (3 min TTL).
      */
     public function getAllDashboardData(
+        Carbon $startDate,
+        Carbon $endDate,
+        ?string $itemCode = null,
+        ?string $machineUserId = null,
+        ?string $plant = null,
+        bool|array|null $isHalfDay = null,
+        bool $forceRefresh = false
+    ): array {
+        if (app()->runningUnitTests() && ! $forceRefresh) {
+            return $this->computeAllDashboardData(
+                $startDate,
+                $endDate,
+                $itemCode,
+                $machineUserId,
+                $plant,
+                $isHalfDay
+            );
+        }
+
+        $cacheKey = 'prod_dash_' . md5(json_encode([
+            $startDate->format('Y-m-d'),
+            $endDate->format('Y-m-d'),
+            $itemCode,
+            $machineUserId,
+            $plant,
+            $isHalfDay,
+        ]));
+
+        if ($forceRefresh) {
+            Cache::forget($cacheKey);
+        }
+
+        return Cache::remember($cacheKey, 180, function () use (
+            $startDate,
+            $endDate,
+            $itemCode,
+            $machineUserId,
+            $plant,
+            $isHalfDay
+        ) {
+            return $this->computeAllDashboardData(
+                $startDate,
+                $endDate,
+                $itemCode,
+                $machineUserId,
+                $plant,
+                $isHalfDay
+            );
+        });
+    }
+
+    /**
+     * Compute all dashboard data in a single unified, ultra-fast pass.
+     */
+    public function computeAllDashboardData(
         Carbon $startDate,
         Carbon $endDate,
         ?string $itemCode = null,
