@@ -59,6 +59,9 @@ class ProductionStoreHandoverIndex extends Component
 
     public array $palletFormsList = [];
 
+    // Active View Tab: 'queue' (Antrean Pallet Datang) | 'table' (Rekap Tabel Kontrol)
+    public string $activeTab = 'queue';
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -84,6 +87,11 @@ class ProductionStoreHandoverIndex extends Component
         $this->resetPage();
     }
 
+    public function switchTab(string $tab)
+    {
+        $this->activeTab = in_array($tab, ['queue', 'table']) ? $tab : 'queue';
+    }
+
     public function updatedModalBoxes($value)
     {
         $boxes = max(0, (int) $value);
@@ -95,6 +103,12 @@ class ProductionStoreHandoverIndex extends Component
     public function mount(ProductionStoreHandoverService $service)
     {
         $this->selectedDate = $service->getCurrentProductionDate();
+        // Orang store langsung diarahkan ke tab Antrean Pallet Masuk yang simpel
+        if (! $this->canManageStoreReceipt) {
+            $this->activeTab = 'table';
+        } else {
+            $this->activeTab = 'queue';
+        }
     }
 
     public function setToday(ProductionStoreHandoverService $service)
@@ -494,14 +508,129 @@ class ProductionStoreHandoverIndex extends Component
         ]);
     }
 
+    public function receivePalletFromQueue(string $palletId, ProductionStoreHandoverService $service)
+    {
+        if (! $this->canManageStoreReceipt) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Akses ditolak: Verifikasi penerimaan pallet hanya dapat dilakukan oleh staf Store atau Admin.',
+            ]);
+            return;
+        }
+
+        $pallet = WmsPalletForm::with('details')->where('pallet_id', $palletId)->first();
+        if (! $pallet) {
+            $this->dispatch('notify', ['type' => 'error', 'message' => "Pallet [{$palletId}] tidak ditemukan."]);
+            return;
+        }
+
+        // Cek anti-duplikasi
+        $alreadyLog = ProductionStoreHandoverLog::where('pallet_id', $palletId)->first();
+        if ($alreadyLog) {
+            $timeStr = $alreadyLog->created_at ? $alreadyLog->created_at->format('H:i') : '-';
+            $this->dispatch('notify', [
+                'type' => 'warning',
+                'message' => "Pallet [{$palletId}] sudah pernah diverifikasi oleh {$alreadyLog->verified_by_name} pada jam {$timeStr}.",
+            ]);
+            return;
+        }
+
+        // Cari handover yang sesuai
+        $handoverQuery = ProductionStoreHandover::where('production_date', $this->selectedDate);
+        if ($pallet->part_no !== 'MIXED') {
+            $handoverQuery->where('item_code', $pallet->part_no);
+        } else {
+            $detailParts = $pallet->details->pluck('part_no')->unique()->toArray();
+            $handoverQuery->whereIn('item_code', $detailParts);
+        }
+
+        if (! empty($pallet->delivery_shift)) {
+            $handover = (clone $handoverQuery)->where('shift', (int) $pallet->delivery_shift)->first()
+                ?: $handoverQuery->first();
+        } else {
+            $handover = $handoverQuery->first();
+        }
+
+        if (! $handover) {
+            $service->syncDailyProduction($this->selectedDate);
+            $handover = $handoverQuery->first();
+        }
+
+        if (! $handover) {
+            $handover = ProductionStoreHandover::create([
+                'production_date' => $this->selectedDate,
+                'shift' => ! empty($pallet->delivery_shift) ? (int) $pallet->delivery_shift : 1,
+                'item_code' => $pallet->part_no !== 'MIXED' ? $pallet->part_no : ($pallet->details->first()?->part_no ?: 'UNKNOWN'),
+                'item_name' => $pallet->model_name ?: 'WMS Pallet Transfer',
+                'machine_name' => 'WMS-TRANSFER',
+                'operator_actual_qty' => (int) $pallet->total_pallet_qty,
+                'scanned_boxes' => (int) $pallet->box_qty,
+                'scanned_qty' => (int) $pallet->total_pallet_qty,
+                'store_received_boxes' => 0,
+                'store_received_qty' => 0,
+                'status' => 'PENDING',
+            ]);
+        }
+
+        $res = $service->receivePallet($handover->id, $palletId, auth()->user());
+        if ($res['success']) {
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => "Pallet [{$palletId}] ({$res['boxes']} box / {$res['qty']} pcs) BERHASIL DITERIMA!",
+            ]);
+        } else {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => $res['message'],
+            ]);
+        }
+    }
+
+    public function receiveAllPendingQueue(ProductionStoreHandoverService $service)
+    {
+        if (! $this->canManageStoreReceipt) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Akses ditolak: Verifikasi penerimaan pallet hanya dapat dilakukan oleh staf Store atau Admin.',
+            ]);
+            return;
+        }
+
+        $shift = (! empty($this->shiftFilter) && $this->shiftFilter !== 'ALL') ? (int) $this->shiftFilter : null;
+        $queue = $service->getPalletsQueue($this->selectedDate, $shift, $this->search);
+
+        if (empty($queue['pending'])) {
+            $this->dispatch('notify', ['type' => 'info', 'message' => 'Tidak ada antrean pallet yang menunggu verifikasi.']);
+            return;
+        }
+
+        $count = 0;
+        $boxes = 0;
+        $qty = 0;
+
+        foreach ($queue['pending'] as $p) {
+            $this->receivePalletFromQueue($p['pallet_id'], $service);
+            $count++;
+            $boxes += $p['box_count'];
+            $qty += $p['qty_pcs'];
+        }
+
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => "Berhasil memverifikasi {$count} pallet ({$boxes} box / {$qty} pcs) sekaligus!",
+        ]);
+    }
+
     public function render(ProductionStoreHandoverService $service)
     {
         $shift = (!empty($this->shiftFilter) && $this->shiftFilter !== 'ALL') ? (int) $this->shiftFilter : null;
         $data = $service->getSummary($this->selectedDate, $shift, $this->plantFilter, $this->search, $this->perPage);
+        $queue = $service->getPalletsQueue($this->selectedDate, $shift, $this->search);
 
         return view('livewire.production-store-handover-index', [
             'items' => $data['items'],
             'stats' => $data['stats'],
+            'queue' => $queue,
         ])->layout('layouts.app', ['title' => 'Kontrol & Rekonsiliasi Harian Produksi - Store']);
     }
 }

@@ -342,6 +342,96 @@ class ProductionStoreHandoverService
     }
 
     /**
+     * Dapatkan seluruh antrean Pallet Form WMS dalam window cutoff tanggal produksi
+     * untuk tampilan cepat penerimaan Store (Card Feed tanpa popup modal)
+     */
+    public function getPalletsQueue(string $date, ?int $shift = null, ?string $search = null): array
+    {
+        [$startTime, $endTime] = WmsDeliveryRecapService::getTimeWindow($date);
+
+        $query = WmsPalletForm::with(['position.rack.warehouse', 'details.item'])
+            ->where(function ($q) use ($date, $startTime, $endTime) {
+                $q->where('prod_date', $date)
+                  ->orWhereBetween('created_at', [$startTime, $endTime]);
+            });
+
+        if (! empty($shift)) {
+            $query->where(function ($q) use ($shift) {
+                $q->where('delivery_shift', (string) $shift)
+                  ->orWhere('delivery_shift', $shift);
+            });
+        }
+
+        if (! empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('pallet_id', 'like', "%{$search}%")
+                  ->orWhere('part_no', 'like', "%{$search}%")
+                  ->orWhere('model_name', 'like', "%{$search}%")
+                  ->orWhere('delivery_name', 'like', "%{$search}%")
+                  ->orWhereHas('details', function ($d) use ($search) {
+                      $d->where('part_no', 'like', "%{$search}%")
+                        ->orWhere('model_name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $pallets = $query->orderBy('created_at', 'desc')->get();
+
+        $receivedLogs = ProductionStoreHandoverLog::whereIn('pallet_id', $pallets->pluck('pallet_id'))
+            ->get()
+            ->keyBy('pallet_id');
+
+        $pending = [];
+        $received = [];
+
+        foreach ($pallets as $pallet) {
+            $log = $receivedLogs->get($pallet->pallet_id);
+            $isReceived = $log !== null;
+
+            $rackLocation = null;
+            if ($pallet->position && $pallet->position->rack) {
+                $rackLocation = $pallet->position->rack->name . '-' . $pallet->position->code;
+            }
+
+            $itemData = [
+                'pallet_id' => $pallet->pallet_id,
+                'part_no' => $pallet->part_no,
+                'model_name' => $pallet->model_name,
+                'delivery_name' => $pallet->delivery_name ?: 'Pengiriman Produksi',
+                'delivery_shift' => $pallet->delivery_shift,
+                'created_at' => $pallet->created_at,
+                'created_time_formatted' => $pallet->created_at ? $pallet->created_at->format('H:i') : '-',
+                'box_count' => (int) $pallet->box_qty,
+                'qty_pcs' => (int) $pallet->total_pallet_qty,
+                'is_received' => $isReceived,
+                'received_by_name' => $log?->verified_by_name,
+                'received_at' => $log?->created_at,
+                'received_at_formatted' => $log?->created_at ? $log->created_at->format('H:i') : null,
+                'is_putaway' => ! empty($pallet->position_id),
+                'rack_location' => $rackLocation,
+                'details' => $pallet->details->map(fn ($d) => [
+                    'label' => $d->label,
+                    'spk_no' => $d->spk_no,
+                    'qty' => (int) $d->qty,
+                ])->toArray(),
+            ];
+
+            if ($isReceived) {
+                $received[] = $itemData;
+            } else {
+                $pending[] = $itemData;
+            }
+        }
+
+        return [
+            'pending' => $pending,
+            'received' => $received,
+            'total_pending_count' => count($pending),
+            'total_received_count' => count($received),
+        ];
+    }
+
+    /**
      * Dapatkan data ringkasan untuk halaman kontrol
      */
     public function getSummary(string $date, ?int $shift = null, ?string $plant = null, ?string $search = null, ?int $perPage = 25)

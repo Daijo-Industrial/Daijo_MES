@@ -183,6 +183,217 @@
             </div>
         </div>
 
+        {{-- VIEW MODE SWITCHER TABS --}}
+        <div class="flex items-center justify-between gap-3 border-b border-gray-200">
+            <div class="flex items-center gap-2">
+                {{-- TAB 1: Antrean Pallet Masuk (Store Simple View) --}}
+                <button type="button" 
+                        wire:click="switchTab('queue')" 
+                        class="px-5 py-3 text-sm font-black rounded-t-xl transition-all border-b-2 flex items-center gap-2.5 {{ $activeTab === 'queue' ? 'bg-white text-indigo-700 border-indigo-600 shadow-xs' : 'text-gray-500 hover:text-gray-800 border-transparent hover:bg-gray-100' }}">
+                    <span class="p-1 rounded-md {{ $activeTab === 'queue' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-500' }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    </span>
+                    <span>📦 ANTREAN PALLET MASUK</span>
+                    @if(isset($queue['total_pending_count']) && $queue['total_pending_count'] > 0)
+                        <span class="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500 text-white animate-pulse">
+                            {{ $queue['total_pending_count'] }} Menunggu
+                        </span>
+                    @else
+                        <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                            ✓ 0 Menunggu
+                        </span>
+                    @endif
+                </button>
+
+                {{-- TAB 2: Rekap Kontrol Produksi (Detailed Table) --}}
+                <button type="button" 
+                        wire:click="switchTab('table')" 
+                        class="px-5 py-3 text-sm font-black rounded-t-xl transition-all border-b-2 flex items-center gap-2.5 {{ $activeTab === 'table' ? 'bg-white text-blue-700 border-blue-600 shadow-xs' : 'text-gray-500 hover:text-gray-800 border-transparent hover:bg-gray-100' }}">
+                    <span class="p-1 rounded-md {{ $activeTab === 'table' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-500' }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    </span>
+                    <span>📊 REKAP KONTROL PRODUKSI</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
+                        {{ $stats['total_items'] ?? 0 }} Part
+                    </span>
+                </button>
+            </div>
+
+            @if($activeTab === 'queue' && $this->canManageStoreReceipt && !empty($queue['pending']))
+                <button type="button" 
+                        wire:click="receiveAllPendingQueue" 
+                        wire:loading.attr="disabled"
+                        class="hidden sm:flex px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-xl text-xs font-black shadow-sm transition items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    <span>✅ TERIMA SEMUA ({{ $queue['total_pending_count'] }} PALLET)</span>
+                </button>
+            @endif
+        </div>
+
+        {{-- ======================================================== --}}
+        {{-- VIEW A: ANTREAN PALLET MASUK (SUPER SIMPLE SHOP-FLOOR)   --}}
+        {{-- ======================================================== --}}
+        @if($activeTab === 'queue')
+            <div class="space-y-6">
+                {{-- Quick Header Bar --}}
+                <div class="bg-indigo-50/60 border border-indigo-200/80 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-base font-black text-indigo-950 flex items-center gap-2">
+                            <span>Antrean Pallet Masuk dari Produksi</span>
+                            <span class="text-xs bg-indigo-200/70 text-indigo-900 px-2 py-0.5 rounded-full font-mono font-bold">
+                                {{ $queue['total_pending_count'] }} Pallet Menunggu
+                            </span>
+                        </h2>
+                        <p class="text-xs text-indigo-800/80 mt-0.5">
+                            Fisik pallet yang baru selesai packing dan dikirim ke Store. Cukup klik tombol hijau pada pallet yang sudah sampai.
+                        </p>
+                    </div>
+
+                    @if($this->canManageStoreReceipt && !empty($queue['pending']))
+                        <button type="button" 
+                                wire:click="receiveAllPendingQueue" 
+                                wire:loading.attr="disabled"
+                                class="sm:hidden px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-xl text-xs font-black shadow-sm transition flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            <span>✅ TERIMA SEMUA ({{ $queue['total_pending_count'] }} PALLET)</span>
+                        </button>
+                    @endif
+                </div>
+
+                {{-- Section 1: Pallet Menunggu Verifikasi (Cards Grid) --}}
+                @if(!empty($queue['pending']))
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        @foreach($queue['pending'] as $pallet)
+                            <div class="bg-white rounded-2xl p-5 border-2 border-indigo-100 hover:border-indigo-400 shadow-sm transition-all space-y-4 flex flex-col justify-between">
+                                <div>
+                                    {{-- Card Header --}}
+                                    <div class="flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
+                                        <div>
+                                            <span class="text-[10px] text-gray-400 font-mono uppercase tracking-wider block font-bold">NOMOR PALLET:</span>
+                                            <span class="font-mono font-black text-xl text-indigo-950 tracking-wide block">
+                                                {{ $pallet['pallet_id'] }}
+                                            </span>
+                                        </div>
+                                        <div class="text-right">
+                                            @if(!empty($pallet['delivery_shift']))
+                                                <span class="px-2.5 py-1 rounded-full text-xs font-black bg-purple-100 text-purple-800 border border-purple-200 inline-block">
+                                                    Shift {{ $pallet['delivery_shift'] }}
+                                                </span>
+                                            @endif
+                                            <span class="text-[11px] text-gray-400 block mt-1 font-mono">
+                                                {{ $pallet['created_time_formatted'] }} WIB
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {{-- Part Info --}}
+                                    <div class="py-3 space-y-1">
+                                        <span class="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block">
+                                            {{ $pallet['part_no'] }}
+                                        </span>
+                                        <h3 class="text-base font-black text-gray-800 leading-snug line-clamp-2">
+                                            {{ $pallet['model_name'] ?: 'Model Standar' }}
+                                        </h3>
+                                    </div>
+
+                                    {{-- Box & Pieces Chips --}}
+                                    <div class="grid grid-cols-2 gap-2 bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-xs">
+                                        <div>
+                                            <span class="text-gray-400 block text-[10px] uppercase font-bold">Jumlah Fisik:</span>
+                                            <span class="text-xl font-black text-gray-900 font-mono">
+                                                {{ $pallet['box_count'] }} <span class="text-xs font-normal text-gray-500">Box</span>
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-400 block text-[10px] uppercase font-bold">Total Pieces:</span>
+                                            <span class="text-xl font-black text-indigo-700 font-mono">
+                                                {{ number_format($pallet['qty_pcs']) }} <span class="text-xs font-normal text-gray-500">Pcs</span>
+                                            </span>
+                                        </div>
+                                        <div class="col-span-2 pt-1 border-t border-gray-200/60 flex items-center justify-between text-gray-500 text-[11px]">
+                                            <span>Pengirim: <strong class="text-gray-700">{{ $pallet['delivery_name'] }}</strong></span>
+                                            @if($pallet['is_putaway'])
+                                                <span class="font-bold text-emerald-700 font-mono text-[10px]">🟢 {{ $pallet['rack_location'] }}</span>
+                                            @else
+                                                <span class="text-amber-600 font-medium text-[10px]">🟡 In-Transit</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Action Button (Full Width, Big & Direct) --}}
+                                <div class="pt-2">
+                                    @if($this->canManageStoreReceipt)
+                                        <button type="button" 
+                                                wire:click="receivePalletFromQueue('{{ $pallet['pallet_id'] }}')" 
+                                                wire:loading.attr="disabled"
+                                                class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:bg-emerald-400 text-white rounded-xl text-sm font-black tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                                            <svg class="w-5 h-5 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            <span>✅ TERIMA PALLET INI (1-KLIK)</span>
+                                        </button>
+                                    @else
+                                        <div class="w-full py-3 bg-amber-50 border border-amber-200 rounded-xl text-center text-xs font-bold text-amber-800">
+                                            ⏳ Menunggu Verifikasi Staf Store
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    {{-- Empty State if no pending pallets --}}
+                    <div class="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm space-y-3">
+                        <div class="w-16 h-16 mx-auto bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-200">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        <h3 class="text-lg font-black text-gray-800">Tidak Ada Antrean Pallet yang Menunggu</h3>
+                        <p class="text-xs text-gray-500 max-w-md mx-auto">
+                            Semua pallet produksi untuk tanggal ini sudah selesai diverifikasi oleh tim Store, atau belum ada pallet baru yang dikirim dari produksi.
+                        </p>
+                    </div>
+                @endif
+
+                {{-- Section 2: Pallet yang Sudah Diterima Hari Ini (Collapsible) --}}
+                @if(!empty($queue['received']))
+                    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                                <h3 class="text-sm font-black text-gray-800">Riwayat Pallet yang Sudah Diterima Hari Ini</h3>
+                                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono">
+                                    {{ $queue['total_received_count'] }} Pallet
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            @foreach($queue['received'] as $p)
+                                <div class="bg-emerald-50/40 border border-emerald-200 rounded-xl p-3.5 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-mono font-bold text-xs text-gray-900">{{ $p['pallet_id'] }}</span>
+                                        <span class="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded">Shift {{ $p['delivery_shift'] }}</span>
+                                    </div>
+                                    <div class="text-xs font-semibold text-gray-800 truncate" title="{{ $p['model_name'] }}">
+                                        {{ $p['part_no'] }} &bull; {{ $p['model_name'] }}
+                                    </div>
+                                    <div class="text-[11px] text-gray-600 font-mono flex items-center justify-between pt-1 border-t border-emerald-200/50">
+                                        <span>{{ $p['box_count'] }} Box ({{ number_format($p['qty_pcs']) }} Pcs)</span>
+                                    </div>
+                                    <div class="text-[10px] font-bold text-emerald-800 bg-emerald-100/70 p-1 rounded text-center">
+                                        ✓ Diterima oleh {{ $p['received_by_name'] ?: 'Store' }} ({{ $p['received_at_formatted'] }} WIB)
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+            </div>
+        @endif
+
+        {{-- ======================================================== --}}
+        {{-- VIEW B: REKAP KONTROL PRODUKSI (TABLE DETAILED VIEW)     --}}
+        {{-- ======================================================== --}}
+        @if($activeTab === 'table')
         {{-- 5. Main Handover Table --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="p-5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
@@ -486,6 +697,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
     </div>
 
