@@ -72,6 +72,13 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/spk_sync.log'));
 
+        // Monitor timeout SAP di api_logs setiap 5 menit dan kirim alert email jika terdeteksi timeout
+        $schedule->command('sap:alert-timeout --minutes=5')
+            ->everyFiveMinutes()
+            ->timezone('Asia/Jakarta')
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/sap_timeout_alert.log'));
+
         // Otomatis backup database MySQL setiap hari jam 21:00 WIB (9 malam, menyimpan 14 hari terakhir)
         $schedule->command('db:backup --keep-days=14')
             ->dailyAt('21:00')

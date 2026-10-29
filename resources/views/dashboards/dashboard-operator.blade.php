@@ -168,9 +168,44 @@
                 <textarea id="mouldRemarks" rows="2" class="mt-1 block w-full rounded-xl border-gray-200 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs" placeholder="Ketik remark mould change di sini..."></textarea>
             </div>
         @elseif($activeState === 'ADJUSTING')
-            <div id="adjustMachineInfo" class="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm mt-3">
-                <label for="adjustRemarks" class="block text-xs font-semibold text-indigo-600 tracking-wider uppercase mb-1">Remarks Adjust Mesin (Opsional)</label>
-                <textarea id="adjustRemarks" rows="2" class="mt-1 block w-full rounded-xl border-gray-200 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs" placeholder="Ketik remark adjust machine di sini..."></textarea>
+            <div id="adjustMachineInfo" class="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm mt-3 space-y-3">
+                <div>
+                    <label for="adjustRemarks" class="block text-xs font-semibold text-indigo-600 tracking-wider uppercase mb-1">Remarks Adjust Mesin (Opsional)</label>
+                    <textarea id="adjustRemarks" rows="2" class="mt-1 block w-full rounded-xl border-gray-200 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs" placeholder="Ketik remark adjust machine di sini..."></textarea>
+                </div>
+
+                <!-- Input Rincian NG Adjuster (Setting / Trial) -->
+                <div class="border-t border-indigo-50 pt-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-semibold text-rose-600 tracking-wider uppercase flex items-center gap-1.5">
+                            <span>⚠️ Input NG Setting / Trial Adjuster</span>
+                            <span class="text-[10px] font-normal text-gray-400 lowercase">(opsional jika ada reject setting)</span>
+                        </label>
+                        <button type="button" id="addActiveAdjustNgRow" class="text-xs bg-rose-50 text-rose-600 hover:bg-rose-100 font-semibold px-2.5 py-1 rounded-lg border border-rose-200 transition-colors flex items-center gap-1">
+                            <span>+ Tambah Jenis NG</span>
+                        </button>
+                    </div>
+
+                    <div id="activeAdjustNgRowsList" class="space-y-2">
+                        @if(isset($activeAdjust) && $activeAdjust && $activeAdjust->ngDetails && $activeAdjust->ngDetails->count() > 0)
+                            @foreach($activeAdjust->ngDetails as $detail)
+                                <div class="active-adjust-ng-row bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs space-y-1.5 relative">
+                                    <div class="flex items-center space-x-2">
+                                        <select class="active-adjust-ng-type border border-gray-300 rounded p-1.5 flex-1 text-xs focus:ring-indigo-500 focus:border-indigo-500">
+                                            <option value="">-- Pilih Jenis NG --</option>
+                                            @foreach($ngData as $ng)
+                                                <option value="{{ $ng->id }}" {{ $ng->id == $detail->ng_type_id ? 'selected' : '' }}>{{ $ng->ng_type }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input type="number" min="1" value="{{ $detail->ng_quantity }}" placeholder="Qty" class="active-adjust-ng-qty border border-gray-300 rounded p-1.5 w-20 text-xs text-right focus:ring-indigo-500 focus:border-indigo-500">
+                                        <button type="button" class="remove-active-adjust-ng-row text-red-500 hover:text-red-700 p-1 font-bold text-sm" title="Hapus">✕</button>
+                                    </div>
+                                    <input type="text" value="{{ $detail->ng_remarks }}" placeholder="Remark NG (opsional)" class="active-adjust-ng-remark border border-gray-300 rounded p-1.5 w-full text-xs focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                            @endforeach
+                        @endif
+                    </div>
+                </div>
             </div>
         @elseif($activeState === 'REPAIRING')
             <div id="repairMachineInfo" class="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm mt-3 space-y-3">
@@ -290,6 +325,7 @@
                     </select>
                 </div>
 
+
                 <div class="flex justify-end mt-4">
                     <button id="closeNikModal" class="bg-gray-500 text-white px-4 py-2 rounded mr-2">Cancel</button>
                     <button id="verifyNik" class="bg-blue-600 text-white px-4 py-2 rounded">Verify</button>
@@ -300,7 +336,7 @@
 
         <!-- Edit Log Modal -->
         <div id="editLogModal" class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 hidden z-50">
-            <div class="bg-white p-6 rounded-2xl shadow-xl w-[90%] sm:w-[450px] relative z-50 border border-slate-100 animate-in zoom-in-95 duration-200">
+            <div class="bg-white p-6 rounded-2xl shadow-xl w-[90%] sm:w-[480px] max-h-[90vh] overflow-y-auto relative z-50 border border-slate-100 animate-in zoom-in-95 duration-200">
                 <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
                     <span>✏️</span>
                     <span>Edit Log Pengerjaan</span>
@@ -323,6 +359,20 @@
                     <div>
                         <label for="edit_log_remark" class="block text-xs font-semibold text-gray-500 uppercase mb-1">Remark</label>
                         <textarea id="edit_log_remark" rows="3" class="border border-gray-300 rounded-xl p-2.5 w-full text-xs shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ketik remark di sini..."></textarea>
+                    </div>
+
+                    <div id="editAdjustNgContainer" class="pt-3 border-t border-gray-200 hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                ⚠️ NG Adjuster:
+                            </label>
+                            <button type="button" id="addEditAdjustNgRow" class="text-[11px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold px-2 py-1 rounded-lg border border-indigo-200 transition">
+                                + Tambah NG
+                            </button>
+                        </div>
+                        <div id="editAdjustNgRowsList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            <!-- Dynamic rows inserted here -->
+                        </div>
                     </div>
                 </div>
 
@@ -437,6 +487,18 @@
                                             <span class="text-gray-400 block text-[9px] uppercase">Remark</span>
                                             <span class="text-gray-700 italic block">{{ $log->remark ?: '-' }}</span>
                                         </div>
+                                        @if(($log->total_ng ?? 0) > 0)
+                                        <div class="col-span-2 pt-1 border-t border-slate-200/60">
+                                            <span class="text-red-600 font-bold block text-[9px] uppercase">NG Adjuster ({{ $log->total_ng }} pcs):</span>
+                                            <div class="flex flex-wrap gap-1 mt-0.5">
+                                                @foreach($log->ngDetails as $ng)
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">
+                                                        {{ $ng->ngType?->ng_type ?? 'NG' }}: {{ $ng->ng_quantity }} pcs
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
@@ -1908,6 +1970,59 @@
         $(document).ready(function () {
             let verifiedUser = null;
 
+            // Cache helpers for Active Adjust Machine NG & Remarks
+            function saveActiveAdjustNgToCache() {
+                if ($('#adjustMachineInfo').length === 0) return;
+
+                let ngItems = [];
+                $('#activeAdjustNgRowsList .active-adjust-ng-row').each(function () {
+                    let typeId = $(this).find('.active-adjust-ng-type').val();
+                    let qty = $(this).find('.active-adjust-ng-qty').val();
+                    let remark = $(this).find('.active-adjust-ng-remark').val() || '';
+                    if (typeId || qty || remark) {
+                        ngItems.push({
+                            ng_type_id: typeId,
+                            ng_quantity: qty,
+                            ng_remarks: remark
+                        });
+                    }
+                });
+
+                localStorage.setItem('active_adjust_ng_items', JSON.stringify(ngItems));
+                localStorage.setItem('active_adjust_remarks', $('#adjustRemarks').val() || '');
+            }
+
+            function restoreActiveAdjustNgFromCache() {
+                if ($('#adjustMachineInfo').length === 0) {
+                    localStorage.removeItem('active_adjust_ng_items');
+                    localStorage.removeItem('active_adjust_remarks');
+                    return;
+                }
+
+                // Restore remarks if present in cache
+                const cachedRemarks = localStorage.getItem('active_adjust_remarks');
+                if (cachedRemarks !== null) {
+                    $('#adjustRemarks').val(cachedRemarks);
+                }
+
+                const cached = localStorage.getItem('active_adjust_ng_items');
+                if (cached) {
+                    try {
+                        const items = JSON.parse(cached);
+                        if (Array.isArray(items) && items.length > 0) {
+                            $('#activeAdjustNgRowsList').empty();
+                            items.forEach(function (item) {
+                                $('#activeAdjustNgRowsList').append(
+                                    createNgRowHtml('active-adjust', item.ng_type_id, item.ng_quantity, item.ng_remarks)
+                                );
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error parsing cached NG items', e);
+                    }
+                }
+            }
+
             // Helper to dynamically update status widget container and other details
             function refreshStatusAndContainers() {
                 $.get(window.location.href, function (html) {
@@ -1919,8 +2034,63 @@
                     
                     // Re-initialize elapsed timer
                     initializeTimer();
+
+                    // Restore cached NG items and remarks
+                    restoreActiveAdjustNgFromCache();
                 });
             }
+
+            // NG Adjuster dynamic row helpers
+            const allNgTypesData = @json($ngData ?? []);
+
+            function createNgRowHtml(prefix, typeId = '', qty = '', remark = '') {
+                let optionsHtml = '<option value="">-- Pilih Jenis NG --</option>';
+                allNgTypesData.forEach(function (ng) {
+                    let selected = (ng.id == typeId) ? 'selected' : '';
+                    optionsHtml += `<option value="${ng.id}" ${selected}>${ng.ng_type}</option>`;
+                });
+
+                let safeRemark = $('<div>').text(remark || '').html();
+
+                return `
+                    <div class="${prefix}-ng-row bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs space-y-1.5 relative">
+                        <div class="flex items-center space-x-2">
+                            <select class="${prefix}-ng-type border border-gray-300 rounded p-1.5 flex-1 text-xs focus:ring-indigo-500 focus:border-indigo-500">
+                                ${optionsHtml}
+                            </select>
+                            <input type="number" min="1" value="${qty || ''}" placeholder="Qty" class="${prefix}-ng-qty border border-gray-300 rounded p-1.5 w-20 text-xs text-right focus:ring-indigo-500 focus:border-indigo-500">
+                            <button type="button" class="remove-${prefix}-ng-row text-red-500 hover:text-red-700 p-1 font-bold text-sm" title="Hapus">✕</button>
+                        </div>
+                        <input type="text" value="${safeRemark}" placeholder="Remark NG (opsional)" class="${prefix}-ng-remark border border-gray-300 rounded p-1.5 w-full text-xs focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                `;
+            }
+
+            // Restore active adjust NG on initial page load
+            restoreActiveAdjustNgFromCache();
+
+            // Auto-save active adjust NG and remarks on any input/change
+            $(document).on('input change', '#adjustRemarks, #activeAdjustNgRowsList select, #activeAdjustNgRowsList input', function () {
+                saveActiveAdjustNgToCache();
+            });
+
+            $(document).on('click', '#addActiveAdjustNgRow', function () {
+                $('#activeAdjustNgRowsList').append(createNgRowHtml('active-adjust'));
+                saveActiveAdjustNgToCache();
+            });
+
+            $(document).on('click', '.remove-active-adjust-ng-row', function () {
+                $(this).closest('.active-adjust-ng-row').remove();
+                saveActiveAdjustNgToCache();
+            });
+
+            $(document).on('click', '#addEditAdjustNgRow', function () {
+                $('#editAdjustNgRowsList').append(createNgRowHtml('edit-adjust'));
+            });
+
+            $(document).on('click', '.remove-edit-adjust-ng-row', function () {
+                $(this).closest('.edit-adjust-ng-row').remove();
+            });
 
             // Show NIK modal when clicking start buttons (using event delegation)
             $(document).on('click', '#startMouldChange', function () {
@@ -2093,12 +2263,15 @@
             });
 
             // Start Adjust Machine Process
-            function startAdjustMachine(picName, nextItemCode) {
+            function startAdjustMachine(picName, nextItemCode, ngItems = []) {
+                localStorage.removeItem('active_adjust_ng_items');
+                localStorage.removeItem('active_adjust_remarks');
+
                 $.ajax({
                     url: "{{ route('adjust.machine.start') }}",
                     type: "POST",
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    data: { pic_name: picName, item_code: nextItemCode },
+                    data: { pic_name: picName, item_code: nextItemCode, ng_items: ngItems },
                     success: function (response) {
                         if (response.message && response.message.includes('Belum ada item')) {
                             alert('Gagal: ' + response.message);
@@ -2119,14 +2292,29 @@
             $(document).on('click', '#endAdjustMachine', function () {
                 const remarks = $('#adjustRemarks').val() || '';
 
+                let ngItems = [];
+                $('#activeAdjustNgRowsList .active-adjust-ng-row').each(function () {
+                    let typeId = $(this).find('.active-adjust-ng-type').val();
+                    let qty = parseInt($(this).find('.active-adjust-ng-qty').val()) || 0;
+                    let remark = $(this).find('.active-adjust-ng-remark').val() || '';
+                    if (typeId && qty > 0) {
+                        ngItems.push({ ng_type_id: typeId, ng_quantity: qty, ng_remarks: remark });
+                    }
+                });
+
                 $.ajax({
                     url: "{{ route('adjust.machine.end') }}",
                     type: "POST",
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    data: { remarks: remarks },
+                    data: { 
+                        remarks: remarks,
+                        ng_items: ngItems
+                    },
                     success: function (response) {
                         alert(response.message);
                         localStorage.removeItem('adjustMachineOperator');
+                        localStorage.removeItem('active_adjust_ng_items');
+                        localStorage.removeItem('active_adjust_remarks');
                         refreshStatusAndContainers();
                     },
                     error: function (xhr) {
@@ -2668,6 +2856,22 @@
                     $('#edit_log_end_time_label').text('Waktu Selesai');
                 }
 
+                if (type === 'adjust') {
+                    $('#editAdjustNgContainer').removeClass('hidden');
+                    $('#editAdjustNgRowsList').empty();
+                    $.get('/adjust-machine/details/' + id, function (res) {
+                        let details = (res && res.data && res.data.ng_details) ? res.data.ng_details : (res && res.ng_details ? res.ng_details : []);
+                        if (Array.isArray(details) && details.length > 0) {
+                            details.forEach(function (ng) {
+                                $('#editAdjustNgRowsList').append(createNgRowHtml('edit-adjust', ng.ng_type_id, ng.ng_quantity, ng.ng_remarks));
+                            });
+                        }
+                    });
+                } else {
+                    $('#editAdjustNgContainer').addClass('hidden');
+                    $('#editAdjustNgRowsList').empty();
+                }
+
                 $('#editLogModal').removeClass('hidden');
             };
 
@@ -2707,6 +2911,17 @@
                 } else if (type === 'adjust') {
                     url = `/adjust-machine/update/${id}`;
                     data.end_time = endTime;
+
+                    let ngItems = [];
+                    $('#editAdjustNgRowsList .edit-adjust-ng-row').each(function () {
+                        let typeId = $(this).find('.edit-adjust-ng-type').val();
+                        let qty = parseInt($(this).find('.edit-adjust-ng-qty').val()) || 0;
+                        let remark = $(this).find('.edit-adjust-ng-remark').val() || '';
+                        if (typeId && qty > 0) {
+                            ngItems.push({ ng_type_id: typeId, ng_quantity: qty, ng_remarks: remark });
+                        }
+                    });
+                    data.ng_items = ngItems;
                 } else if (type === 'repair') {
                     url = `/repair-machine/update/${id}`;
                     data.finish_repair = endTime;
@@ -2736,11 +2951,23 @@
     <script>
 
         document.getElementById("reloadButton").addEventListener("click", function() {
-            // 1. Hapus semua data localStorage
+            // Simpan sementara data active adjust jika sedang berjalan
+            const preservedNg = localStorage.getItem('active_adjust_ng_items');
+            const preservedRemarks = localStorage.getItem('active_adjust_remarks');
+
+            // 1. Hapus data localStorage
             localStorage.clear();
 
             // 2. (Opsional) Kalau kamu juga pakai sessionStorage
             sessionStorage.clear();
+
+            // Kembalikan data adjust yang sedang berjalan
+            if (preservedNg) {
+                localStorage.setItem('active_adjust_ng_items', preservedNg);
+            }
+            if (preservedRemarks) {
+                localStorage.setItem('active_adjust_remarks', preservedRemarks);
+            }
 
             // 3. Reload halaman
             location.reload();

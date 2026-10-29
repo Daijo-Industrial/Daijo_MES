@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Mail\SapTimeoutAlertMail;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ReceiptProductionService extends BaseSapService
 {
@@ -336,17 +339,94 @@ class ReceiptProductionService extends BaseSapService
 
     public function saveApiLog($apiName, $method, $endpoint, $request, $response, $statusCode, $status, $message)
     {
-        DB::table('api_logs')->insert([
+        $logId = DB::table('api_logs')->insertGetId([
             'api_name' => $apiName,
             'method' => $method,
             'endpoint' => $endpoint,
-            'request_payload' => json_encode($request, JSON_PRETTY_PRINT),
-            'response_payload' => json_encode($response, JSON_PRETTY_PRINT),
+            'request_payload' => is_string($request) ? $request : json_encode($request, JSON_PRETTY_PRINT),
+            'response_payload' => is_string($response) ? $response : json_encode($response, JSON_PRETTY_PRINT),
             'status_code' => $statusCode,
             'status' => $status,
             'message' => $message,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        if ($status === 'failed' && $this->isTimeoutError($message)) {
+            $this->triggerTimeoutAlert($logId, $endpoint, $message, $request);
+        }
+
+        return $logId;
+    }
+
+    /**
+     * Deteksi apakah pesan error merupakan masalah timeout koneksi ke SAP.
+     */
+    protected function isTimeoutError(?string $message): bool
+    {
+        if (empty($message)) {
+            return false;
+        }
+
+        $lower = strtolower($message);
+
+        return str_contains($lower, 'timed out')
+            || str_contains($lower, 'curl error 28')
+            || str_contains($lower, 'timeout');
+    }
+
+    /**
+     * Kirim email peringatan timeout secara langsung (real-time) dengan proteksi cooldown 5 menit.
+     */
+    protected function triggerTimeoutAlert(int $logId, string $endpoint, string $errorMessage, $requestPayload): void
+    {
+        $cooldownKey = 'sap_receipt_timeout_alert_cooldown';
+
+        if (Cache::has($cooldownKey)) {
+            Log::info("SAP Receipt Production timeout alert dilewati: cooldown aktif.");
+            return;
+        }
+
+        // Set cooldown 5 menit untuk mencegah spam puluhan email saat server SAP down
+        Cache::put($cooldownKey, true, now()->addMinutes(5));
+
+        try {
+            $recipients = config('services.sap.timeout_alert_recipients', [
+                'andreas@daijo.co.id',
+                'timo@daijo.co.id',
+            ]);
+
+            if (empty($recipients)) {
+                return;
+            }
+
+            $logObj = (object) [
+                'id' => $logId,
+                'api_name' => 'receipt_production',
+                'endpoint' => $endpoint,
+                'message' => $errorMessage,
+                'created_at' => now(),
+            ];
+
+            $summary = [
+                'total_timeouts' => 1,
+                'first_occurred' => now('Asia/Jakarta')->format('d M Y H:i:s'),
+                'last_occurred' => now('Asia/Jakarta')->format('d M Y H:i:s'),
+                'minutes_window' => 1,
+                'endpoints_breakdown' => [
+                    [
+                        'api_name' => 'receipt_production',
+                        'endpoint' => $endpoint,
+                        'count' => 1,
+                    ],
+                ],
+            ];
+
+            Mail::to($recipients)->send(new SapTimeoutAlertMail($summary, collect([$logObj]), false));
+
+            Log::warning("[SAP-TIMEOUT-ALERT] Alert email real-time terkirim ke: " . implode(', ', $recipients));
+        } catch (\Throwable $mailEx) {
+            Log::error("Gagal mengirim email alert SAP Timeout: " . $mailEx->getMessage());
+        }
     }
 }

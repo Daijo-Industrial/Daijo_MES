@@ -278,7 +278,7 @@ class ProductionDashboardService
         }
 
         $adjustQuery = AdjustMachineLog::query()
-            ->with(['user:id,name'])
+            ->with(['user:id,name', 'ngDetails.ngType'])
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
 
@@ -327,7 +327,7 @@ class ProductionDashboardService
 
         // 4. In-Memory Process All Sections Fast
         $productionResult = $this->processProductionData($dailyData, $startDate, $endDate);
-        $ngBreakdown = $this->processNgBreakdown($dailyData, $masterItems);
+        $ngBreakdown = $this->processNgBreakdown($dailyData, $masterItems, $adjustLogsRaw);
         $downtimeAnalysis = $this->processDowntimeAnalysis($dailyData, $masterItems);
         $topRemarks = $this->processTopProblematicRemarks($dailyData, $masterItems);
         $machineWorkingHours = $this->processMachineWorkingHours($dailyData);
@@ -558,7 +558,7 @@ class ProductionDashboardService
     /**
      * Process NG breakdown by defect type with model breakdown and detailed remarks
      */
-    public function processNgBreakdown($dailyData, $masterItems = null): array
+    public function processNgBreakdown($dailyData, $masterItems = null, $adjustLogs = null): array
     {
         $ngBreakdown = [];
 
@@ -646,6 +646,71 @@ class ProductionDashboardService
                                 'hourly_remark' => $hourlyRemarkText ?: null,
                             ];
                         }
+                    }
+                }
+            }
+        }
+
+        if ($adjustLogs) {
+            foreach ($adjustLogs as $adjustLog) {
+                if (! $adjustLog->relationLoaded('ngDetails') && ! $adjustLog->ngDetails) {
+                    continue;
+                }
+                $itemCode = $adjustLog->item_code ?: 'UNKNOWN';
+                $master = $masterItems instanceof \Illuminate\Support\Collection
+                    ? $masterItems->get($itemCode)
+                    : ($masterItems[$itemCode] ?? null);
+                $itemName = $master?->item_name ?: $itemCode;
+                $machineName = $adjustLog->user?->name ?: '-';
+                $createdLocal = self::getLocalCarbon($adjustLog->created_at);
+                $dateStr = $createdLocal->format('d M Y');
+                $hourLabel = $createdLocal->format('H:i') . ' (Adjust)';
+                $picName = trim((string) ($adjustLog->pic ?? ''));
+
+                foreach ($adjustLog->ngDetails as $ngDetail) {
+                    $qty = (int) ($ngDetail->ng_quantity ?? 0);
+                    if ($qty <= 0) {
+                        continue;
+                    }
+                    $ngTypeName = trim((string) ($ngDetail->ngType?->ng_type ?? 'Unknown'));
+                    if ($ngTypeName === '') {
+                        $ngTypeName = 'Unknown';
+                    }
+                    $ngRemarkText = trim((string) ($ngDetail->ng_remarks ?? ''));
+                    $displayRemark = '[Adjuster: ' . ($picName ?: '-') . '] ' . ($ngRemarkText ?: ($adjustLog->remark ?: '-'));
+
+                    if (! isset($ngBreakdown[$ngTypeName])) {
+                        $ngBreakdown[$ngTypeName] = [
+                            'name' => $ngTypeName,
+                            'total' => 0,
+                            'models' => [],
+                        ];
+                    }
+                    $ngBreakdown[$ngTypeName]['total'] += $qty;
+
+                    if (! isset($ngBreakdown[$ngTypeName]['models'][$itemCode])) {
+                        $ngBreakdown[$ngTypeName]['models'][$itemCode] = [
+                            'item_code' => $itemCode,
+                            'item_name' => $itemName,
+                            'total' => 0,
+                            'total_records' => 0,
+                            'records' => [],
+                        ];
+                    }
+                    $ngBreakdown[$ngTypeName]['models'][$itemCode]['total'] += $qty;
+                    $ngBreakdown[$ngTypeName]['models'][$itemCode]['total_records']++;
+
+                    if (count($ngBreakdown[$ngTypeName]['models'][$itemCode]['records']) < 5) {
+                        $ngBreakdown[$ngTypeName]['models'][$itemCode]['records'][] = [
+                            'date' => $dateStr,
+                            'shift' => '-',
+                            'hour' => $hourLabel,
+                            'machine' => $machineName,
+                            'quantity' => $qty,
+                            'remark' => $displayRemark,
+                            'ng_remark' => $ngRemarkText ?: null,
+                            'hourly_remark' => 'Adjuster: ' . ($picName ?: '-'),
+                        ];
                     }
                 }
             }
@@ -1397,7 +1462,7 @@ class ProductionDashboardService
         }
 
         $adjustQuery = AdjustMachineLog::query()
-            ->with(['user:id,name'])
+            ->with(['user:id,name', 'ngDetails.ngType'])
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
 
@@ -1514,6 +1579,8 @@ class ProductionDashboardService
                 $adjusterStats[$pic] = [
                     'adjust_count' => 0,
                     'adjust_minutes' => 0,
+                    'adjuster_direct_ng' => 0,
+                    'adjuster_ng_breakdown' => [],
                 ];
             }
             $adjusterStats[$pic]['adjust_count']++;
@@ -1521,6 +1588,15 @@ class ProductionDashboardService
                 $startSec = strtotime((string) $log->created_at);
                 $endSec = strtotime((string) $log->end_time);
                 $adjusterStats[$pic]['adjust_minutes'] += max(0, ($endSec - $startSec) / 60);
+            }
+
+            if ($log->relationLoaded('ngDetails') || $log->ngDetails) {
+                foreach ($log->ngDetails as $ngDetail) {
+                    $qty = (int) ($ngDetail->ng_quantity ?? 0);
+                    $typeName = $ngDetail->ngType?->ng_type ?? 'Unknown';
+                    $adjusterStats[$pic]['adjuster_direct_ng'] += $qty;
+                    $adjusterStats[$pic]['adjuster_ng_breakdown'][$typeName] = ($adjusterStats[$pic]['adjuster_ng_breakdown'][$typeName] ?? 0) + $qty;
+                }
             }
         }
 
@@ -1627,6 +1703,8 @@ class ProductionDashboardService
                 'ng_rate' => $ngRate,
                 'adjust_count' => $adjusterStats[$adj]['adjust_count'] ?? 0,
                 'adjust_minutes' => round($adjusterStats[$adj]['adjust_minutes'] ?? 0, 1),
+                'direct_ng' => $adjusterStats[$adj]['adjuster_direct_ng'] ?? 0,
+                'direct_ng_breakdown' => $adjusterStats[$adj]['adjuster_ng_breakdown'] ?? [],
             ];
 
             $colorIdx++;
@@ -1668,7 +1746,7 @@ class ProductionDashboardService
         }
 
         $adjustQuery = AdjustMachineLog::query()
-            ->with(['user:id,name'])
+            ->with(['user:id,name', 'ngDetails.ngType'])
             ->where('created_at', '>=', $windowStartUtc->format('Y-m-d H:i:s'))
             ->where('created_at', '<', $windowEndUtc->format('Y-m-d H:i:s'));
 

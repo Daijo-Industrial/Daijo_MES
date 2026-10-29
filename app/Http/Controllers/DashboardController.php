@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdjustMachineLog;
+use App\Models\AdjustMachineNgDetail;
 use App\Models\ApiLog;
 use App\Models\DailyItemCode;
 use App\Models\Delivery\sapInventoryFg;
@@ -827,7 +828,8 @@ class DashboardController extends Controller
             ->where('created_at', '<', $logEnd)
             ->get();
 
-        $adjustMachineLogs = AdjustMachineLog::where('user_id', $userId)
+        $adjustMachineLogs = AdjustMachineLog::with(['ngDetails.ngType'])
+            ->where('user_id', $userId)
             ->where('created_at', '>=', $logStart)
             ->where('created_at', '<', $logEnd)
             ->get();
@@ -958,7 +960,7 @@ class DashboardController extends Controller
         }
 
         $activeMould = MouldChangeLog::where('user_id', $userId)->whereNull('end_time')->latest()->first();
-        $activeAdjust = AdjustMachineLog::where('user_id', $userId)->whereNull('end_time')->latest()->first();
+        $activeAdjust = AdjustMachineLog::with('ngDetails.ngType')->where('user_id', $userId)->whereNull('end_time')->latest()->first();
         $activeRepair = RepairMachineLog::where('user_id', $userId)->whereNull('finish_repair')->latest()->first();
 
         $activeState = 'RUNNING';
@@ -1021,6 +1023,7 @@ class DashboardController extends Controller
             'ngData',
             'outputLogs',
             'activeState',
+            'activeAdjust',
             'activeOperatorName',
             'activeOperatorProfile',
             'activeStateStartTime',
@@ -2131,6 +2134,27 @@ class DashboardController extends Controller
             'created_at' => Carbon::now(),
         ]);
 
+        // Simpan rincian NG Adjuster jika ada
+        $ngItems = $request->input('ng_items');
+        if (is_string($ngItems)) {
+            $ngItems = json_decode($ngItems, true);
+        }
+        if (! empty($ngItems) && is_array($ngItems)) {
+            foreach ($ngItems as $item) {
+                $ngTypeId = $item['ng_type_id'] ?? null;
+                $qty = (int) ($item['ng_quantity'] ?? 0);
+                $remarks = isset($item['ng_remarks']) ? trim((string) $item['ng_remarks']) : null;
+                if ($ngTypeId && $qty > 0) {
+                    AdjustMachineNgDetail::create([
+                        'adjust_machine_log_id' => $adjustMachine->id,
+                        'ng_type_id' => $ngTypeId,
+                        'ng_quantity' => $qty,
+                        'ng_remarks' => $remarks,
+                    ]);
+                }
+            }
+        }
+
         return response()->json(['message' => 'Adjust Machine started', 'log_id' => $adjustMachine->id, 'operator' => [
             'name' => $operatorUser->name,
             'profile_path' => $operatorUser->profile_picture
@@ -2289,9 +2313,9 @@ class DashboardController extends Controller
 
         $userId = Auth::id();
 
-        // Update the last mould change log where user_id matches
+        // Update the last adjust machine log where user_id matches
         $AdjustMachine = AdjustMachineLog::where('user_id', $userId)
-            ->whereNull('end_time') // Find an ongoing mould change
+            ->whereNull('end_time')
             ->latest()
             ->first();
 
@@ -2301,10 +2325,34 @@ class DashboardController extends Controller
                 'remark' => $request->remarks,
             ]);
 
+            // Simpan rincian NG Adjuster saat selesai adjust
+            if ($request->has('ng_items')) {
+                $ngItems = $request->input('ng_items');
+                if (is_string($ngItems)) {
+                    $ngItems = json_decode($ngItems, true);
+                }
+                if (is_array($ngItems)) {
+                    $AdjustMachine->ngDetails()->delete();
+                    foreach ($ngItems as $item) {
+                        $ngTypeId = $item['ng_type_id'] ?? null;
+                        $qty = (int) ($item['ng_quantity'] ?? 0);
+                        $remarks = isset($item['ng_remarks']) ? trim((string) $item['ng_remarks']) : null;
+                        if ($ngTypeId && $qty > 0) {
+                            AdjustMachineNgDetail::create([
+                                'adjust_machine_log_id' => $AdjustMachine->id,
+                                'ng_type_id' => $ngTypeId,
+                                'ng_quantity' => $qty,
+                                'ng_remarks' => $remarks,
+                            ]);
+                        }
+                    }
+                }
+            }
+
             return response()->json(['message' => 'Adjust Machine completed']);
         }
 
-        return response()->json(['error' => 'No active mould change found'], 400);
+        return response()->json(['error' => 'No active adjust machine found'], 400);
     }
 
     public function endRepairMachine(Request $request)
@@ -2403,6 +2451,34 @@ class DashboardController extends Controller
         return response()->json(['success' => true, 'message' => 'Mould Change Log updated successfully']);
     }
 
+    // Get Adjust Machine Log Details (including NG details)
+    public function getAdjustMachineLogDetails($id)
+    {
+        $log = AdjustMachineLog::with(['ngDetails.ngType'])->findOrFail($id);
+
+        $payload = [
+            'id' => $log->id,
+            'created_at' => $log->created_at ? Carbon::parse($log->created_at)->timezone('Asia/Jakarta')->format('Y-m-d H:i:s') : '',
+            'end_time' => $log->end_time ? Carbon::parse($log->end_time)->timezone('Asia/Jakarta')->format('Y-m-d H:i:s') : '',
+            'remark' => $log->remark,
+            'pic' => $log->pic,
+            'item_code' => $log->item_code,
+            'total_ng' => $log->total_ng,
+            'ng_details' => $log->ngDetails->map(fn ($ng) => [
+                'id' => $ng->id,
+                'ng_type_id' => $ng->ng_type_id,
+                'ng_type_name' => $ng->ngType?->ng_type ?? 'Unknown',
+                'ng_quantity' => $ng->ng_quantity,
+                'ng_remarks' => $ng->ng_remarks,
+            ])->values(),
+        ];
+
+        return response()->json(array_merge([
+            'status' => 'success',
+            'data' => $payload,
+        ], $payload));
+    }
+
     // Update Adjust Machine Log
     public function updateAdjustMachineLog(Request $request, $id)
     {
@@ -2417,6 +2493,30 @@ class DashboardController extends Controller
         $log->end_time = Carbon::parse($request->end_time, 'Asia/Jakarta')->setTimezone(config('app.timezone'));
         $log->remark = $request->remark;
         $log->save();
+
+        // Update NG items jika disertakan dalam request
+        if ($request->has('ng_items')) {
+            $ngItems = $request->input('ng_items');
+            if (is_string($ngItems)) {
+                $ngItems = json_decode($ngItems, true);
+            }
+            if (is_array($ngItems)) {
+                $log->ngDetails()->delete();
+                foreach ($ngItems as $item) {
+                    $ngTypeId = $item['ng_type_id'] ?? null;
+                    $qty = (int) ($item['ng_quantity'] ?? 0);
+                    $remarks = isset($item['ng_remarks']) ? trim((string) $item['ng_remarks']) : null;
+                    if ($ngTypeId && $qty > 0) {
+                        AdjustMachineNgDetail::create([
+                            'adjust_machine_log_id' => $log->id,
+                            'ng_type_id' => $ngTypeId,
+                            'ng_quantity' => $qty,
+                            'ng_remarks' => $remarks,
+                        ]);
+                    }
+                }
+            }
+        }
 
         return response()->json(['success' => true, 'message' => 'Adjust Machine Log updated successfully']);
     }

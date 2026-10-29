@@ -41,6 +41,7 @@ return [
         'company_db' => env('SAP_COMPANY_DB'),
         'username' => env('SAP_USERNAME'),
         'password' => env('SAP_PASSWORD'),
+        'timeout_alert_recipients' => array_values(array_filter(array_map('trim', explode(',', env('SAP_TIMEOUT_ALERT_EMAILS', 'andreas@daijo.co.id,timo@daijo.co.id'))))),
     ],
 
     'api_secret_key' => env('API_SECRET_KEY'),

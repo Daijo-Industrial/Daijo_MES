@@ -40,7 +40,7 @@ class ProductionDashboardController extends Controller
                 $query->whereBetween('created_at', [$startDateStr, $endDateStr]);
             },
             'adjustMachineLogs' => function ($query) use ($startDateStr, $endDateStr) {
-                $query->whereBetween('created_at', [$startDateStr, $endDateStr]);
+                $query->with(['ngDetails.ngType'])->whereBetween('created_at', [$startDateStr, $endDateStr]);
             },
             'repairMachineLogs' => function ($query) use ($startDateStr, $endDateStr) {
                 $query->whereBetween('created_at', [$startDateStr, $endDateStr]);
@@ -123,6 +123,8 @@ class ProductionDashboardController extends Controller
                     'pic_profile_path' => $operatorProfilePath,
                     'status' => ($actualTime > $setupTimeMinute) ? 'problem' : 'safe',
                     'remark' => $mouldChange->remark,
+                    'total_ng' => 0,
+                    'ng_details' => [],
                 ];
             }
 
@@ -150,6 +152,12 @@ class ProductionDashboardController extends Controller
                     'pic_profile_path' => $operatorProfilePath,
                     'status' => ($actualTime > $setupTimeMinute) ? 'problem' : 'safe',
                     'remark' => $adjustLog->remark,
+                    'total_ng' => $adjustLog->total_ng,
+                    'ng_details' => $adjustLog->ngDetails->map(fn ($ng) => [
+                        'type' => $ng->ngType?->ng_type ?? 'Unknown',
+                        'quantity' => $ng->ng_quantity,
+                        'remark' => $ng->ng_remarks,
+                    ])->toArray(),
                 ];
             }
 

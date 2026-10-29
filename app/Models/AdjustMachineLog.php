@@ -28,4 +28,14 @@ class AdjustMachineLog extends Model
     {
         return $this->belongsTo(MasterListItem::class, 'item_code', 'item_code'); // Adjust if the foreign key or field name is different
     }
+
+    public function ngDetails()
+    {
+        return $this->hasMany(AdjustMachineNgDetail::class, 'adjust_machine_log_id');
+    }
+
+    public function getTotalNgAttribute(): int
+    {
+        return (int) $this->ngDetails->sum('ng_quantity');
+    }
 }

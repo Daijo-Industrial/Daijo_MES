@@ -155,6 +155,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/mould-change/update/{id}', [DashboardController::class, 'updateMouldChangeLog'])->name('mould.change.update');
     Route::post('/adjust-machine/start', [DashboardController::class, 'startAdjustMachine'])->name('adjust.machine.start');
     Route::post('/adjust-machine/end', [DashboardController::class, 'endAdjustMachine'])->name('adjust.machine.end');
+    Route::get('/adjust-machine/details/{id}', [DashboardController::class, 'getAdjustMachineLogDetails'])->name('adjust.machine.details');
     Route::post('/adjust-machine/update/{id}', [DashboardController::class, 'updateAdjustMachineLog'])->name('adjust.machine.update');
     Route::post('/repair-machine/start', [DashboardController::class, 'startRepairMachine'])->name('repair.machine.start');
     Route::post('/repair-machine/end', [DashboardController::class, 'endRepairMachine'])->name('repair.machine.end');
