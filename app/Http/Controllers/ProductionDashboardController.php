@@ -7,6 +7,7 @@ use App\Models\Delivery\sapInventoryFg;
 use App\Models\HourlyRemark;
 use App\Models\MachineJob;
 use App\Models\MasterListItem;
+use App\Models\MasterMachine;
 use App\Models\MasterZone;
 use App\Models\MouldChangeLog;
 use App\Models\OperatorUser;
@@ -562,42 +563,22 @@ class ProductionDashboardController extends Controller
 
         }
 
-        $machineNames = [
-            '0150E',
-            '0150F',
-            '0300A',
-            '0300B',
-            '0350F',
-            '0360A',
-            '0360B',
-            '0360C',
-            '0360D',
-            '0450B',
-            '0450F',
-            '0450G',
-            '0450H',
-            '0450I',
-            '0450J',
-            '0550B',
-            '0650D',
-            '0650E',
-            '0850D',
-            '1050D',
-            '1300B',
-            '1300C',
-            'K0450A',
-            'K0650A',
-            'K0650B',
-            'K0750A',
-            'K0750B',
-            'K0900A',
-            'K0900B',
-            'K1400A',
-            'K1400B',
-            'K1400C',
-            'K2100A',
-            'K2800A',
-        ];
+        // Ambil daftar mesin aktif dari MasterMachine (menggantikan hardcoded array)
+        try {
+            $machineNames = MasterMachine::where('is_active', true)
+                ->orderBy('name')
+                ->pluck('name')
+                ->toArray();
+        } catch (\Throwable $e) {
+            $machineNames = [];
+        }
+
+        // Fallback dinamis jika tabel master_machines belum ada data: ambil langsung dari User dengan role OPERATOR
+        if (empty($machineNames)) {
+            $machineNames = User::whereHas('role', function ($q) {
+                $q->where('name', 'OPERATOR');
+            })->orderBy('name')->pluck('name')->toArray();
+        }
 
         $machines = User::distinct()
             ->whereIn('name', $machineNames)

@@ -34,6 +34,7 @@ use App\Livewire\Maintenance\MouldChecklist\Show as MouldChecklistShow;
 use App\Livewire\ManualSync;
 use App\Livewire\MasterBomView;
 use App\Livewire\MasterListItemView;
+use App\Livewire\MasterMachineManager;
 use App\Livewire\Ppic\PpicListUpMachine;
 use App\Livewire\ProductionDashboard;
 use App\Livewire\ProductionStoreHandoverIndex;
@@ -118,6 +119,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/receipt-production-logs', ReceiptProductionLogs::class)->name('receipt-production-logs');
     Route::get('/qc-stock-transfer', QcStockTransfer::class)->name('qc-stock-transfer');
     Route::get('/qc-stock-transfer-kbn', QcStockTransferKbn::class)->name('qc-stock-transfer-kbn');
+    Route::get('/master-machine', MasterMachineManager::class)->name('master-machine.index');
 
     // Production project route
     Route::post('/dashboard/update-machine-job', [DashboardController::class, 'updateMachineJob'])->name('update.machine_job');

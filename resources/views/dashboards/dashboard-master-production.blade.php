@@ -41,7 +41,14 @@
 
                     <!-- Filter by Machine -->
                     <div class="w-full sm:w-auto">
-                        <label for="machine_name" class="block text-sm font-medium text-gray-700">Filter by Machine</label>
+                        <div class="flex items-center justify-between gap-2">
+                            <label for="machine_name" class="block text-sm font-medium text-gray-700">Filter by Machine</label>
+                            <a href="{{ route('master-machine.index') }}" target="_blank"
+                               class="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 hover:underline"
+                               title="Kelola daftar mesin yang ditampilkan di dashboard">
+                                <span>⚙️ Kelola Mesin</span>
+                            </a>
+                        </div>
                         <select name="machine_name" id="machine_name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md">
                             <option value="">Select Machine</option>
                             @foreach ($machines as $machine)
