@@ -45,8 +45,10 @@ class MasterMachineManager extends Component
 
     public function mount()
     {
-        // Otomatis sinkronkan semua akun user dengan role OPERATOR ke master_machines saat halaman dibuka
-        $this->syncFromOperatorUsers(false);
+        // Hanya sinkronkan dari user operator jika tabel master_machines masih kosong sama sekali
+        if (MasterMachine::withTrashed()->count() === 0) {
+            $this->syncFromOperatorUsers(false);
+        }
     }
 
     public function syncFromOperatorUsers(bool $notify = true)
@@ -62,19 +64,23 @@ class MasterMachineManager extends Component
                 continue;
             }
 
-            $isKarawang = str_starts_with($cleanName, 'K');
-            $machine = MasterMachine::firstOrCreate(
-                ['name' => $cleanName],
-                [
-                    'plant' => $isKarawang ? 'KARAWANG' : 'KBN',
-                    'is_active' => true,
-                    'description' => 'Disinkronkan dari User Operator (' . $u->email . ')',
-                ]
-            );
-
-            if ($machine->wasRecentlyCreated) {
-                $added++;
+            // Periksa apakah mesin sudah ada di master_machines (termasuk yang soft-deleted)
+            $existing = MasterMachine::withTrashed()->where('name', $cleanName)->first();
+            if ($existing) {
+                // Jika sudah ada (aktif, non-aktif, atau sudah pernah dihapus/soft-deleted),
+                // lewati agar tidak memicu SQLSTATE[23000] Duplicate entry error
+                continue;
             }
+
+            $isKarawang = str_starts_with($cleanName, 'K');
+            MasterMachine::create([
+                'name' => $cleanName,
+                'plant' => $isKarawang ? 'KARAWANG' : 'KBN',
+                'is_active' => true,
+                'description' => 'Disinkronkan dari User Operator (' . $u->email . ')',
+            ]);
+
+            $added++;
         }
 
         if ($notify) {
@@ -203,7 +209,7 @@ class MasterMachineManager extends Component
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('master_machines', 'name')->ignore($this->editingId),
+                Rule::unique('master_machines', 'name')->whereNull('deleted_at')->ignore($this->editingId),
             ],
             'plant' => ['required', 'in:KBN,KARAWANG'],
             'tonnage' => ['nullable', 'string', 'max:50'],
@@ -228,8 +234,16 @@ class MasterMachineManager extends Component
             $machine->update($data);
             $message = "Mesin {$this->name} berhasil diperbarui.";
         } else {
-            MasterMachine::create($data);
-            $message = "Mesin baru {$this->name} berhasil ditambahkan.";
+            // Periksa apakah mesin dengan nama ini pernah dihapus (soft-deleted)
+            $existingTrashed = MasterMachine::onlyTrashed()->where('name', $this->name)->first();
+            if ($existingTrashed) {
+                $existingTrashed->restore();
+                $existingTrashed->update($data);
+                $message = "Mesin {$this->name} berhasil diaktifkan kembali dan diperbarui.";
+            } else {
+                MasterMachine::create($data);
+                $message = "Mesin baru {$this->name} berhasil ditambahkan.";
+            }
 
             // Pastikan user akun mesin ada di tabel users agar kompatibel dengan modul lain
             $role = Role::firstOrCreate(['name' => 'OPERATOR']);
