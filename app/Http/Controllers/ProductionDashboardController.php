@@ -573,8 +573,8 @@ class ProductionDashboardController extends Controller
             $machineNames = [];
         }
 
-        // Fallback dinamis jika tabel master_machines belum ada data: ambil langsung dari User dengan role OPERATOR
-        if (empty($machineNames)) {
+        // Fallback dinamis jika tabel master_machines belum ada data sama sekali: ambil langsung dari User dengan role OPERATOR
+        if (empty($machineNames) && MasterMachine::count() === 0) {
             $machineNames = User::whereHas('role', function ($q) {
                 $q->where('name', 'OPERATOR');
             })->orderBy('name')->pluck('name')->toArray();

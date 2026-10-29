@@ -207,8 +207,8 @@ class ProductionDayDashboardMachineListTest extends TestCase
             ]
         );
 
-        // Hapus dari master_machines jika sempat ada
-        \App\Models\MasterMachine::where('name', '0990A')->delete();
+        // Hapus dari master_machines jika sempat ada (bersihkan total)
+        \App\Models\MasterMachine::withTrashed()->where('name', '0990A')->forceDelete();
 
         // Panggil Livewire MasterMachineManager (otomatis sync di mount atau via tombol)
         \Livewire\Livewire::actingAs($admin)
@@ -221,6 +221,47 @@ class ProductionDayDashboardMachineListTest extends TestCase
             'plant' => 'KBN',
             'is_active' => true,
         ]);
+    }
+
+    public function test_deleting_machine_does_not_crash_on_sync_or_page_reload(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
+        $admin = User::factory()->create([
+            'role_id' => $adminRole->id,
+        ]);
+
+        // Buat akun user operator AMANDA
+        User::firstOrCreate(
+            ['name' => 'AMANDA'],
+            [
+                'email' => 'amanda@daijo.co.id',
+                'password' => bcrypt('password'),
+                'role_id' => $role->id,
+            ]
+        );
+
+        // Buat mesin AMANDA di master_machines
+        $machine = \App\Models\MasterMachine::firstOrCreate(
+            ['name' => 'AMANDA'],
+            ['plant' => 'KBN', 'is_active' => true]
+        );
+
+        // Delete mesin AMANDA melalui Livewire
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\MasterMachineManager::class)
+            ->call('deleteMachine', $machine->id)
+            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'info');
+
+        // Pastikan mesin terhapus secara soft delete
+        $this->assertSoftDeleted('master_machines', ['name' => 'AMANDA']);
+
+        // Buka kembali halaman MasterMachineManager (mount) atau panggil sync
+        // TIDAK BOLEH memicu SQLSTATE[23000] Duplicate entry error
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\MasterMachineManager::class)
+            ->call('syncFromOperatorUsers')
+            ->assertDontSeeHtml('AMANDA'); // AMANDA tetap tersembunyi karena sudah dihapus
     }
 }
 
