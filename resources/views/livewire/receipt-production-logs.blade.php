@@ -2,10 +2,18 @@
      @if(DB::table('production_summary')->where('sap_sent', 2)->exists()) wire:poll.5s @endif>
 
     {{-- Header --}}
-    <div style="margin-bottom:20px;">
-        <div style="font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase;
-                    color:#9A9590; margin-bottom:4px;">Production Summary</div>
-        <div style="font-size:22px; font-weight:800; color:#1A1816;">SAP Receipt Monitor</div>
+    <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
+        <div>
+            <div style="font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase;
+                        color:#9A9590; margin-bottom:4px;">Production Summary</div>
+            <div style="font-size:22px; font-weight:800; color:#1A1816;">SAP Receipt Monitor</div>
+        </div>
+        <div>
+            <a href="{{ route('sap.verification') }}" wire:navigate
+               style="display:inline-flex; align-items:center; gap:6px; background:#2563EB; color:#fff; font-size:12px; font-weight:700; padding:8px 14px; border-radius:6px; text-decoration:none; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                <span>🔍 Verifikasi File Excel SAP</span>
+            </a>
+        </div>
     </div>
 
     {{-- Stats --}}

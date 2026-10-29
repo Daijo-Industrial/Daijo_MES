@@ -39,10 +39,11 @@ class CheckSapTimeoutAlert extends Command
         $configuredRecipients = config('services.sap.timeout_alert_recipients', [
             'andreas@daijo.co.id',
             'timo@daijo.co.id',
+            'thomasilver88@gmail.com',
         ]);
 
         if (empty($configuredRecipients)) {
-            $configuredRecipients = ['andreas@daijo.co.id', 'timo@daijo.co.id'];
+            $configuredRecipients = ['andreas@daijo.co.id', 'timo@daijo.co.id', 'thomasilver88@gmail.com'];
         }
 
         $extraEmails = (array) $this->option('email');

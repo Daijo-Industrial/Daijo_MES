@@ -3,7 +3,7 @@
 
 @if ($isTest)
 <x-mail::panel>
-🧪 **Ini adalah email pengujian (TEST MODE)** yang dikirim melalui perintah `php artisan sap:alert-timeout --test` untuk memverifikasi konfigurasi pengiriman email ke **andreas@daijo.co.id** dan **timo@daijo.co.id**.
+🧪 **Ini adalah email pengujian (TEST MODE)** yang dikirim melalui perintah `php artisan sap:alert-timeout --test` untuk memverifikasi konfigurasi pengiriman email ke **andreas@daijo.co.id**, **timo@daijo.co.id**, dan **thomasilver88@gmail.com**.
 </x-mail::panel>
 @else
 <x-mail::panel>

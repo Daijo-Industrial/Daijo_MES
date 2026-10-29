@@ -60,10 +60,11 @@ class SapTimeoutAlertCommandTest extends TestCase
         Mail::assertSent(SapTimeoutAlertMail::class, function ($mail) {
             $hasAndreas = $mail->hasTo('andreas@daijo.co.id');
             $hasTimo = $mail->hasTo('timo@daijo.co.id');
+            $hasThomas = $mail->hasTo('thomasilver88@gmail.com');
             $correctCount = ($mail->summary['total_timeouts'] ?? 0) === 1;
             $isNotTest = $mail->isTest === false;
 
-            return $hasAndreas && $hasTimo && $correctCount && $isNotTest;
+            return $hasAndreas && $hasTimo && $hasThomas && $correctCount && $isNotTest;
         });
     }
 
@@ -103,6 +104,7 @@ class SapTimeoutAlertCommandTest extends TestCase
         Mail::assertSent(SapTimeoutAlertMail::class, function ($mail) {
             return $mail->hasTo('andreas@daijo.co.id')
                 && $mail->hasTo('timo@daijo.co.id')
+                && $mail->hasTo('thomasilver88@gmail.com')
                 && $mail->isTest === true;
         });
     }
@@ -189,6 +191,7 @@ class SapTimeoutAlertCommandTest extends TestCase
         Mail::assertSent(SapTimeoutAlertMail::class, function ($mail) {
             return $mail->hasTo('andreas@daijo.co.id')
                 && $mail->hasTo('timo@daijo.co.id')
+                && $mail->hasTo('thomasilver88@gmail.com')
                 && $mail->isTest === false
                 && ($mail->summary['total_timeouts'] ?? 0) === 1;
         });
