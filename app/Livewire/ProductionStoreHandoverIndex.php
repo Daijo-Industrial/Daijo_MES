@@ -4,6 +4,9 @@ namespace App\Livewire;
 
 use App\Models\ProductionScannedData;
 use App\Models\ProductionStoreHandover;
+use App\Models\ProductionStoreHandoverLog;
+use App\Models\WmsPalletForm;
+use App\Models\WmsPalletFormDetail;
 use App\Services\ProductionStoreHandoverService;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -46,6 +49,15 @@ class ProductionStoreHandoverIndex extends Component
     public bool $showLogsModal = false;
 
     public $activeLogs = [];
+
+    // Pallet Forms Modal State
+    public bool $showPalletsModal = false;
+
+    public ?int $palletsHandoverId = null;
+
+    public ?ProductionStoreHandover $palletsHandover = null;
+
+    public array $palletFormsList = [];
 
     public function updatingSearch()
     {
@@ -240,6 +252,116 @@ class ProductionStoreHandoverIndex extends Component
         $this->activeLogs = [];
     }
 
+    public function openPalletsModal(int $handoverId, ProductionStoreHandoverService $service)
+    {
+        $handover = ProductionStoreHandover::find($handoverId);
+        if (! $handover) {
+            return;
+        }
+
+        $this->palletsHandoverId = $handoverId;
+        $this->palletsHandover = $handover;
+        $this->palletFormsList = $service->getRelatedPalletForms(
+            $this->selectedDate,
+            $handover->shift,
+            $handover->item_code
+        );
+        $this->showPalletsModal = true;
+    }
+
+    public function closePalletsModal()
+    {
+        $this->showPalletsModal = false;
+        $this->palletsHandoverId = null;
+        $this->palletsHandover = null;
+        $this->palletFormsList = [];
+    }
+
+    public function receivePalletAction(string $palletId, ProductionStoreHandoverService $service)
+    {
+        if (! $this->canManageStoreReceipt) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Akses ditolak: Verifikasi penerimaan pallet hanya dapat dilakukan oleh staf Store atau Admin.',
+            ]);
+            return;
+        }
+
+        if (! $this->palletsHandoverId) {
+            return;
+        }
+
+        $res = $service->receivePallet($this->palletsHandoverId, $palletId, auth()->user());
+        if ($res['success']) {
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => $res['message'],
+            ]);
+            // Refresh modal state
+            $this->palletsHandover = ProductionStoreHandover::find($this->palletsHandoverId);
+            $this->palletFormsList = $service->getRelatedPalletForms(
+                $this->selectedDate,
+                $this->palletsHandover->shift,
+                $this->palletsHandover->item_code
+            );
+        } else {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => $res['message'],
+            ]);
+        }
+    }
+
+    public function receiveAllPalletsAction(ProductionStoreHandoverService $service)
+    {
+        if (! $this->canManageStoreReceipt) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Akses ditolak: Verifikasi penerimaan pallet hanya dapat dilakukan oleh staf Store atau Admin.',
+            ]);
+            return;
+        }
+
+        if (! $this->palletsHandoverId || empty($this->palletFormsList)) {
+            return;
+        }
+
+        $unreceived = array_filter($this->palletFormsList, fn ($p) => ! $p['is_received']);
+        if (empty($unreceived)) {
+            $this->dispatch('notify', [
+                'type' => 'info',
+                'message' => 'Seluruh Pallet Form untuk item ini sudah diverifikasi.',
+            ]);
+            return;
+        }
+
+        $receivedCount = 0;
+        $totalBoxes = 0;
+        $totalQty = 0;
+
+        foreach ($unreceived as $p) {
+            $res = $service->receivePallet($this->palletsHandoverId, $p['pallet_id'], auth()->user());
+            if ($res['success']) {
+                $receivedCount++;
+                $totalBoxes += $res['boxes'];
+                $totalQty += $res['qty'];
+            }
+        }
+
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => "Berhasil memverifikasi {$receivedCount} Pallet Form ({$totalBoxes} box / {$totalQty} pcs)!",
+        ]);
+
+        // Refresh modal state
+        $this->palletsHandover = ProductionStoreHandover::find($this->palletsHandoverId);
+        $this->palletFormsList = $service->getRelatedPalletForms(
+            $this->selectedDate,
+            $this->palletsHandover->shift,
+            $this->palletsHandover->item_code
+        );
+    }
+
     public function scanBarcodeReceive(ProductionStoreHandoverService $service)
     {
         if (! $this->canManageStoreReceipt) {
@@ -257,15 +379,81 @@ class ProductionStoreHandoverIndex extends Component
             return;
         }
 
-        // Cari box di production_scanned_data beserta user mesin
+        // 1. Cek apakah barcode yang discan adalah Pallet Form WMS (PLT-...)
+        $pallet = WmsPalletForm::with(['details'])->where('pallet_id', $barcode)->first();
+        if ($pallet) {
+            // Anti-duplikasi: Cek apakah pallet sudah pernah diterima sebelumnya
+            $alreadyLog = ProductionStoreHandoverLog::where('pallet_id', $barcode)->first();
+            if ($alreadyLog) {
+                $timeStr = $alreadyLog->created_at ? $alreadyLog->created_at->format('H:i') : '-';
+                $this->dispatch('notify', [
+                    'type' => 'warning',
+                    'message' => "Pallet [{$barcode}] sudah pernah diverifikasi oleh {$alreadyLog->verified_by_name} pada jam {$timeStr}.",
+                ]);
+                return;
+            }
+
+            // Temukan record handover yang cocok untuk part number ini pada tanggal terpilih
+            $handoverQuery = ProductionStoreHandover::where('production_date', $this->selectedDate);
+            if ($pallet->part_no !== 'MIXED') {
+                $handoverQuery->where('item_code', $pallet->part_no);
+            } else {
+                $detailParts = $pallet->details->pluck('part_no')->unique()->toArray();
+                $handoverQuery->whereIn('item_code', $detailParts);
+            }
+
+            if (! empty($pallet->delivery_shift)) {
+                $handover = (clone $handoverQuery)->where('shift', (int) $pallet->delivery_shift)->first()
+                    ?: $handoverQuery->first();
+            } else {
+                $handover = $handoverQuery->first();
+            }
+
+            if (! $handover) {
+                $this->dispatch('notify', [
+                    'type' => 'error',
+                    'message' => "Item part pada Pallet [{$barcode}] tidak ditemukan dalam jadwal produksi tanggal {$this->selectedDate}.",
+                ]);
+                return;
+            }
+
+            $res = $service->receivePallet($handover->id, $barcode, auth()->user());
+            if ($res['success']) {
+                $this->dispatch('notify', [
+                    'type' => 'success',
+                    'message' => "Pallet [{$barcode}] ({$res['boxes']} box / {$res['qty']} pcs - {$handover->item_code}) berhasil diverifikasi masuk Store!",
+                ]);
+            } else {
+                $this->dispatch('notify', [
+                    'type' => 'error',
+                    'message' => $res['message'],
+                ]);
+            }
+            return;
+        }
+
+        // 2. Jika bukan Pallet ID, cek apakah barcode adalah Box Label tunggal
         $box = ProductionScannedData::with(['ParentDailyItemCode.user'])->where('label', $barcode)->first();
 
         if (! $box) {
             $this->dispatch('notify', [
                 'type' => 'error',
-                'message' => "Barcode [{$barcode}] tidak ditemukan di data scan produksi.",
+                'message' => "Barcode [{$barcode}] tidak ditemukan di data Pallet Form WMS maupun scan produksi.",
             ]);
             return;
+        }
+
+        // Cek apakah box ini sudah pernah tercakup dalam Pallet Form yang sudah diterima
+        $palletDetail = WmsPalletFormDetail::where('label', $barcode)->first();
+        if ($palletDetail) {
+            $alreadyReceivedPallet = ProductionStoreHandoverLog::where('pallet_id', $palletDetail->pallet_form_id)->first();
+            if ($alreadyReceivedPallet) {
+                $this->dispatch('notify', [
+                    'type' => 'warning',
+                    'message' => "Box [{$barcode}] sudah termasuk dalam Pallet [{$palletDetail->pallet_form_id}] yang telah diterima oleh {$alreadyReceivedPallet->verified_by_name}.",
+                ]);
+                return;
+            }
         }
 
         // Cari handover yang cocok (prioritaskan machine_name jika ada relasi DIC)

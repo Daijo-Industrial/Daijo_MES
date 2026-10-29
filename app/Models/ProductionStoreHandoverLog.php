@@ -13,6 +13,7 @@ class ProductionStoreHandoverLog extends Model
 
     protected $fillable = [
         'handover_id',
+        'pallet_id',
         'received_boxes',
         'received_qty',
         'verified_by',
@@ -33,5 +34,10 @@ class ProductionStoreHandoverLog extends Model
     public function verifier()
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function pallet()
+    {
+        return $this->belongsTo(WmsPalletForm::class, 'pallet_id', 'pallet_id');
     }
 }

@@ -11,6 +11,10 @@ use App\Models\ProductionStoreHandover;
 use App\Models\ProductionStoreHandoverLog;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\WmsPalletForm;
+use App\Models\WmsPalletFormDetail;
+use App\Models\WmsPosition;
+use App\Models\WmsRack;
 use App\Services\ProductionStoreHandoverService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -129,12 +133,54 @@ class ProductionStoreHandoverTest extends TestCase
         Schema::create('production_store_handover_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('handover_id');
+            $table->string('pallet_id', 100)->nullable();
             $table->integer('received_boxes')->default(0);
             $table->integer('received_qty')->default(0);
             $table->foreignId('verified_by')->nullable();
             $table->string('verified_by_name')->nullable();
             $table->string('remarks')->nullable();
             $table->timestamps();
+        });
+
+        Schema::create('wms_racks', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
+        Schema::create('wms_positions', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('rack_id')->nullable();
+            $table->string('code', 50)->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('wms_pallet_forms', function (Blueprint $table) {
+            $table->string('pallet_id')->primary();
+            $table->foreignId('position_id')->nullable();
+            $table->string('part_no');
+            $table->string('model_name')->nullable();
+            $table->date('prod_date')->nullable();
+            $table->string('lot_no')->nullable();
+            $table->string('delivery_name')->nullable();
+            $table->string('delivery_shift')->nullable();
+            $table->integer('box_qty')->default(0);
+            $table->decimal('total_pallet_qty', 15, 2)->default(0);
+            $table->string('status')->default('STORED');
+            $table->text('remarks')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('wms_pallet_form_details', function (Blueprint $table) {
+            $table->id();
+            $table->string('pallet_form_id');
+            $table->string('part_no');
+            $table->string('spk_no')->nullable();
+            $table->decimal('qty', 15, 2)->default(0);
+            $table->string('label')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
         });
     }
 
@@ -555,5 +601,226 @@ class ProductionStoreHandoverTest extends TestCase
         $handover->refresh();
         $this->assertEquals(5, $handover->store_received_boxes);
         $this->assertEquals('COMPLETED', $handover->status);
+    }
+
+    public function test_receive_pallet_verifies_entire_pallet_form_and_prevents_duplicate_receipt()
+    {
+        $date = '2026-10-29';
+        $itemCode = 'PART-PALLET-01';
+
+        $handover = ProductionStoreHandover::create([
+            'production_date' => $date,
+            'shift' => 1,
+            'item_code' => $itemCode,
+            'item_name' => 'Door Panel Inner',
+            'customer_name' => 'CUST-TOYOTA',
+            'operator_actual_qty' => 1000,
+            'scanned_boxes' => 20,
+            'scanned_qty' => 1000,
+            'store_received_boxes' => 0,
+            'store_received_qty' => 0,
+            'status' => 'PENDING',
+        ]);
+
+        // Buat Pallet Form WMS berisi 10 box (500 pcs)
+        $palletId = 'PLT-20261029-0001';
+        $pallet = WmsPalletForm::create([
+            'pallet_id' => $palletId,
+            'part_no' => $itemCode,
+            'model_name' => 'Door Panel Inner',
+            'prod_date' => $date,
+            'delivery_name' => 'Delivery 1',
+            'delivery_shift' => '1',
+            'box_qty' => 10,
+            'total_pallet_qty' => 500,
+            'status' => 'STORED',
+        ]);
+
+        for ($i = 1; $i <= 10; $i++) {
+            WmsPalletFormDetail::create([
+                'pallet_form_id' => $palletId,
+                'part_no' => $itemCode,
+                'label' => "BOX-PLT-{$i}",
+                'spk_no' => 'SPK-001',
+                'qty' => 50,
+            ]);
+        }
+
+        // Store menerima Pallet Form pertama
+        $res = $this->service->receivePallet($handover->id, $palletId, $this->user);
+        $this->assertTrue($res['success']);
+        $this->assertEquals(10, $res['boxes']);
+        $this->assertEquals(500, $res['qty']);
+
+        $handover->refresh();
+        $this->assertEquals(10, $handover->store_received_boxes);
+        $this->assertEquals(500, $handover->store_received_qty);
+        $this->assertEquals(10, $handover->in_transit_boxes);
+        $this->assertEquals('PARTIAL', $handover->status);
+
+        // Verifikasi log mencatat pallet_id
+        $log = ProductionStoreHandoverLog::where('handover_id', $handover->id)->first();
+        $this->assertNotNull($log);
+        $this->assertEquals($palletId, $log->pallet_id);
+        $this->assertEquals(10, $log->received_boxes);
+        $this->assertEquals(500, $log->received_qty);
+
+        // Uji Anti-Duplikasi: Percobaan menerima pallet yang sama harus ditolak
+        $duplicateRes = $this->service->receivePallet($handover->id, $palletId, $this->user);
+        $this->assertFalse($duplicateRes['success']);
+        $this->assertStringContainsString('sudah pernah diverifikasi', $duplicateRes['message']);
+
+        // Handover tidak boleh berubah
+        $handover->refresh();
+        $this->assertEquals(10, $handover->store_received_boxes);
+    }
+
+    public function test_scan_barcode_pallet_id_in_livewire_verifies_entire_pallet()
+    {
+        $date = '2026-10-29';
+        $itemCode = 'PART-SCAN-PLT-01';
+
+        $handover = ProductionStoreHandover::create([
+            'production_date' => $date,
+            'shift' => 1,
+            'item_code' => $itemCode,
+            'item_name' => 'Fender Left',
+            'customer_name' => 'CUST-HONDA',
+            'operator_actual_qty' => 600,
+            'scanned_boxes' => 12,
+            'scanned_qty' => 600,
+            'store_received_boxes' => 0,
+            'store_received_qty' => 0,
+            'status' => 'PENDING',
+        ]);
+
+        $palletId = 'PLT-20261029-0099';
+        WmsPalletForm::create([
+            'pallet_id' => $palletId,
+            'part_no' => $itemCode,
+            'prod_date' => $date,
+            'delivery_name' => 'Trip Pagi',
+            'delivery_shift' => '1',
+            'box_qty' => 12,
+            'total_pallet_qty' => 600,
+            'status' => 'STORED',
+        ]);
+
+        $this->actingAs($this->user);
+
+        // Scan barcode Pallet ID di quick scanner
+        Livewire::test(ProductionStoreHandoverIndex::class)
+            ->set('selectedDate', $date)
+            ->set('barcodeInput', $palletId)
+            ->call('scanBarcodeReceive')
+            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+
+        $handover->refresh();
+        $this->assertEquals(12, $handover->store_received_boxes);
+        $this->assertEquals(600, $handover->store_received_qty);
+        $this->assertEquals(0, $handover->in_transit_boxes);
+        $this->assertEquals('COMPLETED', $handover->status);
+    }
+
+    public function test_pallets_modal_interaction_and_receive_all_unreceived_pallets()
+    {
+        $date = '2026-10-29';
+        $itemCode = 'PART-MODAL-PLT';
+
+        $handover = ProductionStoreHandover::create([
+            'production_date' => $date,
+            'shift' => 1,
+            'item_code' => $itemCode,
+            'item_name' => 'Console Box',
+            'customer_name' => 'CUST-DAIHATSU',
+            'operator_actual_qty' => 800,
+            'scanned_boxes' => 16,
+            'scanned_qty' => 800,
+            'store_received_boxes' => 0,
+            'store_received_qty' => 0,
+            'status' => 'PENDING',
+        ]);
+
+        // Pallet 1: 8 box (400 pcs)
+        WmsPalletForm::create([
+            'pallet_id' => 'PLT-20261029-0101',
+            'part_no' => $itemCode,
+            'prod_date' => $date,
+            'delivery_name' => 'Delivery 1',
+            'delivery_shift' => '1',
+            'box_qty' => 8,
+            'total_pallet_qty' => 400,
+            'status' => 'STORED',
+        ]);
+
+        // Pallet 2: 8 box (400 pcs)
+        WmsPalletForm::create([
+            'pallet_id' => 'PLT-20261029-0102',
+            'part_no' => $itemCode,
+            'prod_date' => $date,
+            'delivery_name' => 'Delivery 2',
+            'delivery_shift' => '1',
+            'box_qty' => 8,
+            'total_pallet_qty' => 400,
+            'status' => 'STORED',
+        ]);
+
+        $this->actingAs($this->user);
+
+        // Buka modal Pallet Form
+        $test = Livewire::test(ProductionStoreHandoverIndex::class)
+            ->set('selectedDate', $date)
+            ->call('openPalletsModal', $handover->id);
+
+        $test->assertSet('showPalletsModal', true)
+            ->assertCount('palletFormsList', 2)
+            ->assertSee('PLT-20261029-0101')
+            ->assertSee('PLT-20261029-0102');
+
+        // Terima seluruh pallet in-transit via tombol di modal
+        $test->call('receiveAllPalletsAction')
+            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+
+        $handover->refresh();
+        $this->assertEquals(16, $handover->store_received_boxes);
+        $this->assertEquals(800, $handover->store_received_qty);
+        $this->assertEquals('COMPLETED', $handover->status);
+
+        // Verifikasi list di modal sekarang menunjukkan keduanya sudah diterima
+        $palletList = $test->get('palletFormsList');
+        $this->assertTrue($palletList[0]['is_received']);
+        $this->assertTrue($palletList[1]['is_received']);
+    }
+
+    public function test_store_sees_pallet_verification_button_and_empty_state_when_no_pallets_published()
+    {
+        $date = '2026-10-29';
+        $itemCode = 'PART-EMPTY-PLT';
+
+        $handover = ProductionStoreHandover::create([
+            'production_date' => $date,
+            'shift' => 3,
+            'item_code' => $itemCode,
+            'item_name' => 'Fender Trim',
+            'customer_name' => 'CUST-HONDA',
+            'operator_actual_qty' => 0,
+            'scanned_boxes' => 22,
+            'scanned_qty' => 440,
+            'store_received_boxes' => 0,
+            'store_received_qty' => 0,
+            'status' => 'PENDING',
+        ]);
+
+        $this->actingAs($this->user);
+
+        // Buka modal Pallet Form ketika belum ada pallet form terbit
+        $test = Livewire::test(ProductionStoreHandoverIndex::class)
+            ->set('selectedDate', $date)
+            ->call('openPalletsModal', $handover->id);
+
+        $test->assertSet('showPalletsModal', true)
+            ->assertCount('palletFormsList', 0)
+            ->assertSee('Belum Ada Pallet Form WMS Diterbitkan')
+            ->assertSee('Terima Manual Box Pecahan (22 Box)');
     }
 }
