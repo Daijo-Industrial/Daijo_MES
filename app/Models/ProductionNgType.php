@@ -22,4 +22,9 @@ class ProductionNgType extends Model
     {
         return $this->hasMany(ProductionNgDetail::class, 'ng_type_id');
     }
+
+    public function adjustMachineNgDetails()
+    {
+        return $this->hasMany(AdjustMachineNgDetail::class, 'ng_type_id');
+    }
 }

@@ -730,6 +730,19 @@
                                     <div class="text-xs font-bold text-gray-800">{{ number_format($adjSummary['total_actual']) }} pcs</div>
                                 </div>
                             </div>
+                            @if(($adjSummary['direct_ng'] ?? 0) > 0)
+                            <div class="my-1.5 bg-red-50/80 rounded p-1.5 border border-red-100 text-[10px]">
+                                <div class="flex justify-between items-center text-red-700 font-semibold">
+                                    <span>🔧 NG Setting Adjust:</span>
+                                    <span class="font-bold font-mono">{{ number_format($adjSummary['direct_ng']) }} pcs</span>
+                                </div>
+                                @if(!empty($adjSummary['direct_ng_breakdown']))
+                                <div class="text-[9px] text-red-600/90 mt-0.5 truncate" title="{{ collect($adjSummary['direct_ng_breakdown'])->map(fn($q, $t) => "$t: $q pcs")->join(', ') }}">
+                                    {{ collect($adjSummary['direct_ng_breakdown'])->map(fn($q, $t) => "$t: $q pcs")->join(', ') }}
+                                </div>
+                                @endif
+                            </div>
+                            @endif
                         </div>
                         <div class="flex items-center justify-between text-[10px] text-gray-500 pt-1 border-t border-gray-200/60">
                             <span>Adjust: {{ $adjSummary['adjust_count'] }}x</span>

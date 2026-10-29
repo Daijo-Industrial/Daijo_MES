@@ -302,6 +302,7 @@
                                                         <th class="border px-4 py-2">Remark</th>
                                                         <th class="border px-4 py-2">Status</th>
                                                         <th class="border px-4 py-2">Type</th>
+                                                        <th class="border px-4 py-2">NG Adjuster</th>
                                                         <th class="border px-4 py-2">Foto</th>
                                                     </tr>
                                                 </thead>
@@ -348,6 +349,22 @@
                                                                 {{ in_array($log, $data['mould_change_log'], true)
                                                                     ? 'Mould Change'
                                                                     : 'Adjusting Machine' }}
+                                                            </td>
+                                                            <td class="border px-4 py-2 text-center">
+                                                                @if(($log['total_ng'] ?? 0) > 0)
+                                                                    <span class="inline-block bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded text-xs">
+                                                                        {{ $log['total_ng'] }} pcs
+                                                                    </span>
+                                                                    @if(!empty($log['ng_details']))
+                                                                        <div class="text-[10px] text-gray-700 mt-1 text-left space-y-0.5 bg-white/70 p-1 rounded border border-red-200">
+                                                                            @foreach($log['ng_details'] as $ng)
+                                                                                <div>• {{ $ng['type'] }}: <strong>{{ $ng['quantity'] }}</strong></div>
+                                                                            @endforeach
+                                                                        </div>
+                                                                    @endif
+                                                                @else
+                                                                    <span class="text-gray-400">-</span>
+                                                                @endif
                                                             </td>
                                                             <td class="border px-4 py-2">
                                                                 <img src="{{ asset($log['pic_profile_path']) }}"
