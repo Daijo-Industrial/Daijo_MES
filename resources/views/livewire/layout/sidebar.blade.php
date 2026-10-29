@@ -102,6 +102,7 @@ new class extends Component {
                     ['name' => 'wms.mapping', 'label' => 'Warehouse Mapping'],
                     ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping'],
                     ['name' => 'mwh.master-list.index', 'label' => 'Master List Material'],
+                    ['name' => 'master-machine.index', 'label' => 'Master Mesin (Dashboard)'],
                     ['name' => 'customer.add', 'label' => 'Manage Barcode Customer'],
                 ]" />
 

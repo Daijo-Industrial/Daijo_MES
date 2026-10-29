@@ -198,7 +198,7 @@ class ProductionStoreHandoverService
         // Anti-duplikasi (Idempotency Guard): Pastikan Pallet ID ini belum pernah diterima
         $existingLog = ProductionStoreHandoverLog::where('pallet_id', $palletId)->first();
         if ($existingLog) {
-            $formattedTime = $existingLog->created_at ? $existingLog->created_at->format('H:i d/m/Y') : '-';
+            $formattedTime = $existingLog->created_at ? $existingLog->created_at->copy()->timezone('Asia/Jakarta')->format('H:i d/m/Y') : '-';
             return [
                 'success' => false,
                 'message' => "Pallet [{$palletId}] sudah pernah diverifikasi oleh {$existingLog->verified_by_name} pada {$formattedTime}.",
@@ -322,13 +322,13 @@ class ProductionStoreHandoverService
                 'delivery_name' => $pallet->delivery_name ?: 'Delivery',
                 'delivery_shift' => $pallet->delivery_shift,
                 'created_at' => $pallet->created_at,
-                'created_time_formatted' => $pallet->created_at ? $pallet->created_at->format('H:i') : '-',
+                'created_time_formatted' => $pallet->created_at ? $pallet->created_at->copy()->timezone('Asia/Jakarta')->format('H:i') : '-',
                 'box_count' => $boxCount,
                 'qty_pcs' => $qtyPcs,
                 'is_received' => $isReceived,
                 'received_by_name' => $log?->verified_by_name,
                 'received_at' => $log?->created_at,
-                'received_at_formatted' => $log?->created_at ? $log->created_at->format('H:i') : null,
+                'received_at_formatted' => $log?->created_at ? $log->created_at->copy()->timezone('Asia/Jakarta')->format('H:i') : null,
                 'position_id' => $pallet->position_id,
                 'rack_location' => $rackLocation,
                 'is_putaway' => ! empty($pallet->position_id),
@@ -400,13 +400,13 @@ class ProductionStoreHandoverService
                 'delivery_name' => $pallet->delivery_name ?: 'Pengiriman Produksi',
                 'delivery_shift' => $pallet->delivery_shift,
                 'created_at' => $pallet->created_at,
-                'created_time_formatted' => $pallet->created_at ? $pallet->created_at->format('H:i') : '-',
+                'created_time_formatted' => $pallet->created_at ? $pallet->created_at->copy()->timezone('Asia/Jakarta')->format('H:i') : '-',
                 'box_count' => (int) $pallet->box_qty,
                 'qty_pcs' => (int) $pallet->total_pallet_qty,
                 'is_received' => $isReceived,
                 'received_by_name' => $log?->verified_by_name,
                 'received_at' => $log?->created_at,
-                'received_at_formatted' => $log?->created_at ? $log->created_at->format('H:i') : null,
+                'received_at_formatted' => $log?->created_at ? $log->created_at->copy()->timezone('Asia/Jakarta')->format('H:i') : null,
                 'is_putaway' => ! empty($pallet->position_id),
                 'rack_location' => $rackLocation,
                 'details' => $pallet->details->map(fn ($d) => [

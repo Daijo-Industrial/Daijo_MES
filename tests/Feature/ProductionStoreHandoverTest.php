@@ -844,6 +844,7 @@ class ProductionStoreHandoverTest extends TestCase
         ]);
 
         $palletId = 'PLT-QUEUE-001';
+        $utcTime = \Carbon\Carbon::parse('2026-10-29 02:48:00', 'UTC');
         WmsPalletForm::create([
             'pallet_id' => $palletId,
             'part_no' => $itemCode,
@@ -854,6 +855,7 @@ class ProductionStoreHandoverTest extends TestCase
             'box_qty' => 10,
             'total_pallet_qty' => 500,
             'status' => 'STORED',
+            'created_at' => $utcTime,
         ]);
 
         $this->actingAs($this->user);
@@ -864,6 +866,7 @@ class ProductionStoreHandoverTest extends TestCase
             ->assertSet('activeTab', 'queue')
             ->assertSee($palletId)
             ->assertSee('Grille Front Lower')
+            ->assertSee('09:48 WIB') // 02:48 UTC dikonversi dengan tepat ke 09:48 WIB
             ->assertSee('TERIMA PALLET INI (1-KLIK)');
 
         // 1-Click Receive from Queue
