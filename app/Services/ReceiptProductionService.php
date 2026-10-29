@@ -390,43 +390,49 @@ class ReceiptProductionService extends BaseSapService
         // Set cooldown 5 menit untuk mencegah spam puluhan email saat server SAP down
         Cache::put($cooldownKey, true, now()->addMinutes(5));
 
+        // 1. Kirim notifikasi Email
         try {
             $recipients = config('services.sap.timeout_alert_recipients', [
                 'andreas@daijo.co.id',
                 'timo@daijo.co.id',
             ]);
 
-            if (empty($recipients)) {
-                return;
-            }
+            if (! empty($recipients)) {
+                $logObj = (object) [
+                    'id' => $logId,
+                    'api_name' => 'receipt_production',
+                    'endpoint' => $endpoint,
+                    'message' => $errorMessage,
+                    'created_at' => now(),
+                ];
 
-            $logObj = (object) [
-                'id' => $logId,
-                'api_name' => 'receipt_production',
-                'endpoint' => $endpoint,
-                'message' => $errorMessage,
-                'created_at' => now(),
-            ];
-
-            $summary = [
-                'total_timeouts' => 1,
-                'first_occurred' => now('Asia/Jakarta')->format('d M Y H:i:s'),
-                'last_occurred' => now('Asia/Jakarta')->format('d M Y H:i:s'),
-                'minutes_window' => 1,
-                'endpoints_breakdown' => [
-                    [
-                        'api_name' => 'receipt_production',
-                        'endpoint' => $endpoint,
-                        'count' => 1,
+                $summary = [
+                    'total_timeouts' => 1,
+                    'first_occurred' => now('Asia/Jakarta')->format('d M Y H:i:s'),
+                    'last_occurred' => now('Asia/Jakarta')->format('d M Y H:i:s'),
+                    'minutes_window' => 1,
+                    'endpoints_breakdown' => [
+                        [
+                            'api_name' => 'receipt_production',
+                            'endpoint' => $endpoint,
+                            'count' => 1,
+                        ],
                     ],
-                ],
-            ];
+                ];
 
-            Mail::to($recipients)->send(new SapTimeoutAlertMail($summary, collect([$logObj]), false));
+                Mail::to($recipients)->send(new SapTimeoutAlertMail($summary, collect([$logObj]), false));
 
-            Log::warning("[SAP-TIMEOUT-ALERT] Alert email real-time terkirim ke: " . implode(', ', $recipients));
+                Log::warning("[SAP-TIMEOUT-ALERT] Alert email real-time terkirim ke: " . implode(', ', $recipients));
+            }
         } catch (\Throwable $mailEx) {
             Log::error("Gagal mengirim email alert SAP Timeout: " . $mailEx->getMessage());
+        }
+
+        // 2. Kirim notifikasi Telegram ke Grup
+        try {
+            \App\Services\TelegramAlertService::sendSapTimeoutAlert($endpoint, $errorMessage, $logId);
+        } catch (\Throwable $teleEx) {
+            Log::error("Gagal mengirim Telegram alert: " . $teleEx->getMessage());
         }
     }
 }

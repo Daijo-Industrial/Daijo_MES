@@ -13,6 +13,7 @@ use App\Livewire\MaterialWarehouse\MaterialQrLookup;
 use App\Livewire\MaterialWarehouse\MaterialStockCard;
 use App\Livewire\MaterialWarehouse\PublicRackMapping;
 use App\Livewire\MaterialWarehouse\RackMapping as MwhRackMapping;
+use App\Livewire\ProductionStoreHandoverIndex;
 use App\Livewire\Store\SoTracking;
 use App\Livewire\UploadSpkHistory;
 use App\Livewire\Wms\DailyDeliveryRecap;
@@ -89,6 +90,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/pallet-form/history', PalletFormIndex::class)->name('pallet-form.index');
             Route::get('/pallet-form/create-delivery', PalletFormCreator::class)->name('pallet-form.create-delivery');
             Route::get('/pallet-form/daily-recap', DailyDeliveryRecap::class)->name('pallet-form.daily-recap');
+            Route::get('/store-handover', ProductionStoreHandoverIndex::class)->name('store-handover');
             Route::get('/pallet-form/sorting', PalletSorting::class)->name('pallet-form.sorting');
             Route::get('/pallet-form/picking-guide', PickingGuide::class)->name('pallet-form.picking-guide');
             Route::get('/pallet-form/print/{id}', function ($id) {

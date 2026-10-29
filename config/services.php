@@ -46,4 +46,10 @@ return [
 
     'api_secret_key' => env('API_SECRET_KEY'),
 
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_ALERT_CHAT_ID'),
+        'topic_id' => env('TELEGRAM_ALERT_TOPIC_ID'),
+    ],
+
 ];

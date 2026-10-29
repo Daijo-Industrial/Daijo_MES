@@ -107,6 +107,7 @@ new class extends Component {
 
                 <!-- 3. Dropdown: Production & Moulding -->
                 <livewire:parent-dropdown label="Production & Moulding" :initiallyOpen="false" :childRoutes="[
+                    ['name' => 'production.store-handover', 'label' => 'Kontrol Produksi - Store'],
                     ['name' => 'production.bom.index', 'label' => 'Production BOM'],
                     ['name' => 'daily-item-code.index', 'label' => 'Daily Production Plan'],
                     ['name' => 'ppic.machine-daily-report', 'label' => 'Laporan Produksi Mesin'],
@@ -149,6 +150,7 @@ new class extends Component {
                     <!-- 4. Dropdown: WMS & Warehouse -->
                     <livewire:parent-dropdown label="WMS & Warehouse" :initiallyOpen="false" :childRoutes="[
                         ['name' => 'wms.dashboard', 'label' => 'WMS Rack Availability Dashboard'],
+                        ['name' => 'production.store-handover', 'label' => 'Kontrol Serah Terima Produksi'],
                         ['name' => 'wms.pallet-form.create-delivery', 'label' => 'Scan Delivery FG (Program Warehouse)'],
                         ['name' => 'wms.pallet-form.daily-recap', 'label' => 'Rekap Harian Delivery FG'],
                         ['name' => 'wms.pallet-form.index', 'label' => 'Assign Slot & Riwayat Pallet'],
@@ -277,6 +279,9 @@ new class extends Component {
 
 
                 @if (auth()->user()?->can('view-production-links'))
+                    <livewire:sidebar-link href="{{ route('production.store-handover') }}" label="Kontrol Produksi - Store"
+                        :active="request()->routeIs('production.store-handover')" wire:navigate />
+
                     <livewire:sidebar-link href="{{ route('receipt-production-logs') }}" label="Cek Data masuk ke SAP"
                         :active="request()->routeIs('receipt-production-logs')" wire:navigate />
 
@@ -357,6 +362,9 @@ new class extends Component {
 
                     <livewire:sidebar-link href="{{ route('wms.pallet-form.daily-recap') }}"
                         label="Rekap Harian Delivery" :active="request()->routeIs('wms.pallet-form.daily-recap')" wire:navigate />
+
+                    <livewire:sidebar-link href="{{ route('production.store-handover') }}"
+                        label="Kontrol Serah Terima Produksi" :active="request()->routeIs('production.store-handover')" wire:navigate />
 
                     <livewire:sidebar-link href="{{ route('wms.pallet-form.index') }}"
                         label="Assign Slot & Riwayat Pallet" :active="request()->routeIs('wms.pallet-form.index')" wire:navigate />
