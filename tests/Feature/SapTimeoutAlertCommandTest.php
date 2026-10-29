@@ -265,4 +265,51 @@ class SapTimeoutAlertCommandTest extends TestCase
 
         Mail::assertNothingSent();
     }
+
+    public function test_telegram_alert_service_sends_request(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'https://api.telegram.org/*' => \Illuminate\Support\Facades\Http::response(['ok' => true], 200),
+        ]);
+
+        $result = \App\Services\TelegramAlertService::sendMessage('Pesan uji coba');
+
+        $this->assertTrue($result);
+
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && $request['chat_id'] == '-1003908455113'
+                && (int) ($request['message_thread_id'] ?? 0) === 3
+                && str_contains($request['text'], 'Pesan uji coba');
+        });
+    }
+
+    public function test_receipt_production_service_triggers_telegram_alert_on_timeout(): void
+    {
+        Mail::fake();
+        \Illuminate\Support\Facades\Http::fake([
+            'https://api.telegram.org/*' => \Illuminate\Support\Facades\Http::response(['ok' => true], 200),
+        ]);
+        Cache::forget('sap_receipt_timeout_alert_cooldown');
+
+        $service = new \App\Services\ReceiptProductionService();
+        $service->saveApiLog(
+            'receipt_production',
+            'POST',
+            '/api/receipt_production/create',
+            ['DocNum' => '250001'],
+            [],
+            500,
+            'failed',
+            'cURL error 28: Operation timed out after 30002 milliseconds'
+        );
+
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && $request['chat_id'] == '-1003908455113'
+                && (int) ($request['message_thread_id'] ?? 0) === 3
+                && str_contains($request['text'], 'SAP API TIMEOUT')
+                && str_contains($request['text'], '/api/receipt_production/create');
+        });
+    }
 }

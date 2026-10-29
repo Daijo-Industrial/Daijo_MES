@@ -78,6 +78,18 @@ class CheckSapTimeoutAlert extends Command
                 Mail::to($recipients)->send(new SapTimeoutAlertMail($dummySummary, collect([$dummyLog]), true));
                 $this->info('✅ Email uji coba berhasil dikirim ke: ' . implode(', ', $recipients));
 
+                // Kirim notifikasi uji coba ke Telegram
+                $testTeleMsg = "🧪 *[TEST] NOTIFIKASI UJI COBA BOT TELEGRAM DAIJO MES*\n\n"
+                    . "Pengujian integrasi bot Telegram via `php artisan sap:alert-timeout --test` *BERHASIL*.\n"
+                    . "Sistem siap mengirimkan alert jika terjadi timeout pada API SAP.\n\n"
+                    . "⏱️ *Waktu Uji:* " . now('Asia/Jakarta')->format('d M Y H:i:s') . " WIB";
+                $teleSent = \App\Services\TelegramAlertService::sendMessage($testTeleMsg);
+                if ($teleSent) {
+                    $this->info('✅ Notifikasi Telegram uji coba berhasil dikirim ke grup.');
+                } else {
+                    $this->warn('⚠️ Notifikasi Telegram uji coba gagal terkirim (cek storage/logs/laravel.log).');
+                }
+
                 return 0;
             } catch (\Throwable $e) {
                 $this->error('❌ Gagal mengirim email uji coba: ' . $e->getMessage());
@@ -139,18 +151,26 @@ class CheckSapTimeoutAlert extends Command
 
         $recentLogs = $timeoutLogs->take(10);
 
-        // 5. Kirim email alert
+        // 5. Kirim email alert & telegram alert
         try {
             Mail::to($recipients)->send(new SapTimeoutAlertMail($summary, $recentLogs, false));
+
+            // Kirim ringkasan ke Telegram
+            $firstLog = $timeoutLogs->first();
+            \App\Services\TelegramAlertService::sendSapTimeoutAlert(
+                $firstLog->endpoint ?? '/api/receipt_production/create',
+                $firstLog->message ?? 'cURL error 28: Operation timed out',
+                $firstLog->id ?? null
+            );
 
             // Perbarui cache ID log terakhir agar tidak terkirim ganda
             $maxId = (int) $timeoutLogs->max('id');
             Cache::forever('sap_timeout_last_notified_id', $maxId);
 
             $this->info("⚠️ Terdeteksi {$totalTimeouts} error timeout SAP.");
-            $this->info('✅ Alert email berhasil dikirim ke: ' . implode(', ', $recipients));
+            $this->info('✅ Alert email & Telegram berhasil dikirim.');
 
-            Log::warning("[SAP-TIMEOUT-ALERT] Alert email dikirim ke " . implode(', ', $recipients) . " ({$totalTimeouts} timeouts terdeteksi).");
+            Log::warning("[SAP-TIMEOUT-ALERT] Alert email & Telegram dikirim ({$totalTimeouts} timeouts terdeteksi).");
 
             return 0;
         } catch (\Throwable $e) {

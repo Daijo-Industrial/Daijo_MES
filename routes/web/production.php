@@ -36,6 +36,7 @@ use App\Livewire\MasterBomView;
 use App\Livewire\MasterListItemView;
 use App\Livewire\Ppic\PpicListUpMachine;
 use App\Livewire\ProductionDashboard;
+use App\Livewire\ProductionStoreHandoverIndex;
 use App\Livewire\ProductionSummaryMonitor;
 use App\Livewire\Qc\QcStockTransfer;
 use App\Livewire\Qc\QcStockTransferKbn;
@@ -284,4 +285,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/mould-checklist/create', MouldChecklistForm::class)->name('mould-checklist.create');
     Route::get('/mould-checklist/{id}', MouldChecklistShow::class)->name('mould-checklist.show');
     Route::get('/mould-checklist/{id}/edit', MouldChecklistForm::class)->name('mould-checklist.edit');
+
+    // Kontrol & Rekonsiliasi Harian Produksi - Store
+    Route::get('/production-store-handover', ProductionStoreHandoverIndex::class)->name('production.store-handover');
 });
