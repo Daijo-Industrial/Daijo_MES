@@ -823,4 +823,130 @@ class ProductionStoreHandoverTest extends TestCase
             ->assertSee('Belum Ada Pallet Form WMS Diterbitkan')
             ->assertSee('Terima Manual Box Pecahan (22 Box)');
     }
+
+    public function test_store_user_defaults_to_queue_tab_and_can_receive_pallet_with_single_click()
+    {
+        $date = '2026-10-29';
+        $itemCode = 'PART-QUEUE-TEST';
+
+        $handover = ProductionStoreHandover::create([
+            'production_date' => $date,
+            'shift' => 1,
+            'item_code' => $itemCode,
+            'item_name' => 'Grille Front Lower',
+            'customer_name' => 'CUST-SUZUKI',
+            'operator_actual_qty' => 500,
+            'scanned_boxes' => 10,
+            'scanned_qty' => 500,
+            'store_received_boxes' => 0,
+            'store_received_qty' => 0,
+            'status' => 'PENDING',
+        ]);
+
+        $palletId = 'PLT-QUEUE-001';
+        WmsPalletForm::create([
+            'pallet_id' => $palletId,
+            'part_no' => $itemCode,
+            'model_name' => 'Grille Front Lower',
+            'prod_date' => $date,
+            'delivery_name' => 'Ferry Operator',
+            'delivery_shift' => '1',
+            'box_qty' => 10,
+            'total_pallet_qty' => 500,
+            'status' => 'STORED',
+        ]);
+
+        $this->actingAs($this->user);
+
+        // Store user mounts -> defaults to 'queue' tab
+        $test = Livewire::test(ProductionStoreHandoverIndex::class)
+            ->set('selectedDate', $date)
+            ->assertSet('activeTab', 'queue')
+            ->assertSee($palletId)
+            ->assertSee('Grille Front Lower')
+            ->assertSee('TERIMA PALLET INI (1-KLIK)');
+
+        // 1-Click Receive from Queue
+        $test->call('receivePalletFromQueue', $palletId)
+            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+
+        $handover->refresh();
+        $this->assertEquals(10, $handover->store_received_boxes);
+        $this->assertEquals(500, $handover->store_received_qty);
+        $this->assertEquals('COMPLETED', $handover->status);
+
+        // Log anti-duplikasi tercatat
+        $this->assertDatabaseHas('production_store_handover_logs', [
+            'handover_id' => $handover->id,
+            'pallet_id' => $palletId,
+            'received_boxes' => 10,
+            'received_qty' => 500,
+        ]);
+
+        // Jika diklik lagi, terlindungi dari duplikasi
+        $test->call('receivePalletFromQueue', $palletId)
+            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'warning');
+    }
+
+    public function test_store_can_receive_all_pending_queue_at_once()
+    {
+        $date = '2026-10-29';
+        $item1 = 'PART-Q1';
+        $item2 = 'PART-Q2';
+
+        $h1 = ProductionStoreHandover::create([
+            'production_date' => $date,
+            'shift' => 1,
+            'item_code' => $item1,
+            'item_name' => 'Part 1',
+            'operator_actual_qty' => 100,
+            'scanned_boxes' => 2,
+            'scanned_qty' => 100,
+            'status' => 'PENDING',
+        ]);
+
+        $h2 = ProductionStoreHandover::create([
+            'production_date' => $date,
+            'shift' => 1,
+            'item_code' => $item2,
+            'item_name' => 'Part 2',
+            'operator_actual_qty' => 200,
+            'scanned_boxes' => 4,
+            'scanned_qty' => 200,
+            'status' => 'PENDING',
+        ]);
+
+        WmsPalletForm::create([
+            'pallet_id' => 'PLT-BULK-01',
+            'part_no' => $item1,
+            'prod_date' => $date,
+            'delivery_shift' => '1',
+            'box_qty' => 2,
+            'total_pallet_qty' => 100,
+            'status' => 'STORED',
+        ]);
+
+        WmsPalletForm::create([
+            'pallet_id' => 'PLT-BULK-02',
+            'part_no' => $item2,
+            'prod_date' => $date,
+            'delivery_shift' => '1',
+            'box_qty' => 4,
+            'total_pallet_qty' => 200,
+            'status' => 'STORED',
+        ]);
+
+        $this->actingAs($this->user);
+
+        Livewire::test(ProductionStoreHandoverIndex::class)
+            ->set('selectedDate', $date)
+            ->call('receiveAllPendingQueue')
+            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+
+        $h1->refresh();
+        $h2->refresh();
+        $this->assertEquals('COMPLETED', $h1->status);
+        $this->assertEquals('COMPLETED', $h2->status);
+    }
 }
+
