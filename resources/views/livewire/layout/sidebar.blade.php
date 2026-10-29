@@ -206,6 +206,7 @@ new class extends Component {
 
                 <!-- 8. Dropdown: SAP Monitor -->
                 <livewire:parent-dropdown label="SAP Monitor" :initiallyOpen="false" :childRoutes="[
+                    ['name' => 'sap.verification', 'label' => 'Verifikasi Data SAP vs MES'],
                     ['name' => 'receipt-production-logs', 'label' => 'Cek Data masuk ke SAP'],
                     ['name' => 'production-summary-monitor', 'label' => 'Cek Stock Program ke SAP'],
                     ['name' => 'wms.sap-sync-monitor-delivery', 'label' => 'SAP Sync Monitor'],

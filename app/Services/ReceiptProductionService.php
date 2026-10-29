@@ -395,6 +395,7 @@ class ReceiptProductionService extends BaseSapService
             $recipients = config('services.sap.timeout_alert_recipients', [
                 'andreas@daijo.co.id',
                 'timo@daijo.co.id',
+                'thomasilver88@gmail.com',
             ]);
 
             if (! empty($recipients)) {
