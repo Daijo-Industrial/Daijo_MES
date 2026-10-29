@@ -8,6 +8,8 @@ use App\Models\MasterListItem;
 use App\Models\ProductionScannedData;
 use App\Models\ProductionStoreHandover;
 use App\Models\ProductionStoreHandoverLog;
+use App\Models\WmsPalletForm;
+use App\Models\WmsPalletFormDetail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -115,7 +117,7 @@ class ProductionStoreHandoverService
     /**
      * Store melakukan verifikasi penerimaan barang secara bertahap / running (per trip)
      */
-    public function receiveBatch(int $handoverId, int $boxes, ?int $qty = null, ?string $remarks = null, $user = null): bool
+    public function receiveBatch(int $handoverId, int $boxes, ?int $qty = null, ?string $remarks = null, $user = null, ?string $palletId = null): bool
     {
         $handover = ProductionStoreHandover::find($handoverId);
         if (! $handover) {
@@ -137,10 +139,11 @@ class ProductionStoreHandoverService
         $userName = $user ? ($user->name ?? 'User Store') : 'Staff Store';
         $userId = $user ? ($user->id ?? null) : null;
 
-        DB::transaction(function () use ($handover, $boxes, $qty, $remarks, $userId, $userName) {
+        DB::transaction(function () use ($handover, $boxes, $qty, $remarks, $userId, $userName, $palletId) {
             // 1. Buat log riwayat penerimaan per trip
             ProductionStoreHandoverLog::create([
                 'handover_id' => $handover->id,
+                'pallet_id' => $palletId,
                 'received_boxes' => $boxes,
                 'received_qty' => $qty,
                 'verified_by' => $userId,
@@ -169,6 +172,173 @@ class ProductionStoreHandoverService
         });
 
         return true;
+    }
+
+    /**
+     * Verifikasi penerimaan berdasarkan Pallet Form WMS (1 scan / klik = seluruh box pallet terverifikasi)
+     */
+    public function receivePallet(int $handoverId, string $palletId, $user): array
+    {
+        $handover = ProductionStoreHandover::find($handoverId);
+        if (! $handover) {
+            return [
+                'success' => false,
+                'message' => 'Data serah terima tidak ditemukan.',
+            ];
+        }
+
+        $pallet = WmsPalletForm::with(['details'])->where('pallet_id', $palletId)->first();
+        if (! $pallet) {
+            return [
+                'success' => false,
+                'message' => "Pallet Form [{$palletId}] tidak ditemukan di sistem WMS.",
+            ];
+        }
+
+        // Anti-duplikasi (Idempotency Guard): Pastikan Pallet ID ini belum pernah diterima
+        $existingLog = ProductionStoreHandoverLog::where('pallet_id', $palletId)->first();
+        if ($existingLog) {
+            $formattedTime = $existingLog->created_at ? $existingLog->created_at->format('H:i d/m/Y') : '-';
+            return [
+                'success' => false,
+                'message' => "Pallet [{$palletId}] sudah pernah diverifikasi oleh {$existingLog->verified_by_name} pada {$formattedTime}.",
+            ];
+        }
+
+        // Hitung box dan pcs untuk item handover ini
+        if ($pallet->part_no === 'MIXED') {
+            $itemDetails = $pallet->details->where('part_no', $handover->item_code);
+            $boxes = $itemDetails->count();
+            $qty = (int) $itemDetails->sum('qty');
+            if ($boxes <= 0) {
+                return [
+                    'success' => false,
+                    'message' => "Item [{$handover->item_code}] tidak ditemukan dalam Pallet [{$palletId}].",
+                ];
+            }
+        } else {
+            $boxes = (int) $pallet->box_qty;
+            $qty = (int) $pallet->total_pallet_qty;
+        }
+
+        $userName = $user ? ($user->name ?? 'User Store') : 'Staff Store';
+        $userId = $user ? ($user->id ?? null) : null;
+        $deliveryRemark = $pallet->delivery_name ? " ({$pallet->delivery_name})" : '';
+
+        DB::transaction(function () use ($handover, $palletId, $deliveryRemark, $boxes, $qty, $userId, $userName) {
+            // 1. Buat log serah terima dengan mengikat pallet_id
+            ProductionStoreHandoverLog::create([
+                'handover_id' => $handover->id,
+                'pallet_id' => $palletId,
+                'received_boxes' => $boxes,
+                'received_qty' => $qty,
+                'verified_by' => $userId,
+                'verified_by_name' => $userName,
+                'remarks' => "Pallet Form: {$palletId}{$deliveryRemark}",
+            ]);
+
+            // 2. Akumulasikan ke master handover
+            $newBoxes = $handover->store_received_boxes + $boxes;
+            $newQty = $handover->store_received_qty + $qty;
+
+            $status = 'PARTIAL';
+            if ($newBoxes >= $handover->scanned_boxes && $handover->scanned_boxes > 0) {
+                $status = 'COMPLETED';
+            }
+
+            $handover->update([
+                'store_received_boxes' => $newBoxes,
+                'store_received_qty' => $newQty,
+                'status' => $status,
+                'last_verified_by' => $userId,
+                'last_verified_by_name' => $userName,
+                'last_verified_at' => now(),
+            ]);
+        });
+
+        return [
+            'success' => true,
+            'boxes' => $boxes,
+            'qty' => $qty,
+            'pallet_id' => $palletId,
+            'message' => "Berhasil memverifikasi Pallet [{$palletId}] ({$boxes} box / {$qty} pcs).",
+        ];
+    }
+
+    /**
+     * Mengambil daftar Pallet Form WMS yang terkait dengan part, tanggal, dan shift ini
+     */
+    public function getRelatedPalletForms(string $date, ?int $shift, string $itemCode): array
+    {
+        [$startTime, $endTime] = WmsDeliveryRecapService::getTimeWindow($date);
+
+        $query = WmsPalletForm::with(['position.rack.warehouse', 'details'])
+            ->where(function ($q) use ($date, $startTime, $endTime) {
+                $q->where('prod_date', $date)
+                  ->orWhereBetween('created_at', [$startTime, $endTime]);
+            })
+            ->where(function ($q) use ($itemCode) {
+                $q->where('part_no', $itemCode)
+                  ->orWhereHas('details', function ($d) use ($itemCode) {
+                      $d->where('part_no', $itemCode);
+                  });
+            });
+
+        $pallets = $query->orderBy('created_at', 'asc')->get();
+
+        // Prioritaskan pallet dengan shift yang cocok di urutan teratas tanpa menyembunyikan pallet lainnya
+        if (! empty($shift)) {
+            $pallets = $pallets->sortByDesc(function ($p) use ($shift) {
+                return ((int) $p->delivery_shift === (int) $shift) ? 1 : 0;
+            })->values();
+        }
+
+        $receivedLogs = ProductionStoreHandoverLog::whereIn('pallet_id', $pallets->pluck('pallet_id'))
+            ->get()
+            ->keyBy('pallet_id');
+
+        return $pallets->map(function ($pallet) use ($receivedLogs, $itemCode) {
+            $log = $receivedLogs->get($pallet->pallet_id);
+            $isReceived = $log !== null;
+
+            if ($pallet->part_no === 'MIXED') {
+                $itemDetails = $pallet->details->where('part_no', $itemCode);
+                $boxCount = $itemDetails->count();
+                $qtyPcs = (int) $itemDetails->sum('qty');
+            } else {
+                $boxCount = (int) $pallet->box_qty;
+                $qtyPcs = (int) $pallet->total_pallet_qty;
+            }
+
+            $rackLocation = null;
+            if ($pallet->position && $pallet->position->rack) {
+                $rackLocation = $pallet->position->rack->name . '-' . $pallet->position->code;
+            }
+
+            return [
+                'pallet_id' => $pallet->pallet_id,
+                'part_no' => $pallet->part_no,
+                'model_name' => $pallet->model_name,
+                'delivery_name' => $pallet->delivery_name ?: 'Delivery',
+                'delivery_shift' => $pallet->delivery_shift,
+                'created_at' => $pallet->created_at,
+                'created_time_formatted' => $pallet->created_at ? $pallet->created_at->format('H:i') : '-',
+                'box_count' => $boxCount,
+                'qty_pcs' => $qtyPcs,
+                'is_received' => $isReceived,
+                'received_by_name' => $log?->verified_by_name,
+                'received_at' => $log?->created_at,
+                'received_at_formatted' => $log?->created_at ? $log->created_at->format('H:i') : null,
+                'position_id' => $pallet->position_id,
+                'rack_location' => $rackLocation,
+                'is_putaway' => ! empty($pallet->position_id),
+                'details' => $pallet->details->map(fn ($d) => [
+                    'label' => $d->label,
+                    'spk_no' => $d->spk_no,
+                    'qty' => (int) $d->qty,
+                ])->toArray(),
+            ];
+        })->toArray();
     }
 
     /**
@@ -220,6 +390,17 @@ class ProductionStoreHandoverService
         // Stats dihitung dari seluruh data yang terfilter (sebelum paginasi)
         $allItems = (clone $baseQuery)->get();
 
+        [$startTime, $endTime] = WmsDeliveryRecapService::getTimeWindow($date);
+        $windowPallets = WmsPalletForm::with(['details'])->where(function ($q) use ($date, $startTime, $endTime) {
+            $q->where('prod_date', $date)
+              ->orWhereBetween('created_at', [$startTime, $endTime]);
+        })->get();
+
+        $receivedPalletMap = ProductionStoreHandoverLog::whereIn('pallet_id', $windowPallets->pluck('pallet_id'))
+            ->pluck('pallet_id')
+            ->flip()
+            ->toArray();
+
         $stats = [
             'total_items' => $allItems->count(),
             'total_actual_qty' => $allItems->sum('operator_actual_qty'),
@@ -230,6 +411,8 @@ class ProductionStoreHandoverService
             'total_in_transit_boxes' => $allItems->sum(fn ($i) => $i->in_transit_boxes),
             'total_in_transit_qty' => $allItems->sum(fn ($i) => $i->in_transit_qty),
             'completed_items_count' => $allItems->where('status', 'COMPLETED')->count(),
+            'total_pallets_count' => $windowPallets->count(),
+            'received_pallets_count' => count($receivedPalletMap),
         ];
 
         $itemsQuery = (clone $baseQuery)->with(['logs'])
@@ -238,6 +421,23 @@ class ProductionStoreHandoverService
             ->orderBy('shift');
 
         $items = $perPage ? $itemsQuery->paginate($perPage) : $itemsQuery->get();
+
+        // Attach metric Pallet Form ke masing-masing item (mencocokkan part number tunggal maupun detail mixed pallet)
+        $itemsCollection = $items instanceof \Illuminate\Pagination\LengthAwarePaginator ? $items->getCollection() : $items;
+        foreach ($itemsCollection as $item) {
+            $matchingPallets = $windowPallets->filter(function ($p) use ($item) {
+                if ($p->part_no === $item->item_code) {
+                    return true;
+                }
+                if ($p->part_no === 'MIXED' || empty($p->part_no)) {
+                    return $p->details->contains('part_no', $item->item_code);
+                }
+                return false;
+            });
+
+            $item->pallet_forms_count = $matchingPallets->count();
+            $item->received_pallet_forms_count = $matchingPallets->filter(fn ($p) => isset($receivedPalletMap[$p->pallet_id]))->count();
+        }
 
         return [
             'items' => $items,

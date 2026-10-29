@@ -14,7 +14,7 @@ class WmsDeliveryRecapService
      */
     public static function getCurrentProductionDate(): string
     {
-        $now = now();
+        $now = now('Asia/Jakarta');
         if ($now->format('H:i:s') < '07:30:00') {
             return $now->copy()->subDay()->format('Y-m-d');
         }
@@ -24,26 +24,27 @@ class WmsDeliveryRecapService
 
     /**
      * Hitung rentang waktu DateTime cutoff [start, end]:
-     * Tanggal D dimulai pada: D 07:30:00
-     * Berakhir pada: (D + 1 hari) 07:29:59
+     * Tanggal D dimulai pada: D 07:30:00 WIB
+     * Berakhir pada: (D + 1 hari) 07:29:59 WIB
      */
     public static function getTimeWindow(string $selectedDate): array
     {
-        $start = Carbon::parse($selectedDate)->setTime(7, 30, 0);
-        $end = Carbon::parse($selectedDate)->addDay()->setTime(7, 29, 59);
+        $appTz = config('app.timezone', 'UTC');
+        $start = Carbon::parse($selectedDate . ' 07:30:00', 'Asia/Jakarta')->setTimezone($appTz);
+        $end = Carbon::parse($selectedDate . ' 07:30:00', 'Asia/Jakarta')->addDay()->subSecond()->setTimezone($appTz);
 
         return [$start, $end];
     }
 
     /**
-     * Menentukan shift secara akurat berdasarkan waktu scan/dibuat:
+     * Menentukan shift secara akurat berdasarkan waktu scan/dibuat (WIB):
      * - Shift 1: 07:30:00 s/d 15:29:59
      * - Shift 2: 15:30:00 s/d 23:29:59
      * - Shift 3: 23:30:00 s/d 07:29:59 (besoknya)
      */
     public static function determineShiftFromTime(Carbon $dateTime): int
     {
-        $time = $dateTime->format('H:i:s');
+        $time = $dateTime->copy()->setTimezone('Asia/Jakarta')->format('H:i:s');
         if ($time >= '07:30:00' && $time < '15:30:00') {
             return 1;
         }
