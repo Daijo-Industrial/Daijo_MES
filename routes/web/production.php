@@ -144,6 +144,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/production-output-log/print/{id}', [DashboardController::class, 'printOutputLog'])->name('production.output-log.print');
 
     Route::put('/daily-item-codes/{id}/temporal-cavity', [DashboardController::class, 'updateTemporalCavity'])->name('daily-item-codes.updatecavity');
+    Route::put('/daily-item-codes/{id}/cycle-time-cavity', [DashboardController::class, 'updateCycleTimeAndCavity'])->name('daily-item-codes.updateCycleTimeCavity');
     Route::put('/daily-item-codes/{id}/resin-usage', [DashboardController::class, 'updateResinUsage'])->name('daily-item-codes.updateresin');
     Route::post('/daily-item-codes/update-remark/{id}', [DashboardController::class, 'updateRemarkDIC']);
 

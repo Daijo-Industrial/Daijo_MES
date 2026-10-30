@@ -695,12 +695,7 @@ class DashboardController extends Controller
             $temporal = $dic->temporal_cycle_time ?? null;
 
             if (! is_null($temporal) && is_numeric($temporal) && $temporal != 0) {
-                $cavity = max((int) ($dic->temporal_cavity ?? $dic->masterItem?->cavity ?? 0), 1);
-                $calculatedTarget = floor(3600 / $temporal) * $cavity;
-                if ($cavity === 1 && (! empty($dic->masterItem?->pair) || ! empty($dic->masterFg?->pair))) {
-                    $calculatedTarget *= 2;
-                }
-                $remark->target = $calculatedTarget;
+                $remark->target = (int) (floor(3600 / $temporal) * $dic->effective_cavity);
             }
 
             $remark->is_achieve = (! is_null($remark->actual_production)
@@ -1566,16 +1561,7 @@ class DashboardController extends Controller
             $target = 0;
         }
 
-        if (
-            ! empty($activeDIC->master_item?->pair) ||
-            ! empty($activeDIC->master_fg?->pair)
-        ) {
-            $target *= 2;
-        }
-
-        // if ($activeDIC->master_item?->cavity == 2) {
-        //     $target *= 2;
-        // }
+        $target *= $activeDIC->effective_cavity;
 
         // Validasi dasar inputan
         $request->validate([
@@ -2641,9 +2627,11 @@ class DashboardController extends Controller
             'temporal_cycle_time' => 'required|string|max:255',
         ]);
 
-        $record = DailyItemCode::findOrFail($id);
+        $record = DailyItemCode::with(['masterItem', 'masterFg', 'hourlyRemarks'])->findOrFail($id);
         $record->temporal_cycle_time = $request->temporal_cycle_time;
         $record->save();
+
+        $this->recalculateRemarksTargetForDaily($record);
 
         if ($request->ajax()) {
             return response()->json([
@@ -2819,13 +2807,8 @@ class DashboardController extends Controller
                 }
             }
 
-            // Apply cavity & pair multiplier (consistent with scan() & index())
-            $cavity = max((int) ($daily->temporal_cavity ?? $daily->masterItem?->cavity ?? 0), 1);
-            if ($cavity > 1) {
-                $target *= $cavity;
-            } elseif (! empty($daily->masterItem?->pair) || ! empty($daily->masterFg?->pair)) {
-                $target *= 2;
-            }
+            // Apply cavity multiplier (consistent with scan() & index())
+            $target *= $daily->effective_cavity;
         }
 
         $exists = HourlyRemark::where('dic_id', $dicId)
@@ -2948,9 +2931,14 @@ class DashboardController extends Controller
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i',
             'quantity' => 'required|integer|min:0',
+            'temporal_cycle_time' => 'nullable|numeric|min:0.1',
+            'temporal_cavity' => 'nullable|integer|min:1',
             'pic' => 'nullable|string|max:255',
             'auto_generate_slots' => 'nullable|boolean',
         ]);
+
+        $masterItem = MasterListItem::where('item_code', $validated['item_code'])->first();
+        $sapFg = sapInventoryFg::where('item_code', $validated['item_code'])->first();
 
         // Masukin ke tabel DailyItemCode
         $daily = new DailyItemCode;
@@ -2968,7 +2956,28 @@ class DashboardController extends Controller
         $daily->schedule_date = $validated['start_schedule_date'];
         $daily->is_done = null;
         $daily->remark = null;
-        $daily->temporal_cycle_time = null;
+
+        // Auto-assign cycle time & cavity if provided or fallback to master data
+        if ($request->filled('temporal_cycle_time')) {
+            $daily->temporal_cycle_time = $request->input('temporal_cycle_time');
+        } elseif (! empty($masterItem?->cycle_time)) {
+            $daily->temporal_cycle_time = $masterItem->cycle_time;
+        } elseif (! empty($sapFg?->cycle_time)) {
+            $daily->temporal_cycle_time = $sapFg->cycle_time * 60;
+        } else {
+            $daily->temporal_cycle_time = null;
+        }
+
+        if ($request->filled('temporal_cavity')) {
+            $daily->temporal_cavity = (int) $request->input('temporal_cavity');
+        } elseif (! empty($masterItem?->cavity)) {
+            $daily->temporal_cavity = (int) $masterItem->cavity;
+        } elseif (! empty($sapFg?->cavity)) {
+            $daily->temporal_cavity = (int) $sapFg->cavity;
+        } else {
+            $daily->temporal_cavity = 1;
+        }
+
         $daily->save();
 
         // Otomatis buat 8 slot jam shift jika dicentang dan operator dipilih
@@ -3041,13 +3050,8 @@ class DashboardController extends Controller
             }
         }
 
-        // Apply cavity & pair multiplier
-        $cavity = max((int) ($daily->temporal_cavity ?? $daily->masterItem?->cavity ?? 0), 1);
-        if ($cavity > 1) {
-            $target *= $cavity;
-        } elseif (! empty($daily->masterItem?->pair) || ! empty($daily->masterFg?->pair)) {
-            $target *= 2;
-        }
+        // Apply cavity multiplier
+        $target *= $daily->effective_cavity;
 
         $slots = match ($shift) {
             1 => [
@@ -3183,11 +3187,13 @@ class DashboardController extends Controller
         ]);
 
         // Ambil record
-        $dailyItemCode = DailyItemCode::findOrFail($id);
+        $dailyItemCode = DailyItemCode::with(['masterItem', 'masterFg', 'hourlyRemarks'])->findOrFail($id);
 
         // Update field temporal_cavity
         $dailyItemCode->temporal_cavity = $validated['temporal_cavity'];
         $dailyItemCode->save();
+
+        $this->recalculateRemarksTargetForDaily($dailyItemCode);
 
         if ($request->ajax()) {
             return response()->json([
@@ -3197,6 +3203,54 @@ class DashboardController extends Controller
         }
 
         return redirect()->back()->with('success', 'Temporal cavity berhasil diperbarui.');
+    }
+
+    // function untuk update cycle time dan cavity sekaligus dari admin operator
+    public function updateCycleTimeAndCavity(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'temporal_cycle_time' => 'required|numeric|min:0.1',
+            'temporal_cavity' => 'nullable|integer|min:1',
+        ]);
+
+        $daily = DailyItemCode::with(['masterItem', 'masterFg', 'hourlyRemarks'])->findOrFail($id);
+        $daily->temporal_cycle_time = $validated['temporal_cycle_time'];
+        $daily->temporal_cavity = $validated['temporal_cavity'] ?? 1;
+        $daily->save();
+
+        $this->recalculateRemarksTargetForDaily($daily);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Cycle time dan cavity berhasil diperbarui. Target jam otomatis disesuaikan.',
+                'temporal_cycle_time' => $daily->temporal_cycle_time,
+                'temporal_cavity' => $daily->temporal_cavity,
+            ]);
+        }
+
+        return redirect()->back()->with('message', 'Cycle time dan cavity berhasil diperbarui. Target jam otomatis disesuaikan.');
+    }
+
+    /**
+     * Helper to recalculate hourly remark targets for a DailyItemCode
+     */
+    protected function recalculateRemarksTargetForDaily(DailyItemCode $daily): void
+    {
+        $temporal = (float) ($daily->temporal_cycle_time ?? 0);
+        if ($temporal <= 0) {
+            return;
+        }
+
+        $newTarget = (int) (floor(3600 / $temporal) * $daily->effective_cavity);
+
+        foreach ($daily->hourlyRemarks as $remark) {
+            $remark->target = $newTarget;
+            if (! is_null($remark->actual_production)) {
+                $remark->is_achieve = ($newTarget > 0 && $remark->actual_production >= $newTarget) ? 1 : 0;
+            }
+            $remark->save();
+        }
     }
 
     // function untuk update resin usage oleh operator per shift per itemcode

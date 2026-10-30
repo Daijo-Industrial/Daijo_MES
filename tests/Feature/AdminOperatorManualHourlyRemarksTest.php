@@ -401,4 +401,134 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
         $this->assertEquals('Fixed target to 144', $slot->remark);
         $this->assertEquals(1, $slot->is_achieve);
     }
+
+    public function test_admin_operator_can_create_daily_item_with_cycle_time_and_cavity(): void
+    {
+        $role = Role::create(['name' => 'OPERATOR']);
+        $user = User::create([
+            'name' => 'Mesin 0850D',
+            'email' => '0850d@daijo.co.id',
+            'password' => bcrypt('password'),
+            'role_id' => $role->id,
+        ]);
+        $this->actingAs($user);
+
+        $response = $this->post(route('dicadmin.store'), [
+            'user_id' => $user->id,
+            'item_code' => '401-7405A825',
+            'shift' => 3,
+            'start_schedule_date' => Carbon::today()->toDateString(),
+            'end_schedule_date' => Carbon::tomorrow()->toDateString(),
+            'start_time' => '23:30',
+            'end_time' => '07:30',
+            'quantity' => 1000,
+            'temporal_cycle_time' => 50,
+            'temporal_cavity' => 2,
+            'auto_generate_slots' => 1,
+            'pic' => 'U Fahmi Palahudin',
+        ]);
+
+        $response->assertRedirect();
+
+        $dic = DailyItemCode::where('item_code', '401-7405A825')->where('shift', 3)->first();
+        $this->assertNotNull($dic);
+        $this->assertEquals(50, $dic->temporal_cycle_time);
+        $this->assertEquals(2, $dic->temporal_cavity);
+
+        // 8 slot jam harus otomatis terbuat dengan target = 144 (3600 / 50 * 2)
+        $remarks = HourlyRemark::where('dic_id', $dic->id)->get();
+        $this->assertCount(8, $remarks);
+        foreach ($remarks as $remark) {
+            $this->assertEquals(144, $remark->target);
+        }
+    }
+
+    public function test_admin_operator_can_update_cycle_time_and_cavity_and_recalculate_targets(): void
+    {
+        $role = Role::create(['name' => 'OPERATOR']);
+        $user = User::create([
+            'name' => 'Mesin 0850D',
+            'email' => '0850d@daijo.co.id',
+            'password' => bcrypt('password'),
+            'role_id' => $role->id,
+        ]);
+        $this->actingAs($user);
+
+        $dic = DailyItemCode::create([
+            'user_id' => $user->id,
+            'item_code' => '401-TEST-ITEM',
+            'shift' => 1,
+            'temporal_cycle_time' => 60,
+            'temporal_cavity' => 1,
+        ]);
+
+        $remark1 = HourlyRemark::create([
+            'dic_id' => $dic->id,
+            'start_time' => '07:30:00',
+            'end_time' => '08:30:00',
+            'target' => 60, // 3600 / 60 * 1
+            'actual_production' => 120,
+            'pic' => 'Operator A',
+        ]);
+
+        // Update cycle time jadi 50 dan cavity jadi 2 -> Target harus jadi 144 (3600 / 50 * 2)
+        $response = $this->put(route('daily-item-codes.updateCycleTimeCavity', $dic->id), [
+            'temporal_cycle_time' => 50,
+            'temporal_cavity' => 2,
+        ]);
+
+        $response->assertRedirect();
+
+        $dic->refresh();
+        $this->assertEquals(50, $dic->temporal_cycle_time);
+        $this->assertEquals(2, $dic->temporal_cavity);
+
+        $remark1->refresh();
+        $this->assertEquals(144, $remark1->target);
+    }
+
+    public function test_updating_cavity_to_one_on_paired_item_produces_single_cavity_target(): void
+    {
+        $role = Role::create(['name' => 'OPERATOR']);
+        $user = User::create([
+            'name' => 'Mesin 0850D',
+            'email' => 'mesin_paired@daijo.co.id',
+            'password' => bcrypt('password'),
+            'role_id' => $role->id,
+        ]);
+        $this->actingAs($user);
+
+        $dic = DailyItemCode::create([
+            'user_id' => $user->id,
+            'item_code' => '401-62040-C000P',
+            'shift' => 1,
+            'temporal_cycle_time' => 95,
+            'temporal_cavity' => 2,
+        ]);
+
+        $remark = HourlyRemark::create([
+            'dic_id' => $dic->id,
+            'start_time' => '07:30:00',
+            'end_time' => '08:30:00',
+            'target' => 74,
+            'actual_production' => 37,
+            'pic' => 'Egi Gustian',
+        ]);
+
+        // When user changes cavity to 1:
+        $response = $this->put(route('daily-item-codes.updateCycleTimeCavity', $dic->id), [
+            'temporal_cycle_time' => 95,
+            'temporal_cavity' => 1,
+        ]);
+
+        $response->assertRedirect();
+
+        $dic->refresh();
+        $this->assertEquals(1, $dic->temporal_cavity);
+        $this->assertEquals(1, $dic->effective_cavity);
+
+        $remark->refresh();
+        $this->assertEquals(37, $remark->target);
+        $this->assertEquals(1, $remark->is_achieve);
+    }
 }
