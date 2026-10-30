@@ -7,6 +7,7 @@ use App\Services\ReceiptProductionService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -41,6 +42,8 @@ class ReceiptProductionLogs extends Component
     public array $selectedLogs = [];
 
     public bool $selectAll = false;
+
+    public ?array $activeErrorModal = null;
 
     public function mount(): void
     {
@@ -159,6 +162,10 @@ class ReceiptProductionLogs extends Component
                 'updated_at' => now(),
             ]);
 
+        if ($this->activeErrorModal && ($this->activeErrorModal['summary_id'] ?? null) === $id) {
+            $this->activeErrorModal = null;
+        }
+
         $this->clearStatsCache();
         $this->dispatch('push-notification', ['status' => 'success', 'message' => 'SPK berhasil diabaikan']);
     }
@@ -173,6 +180,10 @@ class ReceiptProductionLogs extends Component
                 'updated_at' => now(),
             ]);
 
+        if ($this->activeErrorModal && ($this->activeErrorModal['summary_id'] ?? null) === $id) {
+            $this->activeErrorModal = null;
+        }
+
         $this->clearStatsCache();
         $this->dispatch('push-notification', ['status' => 'success', 'message' => 'SPK direset ke pending']);
     }
@@ -186,6 +197,10 @@ class ReceiptProductionLogs extends Component
                 'sap_sent_at' => now(),
                 'updated_at' => now(),
             ]);
+
+        if ($this->activeErrorModal && ($this->activeErrorModal['summary_id'] ?? null) === $id) {
+            $this->activeErrorModal = null;
+        }
 
         $this->clearStatsCache();
         $this->dispatch('push-notification', ['status' => 'success', 'message' => 'SPK berhasil ditandai sebagai sukses']);
@@ -303,6 +318,10 @@ class ReceiptProductionLogs extends Component
             if ($locked) {
                 // Dispatch job background
                 PushSingleReceiptProductionJob::dispatch($summaryId);
+
+                if ($this->activeErrorModal && ($this->activeErrorModal['summary_id'] ?? null) === $summaryId) {
+                    $this->activeErrorModal = null;
+                }
 
                 $this->clearStatsCache();
 
@@ -589,11 +608,97 @@ class ReceiptProductionLogs extends Component
                 ->toArray();
         }
 
+        // Lazy load error explanation dari api_logs untuk baris yang belum sukses (failed/pending)
+        $failedSpks = collect($paginatedLogs->items())
+            ->whereIn('sap_sent', [0, 2, 3])
+            ->pluck('spk_code')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $errorMap = [];
+        if (! empty($failedSpks) && \Illuminate\Support\Facades\Schema::hasTable('api_logs')) {
+            $errorLogs = DB::table('api_logs')
+                ->where('api_name', 'receipt_production')
+                ->where('status', 'failed')
+                ->where('message', 'not like', '%No unprocessed%')
+                ->where(function ($q) use ($failedSpks) {
+                    foreach ($failedSpks as $spk) {
+                        $q->orWhere('message', 'like', "%{$spk}%");
+                    }
+                })
+                ->orderBy('id', 'desc')
+                ->take(100)
+                ->get(['id', 'message', 'status_code', 'response_payload', 'created_at']);
+
+            foreach ($errorLogs as $el) {
+                foreach ($failedSpks as $spk) {
+                    if (! isset($errorMap[$spk]) && str_contains($el->message, $spk)) {
+                        $parsed = \App\Services\SapErrorParser::parse($el->message, $el->status_code, $spk);
+                        $parsed['log_id'] = $el->id;
+                        $parsed['logged_at'] = $el->created_at ? Carbon::parse($el->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i:s') : null;
+                        $errorMap[$spk] = $parsed;
+                    }
+                }
+            }
+        }
+
         foreach ($paginatedLogs->items() as $item) {
             $item->item_code = $itemCodesMap[$item->id] ?? '—';
+            $item->error_summary = $errorMap[$item->spk_code] ?? null;
         }
 
         return $paginatedLogs;
+    }
+
+    public function showErrorDetail(string $spkCode, int $summaryId): void
+    {
+        $summary = DB::table('production_summary')->where('id', $summaryId)->first();
+        if (! $summary) {
+            return;
+        }
+
+        $log = null;
+        if (\Illuminate\Support\Facades\Schema::hasTable('api_logs')) {
+            $log = DB::table('api_logs')
+                ->where('api_name', 'receipt_production')
+                ->where('status', 'failed')
+                ->where('message', 'like', "%{$spkCode}%")
+                ->latest('id')
+                ->first();
+        }
+
+        $parsed = \App\Services\SapErrorParser::parse($log?->message ?? null, $log?->status_code ?? null, $spkCode);
+
+        $itemCode = null;
+        if (Schema::hasTable('production_scanned_data')) {
+            $itemCode = DB::table('production_scanned_data')->where('summary_id', $summary->id)->value('item_code');
+        } elseif (Schema::hasTable('scanned_data')) {
+            $itemCode = DB::table('scanned_data')->where('summary_id', $summary->id)->value('item_code');
+        }
+
+        if (! $itemCode && Schema::hasTable('spk_masters')) {
+            $itemCode = DB::table('spk_masters')->where('spk_code', $spkCode)->value('item_code');
+        }
+
+        $this->activeErrorModal = [
+            'summary_id' => $summary->id,
+            'spk_code' => $spkCode,
+            'item_code' => $itemCode ?: '—',
+            'warehouse' => $summary->warehouse,
+            'total_quantity' => $summary->total_quantity,
+            'created_date' => $summary->created_date,
+            'sap_sent' => $summary->sap_sent,
+            'error' => $parsed,
+            'log_id' => $log?->id,
+            'logged_at' => $log?->created_at ? Carbon::parse($log->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i:s') : null,
+        ];
+    }
+
+    public function closeErrorModal(): void
+    {
+        $this->activeErrorModal = null;
     }
 
     public function getFilteredTotalQtyProperty()

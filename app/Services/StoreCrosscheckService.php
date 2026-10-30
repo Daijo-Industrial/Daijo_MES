@@ -79,14 +79,15 @@ class StoreCrosscheckService
     }
 
     /**
-     * Query dasar untuk data scan produksi dengan filter tanggal, plant, shift, status, dan search
+     * Query dasar untuk data scan produksi dengan filter tanggal, plant, shift, status, search, dan mesin
      */
     public function getBaseQuery(
         string $selectedDate,
         string $plant = 'ALL',
         string $shift = 'ALL',
         string $status = 'ALL',
-        string $search = ''
+        string $search = '',
+        string $machine = 'ALL'
     ): Builder {
         self::ensureSchema();
 
@@ -185,7 +186,46 @@ class StoreCrosscheckService
             });
         }
 
+        // 5. Filter Mesin Spesifik
+        if ($machine !== 'ALL' && ! empty(trim($machine))) {
+            $targetMachine = trim($machine);
+            $query->whereHas('dailyItemCode.user', function ($uq) use ($targetMachine) {
+                $uq->where('name', $targetMachine);
+            });
+        }
+
         return $query->orderBy('production_scanned_data.created_at', 'desc')->orderBy('production_scanned_data.id', 'desc');
+    }
+
+    /**
+     * Ambil daftar mesin aktif untuk tanggal dan plant terpilih
+     */
+    public function getAvailableMachines(string $selectedDate, string $plant = 'ALL'): array
+    {
+        [$startTime, $endTime] = $this->getTimeWindow($selectedDate);
+
+        $query = DailyItemCode::with('user')
+            ->where(function ($q) use ($startTime, $endTime, $selectedDate) {
+                $q->where('schedule_date', $selectedDate)
+                  ->orWhereBetween('created_at', [$startTime, $endTime]);
+            })
+            ->whereHas('user');
+
+        if (strtoupper($plant) === 'KARAWANG') {
+            $query->where(function ($q) {
+                $q->where('item_code', 'LIKE', 'K-%')
+                  ->orWhereHas('user', fn ($uq) => $uq->where('name', 'LIKE', 'K%'));
+            });
+        } elseif (strtoupper($plant) === 'KBN') {
+            $query->where(function ($q) {
+                $q->where('item_code', 'NOT LIKE', 'K-%')
+                  ->whereHas('user', fn ($uq) => $uq->where('name', 'NOT LIKE', 'K%'));
+            });
+        }
+
+        $names = $query->get()->pluck('user.name')->filter()->unique()->sort()->values()->toArray();
+
+        return array_values($names);
     }
 
     /**

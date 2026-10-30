@@ -20,6 +20,7 @@ class ProductionScanCrosscheckExport implements FromCollection, ShouldAutoSize, 
     protected string $shift;
     protected string $status;
     protected string $search;
+    protected string $machine;
     protected int $rowNum = 1;
 
     public function __construct(
@@ -27,13 +28,15 @@ class ProductionScanCrosscheckExport implements FromCollection, ShouldAutoSize, 
         string $plant = 'ALL',
         string $shift = 'ALL',
         string $status = 'ALL',
-        string $search = ''
+        string $search = '',
+        string $machine = 'ALL'
     ) {
         $this->selectedDate = $selectedDate;
         $this->plant = $plant;
         $this->shift = $shift;
         $this->status = $status;
         $this->search = $search;
+        $this->machine = $machine;
     }
 
     public function collection()
@@ -44,7 +47,8 @@ class ProductionScanCrosscheckExport implements FromCollection, ShouldAutoSize, 
             $this->plant,
             $this->shift,
             $this->status,
-            $this->search
+            $this->search,
+            $this->machine
         )->get();
     }
 
