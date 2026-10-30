@@ -293,7 +293,7 @@
                         <!-- Quantity per Label -->
                         <div>
                             <label for="quantity" class="block text-sm font-semibold text-slate-700 mb-2">Quantity per Label <span class="text-red-500">*</span></label>
-                            <input type="number" id="quantity" name="quantity" min="1" required placeholder="e.g. 80" class="block w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="number" id="quantity" name="quantity" min="0" required placeholder="0" value="{{ old('quantity', '') }}" class="block w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
 
                         <!-- Warehouse -->
@@ -779,6 +779,7 @@
                 hiddenItemCode.removeAttribute('data-part-weight');
                 hiddenItemCode.dispatchEvent(new Event('change', { bubbles: true }));
                 if (rhLhInput) rhLhInput.value = '';
+                if (quantityInput) quantityInput.value = '0';
 
                 searchInput.value = '';
                 searchInput.classList.remove('border-indigo-500', 'bg-indigo-50/20', 'text-indigo-950', 'font-bold');
@@ -928,7 +929,9 @@
                             warehouseInput.value = 'FFI';
                         }
                         if (stdPackInput && stdPackInput.value && parseInt(stdPackInput.value) > 0) {
-                            if (quantityInput) quantityInput.value = stdPackInput.value;
+                            if (quantityInput && (!quantityInput.value || quantityInput.value === '0')) {
+                                quantityInput.value = stdPackInput.value;
+                            }
                         }
                     } else {
                         cardDefault.classList.add('border-indigo-600', 'bg-indigo-50/40', 'text-indigo-900');
@@ -966,11 +969,10 @@
                     if (stdPackInput) stdPackInput.value = (itemStdPack && itemStdPack !== '0') ? itemStdPack : '';
                     if (partWeightInput) partWeightInput.value = (itemPartWeight && itemPartWeight !== '0') ? itemPartWeight : '';
 
-                    const selectedType = document.querySelector('input[name="barcode_type"]:checked')?.value;
-                    if (selectedType === 'vinfast' && itemStdPack && parseInt(itemStdPack) > 0) {
-                        if (quantityInput && (!quantityInput.value || quantityInput.value === '1')) {
-                            quantityInput.value = itemStdPack;
-                        }
+                    // Quantity default: otomatis ambil SNP dari master list item, jika kosong isi 0
+                    const snpQty = (itemStdPack && parseInt(itemStdPack, 10) > 0) ? parseInt(itemStdPack, 10) : 0;
+                    if (quantityInput) {
+                        quantityInput.value = snpQty;
                     }
 
                     if (!itemCode) {
@@ -1055,10 +1057,14 @@
 
             // Check if initial value exists
             const initCode = hiddenItemCode.value;
+            const existingQty = quantityInput ? quantityInput.value : '';
             if (initCode) {
                 const found = allItems.find(i => i.code === initCode);
                 if (found) {
                     selectItem(found);
+                    if (existingQty !== '') {
+                        quantityInput.value = existingQty;
+                    }
                 }
             }
         });

@@ -92,4 +92,21 @@ class DailyItemCode extends Model
     {
         return $this->hasMany(ProductionOutputLog::class, 'dic_id', 'id');
     }
+
+    public function getEffectiveCavityAttribute(): int
+    {
+        if (! is_null($this->temporal_cavity) && (int) $this->temporal_cavity > 0) {
+            return (int) $this->temporal_cavity;
+        }
+
+        if (! empty($this->masterItem?->cavity) && (int) $this->masterItem->cavity > 1) {
+            return (int) $this->masterItem->cavity;
+        }
+
+        if (! empty($this->masterItem?->pair) || ! empty($this->masterFg?->pair)) {
+            return 2;
+        }
+
+        return 1;
+    }
 }

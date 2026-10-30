@@ -170,7 +170,7 @@ class InitialBarcodeController extends Controller
         $request->validate([
             'item_code' => 'required|string',
             'spk_number' => 'required_unless:barcode_type,vinfast|nullable|string',
-            'quantity' => 'required|integer|min:1',
+            'quantity' => 'required|integer|min:0',
             'warehouse' => 'required|string',
             'start_label' => 'required|integer|min:1',
             'end_label' => 'required|integer|min:1|gte:start_label',

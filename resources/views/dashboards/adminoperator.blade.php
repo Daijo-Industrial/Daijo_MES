@@ -96,12 +96,28 @@
                         </div>
                     </div>
 
-                    <!-- Target Quantity Total -->
-                    <div class="mt-4">
-                        <label class="block font-semibold text-gray-700 text-sm">Target Quantity Total (pcs) <span class="text-red-500">*</span></label>
-                        <input type="number" name="quantity" min="0" required
-                            class="w-full border border-gray-300 rounded-xl p-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                            placeholder="Contoh: 800">
+                    <!-- Target Quantity Total, Cycle Time & Cavity -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        <div>
+                            <label class="block font-semibold text-gray-700 text-sm">Target Qty Total (pcs) <span class="text-red-500">*</span></label>
+                            <input type="number" name="quantity" min="0" required
+                                class="w-full border border-gray-300 rounded-xl p-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                placeholder="Contoh: 800">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-gray-700 text-sm">Cycle Time (detik)</label>
+                            <input type="number" step="0.1" name="temporal_cycle_time" min="0.1"
+                                class="w-full border border-gray-300 rounded-xl p-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                placeholder="Contoh: 50 (Otomatis master)">
+                            <span class="text-[10px] text-gray-500 block mt-0.5">Default dari master jika kosong</span>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-gray-700 text-sm">Cavity</label>
+                            <input type="number" name="temporal_cavity" min="1"
+                                class="w-full border border-gray-300 rounded-xl p-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                placeholder="Contoh: 1 atau 2">
+                            <span class="text-[10px] text-gray-500 block mt-0.5">Jumlah cavity (default 1 / master)</span>
+                        </div>
                     </div>
 
                     <!-- Opsi Auto Generate 8 Slot Jam Shift (Sangat berguna jika lupa shift 3) -->
@@ -371,6 +387,70 @@
             </div>
         </div>
 
+        <!-- ============================================================== -->
+        <!-- MODAL: Edit Cycle Time & Cavity Daily Item Code -->
+        <!-- ============================================================== -->
+        <div id="editCtCavityModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hidden p-4">
+            <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-3 pb-2 border-b">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-1.5">
+                            <span>⚙️</span> Setting Cycle Time & Cavity
+                        </h2>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            Item: <strong id="ct_item_code" class="text-blue-700"></strong> | <strong id="ct_shift" class="text-indigo-700"></strong>
+                        </p>
+                    </div>
+                    <button type="button" onclick="closeEditCtCavityModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold cursor-pointer">
+                        &times;
+                    </button>
+                </div>
+
+                <form id="editCtCavityForm" method="POST" action="">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="dic_id" id="ct_dic_id">
+
+                    <div class="space-y-4 my-4">
+                        <div>
+                            <label class="block font-semibold text-gray-700 text-sm mb-1">
+                                Temporal Cycle Time (detik) <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" step="0.1" name="temporal_cycle_time" id="ct_cycle_time_input" required min="0.1"
+                                class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold text-gray-800"
+                                placeholder="Contoh: 50">
+                            <span class="text-[11px] text-gray-500 mt-0.5 block">Waktu siklus cetakan dalam satuan detik</span>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-gray-700 text-sm mb-1">
+                                Temporal Cavity <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="temporal_cavity" id="ct_cavity_input" required min="1"
+                                class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold text-gray-800"
+                                placeholder="Contoh: 1 atau 2">
+                            <span class="text-[11px] text-gray-500 mt-0.5 block">Jumlah pcs per shoot (misal 2 untuk sepasang set LH & RH)</span>
+                        </div>
+
+                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+                            ℹ️ <strong>Auto-Recalculate:</strong> Mengubah nilai ini akan langsung mengkalkulasi ulang Target Jam seluruh slot produksi pada Shift ini.
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-3 border-t">
+                        <button type="button" onclick="closeEditCtCavityModal()"
+                            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition text-sm cursor-pointer">
+                            Batal
+                        </button>
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-xl transition shadow-sm text-sm cursor-pointer">
+                            💾 Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         @if ($datas->isEmpty())
             <div class="bg-white rounded-2xl p-8 text-center border border-gray-200 shadow-sm my-6">
                 <span class="text-4xl block mb-2">📭</span>
@@ -408,6 +488,7 @@
                                     <th class="px-4 py-3 text-left w-12">#</th>
                                     <th class="px-4 py-3 text-left">Item Code</th>
                                     <th class="px-4 py-3 text-left">Shift</th>
+                                    <th class="px-4 py-3 text-left">Cycle Time & Cavity</th>
                                     <th class="px-4 py-3 text-left">Start Time</th>
                                     <th class="px-4 py-3 text-left">End Time</th>
                                     <th class="px-4 py-3 text-left">Status</th>
@@ -444,6 +525,22 @@
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                                                     Shift {{ $item->shift ?? '-' }}
                                                 </span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <div class="flex items-center gap-1.5 flex-wrap">
+                                                    <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-xs font-bold" title="Cycle Time">
+                                                        ⏱️ {{ $item->temporal_cycle_time ? $item->temporal_cycle_time . 's' : '-' }}
+                                                    </span>
+                                                    <span class="bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded text-xs font-bold" title="Cavity">
+                                                        Cav: {{ $item->temporal_cavity ?? $item->masterItem?->cavity ?? 1 }}
+                                                    </span>
+                                                    <button type="button"
+                                                        onclick="openEditCtCavityModal({{ $item->id }}, '{{ addslashes($item->item_code) }}', {{ $item->shift }}, '{{ $item->temporal_cycle_time ?? '' }}', '{{ $item->temporal_cavity ?? ($item->masterItem?->cavity ?? 1) }}')"
+                                                        class="text-blue-600 hover:text-blue-800 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded transition cursor-pointer"
+                                                        title="Ubah Setting Cycle Time & Cavity">
+                                                        ⚙️ Edit
+                                                    </button>
+                                                </div>
                                             </td>
                                             <td class="px-4 py-3 text-xs text-gray-600">{{ $item->start_time ?? '-' }}</td>
                                             <td class="px-4 py-3 text-xs text-gray-600">{{ $item->end_time ?? '-' }}</td>
@@ -493,7 +590,7 @@
 
                                         {{-- Detail Hourly Remarks --}}
                                         <tr x-show="open" x-transition>
-                                            <td colspan="8" class="bg-gray-50/70 p-4 border-b">
+                                            <td colspan="9" class="bg-gray-50/70 p-4 border-b">
                                                 <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                                                     <div>
                                                         <h3 class="font-bold text-gray-800 text-sm flex items-center gap-2">
@@ -775,6 +872,24 @@
 
     function closeGenerateShiftModal() {
         document.getElementById('generateShiftModal').classList.add('hidden');
+    }
+
+    // Modal Edit Cycle Time & Cavity Daily Item
+    function openEditCtCavityModal(dicId, itemCode, shift, currentCt, currentCavity) {
+        document.getElementById('ct_dic_id').value = dicId;
+        document.getElementById('ct_item_code').textContent = itemCode;
+        document.getElementById('ct_shift').textContent = 'Shift ' + shift;
+        document.getElementById('ct_cycle_time_input').value = currentCt || '';
+        document.getElementById('ct_cavity_input').value = currentCavity || '1';
+
+        const form = document.getElementById('editCtCavityForm');
+        form.action = `/daily-item-codes/${dicId}/cycle-time-cavity`;
+
+        document.getElementById('editCtCavityModal').classList.remove('hidden');
+    }
+
+    function closeEditCtCavityModal() {
+        document.getElementById('editCtCavityModal').classList.add('hidden');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
