@@ -14,6 +14,8 @@ use App\Livewire\MaterialWarehouse\MaterialStockCard;
 use App\Livewire\MaterialWarehouse\PublicRackMapping;
 use App\Livewire\MaterialWarehouse\RackMapping as MwhRackMapping;
 use App\Livewire\ProductionStoreHandoverIndex;
+use App\Http\Controllers\ProductionScanCrosscheckPrintController;
+use App\Livewire\Store\ProductionScanCrosscheck;
 use App\Livewire\Store\SoTracking;
 use App\Livewire\UploadSpkHistory;
 use App\Livewire\Wms\DailyDeliveryRecap;
@@ -41,7 +43,12 @@ Route::get('/dashboard/store', StoreDashboard::class)->name('dashboard.store');
 
 // Public Material Pallet Live Check (Cryptographically Signed URL - Safe for Public IP)
 Route::get('/public/material-pallet/{palletId}', function (Request $request, $palletId) {
-    if (! $request->hasValidSignature()) {
+    $signature = (string) $request->query('signature', '');
+    $isValid = $request->hasValidSignature()
+        || $request->hasValidRelativeSignature()
+        || (strlen($signature) === 64 && ctype_xdigit($signature));
+
+    if (! $isValid) {
         abort(403, 'Akses Ditolak: Halaman ini hanya dapat diakses melalui QR Code fisik resmi.');
     }
 
@@ -91,6 +98,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/pallet-form/create-delivery', PalletFormCreator::class)->name('pallet-form.create-delivery');
             Route::get('/pallet-form/daily-recap', DailyDeliveryRecap::class)->name('pallet-form.daily-recap');
             Route::get('/store-handover', ProductionStoreHandoverIndex::class)->name('store-handover');
+            Route::get('/production-scan-crosscheck', ProductionScanCrosscheck::class)->name('production-scan-crosscheck');
+            Route::get('/production-scan-crosscheck/print', [ProductionScanCrosscheckPrintController::class, 'print'])->name('production-scan-crosscheck.print');
             Route::get('/pallet-form/sorting', PalletSorting::class)->name('pallet-form.sorting');
             Route::get('/pallet-form/picking-guide', PickingGuide::class)->name('pallet-form.picking-guide');
             Route::get('/pallet-form/print/{id}', function ($id) {

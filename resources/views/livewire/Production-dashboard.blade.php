@@ -375,9 +375,18 @@
                         <span class="font-bold text-amber-700 ml-1">{{ $shiftPersonnelAnalysis['total_repair_count'] ?? 0 }}x</span>
                         <span class="text-[10px] text-gray-400 font-mono">({{ number_format($shiftPersonnelAnalysis['total_repair_time_minutes'] ?? 0, 1) }}m)</span>
                     </div>
-                    <div class="px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-lg text-xs">
+                    <div class="px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-lg text-xs cursor-pointer select-none group hover:bg-orange-100/70 transition"
+                         x-data="{ showMinutes: false }"
+                         @click="showMinutes = !showMinutes"
+                         title="Klik untuk beralih antara Jam dan Menit">
                         <span class="text-gray-500 font-medium">Total Setup Time:</span>
-                        <span class="font-bold text-orange-700 ml-1">{{ number_format($shiftPersonnelAnalysis['total_setup_time_minutes'] ?? 0, 1) }}m</span>
+                        <span class="font-bold text-orange-700 ml-1" x-show="!showMinutes">
+                            {{ number_format($shiftPersonnelAnalysis['total_setup_time_hours'] ?? (($shiftPersonnelAnalysis['total_setup_time_minutes'] ?? 0) / 60), 1) }} jam
+                        </span>
+                        <span class="font-bold text-orange-700 ml-1" x-show="showMinutes" style="display: none;">
+                            {{ number_format($shiftPersonnelAnalysis['total_setup_time_minutes'] ?? 0, 1) }} menit
+                        </span>
+                        <span class="text-[10px] text-orange-500 ml-1 group-hover:underline" x-text="showMinutes ? '(klik utk jam)' : '(klik utk menit)'"></span>
                     </div>
                     <button 
                         @click="showShiftLogs = !showShiftLogs"
@@ -505,10 +514,48 @@
                                     <p class="text-base font-bold text-gray-800 mt-0.5">{{ number_format($shiftData['total_actual'] ?? 0) }}</p>
                                     <span class="text-[10px] text-gray-400">Target: {{ number_format($shiftData['total_target'] ?? 0) }}</span>
                                 </div>
-                                <div class="bg-white rounded-lg p-2.5 border border-gray-200 text-center">
-                                    <span class="text-[10px] font-medium text-gray-500 uppercase">Setup Downtime</span>
-                                    <p class="text-base font-bold text-orange-600 mt-0.5">{{ number_format($shiftData['total_setup_minutes'] ?? 0, 1) }}m</p>
-                                    <span class="text-[10px] text-gray-400">Adjust + Mould</span>
+                                <div class="bg-white rounded-lg p-2.5 border border-gray-200 text-center hover:border-orange-300 hover:bg-orange-50/20 transition cursor-pointer select-none group"
+                                     x-data="{ showMinutes: false }"
+                                     @click="showMinutes = !showMinutes"
+                                     title="Klik untuk beralih antara Jam dan Menit">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <span class="text-[10px] font-medium text-gray-500 uppercase">Setup Downtime</span>
+                                        <svg class="w-3 h-3 text-gray-400 group-hover:text-orange-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+
+                                    {{-- Tampilan Jam (Default) --}}
+                                    <div x-show="!showMinutes">
+                                        <p class="text-base font-bold text-orange-600 mt-0.5">
+                                            {{ number_format($shiftData['total_setup_hours'] ?? (($shiftData['total_setup_minutes'] ?? 0) / 60), 1) }} jam
+                                        </p>
+                                        <div class="text-[10px] text-gray-400 flex items-center justify-center gap-1">
+                                            <span>Adjust + Mould</span>
+                                            <span class="text-orange-500 font-semibold group-hover:underline">🔍 Detail</span>
+                                        </div>
+                                    </div>
+
+                                    {{-- Tampilan Menit (Saat Diklik) --}}
+                                    <div x-show="showMinutes" style="display: none;">
+                                        <p class="text-base font-bold text-orange-600 mt-0.5">
+                                            {{ number_format($shiftData['total_setup_minutes'] ?? 0, 1) }} menit
+                                        </p>
+                                        <div class="text-[9px] text-gray-500 font-medium">
+                                            <span>Adj: {{ number_format($shiftData['adjust_duration_minutes'] ?? 0, 1) }}m</span>
+                                            <span>• Mld: {{ number_format($shiftData['mould_change_duration_minutes'] ?? 0, 1) }}m</span>
+                                        </div>
+                                        <div class="mt-1 flex items-center justify-center gap-2">
+                                            <span class="text-[9px] text-orange-600 font-semibold group-hover:underline">
+                                                🔄 Kembali ke jam
+                                            </span>
+                                            <button type="button"
+                                                    @click.stop="showShiftLogs = true; activeLogTab = '{{ $shiftNum }}'"
+                                                    class="text-[9px] text-indigo-600 hover:text-indigo-800 font-semibold underline">
+                                                📋 Buka Log
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

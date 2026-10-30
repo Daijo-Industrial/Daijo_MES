@@ -881,5 +881,42 @@ class ProductionDashboardOptimizationTest extends TestCase
             ->assertDispatched('chartDataUpdated')
             ->assertDispatched('adjusterChartDataUpdated');
     }
+
+    public function test_shift_personnel_setup_downtime_hours_and_minutes_detail()
+    {
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::create([
+            'name' => 'Downtime Tester User',
+            'email' => 'downtime_tester@example.com',
+            'role_id' => $role->id,
+            'password' => bcrypt('password'),
+        ]);
+
+        $service = app(ProductionDashboardService::class);
+        $start = Carbon::parse('2026-10-30')->startOfDay();
+        $end = Carbon::parse('2026-10-30')->endOfDay();
+
+        $analysis = $service->getShiftPersonnelAnalysis($start, $end);
+
+        $this->assertIsArray($analysis);
+        $this->assertArrayHasKey('total_setup_time_minutes', $analysis);
+        $this->assertArrayHasKey('total_setup_time_hours', $analysis);
+
+        foreach ([1, 2, 3] as $shiftNum) {
+            $shift = $analysis['shifts'][$shiftNum];
+            $this->assertArrayHasKey('total_setup_minutes', $shift);
+            $this->assertArrayHasKey('total_setup_hours', $shift);
+            $this->assertEquals(round($shift['total_setup_minutes'] / 60, 1), $shift['total_setup_hours']);
+        }
+
+        // Livewire view renders 'Setup Downtime' with jam by default and toggle capability
+        $this->actingAs($user);
+        Livewire::test(ProductionDashboard::class)
+            ->assertOk()
+            ->assertSee('Setup Downtime')
+            ->assertSee('Total Setup Time:')
+            ->assertSee('jam');
+    }
 }
+
 
