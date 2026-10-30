@@ -10,12 +10,14 @@ use App\Models\StoreCrosscheckDailyReport;
 use App\Models\User;
 use App\Services\StoreCrosscheckService;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class ProductionScanCrosscheckTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected User $user;
     protected User $kbnMachine;
     protected User $krwMachine;
@@ -26,6 +28,13 @@ class ProductionScanCrosscheckTest extends TestCase
         parent::setUp();
 
         StoreCrosscheckService::ensureSchema();
+
+        ProductionScannedData::where('label', 'like', 'LABEL-%')
+            ->orWhere('label', 'like', 'SCAN-%')
+            ->orWhere('label', 'like', 'BATCH-%')
+            ->orWhere('label', 'like', 'SNAP-%')
+            ->forceDelete();
+        StoreCrosscheckDailyReport::where('report_date', $this->date)->delete();
 
         $role = Role::firstOrCreate(['name' => 'SUPER-ADMIN']);
         $this->user = User::factory()->create([
@@ -48,6 +57,34 @@ class ProductionScanCrosscheckTest extends TestCase
         ]);
     }
 
+    protected function createDic(array $attributes = []): DailyItemCode
+    {
+        return DailyItemCode::create(array_merge([
+            'user_id' => $this->kbnMachine->id,
+            'item_code' => 'ITEM-DEFAULT',
+            'quantity' => 100,
+            'actual_quantity' => 100,
+            'schedule_date' => $this->date,
+            'start_date' => $this->date,
+            'end_date' => $this->date,
+            'start_time' => '07:30:00',
+            'end_time' => '15:30:00',
+            'shift' => 1,
+        ], $attributes));
+    }
+
+    protected function createScan(array $attributes = []): ProductionScannedData
+    {
+        return ProductionScannedData::create(array_merge([
+            'spk_code' => 'SPK-DEFAULT',
+            'warehouse' => 'WH-KBN',
+            'quantity' => 50,
+            'label' => 'LABEL-' . uniqid(),
+            'user' => 'Operator',
+            'store_check_status' => 'PENDING',
+        ], $attributes));
+    }
+
     public function test_component_renders_successfully()
     {
         $this->actingAs($this->user);
@@ -64,16 +101,15 @@ class ProductionScanCrosscheckTest extends TestCase
         $this->actingAs($this->user);
 
         // KBN DIC & Scan
-        $dicKbn = DailyItemCode::create([
+        $dicKbn = $this->createDic([
             'user_id' => $this->kbnMachine->id,
             'item_code' => 'ITEM-KBN-001',
             'quantity' => 100,
             'actual_quantity' => 100,
-            'schedule_date' => $this->date,
             'shift' => 1,
         ]);
 
-        $scanKbn = ProductionScannedData::create([
+        $scanKbn = $this->createScan([
             'spk_code' => 'SPK-KBN-1',
             'dic_id' => $dicKbn->id,
             'item_code' => 'ITEM-KBN-001',
@@ -81,20 +117,18 @@ class ProductionScanCrosscheckTest extends TestCase
             'quantity' => 50,
             'label' => 'LABEL-KBN-01',
             'user' => 'Operator 1',
-            'store_check_status' => 'PENDING',
         ]);
 
         // Karawang DIC & Scan
-        $dicKrw = DailyItemCode::create([
+        $dicKrw = $this->createDic([
             'user_id' => $this->krwMachine->id,
             'item_code' => 'K-ITEM-KRW-002',
             'quantity' => 200,
             'actual_quantity' => 200,
-            'schedule_date' => $this->date,
             'shift' => 2,
         ]);
 
-        $scanKrw = ProductionScannedData::create([
+        $scanKrw = $this->createScan([
             'spk_code' => 'SPK-KRW-1',
             'dic_id' => $dicKrw->id,
             'item_code' => 'K-ITEM-KRW-002',
@@ -102,7 +136,6 @@ class ProductionScanCrosscheckTest extends TestCase
             'quantity' => 100,
             'label' => 'LABEL-KRW-01',
             'user' => 'Operator Karawang',
-            'store_check_status' => 'PENDING',
         ]);
 
         // Test KBN Tab
@@ -125,23 +158,21 @@ class ProductionScanCrosscheckTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $dic = DailyItemCode::create([
+        $dic = $this->createDic([
             'user_id' => $this->kbnMachine->id,
             'item_code' => 'ITEM-TEST-001',
             'quantity' => 50,
             'actual_quantity' => 50,
-            'schedule_date' => $this->date,
             'shift' => 1,
         ]);
 
-        $scan = ProductionScannedData::create([
+        $scan = $this->createScan([
             'spk_code' => 'SPK-TEST-1',
             'dic_id' => $dic->id,
             'item_code' => 'ITEM-TEST-001',
             'quantity' => 25,
             'label' => 'LABEL-TEST-01',
             'user' => 'Op 1',
-            'store_check_status' => 'PENDING',
         ]);
 
         // Mark as FOUND
@@ -175,23 +206,21 @@ class ProductionScanCrosscheckTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $dic = DailyItemCode::create([
+        $dic = $this->createDic([
             'user_id' => $this->kbnMachine->id,
             'item_code' => 'ITEM-BARCODE-01',
             'quantity' => 50,
             'actual_quantity' => 50,
-            'schedule_date' => $this->date,
             'shift' => 1,
         ]);
 
-        $scan = ProductionScannedData::create([
+        $scan = $this->createScan([
             'spk_code' => 'SPK-BARCODE-1',
             'dic_id' => $dic->id,
             'item_code' => 'ITEM-BARCODE-01',
             'quantity' => 50,
             'label' => 'SCAN-ME-12345',
             'user' => 'Op Scanner',
-            'store_check_status' => 'PENDING',
         ]);
 
         // Scan barcode
@@ -213,31 +242,28 @@ class ProductionScanCrosscheckTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $dic = DailyItemCode::create([
+        $dic = $this->createDic([
             'user_id' => $this->kbnMachine->id,
             'item_code' => 'ITEM-BATCH-01',
             'quantity' => 100,
             'actual_quantity' => 100,
-            'schedule_date' => $this->date,
             'shift' => 1,
         ]);
 
-        $scan1 = ProductionScannedData::create([
+        $scan1 = $this->createScan([
             'spk_code' => 'SPK-BATCH-1',
             'dic_id' => $dic->id,
             'item_code' => 'ITEM-BATCH-01',
             'quantity' => 50,
             'label' => 'BATCH-LABEL-1',
-            'store_check_status' => 'PENDING',
         ]);
 
-        $scan2 = ProductionScannedData::create([
+        $scan2 = $this->createScan([
             'spk_code' => 'SPK-BATCH-1',
             'dic_id' => $dic->id,
             'item_code' => 'ITEM-BATCH-01',
             'quantity' => 50,
             'label' => 'BATCH-LABEL-2',
-            'store_check_status' => 'PENDING',
         ]);
 
         // Batch mark selected
@@ -264,16 +290,15 @@ class ProductionScanCrosscheckTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $dic = DailyItemCode::create([
+        $dic = $this->createDic([
             'user_id' => $this->kbnMachine->id,
             'item_code' => 'ITEM-SNAP-01',
             'quantity' => 50,
             'actual_quantity' => 50,
-            'schedule_date' => $this->date,
             'shift' => 1,
         ]);
 
-        ProductionScannedData::create([
+        $this->createScan([
             'spk_code' => 'SPK-SNAP-1',
             'dic_id' => $dic->id,
             'item_code' => 'ITEM-SNAP-01',
@@ -312,5 +337,99 @@ class ProductionScanCrosscheckTest extends TestCase
         $response->assertSee('LAPORAN CROSSCHECK SCAN PRODUKSI KE STORE');
         $response->assertSee('PT DAIJO INDUSTRIAL');
         $response->assertSee('Diverifikasi Oleh (Checker Store)');
+    }
+
+    public function test_filter_by_machine()
+    {
+        $this->actingAs($this->user);
+
+        $opRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $machine2 = User::factory()->create([
+            'name' => 'MC-08',
+            'role_id' => $opRole->id,
+            'is_active' => true,
+        ]);
+
+        $dic1 = $this->createDic([
+            'user_id' => $this->kbnMachine->id, // MC-05
+            'item_code' => 'ITEM-MC05-01',
+            'quantity' => 50,
+            'actual_quantity' => 50,
+            'shift' => 1,
+        ]);
+
+        $dic2 = $this->createDic([
+            'user_id' => $machine2->id, // MC-08
+            'item_code' => 'ITEM-MC08-01',
+            'quantity' => 50,
+            'actual_quantity' => 50,
+            'shift' => 1,
+        ]);
+
+        $scan1 = $this->createScan([
+            'spk_code' => 'SPK-M1',
+            'dic_id' => $dic1->id,
+            'item_code' => 'ITEM-MC05-01',
+            'quantity' => 50,
+            'label' => 'LABEL-MC05-999',
+        ]);
+
+        $scan2 = $this->createScan([
+            'spk_code' => 'SPK-M2',
+            'dic_id' => $dic2->id,
+            'item_code' => 'ITEM-MC08-01',
+            'quantity' => 50,
+            'label' => 'LABEL-MC08-888',
+        ]);
+
+        // When machineFilter is ALL, see both
+        Livewire::test(ProductionScanCrosscheck::class, ['selectedDate' => $this->date, 'plantTab' => 'KBN'])
+            ->set('machineFilter', 'ALL')
+            ->assertSee('LABEL-MC05-999')
+            ->assertSee('LABEL-MC08-888');
+
+        // When machineFilter is MC-05, see only MC-05
+        Livewire::test(ProductionScanCrosscheck::class, ['selectedDate' => $this->date, 'plantTab' => 'KBN'])
+            ->set('machineFilter', 'MC-05')
+            ->assertSee('LABEL-MC05-999')
+            ->assertDontSee('LABEL-MC08-888');
+
+        // When machineFilter is MC-08, see only MC-08
+        Livewire::test(ProductionScanCrosscheck::class, ['selectedDate' => $this->date, 'plantTab' => 'KBN'])
+            ->set('machineFilter', 'MC-08')
+            ->assertSee('LABEL-MC08-888')
+            ->assertDontSee('LABEL-MC05-999');
+    }
+
+    public function test_custom_verifier_name_for_shared_account()
+    {
+        $this->actingAs($this->user);
+
+        $dic = $this->createDic([
+            'user_id' => $this->kbnMachine->id,
+            'item_code' => 'ITEM-VERIF-01',
+            'quantity' => 50,
+            'actual_quantity' => 50,
+            'shift' => 1,
+        ]);
+
+        $scan = $this->createScan([
+            'spk_code' => 'SPK-VERIF-1',
+            'dic_id' => $dic->id,
+            'item_code' => 'ITEM-VERIF-01',
+            'quantity' => 50,
+            'label' => 'LABEL-VERIF-01',
+        ]);
+
+        // When verifierName is set to 'Agus (Store)'
+        Livewire::test(ProductionScanCrosscheck::class, ['selectedDate' => $this->date, 'plantTab' => 'KBN'])
+            ->set('verifierName', 'Agus (Store)')
+            ->call('markFound', $scan->id);
+
+        $scan->refresh();
+        $this->assertEquals('FOUND', $scan->store_check_status);
+        $this->assertEquals('Agus (Store)', $scan->store_checked_by_name);
+        $this->assertEquals($this->user->id, $scan->store_checked_by);
+        $this->assertEquals('Agus (Store)', session('store_crosscheck_verifier_name'));
     }
 }

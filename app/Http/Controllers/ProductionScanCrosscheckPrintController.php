@@ -14,10 +14,11 @@ class ProductionScanCrosscheckPrintController extends Controller
         $plant = strtoupper($request->query('plant', 'KBN'));
         $shift = $request->query('shift', 'ALL');
         $status = $request->query('status', 'ALL');
+        $machine = $request->query('machine', 'ALL');
 
         $metrics = $service->getSummaryMetrics($selectedDate, $plant);
 
-        $items = $service->getBaseQuery($selectedDate, $plant, $shift, $status, '')
+        $items = $service->getBaseQuery($selectedDate, $plant, $shift, $status, '', $machine)
             ->orderBy('production_scanned_data.created_at', 'asc')
             ->get();
 

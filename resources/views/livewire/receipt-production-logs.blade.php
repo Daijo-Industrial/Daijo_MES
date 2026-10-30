@@ -320,6 +320,24 @@
                                     font-weight:700; padding:3px 10px; border-radius:20px;">
                             ✕ Gagal / Timeout
                         </span>
+                        @if(!empty($row->error_summary))
+                        <div style="margin-top:5px;">
+                            <button type="button"
+                                    wire:click="showErrorDetail('{{ $row->spk_code }}', {{ $row->id }})"
+                                    title="Klik untuk melihat diagnosa lengkap & solusi error ini"
+                                    style="background:{{ $row->error_summary['badge_bg'] }};
+                                           color:{{ $row->error_summary['badge_color'] }};
+                                           border:1px solid {{ $row->error_summary['badge_border'] }};
+                                           border-radius:4px; padding:3px 7px; font-size:9.5px; font-weight:700;
+                                           cursor:pointer; display:inline-flex; align-items:center; gap:4px;
+                                           max-width:140px; text-align:left; box-shadow:0 1px 2px rgba(0,0,0,0.05);
+                                           line-height:1.2; font-family:'IBM Plex Sans',sans-serif;">
+                                <span>{{ $row->error_summary['icon'] }}</span>
+                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $row->error_summary['badge_label'] }}</span>
+                                <span style="font-size:8px; opacity:0.75;">ℹ️</span>
+                            </button>
+                        </div>
+                        @endif
                         @else
                         <span style="background:#F0EDE8; color:#5A554E; font-size:10px;
                                     font-weight:700; padding:3px 10px; border-radius:20px;">
@@ -358,13 +376,24 @@
                             {{ $sentAt->format('d M Y') }}
                         </div>
                         @elseif($failed)
-                        <div style="display:flex; flex-direction:column; gap:2px;">
+                        <div style="display:flex; flex-direction:column; gap:3px;">
                             <span style="background:#FEE2E2; color:#EF4444; font-size:10px;
                                         font-weight:700; padding:2px 8px; border-radius:2px;
                                         display:inline-block; width:fit-content;">
-                                ✕ Gagal / Timeout
+                                ✕ Gagal Kirim
                             </span>
+                            @if(!empty($row->error_summary))
+                            <div wire:click="showErrorDetail('{{ $row->spk_code }}', {{ $row->id }})"
+                                 title="Klik untuk diagnosa & solusi lengkap"
+                                 style="font-size:10.5px; color:#B91C1C; font-weight:600; line-height:1.25; cursor:pointer;">
+                                {{ Str::limit($row->error_summary['user_message'], 75) }}
+                                <span style="font-size:9px; color:#4B5563; text-decoration:underline; display:block; margin-top:2px;">
+                                    🔍 Rincian Solusi &raquo;
+                                </span>
+                            </div>
+                            @else
                             <span style="font-size:10px; color:#9A9590;">Butuh pengecekan manual</span>
+                            @endif
                         </div>
                         @else
                         <div style="display:flex; flex-direction:column; gap:2px;">
@@ -547,6 +576,45 @@
                 <tr wire:key="detail-{{ $row->id }}" style="background:#F0F7FF; border-left:3px solid #1D4ED8;">
                     <td colspan="11" style="padding:0;">
                         <div style="padding:14px 20px;">
+                            {{-- Analisis Error SAP --}}
+                            @if(!empty($row->error_summary))
+                            <div style="background:#FFF5F5; border:1px solid #FECACA; border-left:4px solid #DC2626; border-radius:4px; padding:12px 16px; margin-bottom:14px; font-family:'IBM Plex Sans',sans-serif;">
+                                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <span style="font-size:20px;">{{ $row->error_summary['icon'] }}</span>
+                                        <div>
+                                            <div style="font-size:12px; font-weight:800; color:#991B1B;">
+                                                {{ $row->error_summary['title'] }}
+                                            </div>
+                                            <div style="font-size:10px; color:#7F1D1D; margin-top:1px;">
+                                                Kategori: <strong>{{ $row->error_summary['badge_label'] }}</strong>
+                                                @if(!empty($row->error_summary['bom_line']))
+                                                    • <span style="background:#FEE2E2; color:#991B1B; padding:1px 5px; border-radius:3px; font-weight:700;">Line BOM Komponen: #{{ $row->error_summary['bom_line'] }}</span>
+                                                @endif
+                                                @if(!empty($row->error_summary['logged_at']))
+                                                    • Tercatat pada {{ $row->error_summary['logged_at'] }} WIB
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button"
+                                            wire:click="showErrorDetail('{{ $row->spk_code }}', {{ $row->id }})"
+                                            style="background:#DC2626; color:#fff; border:none; border-radius:3px; padding:5px 12px; font-size:10px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">
+                                        <span>🔍</span>
+                                        <span>Panduan Solusi & Aksi</span>
+                                    </button>
+                                </div>
+
+                                <div style="background:#fff; border:1px solid #FED7D7; border-radius:3px; padding:8px 12px; margin-bottom:8px; font-size:11px; color:#1F2937; line-height:1.45;">
+                                    <strong style="color:#B91C1C;">Penyebab:</strong> {{ $row->error_summary['user_message'] }}
+                                </div>
+
+                                <div style="background:#FEF2F2; border-left:3px solid #F87171; padding:7px 12px; font-size:11px; color:#991B1B; line-height:1.45;">
+                                    <strong>💡 Rekomendasi Solusi:</strong> {{ $row->error_summary['action_recommendation'] }}
+                                </div>
+                            </div>
+                            @endif
+
                             <div style="font-size:10px; font-weight:700; color:#1D4ED8; letter-spacing:.1em;
                                         text-transform:uppercase; margin-bottom:10px;">
                                 📋 Detail Scanned Data — SPK {{ $row->spk_code }}
@@ -722,6 +790,171 @@
                            transition:all 0.2s; hover:background:#383531;">
                 ✕ Batal
             </button>
+        </div>
+    </div>
+    @endif
+
+    {{-- Modal Diagnosa Error SAP --}}
+    @if($activeErrorModal)
+    <div style="position:fixed; inset:0; background:rgba(15, 23, 42, 0.7); backdrop-filter:blur(2px); z-index:100;
+                display:flex; align-items:center; justify-content:center; padding:16px;"
+         wire:keydown.escape="closeErrorModal">
+        {{-- Click outside backdrop --}}
+        <div style="position:absolute; inset:0;" wire:click="closeErrorModal"></div>
+
+        <div style="position:relative; background:#fff; border-radius:8px; width:100%; max-width:680px; max-height:90vh;
+                    display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);
+                    overflow:hidden; border:1px solid #CBD5E1; font-family:'IBM Plex Sans',sans-serif; z-index:101;">
+            
+            {{-- Modal Header --}}
+            <div style="background:#1E293B; color:#fff; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #334155;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:26px; line-height:1;">{{ $activeErrorModal['error']['icon'] ?? '⚠️' }}</span>
+                    <div>
+                        <div style="font-size:15px; font-weight:800; letter-spacing:.02em; color:#F8FAFC;">
+                            Diagnosa Error SAP — SPK {{ $activeErrorModal['spk_code'] }}
+                        </div>
+                        <div style="font-size:11px; color:#94A3B8; margin-top:3px; display:flex; align-items:center; gap:6px;">
+                            <span>Kategori:</span>
+                            <span style="background:{{ $activeErrorModal['error']['badge_bg'] ?? '#FEF2F2' }}; color:{{ $activeErrorModal['error']['badge_color'] ?? '#991B1B' }}; border:1px solid {{ $activeErrorModal['error']['badge_border'] ?? '#FECACA' }}; padding:1px 6px; border-radius:3px; font-weight:700;">
+                                {{ $activeErrorModal['error']['badge_label'] ?? 'Error SAP' }}
+                            </span>
+                            @if(!empty($activeErrorModal['logged_at']))
+                                <span style="color:#64748B;">•</span>
+                                <span>Tercatat: {{ $activeErrorModal['logged_at'] }} WIB</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <button type="button"
+                        wire:click="closeErrorModal"
+                        style="background:transparent; border:none; color:#94A3B8; font-size:20px; cursor:pointer; line-height:1; padding:4px 8px; border-radius:4px; transition:all 0.2s;"
+                        title="Tutup (Esc)">
+                    ✕
+                </button>
+            </div>
+
+            {{-- Modal Body --}}
+            <div style="padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+                {{-- Info SPK & Produksi --}}
+                <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:12px 16px; display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; font-size:12px;">
+                    <div>
+                        <div style="font-size:10px; color:#64748B; font-weight:700; text-transform:uppercase; letter-spacing:.05em;">Nomor SPK</div>
+                        <div style="font-weight:700; color:#0F172A; font-family:'IBM Plex Mono',monospace; margin-top:2px;">
+                            {{ $activeErrorModal['spk_code'] }}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px; color:#64748B; font-weight:700; text-transform:uppercase; letter-spacing:.05em;">Part Number</div>
+                        <div style="font-weight:700; color:#0F172A; font-family:'IBM Plex Mono',monospace; margin-top:2px;">
+                            {{ $activeErrorModal['item_code'] ?? '—' }}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px; color:#64748B; font-weight:700; text-transform:uppercase; letter-spacing:.05em;">Total Output</div>
+                        <div style="font-weight:800; color:#1D4ED8; font-family:'IBM Plex Mono',monospace; margin-top:2px;">
+                            {{ number_format($activeErrorModal['total_quantity'] ?? 0) }} pcs
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px; color:#64748B; font-weight:700; text-transform:uppercase; letter-spacing:.05em;">Gudang / Tanggal</div>
+                        <div style="font-weight:600; color:#334155; margin-top:2px;">
+                            {{ $activeErrorModal['warehouse'] ?? '—' }} ({{ $activeErrorModal['created_date'] ?? '—' }})
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Penjelasan Masalah --}}
+                <div>
+                    <div style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                        <span>🚨</span>
+                        <span>Penyebab Masalah (Penjelasan Mudah Dipahami)</span>
+                    </div>
+                    <div style="background:#FFF5F5; border:1px solid #FECACA; border-left:4px solid #DC2626; border-radius:4px; padding:14px 16px;">
+                        <div style="font-size:13px; font-weight:800; color:#991B1B; margin-bottom:4px;">
+                            {{ $activeErrorModal['error']['title'] ?? 'Gagal Terhubung / Error SAP' }}
+                        </div>
+                        <div style="font-size:12.5px; color:#7F1D1D; line-height:1.55;">
+                            {{ $activeErrorModal['error']['user_message'] ?? 'Pesan error tidak teridentifikasi.' }}
+                        </div>
+                        @if(!empty($activeErrorModal['error']['bom_line']))
+                            <div style="margin-top:10px; font-size:11.5px; background:#FEE2E2; border:1px solid #FECACA; padding:4px 10px; border-radius:4px; display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#991B1B;">
+                                <span>🏷️</span>
+                                <span>Baris Komponen BOM di SAP: Line #{{ $activeErrorModal['error']['bom_line'] }}</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Rekomendasi Solusi --}}
+                <div>
+                    <div style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                        <span>💡</span>
+                        <span>Rekomendasi Langkah Penyelesaian</span>
+                    </div>
+                    <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-left:4px solid #16A34A; border-radius:4px; padding:14px 16px; font-size:12.5px; color:#166534; line-height:1.55;">
+                        {{ $activeErrorModal['error']['action_recommendation'] ?? 'Lakukan pengecekan manual pada SAP atau hubungi tim IT.' }}
+                    </div>
+                </div>
+
+                {{-- Detail Teknis / Raw Log (Collapsible via Alpine) --}}
+                <div x-data="{ showRaw: false }" style="border:1px solid #E2E8F0; border-radius:6px; overflow:hidden;">
+                    <button type="button"
+                            @click="showRaw = !showRaw"
+                            style="width:100%; background:#F8FAFC; border:none; padding:10px 14px; font-size:11px; font-weight:700; color:#64748B; text-align:left; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+                        <span style="display:flex; align-items:center; gap:6px;">
+                            <span>🔧</span>
+                            <span>Detail Teknis / Raw Log API (Untuk IT & Developer)</span>
+                        </span>
+                        <span x-text="showRaw ? '▲ Sembunyikan' : '▼ Tampilkan'"></span>
+                    </button>
+                    <div x-show="showRaw" style="padding:12px 14px; background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Mono',monospace; font-size:11px; line-height:1.45; max-height:180px; overflow-y:auto; word-break:break-all; border-top:1px solid #334155;">
+                        <div style="color:#94A3B8; margin-bottom:6px; font-size:10px;">
+                            // API Log ID: #{{ $activeErrorModal['log_id'] ?? 'N/A' }} | Status Code: {{ $activeErrorModal['error']['status_code'] ?? '-' }}
+                        </div>
+                        <div>{{ $activeErrorModal['error']['raw_message'] ?? 'Tidak ada data log mentah' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Modal Footer --}}
+            <div style="background:#F8FAFC; border-top:1px solid #E2E8F0; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                <div style="font-size:11px; color:#64748B;">
+                    Tindakan untuk SPK ini:
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    @if(!empty($activeErrorModal['summary_id']))
+                        <button type="button"
+                                wire:click="pushToSapManual({{ $activeErrorModal['summary_id'] }})"
+                                wire:confirm="Kirim ulang SPK {{ $activeErrorModal['spk_code'] }} ke SAP sekarang?"
+                                style="background:#2563EB; color:#fff; border:none; border-radius:4px; padding:7px 14px; font-size:11px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s; hover:background:#1D4ED8;">
+                            <span>🚀</span>
+                            <span>Kirim Ulang Sekarang</span>
+                        </button>
+
+                        <button type="button"
+                                wire:click="markAsSuccess({{ $activeErrorModal['summary_id'] }})"
+                                wire:confirm="Yakin SPK {{ $activeErrorModal['spk_code'] }} sudah sukses diposting manual di SAP? Status di MES akan ditandai sukses tanpa kirim ulang."
+                                style="background:#16A34A; color:#fff; border:none; border-radius:4px; padding:7px 12px; font-size:11px; font-weight:700; cursor:pointer; transition:all 0.2s; hover:background:#15803D;">
+                            ✓ Tandai Sukses
+                        </button>
+
+                        <button type="button"
+                                wire:click="markAsIgnored({{ $activeErrorModal['summary_id'] }})"
+                                wire:confirm="Abaikan SPK {{ $activeErrorModal['spk_code'] }} dari pengiriman SAP?"
+                                style="background:#9333EA; color:#fff; border:none; border-radius:4px; padding:7px 12px; font-size:11px; font-weight:700; cursor:pointer; transition:all 0.2s; hover:background:#7E22CE;">
+                            ⊘ Abaikan
+                        </button>
+                    @endif
+
+                    <button type="button"
+                            wire:click="closeErrorModal"
+                            style="background:#E2E8F0; color:#334155; border:none; border-radius:4px; padding:7px 14px; font-size:11px; font-weight:700; cursor:pointer; transition:all 0.2s; hover:background:#CBD5E1;">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
     @endif

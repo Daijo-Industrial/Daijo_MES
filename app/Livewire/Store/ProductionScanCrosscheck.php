@@ -21,11 +21,15 @@ class ProductionScanCrosscheck extends Component
     public string $selectedDate = '';
     public string $plantTab = 'KBN'; // 'KBN', 'KARAWANG', 'ALL'
     public string $shiftFilter = 'ALL'; // 'ALL', '1', '2', '3'
+    public string $machineFilter = 'ALL'; // 'ALL', or machine name (e.g. '1', 'K01')
     public string $statusFilter = 'ALL'; // 'ALL', 'PENDING', 'FOUND', 'NOT_FOUND'
     public string $search = '';
     public int $perPage = 50;
 
-    // Barcode Quick Scanner
+    // Verifikator / PIC Name (Khususnya jika memakai shared account seperti store01)
+    public string $verifierName = '';
+
+    // Barcode Quick Scanner (Disimpan untuk backward-compatibility/fitur masa depan)
     public string $barcodeInput = '';
     public ?array $scanFeedback = null;
     public bool $audioEnabled = true;
@@ -51,6 +55,7 @@ class ProductionScanCrosscheck extends Component
         'selectedDate' => ['except' => ''],
         'plantTab' => ['except' => 'KBN'],
         'shiftFilter' => ['except' => 'ALL'],
+        'machineFilter' => ['except' => 'ALL'],
         'statusFilter' => ['except' => 'ALL'],
         'search' => ['except' => ''],
     ];
@@ -63,7 +68,21 @@ class ProductionScanCrosscheck extends Component
             $this->selectedDate = $service->getCurrentProductionDate();
         }
 
+        // Ambil nama verifikator yang sebelumnya tersimpan di session browser
+        $savedVerifier = session('store_crosscheck_verifier_name');
+        if (empty($savedVerifier)) {
+            $authName = auth()->user()?->name ?? '';
+            $isGeneric = in_array(strtolower(trim($authName)), ['store01', 'store02', 'store_karawang', 'store', 'operator']);
+            $savedVerifier = $isGeneric ? '' : $authName;
+        }
+        $this->verifierName = $savedVerifier;
+
         $this->loadSavedSnapshot();
+    }
+
+    public function updatedVerifierName()
+    {
+        session(['store_crosscheck_verifier_name' => trim($this->verifierName)]);
     }
 
     public function updatedSelectedDate()
@@ -81,10 +100,18 @@ class ProductionScanCrosscheck extends Component
         $this->selectedBoxIds = [];
         $this->selectAll = false;
         $this->scanFeedback = null;
+        $this->machineFilter = 'ALL'; // Reset pilihan mesin saat berganti plant
         $this->loadSavedSnapshot();
     }
 
     public function updatedShiftFilter()
+    {
+        $this->resetPage();
+        $this->selectedBoxIds = [];
+        $this->selectAll = false;
+    }
+
+    public function updatedMachineFilter()
     {
         $this->resetPage();
         $this->selectedBoxIds = [];
@@ -108,6 +135,19 @@ class ProductionScanCrosscheck extends Component
     public function updatedPerPage()
     {
         $this->resetPage();
+    }
+
+    /**
+     * Dapatkan nama verifikator yang berlaku (input user atau fallback login)
+     */
+    public function getEffectiveVerifierName(): string
+    {
+        $clean = trim($this->verifierName);
+        if (! empty($clean)) {
+            return $clean;
+        }
+
+        return auth()->user()?->name ?: 'Store Operator';
     }
 
     public function setToday(StoreCrosscheckService $service)
@@ -174,8 +214,9 @@ class ProductionScanCrosscheck extends Component
      */
     public function markFound(int $id, StoreCrosscheckService $service)
     {
-        $service->updateStatus([$id], 'FOUND', auth()->id(), auth()->user()?->name);
-        $this->flashSuccess = "Box #{$id} berhasil ditandai: ADA DI STORE.";
+        $verifier = $this->getEffectiveVerifierName();
+        $service->updateStatus([$id], 'FOUND', auth()->id(), $verifier);
+        $this->flashSuccess = "Box #{$id} berhasil ditandai: ADA DI STORE (oleh: {$verifier}).";
 
         if ($this->audioEnabled) {
             $this->dispatch('play-scan-sound', sound: 'success');
@@ -187,8 +228,9 @@ class ProductionScanCrosscheck extends Component
      */
     public function markNotFound(int $id, StoreCrosscheckService $service)
     {
-        $service->updateStatus([$id], 'NOT_FOUND', auth()->id(), auth()->user()?->name);
-        $this->flashError = "Box #{$id} ditandai: TIDAK DITEMUKAN / HILANG.";
+        $verifier = $this->getEffectiveVerifierName();
+        $service->updateStatus([$id], 'NOT_FOUND', auth()->id(), $verifier);
+        $this->flashError = "Box #{$id} ditandai: TIDAK DITEMUKAN / HILANG (oleh: {$verifier}).";
 
         if ($this->audioEnabled) {
             $this->dispatch('play-scan-sound', sound: 'error');
@@ -225,7 +267,8 @@ class ProductionScanCrosscheck extends Component
                 $this->plantTab,
                 $this->shiftFilter,
                 $this->statusFilter,
-                $this->search
+                $this->search,
+                $this->machineFilter
             );
 
             // Ambil ID pada page ini
@@ -245,8 +288,9 @@ class ProductionScanCrosscheck extends Component
             return;
         }
 
-        $count = $service->updateStatus($this->selectedBoxIds, 'FOUND', auth()->id(), auth()->user()?->name);
-        $this->flashSuccess = "{$count} box berhasil ditandai: ADA DI STORE.";
+        $verifier = $this->getEffectiveVerifierName();
+        $count = $service->updateStatus($this->selectedBoxIds, 'FOUND', auth()->id(), $verifier);
+        $this->flashSuccess = "{$count} box berhasil ditandai: ADA DI STORE (oleh: {$verifier}).";
         $this->selectedBoxIds = [];
         $this->selectAll = false;
 
@@ -265,8 +309,9 @@ class ProductionScanCrosscheck extends Component
             return;
         }
 
-        $count = $service->updateStatus($this->selectedBoxIds, 'NOT_FOUND', auth()->id(), auth()->user()?->name);
-        $this->flashError = "{$count} box ditandai: TIDAK DITEMUKAN.";
+        $verifier = $this->getEffectiveVerifierName();
+        $count = $service->updateStatus($this->selectedBoxIds, 'NOT_FOUND', auth()->id(), $verifier);
+        $this->flashError = "{$count} box ditandai: TIDAK DITEMUKAN (oleh: {$verifier}).";
         $this->selectedBoxIds = [];
         $this->selectAll = false;
 
@@ -276,11 +321,11 @@ class ProductionScanCrosscheck extends Component
     }
 
     /**
-     * Tindakan Cepat: Tandai SEMUA yang masih PENDING pada filter tanggal & plant ini sebagai ADA
+     * Tindakan Cepat: Tandai SEMUA yang masih PENDING pada filter tanggal, plant & mesin ini sebagai ADA
      */
     public function markAllPendingAsFound(StoreCrosscheckService $service)
     {
-        $query = $service->getBaseQuery($this->selectedDate, $this->plantTab, $this->shiftFilter, 'PENDING', '');
+        $query = $service->getBaseQuery($this->selectedDate, $this->plantTab, $this->shiftFilter, 'PENDING', '', $this->machineFilter);
         $pendingIds = $query->pluck('id')->toArray();
 
         if (empty($pendingIds)) {
@@ -288,8 +333,9 @@ class ProductionScanCrosscheck extends Component
             return;
         }
 
-        $count = $service->updateStatus($pendingIds, 'FOUND', auth()->id(), auth()->user()?->name);
-        $this->flashSuccess = "Berhasil: {$count} box sisa otomatis ditandai ADA DI STORE!";
+        $verifier = $this->getEffectiveVerifierName();
+        $count = $service->updateStatus($pendingIds, 'FOUND', auth()->id(), $verifier);
+        $this->flashSuccess = "Berhasil: {$count} box sisa otomatis ditandai ADA DI STORE (oleh: {$verifier})!";
 
         if ($this->audioEnabled) {
             $this->dispatch('play-scan-sound', sound: 'success');
@@ -340,7 +386,7 @@ class ProductionScanCrosscheck extends Component
             $this->shiftFilter,
             $this->dailyNotes,
             auth()->id(),
-            auth()->user()?->name,
+            $this->getEffectiveVerifierName(),
             $this->reportStatus
         );
 
@@ -355,7 +401,8 @@ class ProductionScanCrosscheck extends Component
     public function exportExcel()
     {
         $plantTitle = $this->plantTab === 'ALL' ? 'ALL_PLANT' : $this->plantTab;
-        $filename = "Crosscheck_Store_{$plantTitle}_{$this->selectedDate}.xlsx";
+        $machineTitle = $this->machineFilter === 'ALL' ? '' : "_{$this->machineFilter}";
+        $filename = "Crosscheck_Store_{$plantTitle}{$machineTitle}_{$this->selectedDate}.xlsx";
 
         return Excel::download(
             new ProductionScanCrosscheckExport(
@@ -363,7 +410,8 @@ class ProductionScanCrosscheck extends Component
                 $this->plantTab,
                 $this->shiftFilter,
                 $this->statusFilter,
-                $this->search
+                $this->search,
+                $this->machineFilter
             ),
             $filename
         );
@@ -372,13 +420,15 @@ class ProductionScanCrosscheck extends Component
     public function render(StoreCrosscheckService $service)
     {
         $metrics = $service->getSummaryMetrics($this->selectedDate, $this->plantTab);
+        $machines = $service->getAvailableMachines($this->selectedDate, $this->plantTab);
 
         $query = $service->getBaseQuery(
             $this->selectedDate,
             $this->plantTab,
             $this->shiftFilter,
             $this->statusFilter,
-            $this->search
+            $this->search,
+            $this->machineFilter
         );
 
         $items = $query->paginate($this->perPage);
@@ -393,6 +443,7 @@ class ProductionScanCrosscheck extends Component
         return view('livewire.store.production-scan-crosscheck', [
             'items' => $items,
             'metrics' => $metrics,
+            'machines' => $machines,
             'currentProdDate' => $service->getCurrentProductionDate(),
         ])->layout('layouts.app');
     }

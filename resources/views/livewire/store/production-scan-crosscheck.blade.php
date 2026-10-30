@@ -39,13 +39,6 @@
         window.addEventListener('play-scan-sound', e => {
             playSound(e.detail.sound);
         });
-        window.addEventListener('keydown', e => {
-            if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-                e.preventDefault();
-                const scannerInput = document.getElementById('store-barcode-scanner');
-                if (scannerInput) scannerInput.focus();
-            }
-        });
      ">
 
     <!-- 1. Header & Date Logistics Bar -->
@@ -108,7 +101,7 @@
                     Export Excel
                 </button>
 
-                <a href="{{ route('wms.production-scan-crosscheck.print', ['date' => $selectedDate, 'plant' => $plantTab]) }}"
+                <a href="{{ route('wms.production-scan-crosscheck.print', ['date' => $selectedDate, 'plant' => $plantTab, 'machine' => $machineFilter]) }}"
                    target="_blank"
                    class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-slate-700 hover:bg-slate-800 text-white shadow-sm transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,7 +176,7 @@
         <div class="flex items-center gap-3">
             <label class="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-300 select-none">
                 <input type="checkbox" wire:model.live="audioEnabled" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-                <span>🔊 Bunyi Beep Scanner</span>
+                <span>🔊 Bunyi Beep</span>
             </label>
         </div>
     </div>
@@ -280,42 +273,7 @@
         </div>
     </div>
 
-    <!-- 4. Barcode Quick Scanner Bar (Physical Barcode Reader Handheld) -->
-    <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 rounded-2xl p-4 shadow-lg text-white">
-        <form wire:submit="scanBarcode" class="space-y-2">
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div class="flex items-center gap-2 text-white font-bold text-sm tracking-wide shrink-0">
-                    <span class="text-xl">📷</span>
-                    <span>SCAN BARCODE BOX:</span>
-                </div>
-                <div class="relative flex-1">
-                    <input type="text"
-                           id="store-barcode-scanner"
-                           wire:model="barcodeInput"
-                           autofocus
-                           placeholder="Arahkan barcode scanner ke label box (atau ketik nomor label lalu tekan Enter) ... Tekan '/' untuk fokus cepat"
-                           class="w-full pl-4 pr-10 py-2.5 rounded-xl border-0 bg-white/95 text-slate-900 font-mono text-sm placeholder-slate-400 shadow-inner focus:ring-2 focus:ring-white focus:bg-white transition" />
-                    <button type="submit"
-                            class="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition">
-                        Verifikasi
-                    </button>
-                </div>
-            </div>
-        </form>
-
-        <!-- Scanner Real-Time Feedback Strip -->
-        @if ($scanFeedback)
-            <div class="mt-3 p-3 rounded-xl flex items-center justify-between text-xs font-semibold {{ $scanFeedback['success'] ? 'bg-emerald-500/30 text-white border border-emerald-400/40' : 'bg-rose-500/30 text-white border border-rose-400/40' }}">
-                <div class="flex items-center gap-2">
-                    <span class="text-base">{{ $scanFeedback['success'] ? '✓' : '⚠️' }}</span>
-                    <span>{{ $scanFeedback['message'] }}</span>
-                </div>
-                <span class="text-[11px] opacity-80">Jam {{ $scanFeedback['timestamp'] }}</span>
-            </div>
-        @endif
-    </div>
-
-    <!-- 5. Toast / Flash Alerts -->
+    <!-- 4. Toast / Flash Alerts -->
     @if ($flashSuccess)
         <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
              class="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between">
@@ -338,11 +296,51 @@
         </div>
     @endif
 
-    <!-- 6. Filter & Batch Operations Strip -->
+    <!-- 5. Filter & Batch Operations Strip -->
     <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 space-y-3">
+        <!-- Verificator PIC Bar (Supports shared store01 account) -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50">
+            <div class="flex items-center gap-2.5">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                    👤
+                </span>
+                <div>
+                    <label class="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                        Nama PIC Verifikator Store:
+                    </label>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400">
+                        Nama ini akan tercatat di kolom "Verifikator Store" saat Anda klik checklist (Akun Login: <strong>{{ auth()->user()?->name ?: 'store01' }}</strong>)
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="text"
+                       wire:model.live.debounce.500ms="verifierName"
+                       placeholder="Ketik Nama Anda (cth: Agus / Budi)..."
+                       class="w-full sm:w-64 px-3 py-1.5 text-xs font-bold rounded-xl border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-slate-900 text-indigo-950 dark:text-indigo-200 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 shadow-xs" />
+                @if ($verifierName)
+                    <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                        ✓ Aktif
+                    </span>
+                @endif
+            </div>
+        </div>
+
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <!-- Left Filters -->
             <div class="flex flex-wrap items-center gap-2.5">
+                <!-- Machine Filter -->
+                <div class="flex items-center gap-1.5 text-xs text-slate-500">
+                    <span class="font-medium">Mesin:</span>
+                    <select wire:model.live="machineFilter"
+                            class="px-2.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                        <option value="ALL">Semua Mesin</option>
+                        @foreach ($machines as $m)
+                            <option value="{{ $m }}">{{ $m }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <!-- Shift Filter -->
                 <div class="flex items-center gap-1.5 text-xs text-slate-500">
                     <span class="font-medium">Shift:</span>
