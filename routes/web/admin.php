@@ -56,6 +56,7 @@ Route::post('/zone/update', [OperatorUserController::class, 'updateZone'])->name
 Route::get('adminoperator', [DashboardController::class, 'operatoradmin'])->middleware(['auth', 'verified'])->name('adminoperator');
 Route::delete('/hourly-remarks/{id}', [DashboardController::class, 'deleteremark'])->name('hourlyremarks.destroy');
 Route::post('/storedic', [DashboardController::class, 'createFromAdmin'])->name('dicadmin.store');
+Route::post('/adminoperator/generate-shift-remarks', [DashboardController::class, 'generateShiftHourlyRemarks'])->middleware(['auth', 'verified'])->name('adminoperator.generate-shift-remarks');
 Route::delete('/dailyitemcodesdelete/{id}', [DashboardController::class, 'deletedic'])->name('dailyitemcodes.delete');
 
 // ============================================

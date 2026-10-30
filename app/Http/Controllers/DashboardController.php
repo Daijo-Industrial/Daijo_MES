@@ -681,9 +681,13 @@ class DashboardController extends Controller
         $todayRemarks = HourlyRemark::whereHas(
             'dailyItemCode',
             fn ($q) => $q->where('user_id', $userId)
-                ->whereDate('schedule_date', $shiftDateA)
+                ->whereIn('schedule_date', [
+                    $shiftDateA,
+                    Carbon::yesterday('Asia/Jakarta')->toDateString(),
+                    Carbon::today('Asia/Jakarta')->toDateString(),
+                ])
         )
-            ->with('dailyItemCode.masterItem')
+            ->with(['dailyItemCode.masterItem', 'dailyItemCode.masterFg'])
             ->get();
 
         foreach ($todayRemarks as $remark) {
@@ -691,11 +695,16 @@ class DashboardController extends Controller
             $temporal = $dic->temporal_cycle_time ?? null;
 
             if (! is_null($temporal) && is_numeric($temporal) && $temporal != 0) {
-                $cavity = max((int) ($dic->temporal_cavity ?? $dic->masterItem->cavity ?? 0), 1);
-                $remark->target = floor(3600 / $temporal) * $cavity;
+                $cavity = max((int) ($dic->temporal_cavity ?? $dic->masterItem?->cavity ?? 0), 1);
+                $calculatedTarget = floor(3600 / $temporal) * $cavity;
+                if ($cavity === 1 && (! empty($dic->masterItem?->pair) || ! empty($dic->masterFg?->pair))) {
+                    $calculatedTarget *= 2;
+                }
+                $remark->target = $calculatedTarget;
             }
 
             $remark->is_achieve = (! is_null($remark->actual_production)
+                && $remark->target > 0
                 && $remark->actual_production >= $remark->target) ? 1 : 0;
 
             if ($remark->isDirty()) {
@@ -1144,6 +1153,7 @@ class DashboardController extends Controller
         $request->validate([
             'remark' => 'nullable|string',
             'actual_production' => 'nullable|integer|min:0',
+            'target' => 'nullable|integer|min:0',
             'pic' => 'nullable|string',
             'pic_2' => 'nullable|string',
             'pic_3' => 'nullable|string',
@@ -1156,6 +1166,9 @@ class DashboardController extends Controller
         if ($request->has('actual_production')) {
             $remark->actual_production = $request->actual_production;
         }
+        if ($request->has('target') && is_numeric($request->target)) {
+            $remark->target = (int) $request->target;
+        }
         if ($request->has('pic')) {
             $remark->pic = $request->pic;
         }
@@ -1165,6 +1178,11 @@ class DashboardController extends Controller
         if ($request->has('pic_3')) {
             $remark->pic_3 = $request->pic_3;
         }
+
+        if (! is_null($remark->actual_production)) {
+            $remark->is_achieve = ($remark->target > 0 && $remark->actual_production >= $remark->target) ? 1 : 0;
+        }
+
         $remark->save();
 
         if ($request->ajax()) {
@@ -2718,6 +2736,7 @@ class DashboardController extends Controller
 
         $slot = HourlyRemark::findOrFail($id);
         $slot->actual_production = $request->actual_production;
+        $slot->is_achieve = ($slot->target > 0 && $slot->actual_production >= $slot->target) ? 1 : 0;
         $slot->save();
 
         if ($request->ajax()) {
@@ -2762,33 +2781,55 @@ class DashboardController extends Controller
     // function untuk store hourly remark perjam
     public function storeHourlyRemark(Request $request)
     {
-        $activedic = json_decode($request->activedic, true);
-        $dicId = $activedic['id'];
-        $itemCode = $activedic['item_code'];
+        $activedic = $request->activedic ? json_decode($request->activedic, true) : null;
+        $dicId = $request->input('dic_id') ?: ($activedic['id'] ?? null);
+
+        if (! $dicId) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Daily Item Code tidak ditemukan.'], 422);
+            }
+            return back()->with('error', 'Daily Item Code tidak ditemukan.');
+        }
+
+        $daily = DailyItemCode::findOrFail($dicId);
+        $itemCode = $daily->item_code ?: ($activedic['item_code'] ?? null);
 
         $startTime = Carbon::parse($request->start_time);
-        $endTime = (clone $startTime)->addHour(); // 1 jam interval
+        $endTime = $request->has('end_time') && ! empty($request->end_time)
+            ? Carbon::parse($request->end_time)
+            : (clone $startTime)->addHour(); // 1 jam interval
 
-        // Priority 1: Get from daily_item_codes.temporal_cycle_time
-        $daily = DailyItemCode::where('id', $dicId)->first();
-        $temporal = $daily?->temporal_cycle_time;
-
-        if ($temporal && is_numeric($temporal) && $temporal > 0) {
-            $target = floor(3600 / $temporal);
+        // Target calculation or manual target override
+        if ($request->has('target') && is_numeric($request->target) && $request->target > 0) {
+            $target = (int) $request->target;
         } else {
-            // Priority 2: Get from sap_inventory_fg
-            $sap = sapInventoryFg::where('item_code', $itemCode)->first();
-            $cycle = $sap?->cycle_time;
-
-            if ($cycle && is_numeric($cycle) && $cycle > 0) {
-                $target = floor(3600 / ($cycle * 60));
+            // Priority 1: Get from daily_item_codes.temporal_cycle_time
+            $temporal = $daily->temporal_cycle_time;
+            if ($temporal && is_numeric($temporal) && $temporal > 0) {
+                $target = floor(3600 / $temporal);
             } else {
-                $target = 0; // fallback jika semua kosong
+                // Priority 2: Get from sap_inventory_fg
+                $sap = sapInventoryFg::where('item_code', $itemCode)->first();
+                $cycle = $sap?->cycle_time;
+
+                if ($cycle && is_numeric($cycle) && $cycle > 0) {
+                    $target = floor(3600 / ($cycle * 60));
+                } else {
+                    $target = 0; // fallback jika semua kosong
+                }
+            }
+
+            // Apply cavity & pair multiplier (consistent with scan() & index())
+            $cavity = max((int) ($daily->temporal_cavity ?? $daily->masterItem?->cavity ?? 0), 1);
+            if ($cavity > 1) {
+                $target *= $cavity;
+            } elseif (! empty($daily->masterItem?->pair) || ! empty($daily->masterFg?->pair)) {
+                $target *= 2;
             }
         }
 
-        $exists = HourlyRemark::where('dic_id', $activedic['id'])
-            ->where('start_time', $startTime)
+        $exists = HourlyRemark::where('dic_id', $dicId)
+            ->where('start_time', $startTime->format('H:i:s'))
             ->exists();
 
         if ($exists) {
@@ -2809,7 +2850,7 @@ class DashboardController extends Controller
             $assignedOps = array_values(array_filter(array_map('trim', explode(',', $machineJob->employee_name))));
         }
 
-        $pic1 = $request->input('nik') ?: $request->input('pic') ?: ($assignedOps[0] ?? null) ?: auth()->user()->name;
+        $pic1 = $request->input('pic') ?: $request->input('nik') ?: ($assignedOps[0] ?? null) ?: auth()->user()->name;
         $pic2 = $request->input('pic_2') ?: ($assignedOps[1] ?? null);
         $pic3 = $request->input('pic_3') ?: ($assignedOps[2] ?? null);
 
@@ -2819,29 +2860,47 @@ class DashboardController extends Controller
             ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) < ?", [$endTime->format('H:i:s')])
             ->sum('quantity');
 
+        $actualProduction = $request->has('actual_production') && $request->actual_production !== null && $request->actual_production !== ''
+            ? (int) $request->actual_production
+            : null;
+
+        $effectiveQty = $actualProduction !== null ? $actualProduction : (int) $totalActual;
+        $isAchieve = ($target > 0 && $effectiveQty >= $target) ? 1 : 0;
+
+        // Tanggal dan timestamp sesuai jadwal DIC & shift
+        $slotDate = Carbon::parse($daily->start_date ?: now());
+        if ($daily->shift == 3 && $startTime->format('H:i') < '23:30') {
+            $slotDate->addDay();
+        }
+        $slotDateTime = $slotDate->copy()->setTimeFromTimeString($startTime->format('H:i:s'));
+
         // Insert hourly remark
-        HourlyRemark::create([
+        $createdRemark = HourlyRemark::create([
             'dic_id' => $dicId,
             'start_time' => $startTime->format('H:i:s'),
             'end_time' => $endTime->format('H:i:s'),
             'target' => $target,
             'actual' => (int) $totalActual,
-            'is_achieve' => ($target > 0 && $totalActual >= $target) ? 1 : 0,
+            'actual_production' => $actualProduction,
+            'NG' => $request->has('NG') && $request->NG !== null && $request->NG !== '' ? (int) $request->NG : null,
+            'remark' => $request->input('remark'),
+            'is_achieve' => $isAchieve,
             'pic' => $pic1,
             'pic_2' => ! empty($pic2) ? $pic2 : null,
             'pic_3' => ! empty($pic3) ? $pic3 : null,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => $slotDateTime,
+            'updated_at' => $slotDateTime,
         ]);
 
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Hourly Remark berhasil ditambahkan!',
+                'data' => $createdRemark,
             ]);
         }
 
-        return back()->with('success', 'Hourly Remark berhasil ditambahkan!');
+        return back()->with('message', 'Hourly Remark berhasil ditambahkan!');
     }
 
     // view untuk lihat log api yang berjalan di website
@@ -2872,9 +2931,9 @@ class DashboardController extends Controller
             ->orderBy('start_time', 'desc')
             ->get();
 
-        // lanjut kalau operator
-        // dd($datas);
-        return view('dashboards.adminoperator', compact('datas')); // atau halaman kamu
+        $operators = OperatorUser::orderBy('name', 'asc')->get();
+
+        return view('dashboards.adminoperator', compact('datas', 'operators'));
     }
 
     // function untuk membuat data operator baru
@@ -2889,6 +2948,8 @@ class DashboardController extends Controller
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i',
             'quantity' => 'required|integer|min:0',
+            'pic' => 'nullable|string|max:255',
+            'auto_generate_slots' => 'nullable|boolean',
         ]);
 
         // Masukin ke tabel DailyItemCode
@@ -2897,8 +2958,6 @@ class DashboardController extends Controller
         $daily->item_code = $validated['item_code'];
         $daily->quantity = $validated['quantity'];
         $daily->final_quantity = null;
-        // $cavity = $remark->dailyItemCode->masterItem->cavity;
-        // dd($cavity);
         $daily->loss_package_quantity = null;
         $daily->actual_quantity = 0;
         $daily->shift = $validated['shift'];
@@ -2912,7 +2971,154 @@ class DashboardController extends Controller
         $daily->temporal_cycle_time = null;
         $daily->save();
 
+        // Otomatis buat 8 slot jam shift jika dicentang dan operator dipilih
+        if ($request->boolean('auto_generate_slots') && ! empty($request->pic)) {
+            $this->createShiftSlotsForDaily(
+                $daily,
+                $request->pic,
+                $request->pic_2 ?? null,
+                $request->pic_3 ?? null,
+                $request->input('actual_production', 0),
+                $request->input('remark')
+            );
+        }
+
         return redirect()->back()->with('message', 'Daily Item Code berhasil ditambahkan!');
+    }
+
+    // function untuk generate otomatis 8 slot jam pada shift tertentu (misal Shift 3) tanpa perlu scan
+    public function generateShiftHourlyRemarks(Request $request)
+    {
+        $validated = $request->validate([
+            'dic_id' => 'required|exists:daily_item_codes,id',
+            'pic' => 'required|string|max:255',
+            'pic_2' => 'nullable|string|max:255',
+            'pic_3' => 'nullable|string|max:255',
+            'actual_production' => 'nullable|integer|min:0',
+            'remark' => 'nullable|string',
+        ]);
+
+        $daily = DailyItemCode::findOrFail($validated['dic_id']);
+        $createdCount = $this->createShiftSlotsForDaily(
+            $daily,
+            $validated['pic'],
+            $validated['pic_2'] ?? null,
+            $validated['pic_3'] ?? null,
+            $validated['actual_production'] ?? 0,
+            $validated['remark'] ?? null
+        );
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "{$createdCount} slot jam untuk Shift {$daily->shift} berhasil dibuat.",
+                'created_count' => $createdCount,
+            ]);
+        }
+
+        return redirect()->back()->with('message', "{$createdCount} slot jam untuk Shift {$daily->shift} berhasil dibuat.");
+    }
+
+    /**
+     * Helper to generate 8 hourly slots for a DailyItemCode shift
+     */
+    protected function createShiftSlotsForDaily(DailyItemCode $daily, string $pic1, ?string $pic2 = null, ?string $pic3 = null, ?int $actualProd = 0, ?string $remark = null): int
+    {
+        $shift = (int) $daily->shift;
+
+        // Hitung target per jam dari cycle time
+        $itemCode = $daily->item_code;
+        $temporal = $daily->temporal_cycle_time;
+        if ($temporal && is_numeric($temporal) && $temporal > 0) {
+            $target = (int) floor(3600 / $temporal);
+        } else {
+            $sap = sapInventoryFg::where('item_code', $itemCode)->first();
+            $cycle = $sap?->cycle_time;
+            if ($cycle && is_numeric($cycle) && $cycle > 0) {
+                $target = (int) floor(3600 / ($cycle * 60));
+            } else {
+                $target = 0;
+            }
+        }
+
+        // Apply cavity & pair multiplier
+        $cavity = max((int) ($daily->temporal_cavity ?? $daily->masterItem?->cavity ?? 0), 1);
+        if ($cavity > 1) {
+            $target *= $cavity;
+        } elseif (! empty($daily->masterItem?->pair) || ! empty($daily->masterFg?->pair)) {
+            $target *= 2;
+        }
+
+        $slots = match ($shift) {
+            1 => [
+                ['start' => '07:30:00', 'end' => '08:30:00'],
+                ['start' => '08:30:00', 'end' => '09:30:00'],
+                ['start' => '09:30:00', 'end' => '10:30:00'],
+                ['start' => '10:30:00', 'end' => '11:30:00'],
+                ['start' => '11:30:00', 'end' => '12:30:00'],
+                ['start' => '12:30:00', 'end' => '13:30:00'],
+                ['start' => '13:30:00', 'end' => '14:30:00'],
+                ['start' => '14:30:00', 'end' => '15:30:00'],
+            ],
+            2 => [
+                ['start' => '15:30:00', 'end' => '16:30:00'],
+                ['start' => '16:30:00', 'end' => '17:30:00'],
+                ['start' => '17:30:00', 'end' => '18:30:00'],
+                ['start' => '18:30:00', 'end' => '19:30:00'],
+                ['start' => '19:30:00', 'end' => '20:30:00'],
+                ['start' => '20:30:00', 'end' => '21:30:00'],
+                ['start' => '21:30:00', 'end' => '22:30:00'],
+                ['start' => '22:30:00', 'end' => '23:30:00'],
+            ],
+            3 => [
+                ['start' => '23:30:00', 'end' => '00:30:00'],
+                ['start' => '00:30:00', 'end' => '01:30:00'],
+                ['start' => '01:30:00', 'end' => '02:30:00'],
+                ['start' => '02:30:00', 'end' => '03:30:00'],
+                ['start' => '03:30:00', 'end' => '04:30:00'],
+                ['start' => '04:30:00', 'end' => '05:30:00'],
+                ['start' => '05:30:00', 'end' => '06:30:00'],
+                ['start' => '06:30:00', 'end' => '07:30:00'],
+            ],
+            default => [],
+        };
+
+        $createdCount = 0;
+        $baseDate = Carbon::parse($daily->start_date ?: now());
+        $effectiveProd = $actualProd ?? 0;
+
+        foreach ($slots as $slot) {
+            $exists = HourlyRemark::where('dic_id', $daily->id)
+                ->where('start_time', $slot['start'])
+                ->exists();
+
+            if (! $exists) {
+                $slotDate = $baseDate->copy();
+                if ($shift === 3 && $slot['start'] < '23:30:00') {
+                    $slotDate->addDay();
+                }
+                $timestamp = $slotDate->setTimeFromTimeString($slot['start']);
+
+                HourlyRemark::create([
+                    'dic_id' => $daily->id,
+                    'start_time' => $slot['start'],
+                    'end_time' => $slot['end'],
+                    'target' => $target,
+                    'actual' => 0,
+                    'actual_production' => $effectiveProd,
+                    'pic' => $pic1,
+                    'pic_2' => $pic2,
+                    'pic_3' => $pic3,
+                    'remark' => $remark,
+                    'is_achieve' => ($target > 0 && $effectiveProd >= $target) ? 1 : 0,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ]);
+                $createdCount++;
+            }
+        }
+
+        return $createdCount;
     }
 
     // function untuk menghapus remark dic
