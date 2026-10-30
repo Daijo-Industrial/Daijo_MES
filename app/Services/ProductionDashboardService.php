@@ -1412,6 +1412,7 @@ class ProductionDashboardService
                 'repair_count' => count($shiftRepairs),
                 'repair_duration_minutes' => $totalRepairDuration,
                 'total_setup_minutes' => $totalAdjustDuration + $totalMouldDuration,
+                'total_setup_hours' => round(($totalAdjustDuration + $totalMouldDuration) / 60, 1),
                 'total_target' => $target,
                 'total_actual' => $actual,
                 'total_ng' => $ng,
@@ -1424,13 +1425,16 @@ class ProductionDashboardService
             ];
         }
 
+        $allSetupMinutes = array_sum(array_column($processedAdjustLogs, 'duration_minutes')) + array_sum(array_column($processedMouldLogs, 'duration_minutes'));
+
         return [
             'shifts' => $shiftResults,
             'all_logs' => array_slice($allActivityLogs, 0, 100), // Limit payload size to 100 recent
             'total_adjust_count' => count($processedAdjustLogs),
             'total_mould_change_count' => count($processedMouldLogs),
             'total_repair_count' => count($processedRepairLogs),
-            'total_setup_time_minutes' => array_sum(array_column($processedAdjustLogs, 'duration_minutes')) + array_sum(array_column($processedMouldLogs, 'duration_minutes')),
+            'total_setup_time_minutes' => $allSetupMinutes,
+            'total_setup_time_hours' => round($allSetupMinutes / 60, 1),
             'total_repair_time_minutes' => array_sum(array_column($processedRepairLogs, 'duration_minutes')),
         ];
     }

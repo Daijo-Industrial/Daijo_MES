@@ -39,6 +39,7 @@ use App\Livewire\Ppic\PpicListUpMachine;
 use App\Livewire\ProductionDashboard;
 use App\Livewire\ProductionStoreHandoverIndex;
 use App\Livewire\ProductionSummaryMonitor;
+use App\Livewire\Store\ProductionScanCrosscheck;
 use App\Livewire\Qc\QcStockTransfer;
 use App\Livewire\Qc\QcStockTransferKbn;
 use App\Livewire\ReceiptProductionLogs;
@@ -293,4 +294,5 @@ Route::middleware('auth')->group(function () {
 
     // Kontrol & Rekonsiliasi Harian Produksi - Store
     Route::get('/production-store-handover', ProductionStoreHandoverIndex::class)->name('production.store-handover');
+    Route::get('/production-scan-crosscheck', ProductionScanCrosscheck::class)->name('production.scan-crosscheck');
 });
