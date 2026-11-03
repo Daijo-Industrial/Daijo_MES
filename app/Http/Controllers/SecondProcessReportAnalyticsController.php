@@ -99,6 +99,25 @@ class SecondProcessReportAnalyticsController extends Controller
             $baseQuery->where('status', $request->status);
         }
 
+        if ($request->filled('part_number')) {
+            $baseQuery->where('part_number', $request->part_number);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $baseQuery->where(function ($q) use ($search) {
+                $q->where('model', 'LIKE', "%{$search}%")
+                    ->orWhere('part_number', 'LIKE', "%{$search}%")
+                    ->orWhere('customer', 'LIKE', "%{$search}%")
+                    ->orWhere('part_name', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Sisa Input status filter (all, open, reconciled, has_sisa, deficit, ideal)
+        $sisaFilter = $request->input('sisa_filter');
+        if ($request->filled('sisa_filter')) {
+            $baseQuery->applySisaFilter($sisaFilter);
+        }
+
         // Industry / Sector Filter (Automotive, Electronics, Moulding, General)
         $selectedIndustry = $request->filled('industry') ? strtoupper(trim($request->input('industry'))) : null;
         if ($selectedIndustry && in_array($selectedIndustry, [
@@ -149,7 +168,24 @@ class SecondProcessReportAnalyticsController extends Controller
             ? round(($summary->total_output / $summary->total_target) * 100, 1)
             : null;
 
-        $wipVariance = $totalInput - ((int) $summary->total_output + (int) $summary->total_scrap);
+        // WIP Reconciliation: Calculate Open Sisa (uncovered) vs Reconciled Sisa
+        $sisaReports = (clone $baseQuery)
+            ->where('sisa_input', '>', 0)
+            ->get(['id', 'date', 'shift', 'unit_line', 'process_prod', 'part_number', 'sisa_input', 'jml_input_wip', 'repairan', 'jumlah_output', 'jml_ng_lebur']);
+
+        $openSisaVariance = 0;
+        $reconciledSisaTotal = 0;
+
+        foreach ($sisaReports as $sReport) {
+            if ($sReport->findCoveringReport()) {
+                $reconciledSisaTotal += (int) $sReport->sisa_input;
+            } else {
+                $openSisaVariance += (int) $sReport->sisa_input;
+            }
+        }
+
+        $deficitTotal = (int) (clone $baseQuery)->where('sisa_input', '<', 0)->sum('sisa_input');
+        $wipVariance = $openSisaVariance + $deficitTotal;
 
         $scrapRate = $totalInput > 0
             ? round(($summary->total_scrap / $totalInput) * 100, 2)
@@ -411,7 +447,7 @@ class SecondProcessReportAnalyticsController extends Controller
         $customers = SecondProcessReport::query()
             ->whereNotNull('customer')
             ->whereRaw("TRIM(customer) != ''")
-            ->selectRaw("DISTINCT TRIM(customer) as customer")
+            ->selectRaw('DISTINCT TRIM(customer) as customer')
             ->orderBy('customer')
             ->pluck('customer');
         $industries = [
@@ -427,9 +463,12 @@ class SecondProcessReportAnalyticsController extends Controller
             'yieldRate',
             'targetAchievementRate',
             'wipVariance',
+            'openSisaVariance',
+            'reconciledSisaTotal',
             'scrapRate',
             'targetNgRate',
             'totalInput',
+            'sisaFilter',
             'totalDowntimeMinutes',
             'totalDowntimeHours',
             'dailyTrend',
@@ -744,5 +783,118 @@ class SecondProcessReportAnalyticsController extends Controller
         }
 
         return $allocations;
+    }
+
+    /**
+     * Timeline of production lifecycle processes for a selected part number.
+     */
+    public function partCycle(Request $request)
+    {
+        $selectedPart = trim((string) $request->input('part_number', ''));
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $preset = $request->input('preset', 'last_30_days');
+
+        $now = Carbon::now('Asia/Jakarta');
+        if ($preset === 'last_30_days') {
+            $dateFrom = $dateFrom ?: $now->copy()->subDays(30)->toDateString();
+            $dateTo = $dateTo ?: $now->toDateString();
+        } elseif ($preset === 'all') {
+            $dateFrom = null;
+            $dateTo = null;
+        }
+
+        // Available part numbers for dropdown picker (guaranteed unique per part_number)
+        $availableParts = SecondProcessReport::selectRaw('
+                part_number,
+                COALESCE(MAX(CASE WHEN part_name != "" THEN part_name END), "") as part_name,
+                COALESCE(MAX(CASE WHEN model != "" THEN model END), "") as model,
+                COALESCE(MAX(CASE WHEN customer != "" AND customer != "N/A" THEN customer END), "N/A") as customer
+            ')
+            ->whereNotNull('part_number')
+            ->where('part_number', '!=', '')
+            ->groupBy('part_number')
+            ->orderBy('part_number')
+            ->get();
+
+        $partInfo = null;
+        $timeline = collect();
+        $summary = [
+            'total_reports' => 0,
+            'total_input_wip' => 0,
+            'total_repairan' => 0,
+            'total_output_ok' => 0,
+            'total_output_ng' => 0,
+            'ng_percentage' => 0.0,
+            'total_sisa_input' => 0,
+            'distinct_processes' => 0,
+        ];
+
+        if ($selectedPart !== '') {
+            $reportsQuery = SecondProcessReport::where('part_number', $selectedPart);
+
+            if ($dateFrom && $dateTo) {
+                $reportsQuery->whereBetween('date', [$dateFrom, $dateTo]);
+            } elseif ($dateFrom) {
+                $reportsQuery->where('date', '>=', $dateFrom);
+            } elseif ($dateTo) {
+                $reportsQuery->where('date', '<=', $dateTo);
+            }
+
+            $reports = $reportsQuery->orderBy('date', 'asc')
+                ->orderBy('shift', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            // Part Info header
+            $firstReport = $reports->first() ?? SecondProcessReport::where('part_number', $selectedPart)->first();
+            if ($firstReport) {
+                $partInfo = [
+                    'part_number' => $selectedPart,
+                    'part_name' => $firstReport->part_name ?: '-',
+                    'model' => $firstReport->model ?: '-',
+                    'customer' => $firstReport->customer ?: 'N/A',
+                ];
+            }
+
+            // Summary metrics
+            $totalInputWip = (int) $reports->sum('jml_input_wip');
+            $totalRepairan = (int) $reports->sum('repairan');
+            $totalOk = (int) $reports->sum('jumlah_ok');
+            $totalNg = (int) $reports->sum('jumlah_ng');
+            $totalOutput = (int) $reports->sum('jumlah_output');
+            $totalSisa = (int) $reports->sum('sisa_input');
+            $ngRate = $totalOutput > 0 ? round(($totalNg / $totalOutput) * 100, 2) : 0.0;
+
+            $summary = [
+                'total_reports' => $reports->count(),
+                'total_input_wip' => $totalInputWip,
+                'total_repairan' => $totalRepairan,
+                'total_output_ok' => $totalOk,
+                'total_output_ng' => $totalNg,
+                'ng_percentage' => $ngRate,
+                'total_sisa_input' => $totalSisa,
+                'distinct_processes' => $reports->pluck('process_prod')->unique()->count(),
+            ];
+
+            // Build timeline items with reconciliation status
+            $timeline = $reports->map(function ($report) {
+                return [
+                    'report' => $report,
+                    'reconciliation' => $report->reconciliation_status,
+                ];
+            });
+        }
+
+        return view('second_process.part_cycle', [
+            'selectedPart' => $selectedPart,
+            'availableParts' => $availableParts,
+            'partInfo' => $partInfo,
+            'summary' => $summary,
+            'timeline' => $timeline,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'preset' => $preset,
+        ]);
     }
 }

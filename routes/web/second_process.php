@@ -56,6 +56,7 @@ Route::middleware(['auth', 'sp.plant-access'])->group(function () {
     Route::get('second-process-reports/search-customers', [SecondProcessReportController::class, 'searchCustomers'])->name('second-process-reports.search-customers');
     Route::post('second-process-reports/{id}/sign/{role}', [SecondProcessReportController::class, 'sign'])->name('second-process-reports.sign');
     Route::post('second-process-reports/{id}/reject', [SecondProcessReportController::class, 'reject'])->name('second-process-reports.reject');
+    Route::get('second-process-reports/part-cycle', [SecondProcessReportAnalyticsController::class, 'partCycle'])->name('second-process-reports.part-cycle');
     Route::resource('second-process-reports', SecondProcessReportController::class);
 
     // IPQC Inspections (standalone)

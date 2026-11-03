@@ -137,6 +137,12 @@ class SecondProcessReportController extends Controller
             });
         }
 
+        // Sisa Input status filter (all, open, reconciled, has_sisa, deficit, ideal)
+        $sisaFilter = $request->input('sisa_filter');
+        if ($request->filled('sisa_filter')) {
+            $query->applySisaFilter($sisaFilter);
+        }
+
         // Summary stats from filtered query (before pagination)
         $summary = (clone $query)->selectRaw('
             COUNT(*) as total_reports,
@@ -151,7 +157,7 @@ class SecondProcessReportController extends Controller
         $customers = SecondProcessReport::query()
             ->whereNotNull('customer')
             ->whereRaw("TRIM(customer) != ''")
-            ->selectRaw("DISTINCT TRIM(customer) as customer")
+            ->selectRaw('DISTINCT TRIM(customer) as customer')
             ->orderBy('customer')
             ->pluck('customer');
 
@@ -172,6 +178,7 @@ class SecondProcessReportController extends Controller
             'selectedIndustry',
             'industryMap',
             'activePreset',
+            'sisaFilter',
             'dateFrom',
             'dateTo',
             'today',
@@ -264,7 +271,7 @@ class SecondProcessReportController extends Controller
         $dbNgTypes = SecondProcessNgRecord::query()
             ->whereNotNull('ng_name')
             ->whereRaw("TRIM(ng_name) != ''")
-            ->selectRaw("DISTINCT UPPER(TRIM(ng_name)) as ng_name")
+            ->selectRaw('DISTINCT UPPER(TRIM(ng_name)) as ng_name')
             ->pluck('ng_name')
             ->toArray();
 
@@ -272,7 +279,7 @@ class SecondProcessReportController extends Controller
 
         return collect(array_merge($catalogNgTypes, $dbNgTypes))
             ->filter()
-            ->map(fn($item) => strtoupper(trim($item)))
+            ->map(fn ($item) => strtoupper(trim($item)))
             ->unique()
             ->sort()
             ->values()
