@@ -226,6 +226,140 @@ class SecondProcessReportAnalyticsTest extends TestCase
         $response->assertDontSee('DIFF-STATUS');
     }
 
+    public function test_analytics_filters_by_customer(): void
+    {
+        $today = now()->format('Y-m-d');
+
+        SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 1',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'CUST-A-PART',
+            'part_name' => 'Customer A Part',
+            'customer' => 'PT Toyota Tsusho',
+            'jumlah_output' => 500,
+            'jumlah_ok' => 500,
+            'jumlah_ng' => 0,
+        ]);
+
+        SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 1',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'CUST-B-PART',
+            'part_name' => 'Customer B Part',
+            'customer' => 'PT Denso Indonesia',
+            'jumlah_output' => 300,
+            'jumlah_ok' => 300,
+            'jumlah_ng' => 0,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'date_from' => $today,
+            'date_to' => $today,
+            'customer' => 'PT Toyota Tsusho',
+        ]));
+
+        $response->assertOk();
+        $response->assertViewHas('customers', function ($customers) {
+            return $customers->contains('PT Toyota Tsusho') && $customers->contains('PT Denso Indonesia');
+        });
+
+        $summary = $response->viewData('summary');
+        $this->assertEquals(1, $summary->total_reports);
+        $this->assertEquals(500, $summary->total_output);
+        $response->assertSee('CUST-A-PART');
+        $response->assertDontSee('CUST-B-PART');
+    }
+
+    public function test_analytics_quick_date_presets_and_custom_range(): void
+    {
+        $today = now('Asia/Jakarta')->toDateString();
+        $yesterday = now('Asia/Jakarta')->subDay()->toDateString();
+        $lastMonthDate = now('Asia/Jakarta')->subMonth()->startOfMonth()->toDateString();
+
+        SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 1',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'PART-TODAY',
+            'customer' => 'PT Toyota Tsusho',
+            'jumlah_output' => 100,
+            'jumlah_ok' => 100,
+            'jumlah_ng' => 0,
+        ]);
+
+        SecondProcessReport::create([
+            'date' => $yesterday,
+            'unit_line' => 'Line 1',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'PART-YEST',
+            'customer' => 'PT Toyota Tsusho',
+            'jumlah_output' => 100,
+            'jumlah_ok' => 100,
+            'jumlah_ng' => 0,
+        ]);
+
+        SecondProcessReport::create([
+            'date' => $lastMonthDate,
+            'unit_line' => 'Line 1',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'status' => 'submitted',
+            'part_number' => 'PART-LAST-MONTH',
+            'customer' => 'PT Toyota Tsusho',
+            'jumlah_output' => 100,
+            'jumlah_ok' => 100,
+            'jumlah_ng' => 0,
+        ]);
+
+        // 1. Preset Today
+        $resToday = $this->actingAs($this->user)->get(route('second-process.report-analytics', ['preset' => 'today']));
+        $resToday->assertOk();
+        $resToday->assertViewHas('activePreset', 'today');
+        $resToday->assertSee('PART-TODAY');
+        $resToday->assertDontSee('PART-YEST');
+        $resToday->assertDontSee('PART-LAST-MONTH');
+        $resToday->assertSee('showCustomDates: false', false);
+        $resToday->assertSee(route('second-process-reports.index'), false);
+        $resToday->assertSee('search=PART-TODAY', false);
+
+        // 2. Preset Yesterday
+        $resYest = $this->actingAs($this->user)->get(route('second-process.report-analytics', ['preset' => 'yesterday']));
+        $resYest->assertOk();
+        $resYest->assertViewHas('activePreset', 'yesterday');
+        $resYest->assertSee('PART-YEST');
+        $resYest->assertDontSee('PART-TODAY');
+
+        // 3. Preset Last Month
+        $resLastMonth = $this->actingAs($this->user)->get(route('second-process.report-analytics', ['preset' => 'last_month']));
+        $resLastMonth->assertOk();
+        $resLastMonth->assertViewHas('activePreset', 'last_month');
+        $resLastMonth->assertSee('PART-LAST-MONTH');
+        $resLastMonth->assertDontSee('PART-TODAY');
+
+        // 4. Custom range
+        $resCustom = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'preset' => 'custom',
+            'date_from' => $lastMonthDate,
+            'date_to' => $lastMonthDate,
+        ]));
+        $resCustom->assertOk();
+        $resCustom->assertViewHas('activePreset', 'custom');
+        $resCustom->assertSee('showCustomDates: true', false);
+        $resCustom->assertSee('PART-LAST-MONTH');
+        $resCustom->assertDontSee('PART-TODAY');
+        $resCustom->assertSee('applyCustomDateIfComplete()');
+    }
+
     public function test_analytics_aggregates_downtime_with_category_and_penyebab_fallback(): void
     {
         $today = now()->format('Y-m-d');

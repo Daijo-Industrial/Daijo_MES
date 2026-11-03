@@ -50,6 +50,7 @@ require __DIR__ . '/web/production.php';
 require __DIR__ . '/web/admin.php';
 require __DIR__ . '/web/wms.php';
 require __DIR__ . '/web/second_process.php';
+require __DIR__ . '/web/inspection.php';
 
 // Breeze Auth Routes
 require __DIR__ . '/auth.php';

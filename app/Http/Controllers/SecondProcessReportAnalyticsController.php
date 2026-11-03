@@ -16,15 +16,86 @@ class SecondProcessReportAnalyticsController extends Controller
     public function index(Request $request)
     {
         $now = Carbon::now('Asia/Jakarta');
+        $today = $now->toDateString();
+        $yesterday = $now->copy()->subDay()->toDateString();
+        $thisWeekStart = $now->copy()->startOfWeek()->toDateString();
+        $thisMonthStart = $now->copy()->startOfMonth()->toDateString();
+        $lastMonthStart = $now->copy()->subMonth()->startOfMonth()->toDateString();
+        $lastMonthEnd = $now->copy()->subMonth()->endOfMonth()->toDateString();
 
-        // Date range default: Start of current month to today
-        $dateFrom = $request->input('date_from', $now->copy()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->input('date_to', $now->format('Y-m-d'));
+        $preset = $request->query('preset');
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+
+        // Apply quick preset dates if preset is selected and explicit dates are not passed
+        if ($preset && ! $request->has('date_from') && ! $request->has('date_to')) {
+            switch ($preset) {
+                case 'today':
+                    $dateFrom = $today;
+                    $dateTo = $today;
+                    break;
+                case 'yesterday':
+                    $dateFrom = $yesterday;
+                    $dateTo = $yesterday;
+                    break;
+                case 'this_week':
+                    $dateFrom = $thisWeekStart;
+                    $dateTo = $today;
+                    break;
+                case 'this_month':
+                    $dateFrom = $thisMonthStart;
+                    $dateTo = $today;
+                    break;
+                case 'last_month':
+                    $dateFrom = $lastMonthStart;
+                    $dateTo = $lastMonthEnd;
+                    break;
+            }
+
+            if ($dateFrom !== null && $dateTo !== null) {
+                $request->merge([
+                    'date_from' => $dateFrom,
+                    'date_to' => $dateTo,
+                ]);
+            }
+        }
+
+        // Fallback default: this month if nothing specified
+        if (empty($dateFrom) && empty($dateTo) && empty($preset)) {
+            $dateFrom = $thisMonthStart;
+            $dateTo = $today;
+            $activePreset = 'this_month';
+        } else {
+            $activePreset = null;
+            if ($preset === 'custom') {
+                $activePreset = 'custom';
+            } elseif (! empty($dateFrom) && ! empty($dateTo)) {
+                if ($dateFrom === $today && $dateTo === $today) {
+                    $activePreset = 'today';
+                } elseif ($dateFrom === $yesterday && $dateTo === $yesterday) {
+                    $activePreset = 'yesterday';
+                } elseif ($dateFrom === $thisWeekStart && $dateTo === $today) {
+                    $activePreset = 'this_week';
+                } elseif ($dateFrom === $thisMonthStart && $dateTo === $today) {
+                    $activePreset = 'this_month';
+                } elseif ($dateFrom === $lastMonthStart && $dateTo === $lastMonthEnd) {
+                    $activePreset = 'last_month';
+                } else {
+                    $activePreset = 'custom';
+                }
+            } elseif (! empty($dateFrom) || ! empty($dateTo)) {
+                $activePreset = 'custom';
+            }
+        }
 
         // Base query for report header filtering
-        $baseQuery = SecondProcessReport::query()
-            ->whereDate('date', '>=', $dateFrom)
-            ->whereDate('date', '<=', $dateTo);
+        $baseQuery = SecondProcessReport::query();
+        if ($dateFrom) {
+            $baseQuery->whereDate('date', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $baseQuery->whereDate('date', '<=', $dateTo);
+        }
 
         if ($request->filled('unit_line')) {
             $baseQuery->where('unit_line', $request->unit_line);
@@ -34,6 +105,13 @@ class SecondProcessReportAnalyticsController extends Controller
         }
         if ($request->filled('process_prod')) {
             $baseQuery->where('process_prod', $request->process_prod);
+        }
+        if ($request->filled('customer')) {
+            $custVal = trim($request->customer);
+            $baseQuery->where(function ($q) use ($custVal) {
+                $q->where('customer', $custVal)
+                    ->orWhereRaw('TRIM(customer) = ?', [$custVal]);
+            });
         }
         if ($request->filled('status')) {
             $baseQuery->where('status', $request->status);
@@ -350,6 +428,12 @@ class SecondProcessReportAnalyticsController extends Controller
         // Dropdown selection lists
         $lines = array_values(config('mes.sp_lines', []));
         $processes = config('mes.sp_processes', ['Painting', 'Buffing', 'Amplas', 'Treatment', 'Packing', 'Rework', 'Repair', 'Assy']);
+        $customers = SecondProcessReport::query()
+            ->whereNotNull('customer')
+            ->whereRaw("TRIM(customer) != ''")
+            ->selectRaw("DISTINCT TRIM(customer) as customer")
+            ->orderBy('customer')
+            ->pluck('customer');
         $industries = [
             'AUTOMOTIVE' => 'Automotive',
             'ELECTRONICS' => 'Electronics',
@@ -384,13 +468,21 @@ class SecondProcessReportAnalyticsController extends Controller
             'totalPartQty',
             'dateFrom',
             'dateTo',
+            'today',
+            'yesterday',
+            'thisWeekStart',
+            'thisMonthStart',
+            'lastMonthStart',
+            'lastMonthEnd',
+            'activePreset',
             'lines',
             'processes',
             'selectedNgCategory',
             'ngCategories',
             'categoryBreakdown',
             'selectedIndustry',
-            'industries'
+            'industries',
+            'customers'
         ));
     }
 

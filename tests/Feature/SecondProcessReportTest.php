@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\FirstPieceInspection;
+use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterListItem;
 use App\Models\Role;
@@ -72,12 +73,18 @@ class SecondProcessReportTest extends TestCase
             'model' => 'Model X',
             'customer' => 'Toyota Motor Corp',
             'target_per_hour' => 100,
+            'sisa_input' => 25,
+            'sisa_input_remark' => 'Leftover from lot A',
             'status' => 'submitted',
         ]);
 
         $response = $this->actingAs($user)->get(route('second-process-reports.index'));
         $response->assertOk();
         $response->assertSee('Custom Front Bumper Part Name');
+        $response->assertSee('Sisa Input');
+        $response->assertSee('+25');
+        $response->assertSee('filter-loading-overlay');
+        $response->assertSee('<select name="customer"', false);
     }
 
     /**
@@ -125,6 +132,9 @@ class SecondProcessReportTest extends TestCase
         $resToday->assertSee('PART-PRESET-TODAY');
         $resToday->assertDontSee('PART-PRESET-YEST');
         $resToday->assertDontSee('PART-PRESET-OLDER');
+        $resToday->assertSee('Custom Range');
+        $resToday->assertSee('showCustomDates: false', false);
+        $resToday->assertSee('applyCustomDateIfComplete()');
 
         // 2. Preset Yesterday
         $resYest = $this->get(route('second-process-reports.index', ['preset' => 'yesterday']));
@@ -148,6 +158,268 @@ class SecondProcessReportTest extends TestCase
         $resCustom->assertOk();
         $resCustom->assertSee('PART-PRESET-OLDER');
         $resCustom->assertDontSee('PART-PRESET-TODAY');
+        $resCustom->assertViewHas('activePreset', 'custom');
+        $resCustom->assertSee('showCustomDates: true', false);
+        $resCustom->assertSee('value="' . $olderDate . '"', false);
+
+        // 5. Default first-time landing with no parameters defaults to this_month
+        $resDefault = $this->get(route('second-process-reports.index'));
+        $resDefault->assertOk();
+        $resDefault->assertViewHas('activePreset', 'this_month');
+        $resDefault->assertSee('PART-PRESET-TODAY');
+        $resDefault->assertDontSee('PART-PRESET-OLDER');
+
+        // 6. Explicit preset 'all' clears date filter
+        $resAll = $this->get(route('second-process-reports.index', ['preset' => 'all']));
+        $resAll->assertOk();
+        $resAll->assertViewHas('activePreset', null);
+        $resAll->assertSee('PART-PRESET-TODAY');
+        $resAll->assertSee('PART-PRESET-OLDER');
+    }
+
+    /**
+     * Test filtering reports by customer distinct list and handling N/A.
+     */
+    public function test_index_page_filters_by_customer_distinct_list(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        $report1 = SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-CUST-TOYOTA',
+            'customer' => 'PT Toyota Tsusho',
+        ]);
+
+        $report2 = SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line B',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-CUST-DENSO',
+            'customer' => 'PT Denso Indonesia',
+        ]);
+
+        $report3 = SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Buffing 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-CUST-NA',
+            'customer' => 'N/A',
+        ]);
+
+        // 1. Unfiltered index passes distinct customers list to view
+        $res = $this->get(route('second-process-reports.index'));
+        $res->assertOk();
+        $res->assertViewHas('customers', function ($customers) {
+            return $customers->contains('PT Toyota Tsusho')
+                && $customers->contains('PT Denso Indonesia')
+                && $customers->contains('N/A');
+        });
+        $res->assertSee('PART-CUST-TOYOTA');
+        $res->assertSee('PART-CUST-DENSO');
+        $res->assertSee('PART-CUST-NA');
+
+        // 2. Filter by PT Toyota Tsusho
+        $resToyota = $this->get(route('second-process-reports.index', ['customer' => 'PT Toyota Tsusho']));
+        $resToyota->assertOk();
+        $resToyota->assertSee('PART-CUST-TOYOTA');
+        $resToyota->assertDontSee('PART-CUST-DENSO');
+        $resToyota->assertDontSee('PART-CUST-NA');
+
+        // 3. Filter by N/A
+        $resNa = $this->get(route('second-process-reports.index', ['customer' => 'N/A']));
+        $resNa->assertOk();
+        $resNa->assertSee('PART-CUST-NA');
+        $resNa->assertDontSee('PART-CUST-TOYOTA');
+        $resNa->assertDontSee('PART-CUST-DENSO');
+    }
+
+    /**
+     * Test filtering reports by customer industry (Sektor Industri) and group of expected customers.
+     */
+    public function test_index_page_filters_by_customer_industry_sector(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        MasterBusinessPartner::create([
+            'bp_code' => 'BP-AUTO-01',
+            'bp_name' => 'PT Astra Honda Motor',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
+        ]);
+
+        MasterBusinessPartner::create([
+            'bp_code' => 'BP-ELEC-01',
+            'bp_name' => 'PT Sharp Electronics',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_ELECTRONICS,
+        ]);
+
+        MasterBusinessPartner::create([
+            'bp_code' => 'BP-MOLD-01',
+            'bp_name' => 'PT Honda Lock Indonesia',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_MOULDING,
+        ]);
+
+        SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-AHM',
+            'customer' => 'PT Astra Honda Motor',
+            'jumlah_output' => 500,
+            'jumlah_ok' => 490,
+            'jumlah_ng' => 10,
+        ]);
+
+        SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 2',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-SHARP',
+            'customer' => 'PT Sharp Electronics',
+            'jumlah_output' => 300,
+            'jumlah_ok' => 295,
+            'jumlah_ng' => 5,
+        ]);
+
+        SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Buffing 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-HLI',
+            'customer' => 'PT Honda Lock Indonesia',
+            'jumlah_output' => 200,
+            'jumlah_ok' => 200,
+            'jumlah_ng' => 0,
+        ]);
+
+        // 1. Unfiltered page shows all and renders Sektor Industri filter before Customer
+        $resAll = $this->get(route('second-process-reports.index'));
+        $resAll->assertOk();
+        $resAll->assertViewHas('industries');
+        $resAll->assertViewHas('selectedIndustry', null);
+        $resAll->assertSee('PART-AHM');
+        $resAll->assertSee('PART-SHARP');
+        $resAll->assertSee('PART-HLI');
+        $resAll->assertSee('name="industry"', false);
+        $resAll->assertSee('name="customer"', false);
+
+        // Verify order: Sektor Industri appears before Customer in DOM
+        $content = $resAll->getContent();
+        $industryPos = strpos($content, 'name="industry"');
+        $customerPos = strpos($content, 'name="customer"');
+        $this->assertNotFalse($industryPos);
+        $this->assertNotFalse($customerPos);
+        $this->assertLessThan($customerPos, $industryPos, 'Sektor Industri filter must appear before Customer filter in DOM');
+
+        // 2. Filter by AUTOMOTIVE sector
+        $resAuto = $this->get(route('second-process-reports.index', ['industry' => 'AUTOMOTIVE']));
+        $resAuto->assertOk();
+        $resAuto->assertViewHas('selectedIndustry', 'AUTOMOTIVE');
+        $resAuto->assertSee('PART-AHM');
+        $resAuto->assertDontSee('PART-SHARP');
+        $resAuto->assertDontSee('PART-HLI');
+
+        // 3. Filter by ELECTRONICS sector
+        $resElec = $this->get(route('second-process-reports.index', ['industry' => 'ELECTRONICS']));
+        $resElec->assertOk();
+        $resElec->assertViewHas('selectedIndustry', 'ELECTRONICS');
+        $resElec->assertSee('PART-SHARP');
+        $resElec->assertDontSee('PART-AHM');
+        $resElec->assertDontSee('PART-HLI');
+
+        // 4. Filter by MOULDING sector
+        $resMold = $this->get(route('second-process-reports.index', ['industry' => 'MOULDING']));
+        $resMold->assertOk();
+        $resMold->assertViewHas('selectedIndustry', 'MOULDING');
+        $resMold->assertSee('PART-HLI');
+        $resMold->assertDontSee('PART-AHM');
+        $resMold->assertDontSee('PART-SHARP');
+
+        // 5. Filter combining industry and customer
+        $resCombined = $this->get(route('second-process-reports.index', [
+            'industry' => 'AUTOMOTIVE',
+            'customer' => 'PT Astra Honda Motor',
+        ]));
+        $resCombined->assertOk();
+        $resCombined->assertSee('PART-AHM');
+        $resCombined->assertDontSee('PART-SHARP');
+    }
+
+    /**
+     * Test filtering reports by unit/line using config('mes.sp_lines') and avoiding collisions.
+     */
+    public function test_index_page_filters_by_unit_line_using_sp_lines_config(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        $reportA = SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line A',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-LINE-A',
+            'customer' => 'PT Toyota Tsusho',
+        ]);
+
+        $reportBuf1 = SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Buffing 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-BUF-1',
+            'customer' => 'PT Toyota Tsusho',
+        ]);
+
+        $reportBuf10 = SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Buffing 10',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-BUF-10',
+            'customer' => 'PT Toyota Tsusho',
+        ]);
+
+        // 1. Check sp_lines options are rendered in unit_line select dropdown
+        $res = $this->get(route('second-process-reports.index'));
+        $res->assertOk();
+        $res->assertSee('<select name="unit_line"', false);
+        foreach (config('mes.sp_lines') as $slug => $displayName) {
+            $res->assertSee($displayName);
+        }
+
+        // 2. Filter by display name 'Buffing 1' - must NOT collide with 'Buffing 10'
+        $resBuf1 = $this->get(route('second-process-reports.index', ['unit_line' => 'Buffing 1']));
+        $resBuf1->assertOk();
+        $resBuf1->assertSee('PART-BUF-1');
+        $resBuf1->assertDontSee('PART-BUF-10');
+        $resBuf1->assertDontSee('PART-LINE-A');
+
+        // 3. Filter by slug 'buffing-1' - also resolves to 'Buffing 1'
+        $resSlug = $this->get(route('second-process-reports.index', ['unit_line' => 'buffing-1']));
+        $resSlug->assertOk();
+        $resSlug->assertSee('PART-BUF-1');
+        $resSlug->assertDontSee('PART-BUF-10');
+        $resSlug->assertDontSee('PART-LINE-A');
+
+        // 4. Filter by 'Line A'
+        $resLineA = $this->get(route('second-process-reports.index', ['unit_line' => 'Line A']));
+        $resLineA->assertOk();
+        $resLineA->assertSee('PART-LINE-A');
+        $resLineA->assertDontSee('PART-BUF-1');
+        $resLineA->assertDontSee('PART-BUF-10');
     }
 
     /**

@@ -25,8 +25,19 @@
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                     Print Report
                 </button>
-                <a href="{{ route('second-process-reports.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-3.5 rounded shadow-sm text-xs transition flex items-center gap-1">
-                    Back to Reports List
+                <a href="{{ route('second-process-reports.index', array_filter([
+                    'preset' => $activePreset ?? request('preset'),
+                    'date_from' => $dateFrom ?? request('date_from'),
+                    'date_to' => $dateTo ?? request('date_to'),
+                    'unit_line' => request('unit_line'),
+                    'shift' => request('shift'),
+                    'process_prod' => request('process_prod'),
+                    'industry' => $selectedIndustry ?? request('industry'),
+                    'customer' => request('customer'),
+                    'status' => request('status'),
+                ], fn($v) => !is_null($v) && $v !== '')) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-3.5 rounded shadow-sm text-xs transition flex items-center gap-1.5" title="Kembali ke Tabel Laporan dengan filter yang sama">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    <span>Back to Reports List</span>
                 </a>
                 <a href="{{ route('second-process.dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3.5 rounded shadow-sm text-xs transition flex items-center gap-1">
                     Floor Live Dashboard
@@ -38,36 +49,100 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
+            {{-- Analytics Loading Overlay --}}
+            <div id="analytics-loading-overlay" class="hidden fixed inset-0 bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center z-50 transition-opacity">
+                <div class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white shadow-2xl border border-gray-200 text-sm font-bold text-gray-800">
+                    <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Memuat data analitik...</span>
+                </div>
+            </div>
+
             {{-- Filter Bar --}}
-            <form id="analytics-filter-form" method="GET" action="{{ route('second-process.report-analytics') }}" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 no-print space-y-4">
+            <form id="analytics-filter-form" method="GET" action="{{ route('second-process.report-analytics') }}"
+                class="relative bg-white p-5 rounded-xl shadow-sm border border-gray-200 no-print space-y-4"
+                onsubmit="showAnalyticsLoadingState()"
+                x-data="{ showCustomDates: {{ ($activePreset ?? '') === 'custom' ? 'true' : 'false' }} }">
+                {{-- Top loading progress bar --}}
+                <div id="analytics-progress-bar" class="hidden absolute top-0 left-0 right-0 h-1 bg-blue-100 overflow-hidden rounded-t-xl z-30">
+                    <div class="w-full h-full bg-blue-600 animate-pulse origin-left"></div>
+                </div>
+                <input type="hidden" name="preset" id="analytics-preset-input" value="{{ request('preset') }}">
                 <input type="hidden" name="ng_category" value="{{ $selectedNgCategory ?? request('ng_category') }}">
                 {{-- Row 1: Quick Range Presets & Action Buttons --}}
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
                     <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        <span class="text-xs font-bold text-gray-500 uppercase mr-1">Quick Range:</span>
-                        <button type="button" onclick="setDatePreset('{{ now('Asia/Jakarta')->format('Y-m-d') }}', '{{ now('Asia/Jakarta')->format('Y-m-d') }}')"
-                            class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-700 transition">
+                        <span class="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 mr-1">
+                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            Quick Range:
+                        </span>
+                        <button type="button" onclick="setDatePreset('today')"
+                            class="px-2.5 py-1 text-xs rounded-lg font-semibold transition border {{ ($activePreset ?? '') === 'today' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' }}">
                             Today
                         </button>
-                        <button type="button" onclick="setDatePreset('{{ now('Asia/Jakarta')->startOfWeek()->format('Y-m-d') }}', '{{ now('Asia/Jakarta')->endOfWeek()->format('Y-m-d') }}')"
-                            class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-700 transition">
+                        <button type="button" onclick="setDatePreset('yesterday')"
+                            class="px-2.5 py-1 text-xs rounded-lg font-semibold transition border {{ ($activePreset ?? '') === 'yesterday' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' }}">
+                            Yesterday
+                        </button>
+                        <button type="button" onclick="setDatePreset('this_week')"
+                            class="px-2.5 py-1 text-xs rounded-lg font-semibold transition border {{ ($activePreset ?? '') === 'this_week' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' }}">
                             This Week
                         </button>
-                        <button type="button" onclick="setDatePreset('{{ now('Asia/Jakarta')->startOfMonth()->format('Y-m-d') }}', '{{ now('Asia/Jakarta')->format('Y-m-d') }}')"
-                            class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-700 transition">
+                        <button type="button" onclick="setDatePreset('this_month')"
+                            class="px-2.5 py-1 text-xs rounded-lg font-semibold transition border {{ ($activePreset ?? '') === 'this_month' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' }}">
                             This Month
                         </button>
-                        <button type="button" onclick="setDatePreset('{{ now('Asia/Jakarta')->copy()->subMonth()->startOfMonth()->format('Y-m-d') }}', '{{ now('Asia/Jakarta')->copy()->subMonth()->endOfMonth()->format('Y-m-d') }}')"
-                            class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-700 transition">
+                        <button type="button" onclick="setDatePreset('last_month')"
+                            class="px-2.5 py-1 text-xs rounded-lg font-semibold transition border {{ ($activePreset ?? '') === 'last_month' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' }}">
                             Last Month
                         </button>
+
+                        {{-- Custom Date Range Quick Pill --}}
+                        <button type="button"
+                            @click="showCustomDates = !showCustomDates; if (showCustomDates) { document.getElementById('analytics-preset-input').value = 'custom'; $nextTick(() => document.getElementById('analytics-date-from')?.focus()); }"
+                            :class="showCustomDates ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-300 font-bold' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'"
+                            class="px-2.5 py-1 text-xs rounded-lg font-semibold transition border flex items-center gap-1 {{ ($activePreset ?? '') === 'custom' ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-300 font-bold' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' }}">
+                            Custom Range
+                        </button>
+
+                        {{-- Direct inline date inputs: zero extra banners or verbose text --}}
+                        <div x-show="showCustomDates" {{ ($activePreset ?? '') !== 'custom' ? 'x-cloak style=display:none;' : '' }}
+                            class="inline-flex items-center gap-1.5 ml-1 transition-all">
+                            <input type="date" name="date_from" id="analytics-date-from"
+                                value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_from')) ? request('date_from', $dateFrom) : '' }}"
+                                onchange="applyCustomDateIfComplete()"
+                                class="px-2 py-0.5 border-gray-300 bg-white rounded-md text-xs focus:ring-blue-500 focus:border-blue-500 font-medium">
+                            <span class="text-xs text-gray-400 font-semibold">–</span>
+                            <input type="date" name="date_to" id="analytics-date-to"
+                                value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_to')) ? request('date_to', $dateTo) : '' }}"
+                                onchange="applyCustomDateIfComplete()"
+                                class="px-2 py-0.5 border-gray-300 bg-white rounded-md text-xs focus:ring-blue-500 focus:border-blue-500 font-medium">
+                        </div>
                     </div>
 
                     {{-- Actions (Apply, Reset, CSV Export) --}}
                     <div class="flex flex-wrap items-center gap-2">
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-4 rounded-lg text-xs shadow transition">
+                        <button type="submit" id="analytics-submit-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-4 rounded-lg text-xs shadow transition">
                             Apply Filter
                         </button>
+                        <a href="{{ route('second-process-reports.index', array_filter([
+                            'preset' => $activePreset ?? request('preset'),
+                            'date_from' => $dateFrom ?? request('date_from'),
+                            'date_to' => $dateTo ?? request('date_to'),
+                            'unit_line' => request('unit_line'),
+                            'shift' => request('shift'),
+                            'process_prod' => request('process_prod'),
+                            'industry' => $selectedIndustry ?? request('industry'),
+                            'customer' => request('customer'),
+                            'status' => request('status'),
+                        ], fn($v) => !is_null($v) && $v !== '')) }}"
+                            class="inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-xs"
+                            title="Buka daftar laporan pada tabel dengan filter aktif yang sama">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            <span>Tabel Laporan ({{ number_format($summary->total_reports) }})</span>
+                        </a>
                         <a href="{{ route('second-process.report-analytics') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-1.5 px-3 rounded-lg text-xs border border-gray-300 transition">
                             Reset
                         </a>
@@ -121,19 +196,7 @@
                 </div>
 
                 {{-- Row 2: Filter Form Inputs --}}
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-                    {{-- Date From --}}
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">From Date</label>
-                        <input type="date" name="date_from" value="{{ $dateFrom }}"
-                            class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    {{-- Date To --}}
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">To Date</label>
-                        <input type="date" name="date_to" value="{{ $dateTo }}"
-                            class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
-                    </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
                     {{-- Unit / Line --}}
                     <div>
                         <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Unit / Line</label>
@@ -161,6 +224,16 @@
                             <option value="">All Processes</option>
                             @foreach($processes as $p)
                                 <option value="{{ $p }}" {{ request('process_prod') == $p ? 'selected' : '' }}>{{ $p }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    {{-- Customer (Simple HTML Dropdown) --}}
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Customer</label>
+                        <select name="customer" class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Customers</option>
+                            @foreach($customers as $c)
+                                <option value="{{ $c }}" {{ request('customer') == $c ? 'selected' : '' }}>{{ $c }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -198,7 +271,22 @@
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Reports</div>
                             <div class="text-3xl font-black text-gray-900 mt-1">{{ number_format($summary->total_reports) }}</div>
-                            <div class="text-[11px] text-gray-400 mt-0.5">Submitted & recorded</div>
+                            <div class="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1.5">
+                                <span>Submitted &amp; recorded</span>
+                                <a href="{{ route('second-process-reports.index', array_filter([
+                                    'preset' => $activePreset ?? request('preset'),
+                                    'date_from' => $dateFrom ?? request('date_from'),
+                                    'date_to' => $dateTo ?? request('date_to'),
+                                    'unit_line' => request('unit_line'),
+                                    'shift' => request('shift'),
+                                    'process_prod' => request('process_prod'),
+                                    'industry' => $selectedIndustry ?? request('industry'),
+                                    'customer' => request('customer'),
+                                    'status' => request('status'),
+                                ], fn($v) => !is_null($v) && $v !== '')) }}" class="text-blue-600 hover:underline font-semibold no-print">
+                                    Lihat di tabel &rarr;
+                                </a>
+                            </div>
                         </div>
                         <div class="p-3 bg-blue-50 text-blue-600 rounded-xl no-print">
                             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -528,7 +616,22 @@
                                 @endphp
                                 <tr class="hover:bg-gray-50 transition">
                                     <td class="px-5 py-3 text-sm font-bold text-gray-400">#{{ $index + 1 }}</td>
-                                    <td class="px-5 py-3 text-sm font-bold text-blue-600">{{ $prod->part_number }}</td>
+                                    <td class="px-5 py-3 text-sm font-bold text-blue-600">
+                                        <a href="{{ route('second-process-reports.index', array_filter([
+                                            'search' => $prod->part_number,
+                                            'preset' => $activePreset ?? request('preset'),
+                                            'date_from' => $dateFrom ?? request('date_from'),
+                                            'date_to' => $dateTo ?? request('date_to'),
+                                            'unit_line' => request('unit_line'),
+                                            'shift' => request('shift'),
+                                            'process_prod' => request('process_prod'),
+                                            'industry' => $selectedIndustry ?? request('industry'),
+                                            'customer' => $prod->customer ?: request('customer'),
+                                            'status' => request('status'),
+                                        ], fn($v) => !is_null($v) && $v !== '')) }}" class="hover:underline hover:text-blue-800 transition" title="Buka data laporan untuk part {{ $prod->part_number }} di tabel">
+                                            {{ $prod->part_number }}
+                                        </a>
+                                    </td>
                                     <td class="px-5 py-3 text-sm text-gray-800">{{ $prod->part_name }}</td>
                                     <td class="px-5 py-3 text-sm text-gray-500">{{ $prod->customer }}</td>
                                     <td class="px-5 py-3 text-sm text-right font-black text-gray-900">{{ number_format($prod->total_output) }}</td>
@@ -572,7 +675,22 @@
                                 @endphp
                                 <tr class="hover:bg-red-50/30 transition">
                                     <td class="px-5 py-3 text-sm font-bold text-red-500">#{{ $idx + 1 }}</td>
-                                    <td class="px-5 py-3 text-sm font-bold text-blue-600">{{ $defProd->part_number }}</td>
+                                    <td class="px-5 py-3 text-sm font-bold text-blue-600">
+                                        <a href="{{ route('second-process-reports.index', array_filter([
+                                            'search' => $defProd->part_number,
+                                            'preset' => $activePreset ?? request('preset'),
+                                            'date_from' => $dateFrom ?? request('date_from'),
+                                            'date_to' => $dateTo ?? request('date_to'),
+                                            'unit_line' => request('unit_line'),
+                                            'shift' => request('shift'),
+                                            'process_prod' => request('process_prod'),
+                                            'industry' => $selectedIndustry ?? request('industry'),
+                                            'customer' => $defProd->customer ?: request('customer'),
+                                            'status' => request('status'),
+                                        ], fn($v) => !is_null($v) && $v !== '')) }}" class="hover:underline hover:text-blue-800 transition" title="Buka data laporan untuk part {{ $defProd->part_number }} di tabel">
+                                            {{ $defProd->part_number }}
+                                        </a>
+                                    </td>
                                     <td class="px-5 py-3 text-sm text-gray-800">{{ $defProd->part_name }}</td>
                                     <td class="px-5 py-3 text-sm text-gray-500">{{ $defProd->customer }}</td>
                                     <td class="px-5 py-3 text-sm text-right text-gray-700 font-semibold">{{ number_format($defProd->total_output) }}</td>
@@ -830,18 +948,139 @@
         </div>
     </div>
 
-    {{-- Chart JS Initialization --}}
+    {{-- Chart JS & Filter Initialization --}}
     <script>
-        function setDatePreset(from, to) {
-            const fromInput = document.querySelector('input[name="date_from"]');
-            const toInput = document.querySelector('input[name="date_to"]');
-            if (fromInput && toInput) {
-                fromInput.value = from;
-                toInput.value = to;
-                const form = document.getElementById('analytics-filter-form');
-                if (form) form.submit();
+        function showAnalyticsLoadingState() {
+            const overlay = document.getElementById('analytics-loading-overlay');
+            const bar = document.getElementById('analytics-progress-bar');
+            if (overlay) overlay.classList.remove('hidden');
+            if (bar) bar.classList.remove('hidden');
+            const btn = document.getElementById('analytics-submit-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
             }
         }
+
+        function setDatePreset(preset) {
+            const presets = {
+                today: {
+                    from: '{{ $today }}',
+                    to: '{{ $today }}'
+                },
+                yesterday: {
+                    from: '{{ $yesterday }}',
+                    to: '{{ $yesterday }}'
+                },
+                this_week: {
+                    from: '{{ $thisWeekStart }}',
+                    to: '{{ $today }}'
+                },
+                this_month: {
+                    from: '{{ $thisMonthStart }}',
+                    to: '{{ $today }}'
+                },
+                last_month: {
+                    from: '{{ $lastMonthStart }}',
+                    to: '{{ $lastMonthEnd }}'
+                }
+            };
+
+            if (presets[preset]) {
+                const form = document.getElementById('analytics-filter-form');
+                if (form) {
+                    showAnalyticsLoadingState();
+                    const fromInput = document.getElementById('analytics-date-from');
+                    const toInput = document.getElementById('analytics-date-to');
+                    const presetInput = document.getElementById('analytics-preset-input');
+                    
+                    if (fromInput) fromInput.value = presets[preset].from;
+                    if (toInput) toInput.value = presets[preset].to;
+                    if (presetInput) presetInput.value = preset;
+                    form.submit();
+                }
+            }
+        }
+
+        let isSubmittingDate = false;
+        function applyCustomDateIfComplete() {
+            if (isSubmittingDate) return;
+
+            const fromInput = document.getElementById('analytics-date-from');
+            const toInput = document.getElementById('analytics-date-to');
+            const presetInput = document.getElementById('analytics-preset-input');
+            const form = document.getElementById('analytics-filter-form');
+
+            if (presetInput) {
+                presetInput.value = 'custom';
+            }
+
+            const fromVal = fromInput ? fromInput.value : '';
+            const toVal = toInput ? toInput.value : '';
+
+            // If only 'from' is filled and 'to' is empty, guide user directly to 'to'
+            if (fromVal && !toVal) {
+                if (toInput) {
+                    toInput.focus();
+                    try {
+                        if (typeof toInput.showPicker === 'function') {
+                            toInput.showPicker();
+                        }
+                    } catch (e) {}
+                }
+                return;
+            }
+
+            // If only 'to' is filled and 'from' is empty, guide user directly to 'from'
+            if (!fromVal && toVal) {
+                if (fromInput) {
+                    fromInput.focus();
+                    try {
+                        if (typeof fromInput.showPicker === 'function') {
+                            fromInput.showPicker();
+                        }
+                    } catch (e) {}
+                }
+                return;
+            }
+
+            // When both are filled
+            if (fromVal && toVal && form) {
+                // If end date is earlier than start date, reset end date and focus it
+                if (fromVal > toVal) {
+                    toInput.value = '';
+                    toInput.focus();
+                    try {
+                        if (typeof toInput.showPicker === 'function') {
+                            toInput.showPicker();
+                        }
+                    } catch (e) {}
+                    return;
+                }
+
+                isSubmittingDate = true;
+                showAnalyticsLoadingState();
+                form.submit();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('analytics-filter-form');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    showAnalyticsLoadingState();
+                    const fromInput = document.getElementById('analytics-date-from');
+                    const toInput = document.getElementById('analytics-date-to');
+                    const presetInput = document.getElementById('analytics-preset-input');
+                    if (presetInput && (fromInput?.value || toInput?.value)) {
+                        if (!['today', 'yesterday', 'this_week', 'this_month', 'last_month'].includes(presetInput.value)) {
+                            presetInput.value = 'custom';
+                        }
+                    }
+                });
+            }
+        });
+
         function filterByNgCategory(val) {
             let catInput = document.querySelector('input[name="ng_category"]');
             if (!catInput) {
@@ -858,6 +1097,7 @@
             }
             const form = document.getElementById('analytics-filter-form');
             if (form) {
+                showAnalyticsLoadingState();
                 form.action = "{{ route('second-process.report-analytics') }}#top-ng-card";
                 form.submit();
             }
