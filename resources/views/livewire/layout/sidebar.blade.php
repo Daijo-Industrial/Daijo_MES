@@ -37,7 +37,7 @@ new class extends Component {
                 <x-application-logo class="block fill-current text-gray-800 w-16 h-16" />
             </a>
             <span class="ms-5 font-semibold text-xl">
-                Daijo MES System
+                Daijo MES
             </span>
 
             {{-- Close button mobile --}}
