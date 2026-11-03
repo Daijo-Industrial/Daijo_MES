@@ -35,9 +35,17 @@
                     'industry' => $selectedIndustry ?? request('industry'),
                     'customer' => request('customer'),
                     'status' => request('status'),
+                    'search' => request('search'),
+                    'part_number' => request('part_number'),
+                    'sisa_filter' => request('sisa_filter'),
                 ], fn($v) => !is_null($v) && $v !== '')) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-3.5 rounded shadow-sm text-xs transition flex items-center gap-1.5" title="Kembali ke Tabel Laporan dengan filter yang sama">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                     <span>Back to Reports List</span>
+                    @if(request('sisa_filter'))
+                        <span class="px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded text-[10px] font-bold uppercase ml-0.5">
+                            {{ request('sisa_filter') }}
+                        </span>
+                    @endif
                 </a>
                 <a href="{{ route('second-process.dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3.5 rounded shadow-sm text-xs transition flex items-center gap-1">
                     Floor Live Dashboard
@@ -120,6 +128,23 @@
                                 onchange="applyCustomDateIfComplete()"
                                 class="px-2 py-0.5 border-gray-300 bg-white rounded-md text-xs focus:ring-blue-500 focus:border-blue-500 font-medium">
                         </div>
+
+                        {{-- Sisa Quick Filter Pills in Analytics --}}
+                        <div class="flex items-center gap-1 pl-2 border-l border-gray-200">
+                            <span class="text-[11px] font-bold text-gray-400 uppercase">Sisa:</span>
+                            <a href="{{ request()->fullUrlWithQuery(['sisa_filter' => null]) }}"
+                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ !request('sisa_filter') ? 'bg-slate-700 text-white border-slate-700 shadow-xs' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' }}">
+                                All
+                            </a>
+                            <a href="{{ request()->fullUrlWithQuery(['sisa_filter' => 'open']) }}"
+                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'open' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100' }}">
+                                ⚠️ Open Sisa
+                            </a>
+                            <a href="{{ request()->fullUrlWithQuery(['sisa_filter' => 'reconciled']) }}"
+                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'reconciled' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100' }}">
+                                ✓ Tertutup
+                            </a>
+                        </div>
                     </div>
 
                     {{-- Actions (Apply, Reset, CSV Export) --}}
@@ -137,11 +162,19 @@
                             'industry' => $selectedIndustry ?? request('industry'),
                             'customer' => request('customer'),
                             'status' => request('status'),
+                            'search' => request('search'),
+                            'part_number' => request('part_number'),
+                            'sisa_filter' => request('sisa_filter'),
                         ], fn($v) => !is_null($v) && $v !== '')) }}"
                             class="inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-xs"
                             title="Buka daftar laporan pada tabel dengan filter aktif yang sama">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                             <span>Tabel Laporan ({{ number_format($summary->total_reports) }})</span>
+                            @if(request('sisa_filter'))
+                                <span class="px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded text-[9px] font-bold uppercase ml-0.5">
+                                    {{ request('sisa_filter') }}
+                                </span>
+                            @endif
                         </a>
                         <a href="{{ route('second-process.report-analytics') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-1.5 px-3 rounded-lg text-xs border border-gray-300 transition">
                             Reset
@@ -196,7 +229,7 @@
                 </div>
 
                 {{-- Row 2: Filter Form Inputs --}}
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
                     {{-- Unit / Line --}}
                     <div>
                         <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Unit / Line</label>
@@ -255,6 +288,18 @@
                             @foreach(['draft', 'submitted', 'pqc_approved', 'leader_approved', 'acknowledged'] as $s)
                                 <option value="{{ $s }}" {{ request('status') == $s ? 'selected' : '' }}>{{ ucwords(str_replace('_', ' ', $s)) }}</option>
                             @endforeach
+                        </select>
+                    </div>
+                    {{-- Sisa Filter --}}
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Status Sisa</label>
+                        <select name="sisa_filter" class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Semua Sisa</option>
+                            <option value="open" {{ request('sisa_filter') === 'open' ? 'selected' : '' }}>⚠️ Open Sisa</option>
+                            <option value="reconciled" {{ request('sisa_filter') === 'reconciled' ? 'selected' : '' }}>✓ Sisa Tertutup</option>
+                            <option value="has_sisa" {{ request('sisa_filter') === 'has_sisa' ? 'selected' : '' }}>Ada Sisa (&gt; 0)</option>
+                            <option value="ideal" {{ request('sisa_filter') === 'ideal' ? 'selected' : '' }}>Ideal (= 0)</option>
+                            <option value="deficit" {{ request('sisa_filter') === 'deficit' ? 'selected' : '' }}>Defisit (&lt; 0)</option>
                         </select>
                     </div>
                 </div>
@@ -401,8 +446,8 @@
 
                     {{-- WIP Reconciliation / Variance --}}
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
-                        <div>
-                            <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">WIP Reconciliation</div>
+                        <div class="space-y-1">
+                            <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">WIP Reconciliation (Open Sisa)</div>
                             <div class="text-2xl font-black mt-1 flex items-baseline gap-2">
                                 @if($wipVariance === 0)
                                     <span class="text-emerald-600">0</span>
@@ -411,17 +456,64 @@
                                     </span>
                                 @elseif($wipVariance > 0)
                                     <span class="text-amber-600">+{{ number_format($wipVariance) }}</span>
-                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800" title="Parts fed but not yet completed/scrapped">
-                                        In-Line WIP
+                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800" title="Sisa material belum terserap/diproses di shift lanjutan">
+                                        Open Sisa
                                     </span>
                                 @else
                                     <span class="text-rose-600">{{ number_format($wipVariance) }}</span>
                                     <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800" title="Output exceeds fed WIP">
-                                        Excess Output
+                                        Defisit
                                     </span>
                                 @endif
                             </div>
-                            <div class="text-[11px] text-gray-400 mt-0.5">Inflow vs (Output + Scrap)</div>
+
+                            <div class="pt-1 flex flex-col gap-1">
+                                @if(($openSisaVariance ?? 0) > 0)
+                                    <a href="{{ route('second-process-reports.index', array_filter([
+                                        'preset' => $activePreset ?? request('preset'),
+                                        'date_from' => $dateFrom ?? request('date_from'),
+                                        'date_to' => $dateTo ?? request('date_to'),
+                                        'unit_line' => request('unit_line'),
+                                        'shift' => request('shift'),
+                                        'process_prod' => request('process_prod'),
+                                        'industry' => $selectedIndustry ?? request('industry'),
+                                        'customer' => request('customer'),
+                                        'status' => request('status'),
+                                        'search' => request('search'),
+                                        'part_number' => request('part_number'),
+                                        'sisa_filter' => 'open',
+                                    ], fn($v) => !is_null($v) && $v !== '')) }}"
+                                        class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-md transition shadow-2xs w-fit"
+                                        title="Buka laporan yang berstatus Open Sisa di tabel">
+                                        <span>🔍 Filter Laporan Open Sisa ({{ number_format($openSisaVariance) }} pcs) &rarr;</span>
+                                    </a>
+                                @endif
+
+                                @if(($reconciledSisaTotal ?? 0) > 0)
+                                    <a href="{{ route('second-process-reports.index', array_filter([
+                                        'preset' => $activePreset ?? request('preset'),
+                                        'date_from' => $dateFrom ?? request('date_from'),
+                                        'date_to' => $dateTo ?? request('date_to'),
+                                        'unit_line' => request('unit_line'),
+                                        'shift' => request('shift'),
+                                        'process_prod' => request('process_prod'),
+                                        'industry' => $selectedIndustry ?? request('industry'),
+                                        'customer' => request('customer'),
+                                        'status' => request('status'),
+                                        'search' => request('search'),
+                                        'part_number' => request('part_number'),
+                                        'sisa_filter' => 'reconciled',
+                                    ], fn($v) => !is_null($v) && $v !== '')) }}"
+                                        class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
+                                        title="Buka laporan yang sisanya telah tertutup di tabel">
+                                        <span>✓ {{ number_format($reconciledSisaTotal) }} pcs sisa telah ditutup (Cek Laporan) &rarr;</span>
+                                    </a>
+                                @endif
+
+                                @if(($openSisaVariance ?? 0) === 0 && ($reconciledSisaTotal ?? 0) === 0)
+                                    <div class="text-[11px] text-gray-500">Sisa WIP yang belum diserap</div>
+                                @endif
+                            </div>
                         </div>
                         <div class="p-2.5 bg-gray-100 text-gray-600 rounded-xl no-print">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>

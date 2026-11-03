@@ -5,6 +5,10 @@
             <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h2 class="text-2xl font-bold">Second Process Daily Production Reports</h2>
                 <div class="flex items-center space-x-2">
+                    <a href="{{ route('second-process-reports.part-cycle') }}" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-3 rounded shadow transition text-sm flex items-center gap-1.5" title="Lihat riwayat siklus proses per part number">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Timeline Siklus Part
+                    </a>
                     <a href="{{ route('second-process.report-analytics', array_filter([
                         'preset' => $activePreset ?? request('preset'),
                         'date_from' => request('date_from'),
@@ -15,9 +19,16 @@
                         'industry' => request('industry'),
                         'customer' => request('customer'),
                         'status' => request('status'),
-                    ], fn($v) => !is_null($v) && $v !== '')) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow transition text-sm flex items-center gap-1.5">
+                        'search' => request('search'),
+                        'sisa_filter' => request('sisa_filter'),
+                    ], fn($v) => !is_null($v) && $v !== '')) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow transition text-sm flex items-center gap-1.5" title="Buka Dashboard Analitik dengan filter aktif yang sama">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        Analytics Dashboard
+                        <span>Analytics Dashboard</span>
+                        @if(request('sisa_filter'))
+                            <span class="px-1.5 py-0.2 bg-indigo-800 text-indigo-100 rounded text-[10px] font-bold uppercase ml-0.5">
+                                {{ request('sisa_filter') }}
+                            </span>
+                        @endif
                     </a>
                     <a href="{{ route('second-process-reports.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
                         + New Report
@@ -32,7 +43,7 @@
             @endif
 
             {{-- Summary Cards --}}
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
                 <div class="bg-white border border-gray-200 rounded-lg p-3.5 shadow-sm">
                     <div class="text-xs font-bold text-gray-500 uppercase">Total Reports</div>
                     <div class="text-2xl font-black text-gray-900 mt-1">{{ number_format($summary->total_reports) }}</div>
@@ -54,6 +65,35 @@
                                 ({{ round(($summary->total_ng / $summary->total_output) * 100, 2) }}%)
                             </span>
                         @endif
+                    </div>
+                </div>
+                {{-- Card 5: Sisa Input --}}
+                <div class="col-span-2 sm:col-span-1 bg-white border rounded-lg p-3.5 shadow-sm {{ request('sisa_filter') ? 'border-amber-400 bg-amber-50/20 ring-1 ring-amber-300' : 'border-gray-200' }}">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-bold text-gray-500 uppercase">Sisa Input</div>
+                        @if(request('sisa_filter'))
+                            <span class="px-1.5 py-0.5 text-[9px] font-black rounded bg-amber-100 text-amber-800 uppercase">
+                                {{ request('sisa_filter') }}
+                            </span>
+                        @endif
+                    </div>
+                    <div class="text-2xl font-black mt-1 {{ ($summary->total_sisa_input ?? 0) > 0 ? 'text-amber-700' : 'text-gray-900' }}">
+                        {{ number_format($summary->total_sisa_input ?? 0) }}
+                        <span class="text-xs font-normal text-gray-400">pcs</span>
+                    </div>
+                    <div class="mt-1 flex items-center justify-between text-[10px]">
+                        @if(request('sisa_filter'))
+                            <a href="{{ route('second-process-reports.index', array_filter(request()->except(['sisa_filter', 'page']))) }}" class="font-bold text-red-600 hover:text-red-800 underline">
+                                ✕ Reset Sisa
+                            </a>
+                        @else
+                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'open']))) }}" class="font-bold text-amber-700 hover:text-amber-900 underline">
+                                Filter Open Sisa &rarr;
+                            </a>
+                        @endif
+                        <a href="{{ route('second-process.report-analytics', array_filter(request()->except('page'))) }}" class="text-indigo-600 hover:text-indigo-800 font-semibold" title="Buka rekonsiliasi sisa di Analytics">
+                            Analisis &rarr;
+                        </a>
                     </div>
                 </div>
             </div>
@@ -119,6 +159,41 @@
                                     title="Clear date filters">
                                     ✕ All Dates
                                 </button>
+                            @endif
+                        </div>
+
+                        {{-- Sisa Quick Filter Pill Strip --}}
+                        <div class="flex items-center gap-1.5 flex-wrap pt-2 mt-2 border-t border-gray-100 w-full">
+                            <span class="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 mr-1">
+                                Sisa Filter:
+                            </span>
+                            <a href="{{ route('second-process-reports.index', array_filter(request()->except(['sisa_filter', 'page']))) }}"
+                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ !request('sisa_filter') ? 'bg-slate-700 text-white border-slate-700 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100' }}">
+                                Semua Sisa
+                            </a>
+                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'open']))) }}"
+                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'open' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100' }}">
+                                ⚠️ Sisa Terbuka (Open)
+                            </a>
+                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'reconciled']))) }}"
+                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'reconciled' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100' }}">
+                                ✓ Sisa Tertutup
+                            </a>
+                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'has_sisa']))) }}"
+                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'has_sisa' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100' }}">
+                                Ada Sisa (&gt; 0)
+                            </a>
+                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'ideal']))) }}"
+                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'ideal' ? 'bg-gray-600 text-white border-gray-600 shadow-xs' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100' }}">
+                                Ideal (= 0)
+                            </a>
+
+                            @if(request('sisa_filter'))
+                                <a href="{{ route('second-process-reports.index', array_filter(request()->except(['sisa_filter', 'page']))) }}"
+                                    class="px-2 py-0.5 text-xs rounded-md font-medium text-red-600 hover:bg-red-50 border border-dashed border-red-300 transition ml-auto"
+                                    title="Reset filter sisa">
+                                    ✕ Clear Sisa Filter
+                                </a>
                             @endif
                         </div>
                     </div>
@@ -196,8 +271,21 @@
                             </select>
                         </div>
 
+                        {{-- Sisa Filter --}}
+                        <div class="col-span-1 xl:col-span-1">
+                            <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Sisa</label>
+                            <select name="sisa_filter" class="w-full border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+                                <option value="">All Sisa</option>
+                                <option value="open" {{ request('sisa_filter') === 'open' ? 'selected' : '' }}>⚠️ Open</option>
+                                <option value="reconciled" {{ request('sisa_filter') === 'reconciled' ? 'selected' : '' }}>✓ Tertutup</option>
+                                <option value="has_sisa" {{ request('sisa_filter') === 'has_sisa' ? 'selected' : '' }}>Ada Sisa</option>
+                                <option value="ideal" {{ request('sisa_filter') === 'ideal' ? 'selected' : '' }}>Ideal</option>
+                                <option value="deficit" {{ request('sisa_filter') === 'deficit' ? 'selected' : '' }}>Defisit</option>
+                            </select>
+                        </div>
+
                         {{-- Search keyword --}}
-                        <div class="col-span-1 xl:col-span-2">
+                        <div class="col-span-1 xl:col-span-1">
                             <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Search</label>
                             <input type="text" name="search" value="{{ request('search') }}"
                                 placeholder="Model, part, cust..." 
@@ -287,21 +375,45 @@
                                         {{ $report->ng_prosentase }}%
                                     </td>
                                     
-                                    {{-- Sisa Input --}}
+                                    {{-- Sisa Input & Auto-Reconciliation --}}
                                     <td class="px-2 py-2 whitespace-nowrap text-xs text-right">
                                         @php
-                                            $sisa = $report->sisa_input;
+                                            $sisa = (int) $report->sisa_input;
+                                            $recon = $report->reconciliation_status;
                                         @endphp
                                         @if($sisa > 0)
-                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200" title="{{ $report->sisa_input_remark ? 'Remark: ' . $report->sisa_input_remark : 'Sisa Material' }}">
-                                                +{{ number_format($sisa) }}
-                                            </span>
+                                            <div class="flex flex-col items-end gap-0.5">
+                                                @if($recon['type'] === 'reconciled')
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300" title="{{ $recon['message'] }}">
+                                                        +{{ number_format($sisa) }}
+                                                    </span>
+                                                    <a href="{{ route('second-process-reports.show', $recon['linked_report_id']) }}" class="text-[9px] font-bold text-emerald-700 hover:text-emerald-900 underline block" title="{{ $recon['message'] }}">
+                                                        ✓ Ditutup #{{ $recon['linked_report_id'] }}
+                                                    </a>
+                                                @else
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300" title="{{ $report->sisa_input_remark ? 'Remark: ' . $report->sisa_input_remark : 'Sisa Material' }}">
+                                                        +{{ number_format($sisa) }}
+                                                    </span>
+                                                    <span class="text-[9px] font-semibold text-amber-700" title="{{ $recon['message'] }}">
+                                                        Terbuka
+                                                    </span>
+                                                @endif
+                                            </div>
                                         @elseif($sisa < 0)
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-50 text-red-700 border border-red-200" title="Defisit Output > Input">
                                                 {{ number_format($sisa) }}
                                             </span>
                                         @else
-                                            <span class="text-gray-400 font-medium">0</span>
+                                            @if($recon['type'] === 'absorber')
+                                                <div class="flex flex-col items-end gap-0.5">
+                                                    <span class="text-gray-400 font-medium">0</span>
+                                                    <a href="{{ route('second-process-reports.show', $recon['linked_report_id']) }}" class="text-[9px] font-bold text-blue-600 hover:text-blue-800 underline block" title="{{ $recon['message'] }}">
+                                                        ↪️ Dari #{{ $recon['linked_report_id'] }}
+                                                    </a>
+                                                </div>
+                                            @else
+                                                <span class="text-gray-400 font-medium">0</span>
+                                            @endif
                                         @endif
                                     </td>
                                     

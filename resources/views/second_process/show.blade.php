@@ -213,6 +213,64 @@
         </div>
     </div>
 
+    <!-- Sisa Carryover Reconciliation Status Card -->
+    @php
+        $recon = $report->reconciliation_status;
+    @endphp
+    @if ($recon['type'] !== 'none')
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 no-print mb-6">
+            <div class="bg-white border rounded-lg p-5 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 {{ 
+                $recon['type'] === 'reconciled' ? 'border-emerald-300 bg-emerald-50/40' : (
+                $recon['type'] === 'absorber' ? 'border-blue-300 bg-blue-50/40' : 'border-amber-300 bg-amber-50/40')
+            }}">
+                <div class="flex items-center space-x-3">
+                    @if ($recon['type'] === 'reconciled')
+                        <div class="p-2.5 rounded-full bg-emerald-100 text-emerald-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Status Carryover Sisa (Tertutup)</h4>
+                            <div class="text-sm font-bold text-emerald-900 flex items-center gap-2">
+                                <span>{{ $recon['message'] }}</span>
+                            </div>
+                        </div>
+                    @elseif ($recon['type'] === 'absorber')
+                        <div class="p-2.5 rounded-full bg-blue-100 text-blue-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-blue-700 uppercase tracking-wider">Status Carryover Sisa (Penutup Sisa Sebelumnya)</h4>
+                            <div class="text-sm font-bold text-blue-900 flex items-center gap-2">
+                                <span>{{ $recon['message'] }}</span>
+                            </div>
+                        </div>
+                    @elseif ($recon['type'] === 'open')
+                        <div class="p-2.5 rounded-full bg-amber-100 text-amber-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-amber-700 uppercase tracking-wider">Status Carryover Sisa (Terbuka)</h4>
+                            <div class="text-sm font-bold text-amber-900 flex items-center gap-2">
+                                <span>{{ $recon['message'] }}</span>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="flex items-center gap-2">
+                    @if ($recon['linked_report_id'])
+                        <a href="{{ route('second-process-reports.show', $recon['linked_report_id']) }}" class="bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 font-bold py-2 px-4 rounded text-xs transition inline-flex items-center gap-1 shadow-xs">
+                            <span>Buka Laporan #{{ $recon['linked_report_id'] }}</span> &rarr;
+                        </a>
+                    @endif
+                    <a href="{{ route('second-process-reports.part-cycle', ['part_number' => $report->part_number]) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded text-xs transition inline-flex items-center gap-1 shadow-xs">
+                        <span>🧭 Siklus Part</span> &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Printable Area -->
     @php
         $maxHour = max(1, $report->hourlyProductions->max('hour_ke'));
@@ -324,6 +382,27 @@
                         <td colspan="4" class="border border-black"></td>
                         <td class="border border-black p-2 font-bold bg-gray-50">Remark Sisa Input</td>
                         <td class="border border-black p-2 text-xs italic">{{ $report->sisa_input_remark }}</td>
+                    </tr>
+                    @endif
+                    @if ($recon['type'] !== 'none')
+                    <tr>
+                        <td colspan="4" class="border border-black"></td>
+                        <td class="border border-black p-2 font-bold bg-gray-50">Status Carryover</td>
+                        <td class="border border-black p-2 text-xs">
+                            @if ($recon['type'] === 'reconciled')
+                                <span class="text-emerald-700 font-bold">✓ Tertutup:</span> {{ $recon['message'] }}
+                                @if ($recon['linked_report_id'])
+                                    <a href="{{ route('second-process-reports.show', $recon['linked_report_id']) }}" class="text-blue-600 underline font-semibold ml-1">(Laporan #{{ $recon['linked_report_id'] }})</a>
+                                @endif
+                            @elseif ($recon['type'] === 'absorber')
+                                <span class="text-blue-700 font-bold">↪️ Penutup:</span> {{ $recon['message'] }}
+                                @if ($recon['linked_report_id'])
+                                    <a href="{{ route('second-process-reports.show', $recon['linked_report_id']) }}" class="text-blue-600 underline font-semibold ml-1">(Laporan Asal #{{ $recon['linked_report_id'] }})</a>
+                                @endif
+                            @elseif ($recon['type'] === 'open')
+                                <span class="text-amber-700 font-bold">⚠️ Terbuka:</span> {{ $recon['message'] }}
+                            @endif
+                        </td>
                     </tr>
                     @endif
                 </tbody>
