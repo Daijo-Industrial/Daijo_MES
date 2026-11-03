@@ -450,6 +450,11 @@ new class extends Component {
                         <livewire:sidebar-link href="{{ route('ipqc-inspections.index') }}" label="IPQC Inspections"
                             :active="request()->routeIs('ipqc-inspections.*')" wire:navigate />
                     @endif
+                    <livewire:parent-dropdown label="Molding IPQC Reports" :initiallyOpen="request()->routeIs('inspection-reports.*')" :childRoutes="[
+                        ['name' => 'inspection-reports.index', 'label' => 'All Inspection Reports'],
+                        ['name' => 'inspection-reports.create', 'label' => 'Create Inspection Report'],
+                        ['name' => 'inspection-reports.dashboard', 'label' => 'Inspection Dashboard'],
+                    ]" />
                 @endif
             @endif
         </div>
