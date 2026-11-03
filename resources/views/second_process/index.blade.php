@@ -62,7 +62,7 @@
             <form id="report-filter-form" method="GET" action="{{ route('second-process-reports.index') }}" class="mb-4"
                 onsubmit="showLoadingState()"
                 x-data="{ showCustomDates: {{ ($activePreset ?? '') === 'custom' ? 'true' : 'false' }} }">
-                <input type="hidden" name="preset" id="filter-preset-input" value="{{ request('preset') }}">
+                <input type="hidden" name="preset" id="filter-preset-input" value="{{ $activePreset ?? request('preset', 'this_month') }}">
                 <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-4">
                     {{-- Quick Date Presets Row --}}
                     <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-100">
@@ -103,12 +103,12 @@
                             <div x-show="showCustomDates" {{ ($activePreset ?? '') !== 'custom' ? 'x-cloak style=display:none;' : '' }}
                                 class="inline-flex items-center gap-1.5 ml-1 transition-all">
                                 <input type="date" name="date_from" id="filter-date-from"
-                                    value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_from')) ? request('date_from') : '' }}"
+                                    value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_from')) ? ($dateFrom ?? request('date_from', '')) : '' }}"
                                     onchange="applyCustomDateIfComplete()"
                                     class="px-2 py-0.5 border-gray-300 bg-white rounded text-xs focus:ring-blue-500 focus:border-blue-500 font-medium">
                                 <span class="text-xs text-gray-400 font-semibold">–</span>
                                 <input type="date" name="date_to" id="filter-date-to"
-                                    value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_to')) ? request('date_to') : '' }}"
+                                    value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_to')) ? ($dateTo ?? request('date_to', '')) : '' }}"
                                     onchange="applyCustomDateIfComplete()"
                                     class="px-2 py-0.5 border-gray-300 bg-white rounded text-xs focus:ring-blue-500 focus:border-blue-500 font-medium">
                             </div>
@@ -534,8 +534,8 @@
                     const toInput = form.querySelector('input[name="date_to"]');
                     const presetInput = document.getElementById('filter-preset-input');
                     
-                    if (fromInput) fromInput.value = presets[preset].from;
-                    if (toInput) toInput.value = presets[preset].to;
+                    if (fromInput) fromInput.value = '';
+                    if (toInput) toInput.value = '';
                     if (presetInput) presetInput.value = preset;
                     form.submit();
                 }

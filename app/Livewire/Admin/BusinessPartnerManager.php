@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Branch;
 use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,8 @@ class BusinessPartnerManager extends Component
 
     public string $industryFilter = 'ALL';
 
+    public string $branchFilter = 'ALL';
+
     // File Upload
     public $file;
 
@@ -38,6 +41,7 @@ class BusinessPartnerManager extends Component
         'search' => ['except' => ''],
         'groupFilter' => ['except' => 'ALL'],
         'industryFilter' => ['except' => 'ALL'],
+        'branchFilter' => ['except' => 'ALL'],
     ];
 
     public function updatingSearch(): void
@@ -57,6 +61,12 @@ class BusinessPartnerManager extends Component
         $this->resetPage();
     }
 
+    public function setBranchFilter(string $branch): void
+    {
+        $this->branchFilter = $branch;
+        $this->resetPage();
+    }
+
     public function updateIndustry(int $id, string $industry): void
     {
         $allowed = [
@@ -72,6 +82,19 @@ class BusinessPartnerManager extends Component
 
         $bp = MasterBusinessPartner::findOrFail($id);
         $bp->update(['industry' => $norm]);
+    }
+
+    public function updateBranch(int $id, $branchId): void
+    {
+        $bp = MasterBusinessPartner::findOrFail($id);
+        $val = ! empty($branchId) ? (int) $branchId : null;
+        if ($val !== null) {
+            $exists = Branch::where('id', $val)->where('is_active', true)->exists();
+            if (! $exists) {
+                return;
+            }
+        }
+        $bp->update(['branch_id' => $val]);
     }
 
     public function openUploadModal(): void
@@ -124,6 +147,7 @@ class BusinessPartnerManager extends Component
                 'foreign_name' => null,
                 'sales_employee' => null,
                 'industry' => null,
+                'branch' => null,
             ];
 
             foreach ($headerRow as $colLetter => $headerName) {
@@ -142,6 +166,8 @@ class BusinessPartnerManager extends Component
                     $colIndex['sales_employee'] = $colLetter;
                 } elseif (str_contains($norm, 'industry') || str_contains($norm, 'industri') || str_contains($norm, 'sektor')) {
                     $colIndex['industry'] = $colLetter;
+                } elseif (str_contains($norm, 'branch') || str_contains($norm, 'cabang') || str_contains($norm, 'plant')) {
+                    $colIndex['branch'] = $colLetter;
                 }
             }
 
@@ -152,6 +178,9 @@ class BusinessPartnerManager extends Component
             $colIndex['type'] = $colIndex['type'] ?? 'E';
             $colIndex['group_code'] = $colIndex['group_code'] ?? 'F';
             $colIndex['sales_employee'] = $colIndex['sales_employee'] ?? 'G';
+
+            $branchMap = Branch::active()->pluck('id', 'code')->all();
+            $branchNameMap = Branch::active()->pluck('id', 'name')->all();
 
             $bpBatch = [];
             $customerBatch = [];
@@ -203,12 +232,30 @@ class BusinessPartnerManager extends Component
                     $industry = MasterBusinessPartner::detectIndustry($bpName, $foreignName ?: '', $salesEmployee, $type);
                 }
 
+                $rawBranch = isset($colIndex['branch']) && isset($row[$colIndex['branch']])
+                    ? strtoupper(trim((string) $row[$colIndex['branch']]))
+                    : '';
+                $branchId = null;
+                if ($rawBranch !== '') {
+                    if (isset($branchMap[$rawBranch])) {
+                        $branchId = $branchMap[$rawBranch];
+                    } else {
+                        foreach ($branchNameMap as $bName => $bId) {
+                            if (str_contains(strtoupper($bName), $rawBranch)) {
+                                $branchId = $bId;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 $bpBatch[] = [
                     'bp_code' => $bpCode,
                     'bp_name' => $bpName,
                     'group_code' => $groupCode ?: null,
                     'category' => $category,
                     'industry' => $industry,
+                    'branch_id' => $branchId,
                     'type' => $type ?: null,
                     'foreign_name' => $foreignName ?: null,
                     'sales_employee' => $salesEmployee,
@@ -234,12 +281,14 @@ class BusinessPartnerManager extends Component
             }
 
             DB::transaction(function () use ($bpBatch, $customerBatch) {
-                // Upsert to master_business_partners in chunks
+                // Upsert to master_business_partners in chunks.
+                // NOTE: 'industry' and 'branch_id' are intentionally excluded from the update columns
+                // so that MES-exclusive tags manually configured or detected on existing records remain persisted!
                 foreach (array_chunk($bpBatch, 500) as $chunk) {
                     MasterBusinessPartner::upsert(
                         $chunk,
                         ['bp_code'],
-                        ['bp_name', 'group_code', 'category', 'industry', 'type', 'foreign_name', 'sales_employee', 'updated_at']
+                        ['bp_name', 'group_code', 'category', 'type', 'foreign_name', 'sales_employee', 'updated_at']
                     );
                 }
 
@@ -256,7 +305,7 @@ class BusinessPartnerManager extends Component
             });
 
             $totalProcessed = count($bpBatch);
-            $this->uploadMessage = "Berhasil mengimpor & meng-update {$totalProcessed} Business Partners (Customer: {$customerCount}, Vendor: {$vendorCount}). {$customerCount} Customer telah disinkronkan ke Master Customer Delivery.";
+            $this->uploadMessage = "Berhasil mengimpor & meng-update {$totalProcessed} Business Partners (Customer: {$customerCount}, Vendor: {$vendorCount}). Tag eksklusif MES (Sektor Industri & Plant) pada data existing tetap dipertahankan.";
             $this->reset('file');
             $this->resetPage();
 
@@ -270,7 +319,7 @@ class BusinessPartnerManager extends Component
 
     public function render()
     {
-        $query = MasterBusinessPartner::query();
+        $query = MasterBusinessPartner::with('branch');
 
         if ($this->search !== '') {
             $s = trim($this->search);
@@ -281,7 +330,11 @@ class BusinessPartnerManager extends Component
                     ->orWhere('type', 'LIKE', "%{$s}%")
                     ->orWhere('group_code', 'LIKE', "%{$s}%")
                     ->orWhere('sales_employee', 'LIKE', "%{$s}%")
-                    ->orWhere('industry', 'LIKE', "%{$s}%");
+                    ->orWhere('industry', 'LIKE', "%{$s}%")
+                    ->orWhereHas('branch', function ($bq) use ($s) {
+                        $bq->where('name', 'LIKE', "%{$s}%")
+                            ->orWhere('code', 'LIKE', "%{$s}%");
+                    });
             });
         }
 
@@ -299,7 +352,25 @@ class BusinessPartnerManager extends Component
             $query->where('industry', $this->industryFilter);
         }
 
+        if ($this->branchFilter !== 'ALL') {
+            if ($this->branchFilter === 'UNASSIGNED') {
+                $query->whereNull('branch_id');
+            } else {
+                $query->where('branch_id', (int) $this->branchFilter);
+            }
+        }
+
         $businessPartners = $query->orderBy('bp_code')->paginate(20);
+
+        $branches = Branch::active()->orderBy('name')->get();
+
+        $branchCounts = [
+            'ALL' => MasterBusinessPartner::count(),
+            'UNASSIGNED' => MasterBusinessPartner::whereNull('branch_id')->count(),
+        ];
+        foreach ($branches as $b) {
+            $branchCounts[$b->id] = MasterBusinessPartner::where('branch_id', $b->id)->count();
+        }
 
         // Counts for tabs
         $counts = [
@@ -316,6 +387,8 @@ class BusinessPartnerManager extends Component
         return view('livewire.admin.business-partner-manager', [
             'businessPartners' => $businessPartners,
             'counts' => $counts,
+            'branches' => $branches,
+            'branchCounts' => $branchCounts,
         ]);
     }
 }

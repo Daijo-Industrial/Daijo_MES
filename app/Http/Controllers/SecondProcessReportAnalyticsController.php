@@ -23,69 +23,51 @@ class SecondProcessReportAnalyticsController extends Controller
         $lastMonthStart = $now->copy()->subMonth()->startOfMonth()->toDateString();
         $lastMonthEnd = $now->copy()->subMonth()->endOfMonth()->toDateString();
 
-        $preset = $request->query('preset');
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
+        $preset = $request->query('preset') ?: $request->input('preset');
+        $rawDateFrom = $request->filled('date_from') ? (string) $request->input('date_from') : null;
+        $rawDateTo = $request->filled('date_to') ? (string) $request->input('date_to') : null;
 
-        // Apply quick preset dates if preset is selected and explicit dates are not passed
-        if ($preset && ! $request->has('date_from') && ! $request->has('date_to')) {
-            switch ($preset) {
-                case 'today':
-                    $dateFrom = $today;
-                    $dateTo = $today;
-                    break;
-                case 'yesterday':
-                    $dateFrom = $yesterday;
-                    $dateTo = $yesterday;
-                    break;
-                case 'this_week':
-                    $dateFrom = $thisWeekStart;
-                    $dateTo = $today;
-                    break;
-                case 'this_month':
-                    $dateFrom = $thisMonthStart;
-                    $dateTo = $today;
-                    break;
-                case 'last_month':
-                    $dateFrom = $lastMonthStart;
-                    $dateTo = $lastMonthEnd;
-                    break;
+        $presetDates = [
+            'today' => [$today, $today],
+            'yesterday' => [$yesterday, $yesterday],
+            'this_week' => [$thisWeekStart, $today],
+            'this_month' => [$thisMonthStart, $today],
+            'last_month' => [$lastMonthStart, $lastMonthEnd],
+        ];
+
+        if ($preset === 'all') {
+            $activePreset = null;
+            $dateFrom = null;
+            $dateTo = null;
+            $request->merge(['preset' => 'all', 'date_from' => null, 'date_to' => null]);
+        } elseif (isset($presetDates[$preset])) {
+            [$pFrom, $pTo] = $presetDates[$preset];
+            // If explicit custom dates were provided that differ from preset, treat as custom
+            if (($rawDateFrom && $rawDateFrom !== $pFrom) || ($rawDateTo && $rawDateTo !== $pTo)) {
+                $activePreset = 'custom';
+                $preset = 'custom';
+                $dateFrom = $rawDateFrom;
+                $dateTo = $rawDateTo;
+                $request->merge(['preset' => 'custom', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
+            } else {
+                $activePreset = $preset;
+                $dateFrom = $pFrom;
+                $dateTo = $pTo;
+                $request->merge(['preset' => $preset, 'date_from' => $dateFrom, 'date_to' => $dateTo]);
             }
-
-            if ($dateFrom !== null && $dateTo !== null) {
-                $request->merge([
-                    'date_from' => $dateFrom,
-                    'date_to' => $dateTo,
-                ]);
-            }
-        }
-
-        // Fallback default: this month if nothing specified
-        if (empty($dateFrom) && empty($dateTo) && empty($preset)) {
+        } elseif ($preset === 'custom' || $rawDateFrom || $rawDateTo) {
+            $activePreset = 'custom';
+            $preset = 'custom';
+            $dateFrom = $rawDateFrom;
+            $dateTo = $rawDateTo;
+            $request->merge(['preset' => 'custom', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
+        } else {
+            // Fallback default: this month if nothing specified
+            $activePreset = 'this_month';
+            $preset = 'this_month';
             $dateFrom = $thisMonthStart;
             $dateTo = $today;
-            $activePreset = 'this_month';
-        } else {
-            $activePreset = null;
-            if ($preset === 'custom') {
-                $activePreset = 'custom';
-            } elseif (! empty($dateFrom) && ! empty($dateTo)) {
-                if ($dateFrom === $today && $dateTo === $today) {
-                    $activePreset = 'today';
-                } elseif ($dateFrom === $yesterday && $dateTo === $yesterday) {
-                    $activePreset = 'yesterday';
-                } elseif ($dateFrom === $thisWeekStart && $dateTo === $today) {
-                    $activePreset = 'this_week';
-                } elseif ($dateFrom === $thisMonthStart && $dateTo === $today) {
-                    $activePreset = 'this_month';
-                } elseif ($dateFrom === $lastMonthStart && $dateTo === $lastMonthEnd) {
-                    $activePreset = 'last_month';
-                } else {
-                    $activePreset = 'custom';
-                }
-            } elseif (! empty($dateFrom) || ! empty($dateTo)) {
-                $activePreset = 'custom';
-            }
+            $request->merge(['preset' => 'this_month', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
         }
 
         // Base query for report header filtering
@@ -254,10 +236,8 @@ class SecondProcessReportAnalyticsController extends Controller
         }
 
         // Available NG Remark categories (preset first, then any extra discovered)
-        $presetCategories = array_keys(config('mes.sp_ng_remark_categories', [
-            'NG-INPUT' => 'NG-INPUT',
-            'NG-PROSES' => 'NG-PROSES',
-        ]));
+        $rawPresetCategories = config('mes.sp_ng_remark_categories', []);
+        $presetCategories = array_values(array_map('strval', array_is_list($rawPresetCategories) ? $rawPresetCategories : array_keys($rawPresetCategories)));
         $extraCategories = array_diff(array_keys($categoryTotals), $presetCategories);
         sort($extraCategories);
         $ngCategories = array_values(array_unique(array_merge($presetCategories, $extraCategories)));
@@ -427,7 +407,7 @@ class SecondProcessReportAnalyticsController extends Controller
 
         // Dropdown selection lists
         $lines = array_values(config('mes.sp_lines', []));
-        $processes = config('mes.sp_processes', ['Painting', 'Buffing', 'Amplas', 'Treatment', 'Packing', 'Rework', 'Repair', 'Assy']);
+        $processes = array_values(config('mes.sp_processes', []));
         $customers = SecondProcessReport::query()
             ->whereNotNull('customer')
             ->whereRaw("TRIM(customer) != ''")

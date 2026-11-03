@@ -25,78 +25,51 @@ class SecondProcessReportController extends Controller
         $lastMonthStart = now('Asia/Jakarta')->subMonth()->startOfMonth()->toDateString();
         $lastMonthEnd = now('Asia/Jakarta')->subMonth()->endOfMonth()->toDateString();
 
-        $preset = $request->query('preset');
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
+        $preset = $request->query('preset') ?: $request->input('preset');
+        $rawDateFrom = $request->filled('date_from') ? (string) $request->input('date_from') : null;
+        $rawDateTo = $request->filled('date_to') ? (string) $request->input('date_to') : null;
 
-        // Apply quick preset dates if preset is selected and explicit dates are not passed
-        if ($preset && ! $request->has('date_from') && ! $request->has('date_to')) {
-            switch ($preset) {
-                case 'today':
-                    $dateFrom = $today;
-                    $dateTo = $today;
-                    break;
-                case 'yesterday':
-                    $dateFrom = $yesterday;
-                    $dateTo = $yesterday;
-                    break;
-                case 'this_week':
-                    $dateFrom = $thisWeekStart;
-                    $dateTo = $today;
-                    break;
-                case 'this_month':
-                    $dateFrom = $thisMonthStart;
-                    $dateTo = $today;
-                    break;
-                case 'last_month':
-                    $dateFrom = $lastMonthStart;
-                    $dateTo = $lastMonthEnd;
-                    break;
-                case 'all':
-                    $dateFrom = null;
-                    $dateTo = null;
-                    break;
-            }
+        $presetDates = [
+            'today' => [$today, $today],
+            'yesterday' => [$yesterday, $yesterday],
+            'this_week' => [$thisWeekStart, $today],
+            'this_month' => [$thisMonthStart, $today],
+            'last_month' => [$lastMonthStart, $lastMonthEnd],
+        ];
 
-            if ($dateFrom !== null && $dateTo !== null) {
-                $request->merge([
-                    'date_from' => $dateFrom,
-                    'date_to' => $dateTo,
-                ]);
+        if ($preset === 'all') {
+            $activePreset = null;
+            $dateFrom = null;
+            $dateTo = null;
+            $request->merge(['preset' => 'all', 'date_from' => null, 'date_to' => null]);
+        } elseif (isset($presetDates[$preset])) {
+            [$pFrom, $pTo] = $presetDates[$preset];
+            // If explicit custom dates were provided that differ from preset, treat as custom
+            if (($rawDateFrom && $rawDateFrom !== $pFrom) || ($rawDateTo && $rawDateTo !== $pTo)) {
+                $activePreset = 'custom';
+                $preset = 'custom';
+                $dateFrom = $rawDateFrom;
+                $dateTo = $rawDateTo;
+                $request->merge(['preset' => 'custom', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
+            } else {
+                $activePreset = $preset;
+                $dateFrom = $pFrom;
+                $dateTo = $pTo;
+                $request->merge(['preset' => $preset, 'date_from' => $dateFrom, 'date_to' => $dateTo]);
             }
-        } elseif (! $request->has('preset') && ! $request->has('date_from') && ! $request->has('date_to')) {
+        } elseif ($preset === 'custom' || $rawDateFrom || $rawDateTo) {
+            $activePreset = 'custom';
+            $preset = 'custom';
+            $dateFrom = $rawDateFrom;
+            $dateTo = $rawDateTo;
+            $request->merge(['preset' => 'custom', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
+        } else {
             // Default when user first lands on index: This Month
+            $activePreset = 'this_month';
             $preset = 'this_month';
             $dateFrom = $thisMonthStart;
             $dateTo = $today;
-            $request->merge([
-                'preset' => 'this_month',
-                'date_from' => $dateFrom,
-                'date_to' => $dateTo,
-            ]);
-        }
-
-        $activePreset = null;
-        if ($preset === 'custom') {
-            $activePreset = 'custom';
-        } elseif ($preset === 'all') {
-            $activePreset = null;
-        } elseif (! empty($dateFrom) && ! empty($dateTo)) {
-            if ($dateFrom === $today && $dateTo === $today) {
-                $activePreset = 'today';
-            } elseif ($dateFrom === $yesterday && $dateTo === $yesterday) {
-                $activePreset = 'yesterday';
-            } elseif ($dateFrom === $thisWeekStart && $dateTo === $today) {
-                $activePreset = 'this_week';
-            } elseif ($dateFrom === $thisMonthStart && $dateTo === $today) {
-                $activePreset = 'this_month';
-            } elseif ($dateFrom === $lastMonthStart && $dateTo === $lastMonthEnd) {
-                $activePreset = 'last_month';
-            } else {
-                $activePreset = 'custom';
-            }
-        } elseif (! empty($dateFrom) || ! empty($dateTo)) {
-            $activePreset = 'custom';
+            $request->merge(['preset' => 'this_month', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
         }
 
         $query = SecondProcessReport::query();
@@ -199,6 +172,8 @@ class SecondProcessReportController extends Controller
             'selectedIndustry',
             'industryMap',
             'activePreset',
+            'dateFrom',
+            'dateTo',
             'today',
             'yesterday',
             'thisWeekStart',
@@ -293,27 +268,7 @@ class SecondProcessReportController extends Controller
             ->pluck('ng_name')
             ->toArray();
 
-        $catalogNgTypes = [
-            'SCRATCH',
-            'DIRTY',
-            'HAIR MARK',
-            'DENTED',
-            'OVER CUT',
-            'PAINT RUN',
-            'BUBBLE',
-            'BINTIK',
-            'ORANGE PEEL',
-            'MINYAK',
-            'BELUM KERING',
-            'BELUM MATANG',
-            'SAG / MELELEH',
-            'KULIT JERUK',
-            'SERAT',
-            'UNDER SPRAY',
-            'OVER SPRAY',
-            'DUST / DEBU',
-            'CRACK',
-        ];
+        $catalogNgTypes = config('mes.sp_default_ng_types', []);
 
         return collect(array_merge($catalogNgTypes, $dbNgTypes))
             ->filter()
@@ -463,7 +418,7 @@ class SecondProcessReportController extends Controller
             'shift' => 'required|string',
             'process_prod' => 'required|string',
             'status' => 'nullable|string',
-            'output_destination' => 'nullable|string|in:fg,buffing,next_process',
+            'output_destination' => ['nullable', 'string', \Illuminate\Validation\Rule::in(array_keys(config('mes.sp_output_destinations', [])))],
             'model' => 'nullable|string',
             'part_number' => 'required|string',
             'part_name' => 'nullable|string',
@@ -551,7 +506,10 @@ class SecondProcessReportController extends Controller
         $effectiveStatus = $validated['status'] ?? ($report->exists ? $report->status : 'draft');
 
         // Enforce target_per_hour for painting processes on submission
-        $paintingProcesses = ['Painting', 'Painting Basecoat', 'Painting Topcoat'];
+        $paintingProcesses = array_values(array_filter(
+            config('mes.sp_processes', []),
+            fn ($p) => str_starts_with(strtolower($p), 'painting')
+        ));
         if ($effectiveStatus === 'submitted' && in_array($validated['process_prod'] ?? '', $paintingProcesses, true)) {
             $targetPerHour = (int) ($validated['target_per_hour'] ?? 0);
             if ($targetPerHour <= 0) {
@@ -588,6 +546,10 @@ class SecondProcessReportController extends Controller
 
         // Enforce defect remarks / categories for submitted reports when Total NG > 0
         if (! empty($validated['ngs']) && is_array($validated['ngs'])) {
+            $validCategories = array_values(config('mes.sp_ng_remark_categories', []));
+            if (! in_array('NG-PROCESS', $validCategories, true)) {
+                $validCategories[] = 'NG-PROCESS';
+            }
             $ngErrors = [];
             foreach ($validated['ngs'] as $idx => $ng) {
                 $ngName = $ng['ng_name'] ?? ('Defect #' . ($idx + 1));
@@ -600,8 +562,8 @@ class SecondProcessReportController extends Controller
 
                 $hasCategory = ! empty($ng['ng_category']);
                 $category = $hasCategory ? strtoupper(trim((string) $ng['ng_category'])) : null;
-                if ($category && ! in_array($category, ['NG-PROCESS', 'NG-PROSES', 'NG-INPUT'], true)) {
-                    $category = 'NG-PROCESS';
+                if ($category && ! in_array($category, $validCategories, true)) {
+                    $category = $validCategories[0] ?? null;
                 }
                 $validated['ngs'][$idx]['ng_category'] = $category;
 
@@ -782,8 +744,8 @@ class SecondProcessReportController extends Controller
             // Create Materials
             if (isset($validated['materials'])) {
                 foreach ($validated['materials'] as $material) {
-                    // Item Paint is only recorded if process_prod is Painting or Repair
-                    if (($material['type'] ?? '') === 'paint' && ! in_array(($validated['process_prod'] ?? ''), ['Painting', 'Repair'])) {
+                    // Item Paint is only recorded if process_prod is chemical process (e.g. Painting or Repair)
+                    if (($material['type'] ?? '') === 'paint' && ! in_array(($validated['process_prod'] ?? ''), config('mes.chemical_processes', []), true)) {
                         continue;
                     }
 

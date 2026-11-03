@@ -197,7 +197,7 @@ return [
     | Second Process Default NG (Defect) Types
     |--------------------------------------------------------------------------
     |
-    | Default defect column headers for Second Process hourly quality tracking.
+    | Standard catalog of defect types for Second Process hourly quality tracking.
     |
     */
     'sp_default_ng_types' => [
@@ -206,6 +206,20 @@ return [
         'HAIR MARK',
         'DENTED',
         'OVER CUT',
+        'PAINT RUN',
+        'BUBBLE',
+        'BINTIK',
+        'ORANGE PEEL',
+        'MINYAK',
+        'BELUM KERING',
+        'BELUM MATANG',
+        'SAG / MELELEH',
+        'KULIT JERUK',
+        'SERAT',
+        'UNDER SPRAY',
+        'OVER SPRAY',
+        'DUST / DEBU',
+        'CRACK',
     ],
 
     /*
@@ -235,8 +249,8 @@ return [
     |
     */
     'sp_ng_remark_categories' => [
-        'NG-INPUT' => 'NG-INPUT',
-        'NG-PROSES' => 'NG-PROSES',
+        'NG-PROSES',
+        'NG-INPUT',
     ],
 
     /*

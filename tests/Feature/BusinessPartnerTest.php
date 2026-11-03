@@ -269,4 +269,152 @@ class BusinessPartnerTest extends TestCase
 
         $this->assertEquals(MasterBusinessPartner::INDUSTRY_MOULDING, $bp->fresh()->industry);
     }
+
+    public function test_admin_can_update_branch_inline(): void
+    {
+        $branch = \App\Models\Branch::firstOrCreate(
+            ['code' => 'JKT'],
+            ['name' => 'Jakarta Plant', 'is_active' => true]
+        );
+
+        $bp = MasterBusinessPartner::create([
+            'bp_code' => 'TEST002',
+            'bp_name' => 'SAMPLE VENDOR PT.',
+            'category' => MasterBusinessPartner::CATEGORY_VENDOR,
+            'industry' => MasterBusinessPartner::INDUSTRY_GENERAL,
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(BusinessPartnerManager::class)
+            ->call('updateBranch', $bp->id, $branch->id);
+
+        $this->assertEquals($branch->id, $bp->fresh()->branch_id);
+
+        // Can unassign branch back to null
+        Livewire::actingAs($this->user)
+            ->test(BusinessPartnerManager::class)
+            ->call('updateBranch', $bp->id, '');
+
+        $this->assertNull($bp->fresh()->branch_id);
+    }
+
+    public function test_mes_exclusive_tags_industry_and_branch_persist_on_reupload(): void
+    {
+        $jktBranch = \App\Models\Branch::firstOrCreate(
+            ['code' => 'JKT'],
+            ['name' => 'Jakarta Plant', 'is_active' => true]
+        );
+
+        // Pre-existing BP with manually assigned MES-exclusive tags
+        $existingBp = MasterBusinessPartner::create([
+            'bp_code' => 'BP-PERSIST-01',
+            'bp_name' => 'Old Company Name PT',
+            'group_code' => '100',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_AUTOMOTIVE, // Tagged in MES
+            'branch_id' => $jktBranch->id, // Tagged in MES
+            'type' => 'PRODUCT',
+        ]);
+
+        // Generate temporary Excel file with updated name for existing BP and a new BP
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray([
+            ['#', 'CardCode', 'CardName', 'ForeignName', 'Type', 'GroupCode', 'SalesEmployee'],
+            ['1', 'BP-PERSIST-01', 'Updated SAP Company Name PT', 'PERSIST ALIAS', 'PRODUCT', '100', 'NO SALES EMPLOYEE'],
+            ['2', 'BP-BRAND-NEW', 'Brand New Customer PT', 'NEW ALIAS', 'PRODUCT', '100', 'ANDRIANI Ext 131'],
+        ]);
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'test_bp_persist_') . '.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($tempPath);
+
+        try {
+            $uploadedFile = UploadedFile::fake()->createWithContent(
+                'test_bp_persist.xlsx',
+                file_get_contents($tempPath)
+            );
+
+            Livewire::actingAs($this->user)
+                ->test(BusinessPartnerManager::class)
+                ->set('file', $uploadedFile)
+                ->call('uploadFile')
+                ->assertHasNoErrors()
+                ->assertSee('Tag eksklusif MES (Sektor Industri & Plant) pada data existing tetap dipertahankan');
+
+            $refreshed = $existingBp->fresh();
+
+            // 1. SAP data fields are updated
+            $this->assertEquals('Updated SAP Company Name PT', $refreshed->bp_name);
+            $this->assertEquals('PERSIST ALIAS', $refreshed->foreign_name);
+
+            // 2. MES-exclusive tags are strictly PERSISTED
+            $this->assertEquals(MasterBusinessPartner::INDUSTRY_AUTOMOTIVE, $refreshed->industry);
+            $this->assertEquals($jktBranch->id, $refreshed->branch_id);
+
+            // 3. Brand new BP gets detected industry
+            $newBp = MasterBusinessPartner::where('bp_code', 'BP-BRAND-NEW')->first();
+            $this->assertNotNull($newBp);
+            $this->assertEquals(MasterBusinessPartner::INDUSTRY_AUTOMOTIVE, $newBp->industry); // Auto-detected by Andriani
+            $this->assertNull($newBp->branch_id);
+        } finally {
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
+    }
+
+    public function test_branch_filter_in_business_partner_manager(): void
+    {
+        $jkt = \App\Models\Branch::firstOrCreate(['code' => 'JKT'], ['name' => 'Jakarta Plant', 'is_active' => true]);
+        $krw = \App\Models\Branch::firstOrCreate(['code' => 'KRW'], ['name' => 'Karawang Plant', 'is_active' => true]);
+
+        MasterBusinessPartner::create([
+            'bp_code' => 'BP-JKT-01',
+            'bp_name' => 'Jakarta Customer PT',
+            'group_code' => '100',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'branch_id' => $jkt->id,
+        ]);
+
+        MasterBusinessPartner::create([
+            'bp_code' => 'BP-KRW-01',
+            'bp_name' => 'Karawang Customer PT',
+            'group_code' => '100',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'branch_id' => $krw->id,
+        ]);
+
+        MasterBusinessPartner::create([
+            'bp_code' => 'BP-UNTAGGED-01',
+            'bp_name' => 'Untagged Customer PT',
+            'group_code' => '100',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'branch_id' => null,
+        ]);
+
+        // Filter JKT
+        Livewire::actingAs($this->user)
+            ->test(BusinessPartnerManager::class)
+            ->set('branchFilter', (string) $jkt->id)
+            ->assertSee('BP-JKT-01')
+            ->assertDontSee('BP-KRW-01')
+            ->assertDontSee('BP-UNTAGGED-01');
+
+        // Filter KRW
+        Livewire::actingAs($this->user)
+            ->test(BusinessPartnerManager::class)
+            ->set('branchFilter', (string) $krw->id)
+            ->assertSee('BP-KRW-01')
+            ->assertDontSee('BP-JKT-01')
+            ->assertDontSee('BP-UNTAGGED-01');
+
+        // Filter UNASSIGNED
+        Livewire::actingAs($this->user)
+            ->test(BusinessPartnerManager::class)
+            ->set('branchFilter', 'UNASSIGNED')
+            ->assertSee('BP-UNTAGGED-01')
+            ->assertDontSee('BP-JKT-01')
+            ->assertDontSee('BP-KRW-01');
+    }
 }

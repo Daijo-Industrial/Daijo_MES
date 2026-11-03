@@ -938,12 +938,15 @@
                     $defaultNgs = $report->ngRecords->pluck('ng_name')->unique()->values()->toArray();
                 }
 
-                $availableNgTypes = $availableNgTypes ?? [
-                    'SCRATCH', 'DIRTY', 'HAIR MARK', 'DENTED', 'OVER CUT',
-                    'PAINT RUN', 'BUBBLE', 'BINTIK', 'ORANGE PEEL', 'MINYAK',
-                    'BELUM KERING', 'BELUM MATANG', 'SAG / MELELEH', 'KULIT JERUK',
-                    'SERAT', 'UNDER SPRAY', 'OVER SPRAY', 'DUST / DEBU', 'CRACK',
-                ];
+                $availableNgTypes = $availableNgTypes ?? config('mes.sp_default_ng_types', []);
+
+                $rawNgCategories = config('mes.sp_ng_remark_categories', []);
+                $ngRemarkCategories = [];
+                foreach ($rawNgCategories as $key => $val) {
+                    $catName = is_string($key) && ! is_numeric($key) ? $key : $val;
+                    $ngRemarkCategories[$catName] = $catName;
+                }
+                $defaultNgCategory = array_key_first($ngRemarkCategories) ?? 'NG-PROSES';
             @endphp
             <!-- Unified Production & NG Log Grid -->
             <div class="space-y-6">
@@ -1063,9 +1066,9 @@
                                         @php
                                             $ngRecord = $report->ngRecords->where('ng_name', $ng)->first();
                                             $colTotalNg = (int) old("ngs.{$index}.total_ng", $ngRecord ? $ngRecord->total_ng : 0);
-                                            $currentCategory = old("ngs.{$index}.ng_category", $ngRecord ? $ngRecord->ng_category : 'NG-PROCESS');
+                                            $currentCategory = old("ngs.{$index}.ng_category", $ngRecord ? $ngRecord->ng_category : $defaultNgCategory);
                                             if (empty($currentCategory)) {
-                                                $currentCategory = 'NG-PROCESS';
+                                                $currentCategory = $defaultNgCategory;
                                             }
                                         @endphp
                                         <th class="group px-3 py-2 w-36 text-center ng-type-header relative select-none border-b border-gray-200"
@@ -1083,8 +1086,9 @@
                                                     <select name="ngs[{{ $index }}][ng_category]"
                                                         class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select {{ $currentCategory === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300' }}"
                                                         onchange="updateNgCategoryStyle(this)">
-                                                        <option value="NG-PROCESS" {{ $currentCategory === 'NG-PROCESS' ? 'selected' : '' }}>NG-PROCESS</option>
-                                                        <option value="NG-INPUT" {{ $currentCategory === 'NG-INPUT' ? 'selected' : '' }}>NG-INPUT</option>
+                                                        @foreach ($ngRemarkCategories as $catVal => $catLabel)
+                                                            <option value="{{ $catVal }}" {{ strcasecmp($currentCategory, $catVal) === 0 ? 'selected' : '' }}>{{ $catLabel }}</option>
+                                                        @endforeach
                                                     </select>
                                                 </div>
                                                 <input type="hidden" name="ngs[{{ $index }}][ng_name]"
@@ -1197,14 +1201,14 @@
                             </div>
                             <div class="flex items-center gap-4 text-xs font-semibold text-gray-600 pt-1">
                                 <span class="text-[11px] uppercase tracking-wider text-gray-400">Default Kategori:</span>
-                                <label class="inline-flex items-center gap-1.5 cursor-pointer">
-                                    <input type="radio" name="modal_ng_category" value="NG-PROCESS" checked class="text-indigo-600 focus:ring-indigo-500">
-                                    <span>NG-PROCESS</span>
-                                </label>
-                                <label class="inline-flex items-center gap-1.5 cursor-pointer">
-                                    <input type="radio" name="modal_ng_category" value="NG-INPUT" class="text-amber-600 focus:ring-amber-500">
-                                    <span>NG-INPUT</span>
-                                </label>
+                                @foreach ($ngRemarkCategories as $catVal => $catLabel)
+                                    <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                        <input type="radio" name="modal_ng_category" value="{{ $catVal }}"
+                                            {{ $loop->first ? 'checked' : '' }}
+                                            class="{{ $catVal === 'NG-INPUT' ? 'text-amber-600 focus:ring-amber-500' : 'text-indigo-600 focus:ring-indigo-500' }}">
+                                        <span>{{ $catLabel }}</span>
+                                    </label>
+                                @endforeach
                             </div>
                         </div>
 
@@ -2050,7 +2054,7 @@
                 return;
             }
             const catRadio = document.querySelector('input[name="modal_ng_category"]:checked');
-            const cat = catRadio ? catRadio.value : 'NG-PROCESS';
+            const cat = catRadio ? catRadio.value : '{{ $defaultNgCategory }}';
             const added = addNgTypeToSpreadsheet(val, cat);
             if (added) {
                 input.value = '';
@@ -2058,7 +2062,7 @@
             }
         };
 
-        window.addNgTypeToSpreadsheet = function(name, category = 'NG-PROCESS') {
+        window.addNgTypeToSpreadsheet = function(name, category = '{{ $defaultNgCategory }}') {
             if (!name) return false;
             const uppercaseName = name.trim().toUpperCase();
             if (uppercaseName === '') return false;
@@ -2069,6 +2073,13 @@
 
             activeNgs.push(uppercaseName);
             const newNgIndex = activeNgs.length - 1;
+
+            const ngCategoriesOptions = @json($ngRemarkCategories);
+            let optionsHtml = '';
+            for (const [val, label] of Object.entries(ngCategoriesOptions)) {
+                const isSelected = (category && category.toUpperCase() === val.toUpperCase()) ? 'selected' : '';
+                optionsHtml += `<option value="${escapeHtml(val)}" ${isSelected}>${escapeHtml(label)}</option>`;
+            }
 
             // 1. Add column to table header
             const headerRow = document.getElementById('production-header-row');
@@ -2084,8 +2095,7 @@
                     </div>
                     <div class="relative">
                         <select name="ngs[${newNgIndex}][ng_category]" class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select ${category === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300'}" onchange="updateNgCategoryStyle(this)">
-                            <option value="NG-PROCESS" ${category === 'NG-PROCESS' ? 'selected' : ''}>NG-PROCESS</option>
-                            <option value="NG-INPUT" ${category === 'NG-INPUT' ? 'selected' : ''}>NG-INPUT</option>
+                            ${optionsHtml}
                         </select>
                     </div>
                     <input type="hidden" name="ngs[${newNgIndex}][ng_name]" value="${escapeHtml(uppercaseName)}">

@@ -179,6 +179,93 @@ class SecondProcessReportTest extends TestCase
     }
 
     /**
+     * Test quick filter preset persists when user submits other filters with empty date inputs.
+     */
+    public function test_index_page_persists_quick_filter_preset_when_submitting_other_filters(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        $todayDate = now()->toDateString();
+        $olderDate = now()->subDays(40)->toDateString();
+
+        SecondProcessReport::create([
+            'date' => $todayDate,
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-LINE1-TODAY',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        SecondProcessReport::create([
+            'date' => $todayDate,
+            'unit_line' => 'Line 2',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-LINE2-TODAY',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        SecondProcessReport::create([
+            'date' => $olderDate,
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-LINE1-OLD',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        // 1. Initial page landing defaults to this_month and renders hidden preset input
+        $resLanding = $this->get(route('second-process-reports.index'));
+        $resLanding->assertOk();
+        $resLanding->assertViewHas('activePreset', 'this_month');
+        $resLanding->assertSee('name="preset" id="filter-preset-input" value="this_month"', false);
+
+        // 2. User filters by Unit Line with preset 'today' and empty date inputs
+        $resTodayFilter = $this->get(route('second-process-reports.index', [
+            'preset' => 'today',
+            'date_from' => '',
+            'date_to' => '',
+            'unit_line' => 'Line 1',
+        ]));
+        $resTodayFilter->assertOk();
+        $resTodayFilter->assertViewHas('activePreset', 'today');
+        $resTodayFilter->assertSee('name="preset" id="filter-preset-input" value="today"', false);
+        $resTodayFilter->assertSee('PART-LINE1-TODAY');
+        $resTodayFilter->assertDontSee('PART-LINE2-TODAY');
+        $resTodayFilter->assertDontSee('PART-LINE1-OLD');
+
+        // 3. User filters with preset 'this_month' and empty date inputs
+        $resMonthFilter = $this->get(route('second-process-reports.index', [
+            'preset' => 'this_month',
+            'date_from' => '',
+            'date_to' => '',
+            'unit_line' => 'Line 2',
+        ]));
+        $resMonthFilter->assertOk();
+        $resMonthFilter->assertViewHas('activePreset', 'this_month');
+        $resMonthFilter->assertSee('name="preset" id="filter-preset-input" value="this_month"', false);
+        $resMonthFilter->assertSee('PART-LINE2-TODAY');
+        $resMonthFilter->assertDontSee('PART-LINE1-TODAY');
+        $resMonthFilter->assertDontSee('PART-LINE1-OLD');
+
+        // 4. Custom range persists custom dates and displays custom inputs populated
+        $resCustomFilter = $this->get(route('second-process-reports.index', [
+            'preset' => 'custom',
+            'date_from' => $olderDate,
+            'date_to' => $olderDate,
+            'unit_line' => 'Line 1',
+        ]));
+        $resCustomFilter->assertOk();
+        $resCustomFilter->assertViewHas('activePreset', 'custom');
+        $resCustomFilter->assertSee('name="preset" id="filter-preset-input" value="custom"', false);
+        $resCustomFilter->assertSee('PART-LINE1-OLD');
+        $resCustomFilter->assertDontSee('PART-LINE1-TODAY');
+        $resCustomFilter->assertSee('value="' . $olderDate . '"', false);
+    }
+
+    /**
      * Test filtering reports by customer distinct list and handling N/A.
      */
     public function test_index_page_filters_by_customer_distinct_list(): void
@@ -2574,6 +2661,13 @@ class SecondProcessReportTest extends TestCase
         $response->assertSee('+ NG Type');
         $response->assertSee('id="ng-type-modal"', false);
         $response->assertSee('id="custom-ng-name-input"', false);
+
+        // 5. Assert NG Default Kategori options match config('mes.sp_ng_remark_categories')
+        $response->assertSee('Default Kategori:');
+        foreach (config('mes.sp_ng_remark_categories') as $cat) {
+            $response->assertSee('value="' . $cat . '"', false);
+            $response->assertSee($cat);
+        }
     }
 
     public function test_submitting_trouble_with_zero_minutes_fails_validation(): void

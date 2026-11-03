@@ -29,10 +29,19 @@ class MasterBusinessPartner extends Model
         'group_code',
         'category',
         'industry',
+        'branch_id',
         'type',
         'foreign_name',
         'sales_employee',
     ];
+
+    /**
+     * Relationship to Branch.
+     */
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
 
     /**
      * Determine category deterministically from SAP Group Code (100 = Customer, 101/102 = Vendor).
@@ -117,6 +126,14 @@ class MasterBusinessPartner extends Model
     public function scopeMoulding($query)
     {
         return $query->where('industry', self::INDUSTRY_MOULDING);
+    }
+
+    /**
+     * Scope by Branch ID.
+     */
+    public function scopeBranch($query, $branchId)
+    {
+        return $query->where('branch_id', $branchId);
     }
 
     /**
