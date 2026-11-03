@@ -7,6 +7,7 @@ use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterListItem;
 use App\Models\Role;
+use App\Models\SecondProcessNgRecord;
 use App\Models\SecondProcessReport;
 use App\Models\SecondProcessTrouble;
 use App\Models\User;
@@ -2530,5 +2531,164 @@ class SecondProcessReportTest extends TestCase
         $this->assertContains('Paint #2', $savedNames);
         $this->assertContains('Topcoat Gloss', $savedNames);
         $this->assertContains('Clear Coat', $savedNames);
+    }
+
+    public function test_create_form_renders_empty_initial_ng_columns_and_reusable_ng_pills(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // Create an existing report with custom NG to test historical NG retrieval
+        $existingReport = SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-HISTORICAL-NG',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+        ]);
+        SecondProcessNgRecord::create([
+            'report_id' => $existingReport->id,
+            'ng_name' => 'ORANGE PEEL CUSTOM',
+            'total_ng' => 3,
+            'ng_category' => 'NG-PROCESS',
+        ]);
+
+        $response = $this->get(route('second-process-reports.create'));
+        $response->assertStatus(200);
+
+        // 1. Assert initial spreadsheet table does NOT contain default hardcoded NG column headers
+        $response->assertDontSee('<th class="group px-3 py-2 w-36 text-center ng-type-header relative select-none border-b border-gray-200" data-ng="SCRATCH">', false);
+
+        // 2. Assert empty table notice is rendered
+        $response->assertSee('id="ng-empty-table-notice"', false);
+        $response->assertSee('Belum ada kolom Tipe NG pada tabel');
+
+        // 3. Assert quick preset pills and historical NG are displayed for 1-click reuse
+        $response->assertSee('data-ng-preset="SCRATCH"', false);
+        $response->assertSee('data-ng-preset="DIRTY"', false);
+        $response->assertSee('data-ng-preset="ORANGE PEEL CUSTOM"', false);
+
+        // 4. Assert modal button and modal structure exist
+        $response->assertSee('+ NG Type');
+        $response->assertSee('id="ng-type-modal"', false);
+        $response->assertSee('id="custom-ng-name-input"', false);
+    }
+
+    public function test_submitting_trouble_with_zero_minutes_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $payload = [
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-TROUBLE-ZERO',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'troubles' => [
+                [
+                    'penyebab' => 'Mesin',
+                    'masalah' => 'Sensor nozzle rusak',
+                    'penanganan' => 'Kalibrasi ulang sensor',
+                    'loss_time_minutes' => 0,
+                ],
+            ],
+        ];
+
+        $response = $this->post(route('second-process-reports.store'), $payload);
+        $response->assertSessionHasErrors(['troubles.0.loss_time_minutes']);
+        $this->assertDatabaseMissing('second_process_reports', ['part_number' => 'PART-TROUBLE-ZERO']);
+    }
+
+    public function test_submitting_trouble_with_missing_fields_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // Missing masalah
+        $payload1 = [
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-TROUBLE-NOMSG',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'troubles' => [
+                [
+                    'penyebab' => 'Mesin',
+                    'masalah' => '',
+                    'penanganan' => 'Ganti filter',
+                    'loss_time_minutes' => 15,
+                ],
+            ],
+        ];
+
+        $response1 = $this->post(route('second-process-reports.store'), $payload1);
+        $response1->assertSessionHasErrors(['troubles.0.masalah']);
+
+        // Missing penanganan
+        $payload2 = [
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-TROUBLE-NOPEN',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'troubles' => [
+                [
+                    'penyebab' => 'Mesin',
+                    'masalah' => 'Filter oli tersumbat',
+                    'penanganan' => '',
+                    'loss_time_minutes' => 15,
+                ],
+            ],
+        ];
+
+        $response2 = $this->post(route('second-process-reports.store'), $payload2);
+        $response2->assertSessionHasErrors(['troubles.0.penanganan']);
+    }
+
+    public function test_submitting_trouble_with_valid_data_succeeds(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $payload = [
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-TROUBLE-VALID',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'troubles' => [
+                [
+                    'penyebab' => 'Mesin',
+                    'masalah' => 'Dinamo mesin overheating',
+                    'penanganan' => 'Pembersihan heatsink dan penggantian pendingin',
+                    'loss_time_minutes' => 25,
+                ],
+            ],
+        ];
+
+        $response = $this->post(route('second-process-reports.store'), $payload);
+        $response->assertRedirect(route('second-process-reports.index'));
+
+        $report = SecondProcessReport::where('part_number', 'PART-TROUBLE-VALID')->first();
+        $this->assertNotNull($report);
+        $this->assertCount(1, $report->troubles);
+
+        $trouble = $report->troubles->first();
+        $this->assertEquals('Mesin', $trouble->penyebab);
+        $this->assertEquals('Dinamo mesin overheating', $trouble->masalah);
+        $this->assertEquals('Pembersihan heatsink dan penggantian pendingin', $trouble->penanganan);
+        $this->assertEquals(25, $trouble->loss_time_minutes);
+        $this->assertEquals('25 mins', $trouble->loss_time);
     }
 }

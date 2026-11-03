@@ -8,6 +8,7 @@ use App\Models\IpqcInspection;
 use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterListItem;
+use App\Models\SecondProcessNgRecord;
 use App\Models\SecondProcessReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -219,7 +220,9 @@ class SecondProcessReportController extends Controller
             $report->shift = $request->input('shift');
         }
 
-        return view('second_process.create', compact('report'));
+        $availableNgTypes = $this->getAvailableNgTypes();
+
+        return view('second_process.create', compact('report', 'availableNgTypes'));
     }
 
     public function store(Request $request)
@@ -273,7 +276,52 @@ class SecondProcessReportController extends Controller
                 ->with('error', $gate->message());
         }
 
-        return view('second_process.edit', compact('report'));
+        $availableNgTypes = $this->getAvailableNgTypes();
+
+        return view('second_process.edit', compact('report', 'availableNgTypes'));
+    }
+
+    /**
+     * Get unique previously inputted NG defect types combined with standard catalog.
+     */
+    private function getAvailableNgTypes(): array
+    {
+        $dbNgTypes = SecondProcessNgRecord::query()
+            ->whereNotNull('ng_name')
+            ->whereRaw("TRIM(ng_name) != ''")
+            ->selectRaw("DISTINCT UPPER(TRIM(ng_name)) as ng_name")
+            ->pluck('ng_name')
+            ->toArray();
+
+        $catalogNgTypes = [
+            'SCRATCH',
+            'DIRTY',
+            'HAIR MARK',
+            'DENTED',
+            'OVER CUT',
+            'PAINT RUN',
+            'BUBBLE',
+            'BINTIK',
+            'ORANGE PEEL',
+            'MINYAK',
+            'BELUM KERING',
+            'BELUM MATANG',
+            'SAG / MELELEH',
+            'KULIT JERUK',
+            'SERAT',
+            'UNDER SPRAY',
+            'OVER SPRAY',
+            'DUST / DEBU',
+            'CRACK',
+        ];
+
+        return collect(array_merge($catalogNgTypes, $dbNgTypes))
+            ->filter()
+            ->map(fn($item) => strtoupper(trim($item)))
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
     }
 
     public function update(Request $request, $id)
@@ -326,11 +374,10 @@ class SecondProcessReportController extends Controller
                 }
                 $hasMasalah = ! empty(trim((string) ($tr['masalah'] ?? '')));
                 $hasPenanganan = ! empty(trim((string) ($tr['penanganan'] ?? '')));
-                $hasLossTime = (! empty($tr['loss_time_minutes']) && (int) $tr['loss_time_minutes'] > 0)
+                $hasLossTime = (isset($tr['loss_time_minutes']) && trim((string) $tr['loss_time_minutes']) !== '')
                     || ! empty(trim((string) ($tr['loss_time'] ?? '')));
-                $hasCategory = ! empty(trim((string) ($tr['category'] ?? ''))) || ! empty(trim((string) ($tr['penyebab'] ?? '')));
 
-                return $hasMasalah || $hasPenanganan || $hasLossTime || $hasCategory;
+                return $hasMasalah || $hasPenanganan || $hasLossTime;
             }));
             $request->merge(['troubles' => $cleanedTroubles]);
         }
@@ -388,6 +435,7 @@ class SecondProcessReportController extends Controller
             'troubles.*.loss_time_minutes' => 'Loss Time (menit)',
             'troubles.*.penanganan' => 'Penanganan Trouble',
             'troubles.*.masalah' => 'Deskripsi Masalah Trouble',
+            'troubles.*.penyebab' => 'Kategori Kendala',
             'hourly.*.ok_qty' => 'Qty OK',
             'hourly.*.ng_qty' => 'Qty NG',
             'ngs.*.ng_input_item' => 'Detail Remark Defect (NG)',
@@ -401,6 +449,11 @@ class SecondProcessReportController extends Controller
             'process_prod.required' => 'Proses Produksi wajib dipilih.',
             'shift.required' => 'Shift wajib dipilih.',
             'date.required' => 'Tanggal wajib diisi.',
+            'troubles.*.loss_time_minutes.min' => 'Loss Time (Menit) untuk kendala tidak boleh 0 menit (minimal 1 menit).',
+            'troubles.*.loss_time_minutes.required' => 'Loss Time (Menit) untuk kendala wajib diisi (minimal 1 menit).',
+            'troubles.*.masalah.required' => 'Kolom Masalah pada catatan kendala wajib diisi.',
+            'troubles.*.penanganan.required' => 'Kolom Penanganan pada catatan kendala wajib diisi.',
+            'troubles.*.penyebab.required' => 'Kategori kendala wajib dipilih.',
         ];
 
         $validated = $request->validate([
@@ -487,12 +540,12 @@ class SecondProcessReportController extends Controller
 
             // Troubles
             'troubles' => 'nullable|array',
-            'troubles.*.penyebab' => 'nullable|string',
-            'troubles.*.penanganan' => 'nullable|string',
+            'troubles.*.penyebab' => 'required|string',
+            'troubles.*.penanganan' => 'required|string',
             'troubles.*.loss_time' => 'nullable|string',
             'troubles.*.category' => 'nullable|string',
-            'troubles.*.masalah' => 'nullable|string',
-            'troubles.*.loss_time_minutes' => 'nullable|integer|min:0|max:1440',
+            'troubles.*.masalah' => 'required|string',
+            'troubles.*.loss_time_minutes' => 'required|integer|min:1|max:1440',
         ], $customMessages, $customAttributes);
 
         $effectiveStatus = $validated['status'] ?? ($report->exists ? $report->status : 'draft');
