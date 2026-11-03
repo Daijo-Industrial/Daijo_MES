@@ -31,6 +31,10 @@ class BusinessPartnerManager extends Component
 
     public bool $isProcessing = false;
 
+    public bool $autoBranchKarawang = false;
+
+    public bool $defaultBranchJakarta = false;
+
     public string $uploadMessage = '';
 
     public string $uploadError = '';
@@ -99,14 +103,14 @@ class BusinessPartnerManager extends Component
 
     public function openUploadModal(): void
     {
-        $this->reset(['file', 'uploadMessage', 'uploadError']);
+        $this->reset(['file', 'uploadMessage', 'uploadError', 'autoBranchKarawang', 'defaultBranchJakarta']);
         $this->showUploadModal = true;
     }
 
     public function closeUploadModal(): void
     {
         $this->showUploadModal = false;
-        $this->reset(['file', 'uploadMessage', 'uploadError']);
+        $this->reset(['file', 'uploadMessage', 'uploadError', 'autoBranchKarawang', 'defaultBranchJakarta']);
     }
 
     public function uploadFile(): void
@@ -179,8 +183,14 @@ class BusinessPartnerManager extends Component
             $colIndex['group_code'] = $colIndex['group_code'] ?? 'F';
             $colIndex['sales_employee'] = $colIndex['sales_employee'] ?? 'G';
 
+            $isSuperAdmin = auth()->user()?->hasRole('SUPER-ADMIN') ?? false;
+            $applyAutoBranchKarawang = $this->autoBranchKarawang && $isSuperAdmin;
+            $applyDefaultBranchJakarta = $this->defaultBranchJakarta && $isSuperAdmin;
+
             $branchMap = Branch::active()->pluck('id', 'code')->all();
             $branchNameMap = Branch::active()->pluck('id', 'name')->all();
+            $karawangBranchId = $branchMap['KRW'] ?? Branch::where('code', 'KRW')->orWhere('name', 'LIKE', '%Karawang%')->value('id');
+            $jakartaBranchId = $branchMap['JKT'] ?? Branch::where('code', 'JKT')->orWhere('name', 'LIKE', '%Jakarta%')->value('id');
 
             $bpBatch = [];
             $customerBatch = [];
@@ -249,6 +259,14 @@ class BusinessPartnerManager extends Component
                     }
                 }
 
+                // If Super-Admin toggled auto-branch Karawang, all business partners starting with 'K' are branched to Karawang
+                if ($applyAutoBranchKarawang && str_starts_with(strtoupper($bpCode), 'K')) {
+                    $branchId = $karawangBranchId;
+                } elseif ($applyDefaultBranchJakarta && $branchId === null) {
+                    // If Super-Admin toggled default Jakarta branch, default unresolved branch to Jakarta
+                    $branchId = $jakartaBranchId;
+                }
+
                 $bpBatch[] = [
                     'bp_code' => $bpCode,
                     'bp_name' => $bpName,
@@ -280,7 +298,14 @@ class BusinessPartnerManager extends Component
                 return;
             }
 
-            DB::transaction(function () use ($bpBatch, $customerBatch) {
+            DB::transaction(function () use (
+                $bpBatch,
+                $customerBatch,
+                $applyAutoBranchKarawang,
+                $karawangBranchId,
+                $applyDefaultBranchJakarta,
+                $jakartaBranchId
+            ) {
                 // Upsert to master_business_partners in chunks.
                 // NOTE: 'industry' and 'branch_id' are intentionally excluded from the update columns
                 // so that MES-exclusive tags manually configured or detected on existing records remain persisted!
@@ -290,6 +315,41 @@ class BusinessPartnerManager extends Component
                         ['bp_code'],
                         ['bp_name', 'group_code', 'category', 'type', 'foreign_name', 'sales_employee', 'updated_at']
                     );
+                }
+
+                // If auto-branch Karawang is toggled, ensure all records starting with 'K' in this batch are branched to Karawang
+                if ($applyAutoBranchKarawang && $karawangBranchId) {
+                    $kCodes = collect($bpBatch)
+                        ->filter(fn ($item) => str_starts_with(strtoupper($item['bp_code']), 'K'))
+                        ->pluck('bp_code')
+                        ->all();
+
+                    if (! empty($kCodes)) {
+                        foreach (array_chunk($kCodes, 500) as $chunkCodes) {
+                            MasterBusinessPartner::whereIn('bp_code', $chunkCodes)
+                                ->update(['branch_id' => $karawangBranchId]);
+                        }
+                    }
+                }
+
+                // If default assign to Jakarta branch is toggled, ensure remaining records in this batch are branched to Jakarta
+                if ($applyDefaultBranchJakarta && $jakartaBranchId) {
+                    $jktCodes = collect($bpBatch)
+                        ->filter(function ($item) use ($applyAutoBranchKarawang) {
+                            if ($applyAutoBranchKarawang && str_starts_with(strtoupper($item['bp_code']), 'K')) {
+                                return false;
+                            }
+                            return true;
+                        })
+                        ->pluck('bp_code')
+                        ->all();
+
+                    if (! empty($jktCodes)) {
+                        foreach (array_chunk($jktCodes, 500) as $chunkCodes) {
+                            MasterBusinessPartner::whereIn('bp_code', $chunkCodes)
+                                ->update(['branch_id' => $jakartaBranchId]);
+                        }
+                    }
                 }
 
                 // Synchronize CUSTOMER records to master_customer_delivery
@@ -305,8 +365,20 @@ class BusinessPartnerManager extends Component
             });
 
             $totalProcessed = count($bpBatch);
-            $this->uploadMessage = "Berhasil mengimpor & meng-update {$totalProcessed} Business Partners (Customer: {$customerCount}, Vendor: {$vendorCount}). Tag eksklusif MES (Sektor Industri & Plant) pada data existing tetap dipertahankan.";
-            $this->reset('file');
+            $extraInfo = [];
+            if ($applyAutoBranchKarawang) {
+                $kCount = collect($bpBatch)->filter(fn ($item) => str_starts_with(strtoupper($item['bp_code']), 'K'))->count();
+                $extraInfo[] = "Auto-branch Karawang aktif ({$kCount} partner berawalan 'K' dipetakan ke Karawang)";
+            }
+            if ($applyDefaultBranchJakarta) {
+                $jktCount = collect($bpBatch)->filter(function ($item) use ($applyAutoBranchKarawang) {
+                    return ! ($applyAutoBranchKarawang && str_starts_with(strtoupper($item['bp_code']), 'K'));
+                })->count();
+                $extraInfo[] = "Default Jakarta aktif ({$jktCount} partner dipetakan ke Jakarta)";
+            }
+            $infoText = ! empty($extraInfo) ? ' ' . implode(', ', $extraInfo) . '.' : '';
+            $this->uploadMessage = "Berhasil mengimpor & meng-update {$totalProcessed} Business Partners (Customer: {$customerCount}, Vendor: {$vendorCount}).{$infoText} Tag eksklusif MES (Sektor Industri & Plant) pada data existing tetap dipertahankan.";
+            $this->reset(['file', 'autoBranchKarawang', 'defaultBranchJakarta']);
             $this->resetPage();
 
         } catch (\Throwable $e) {

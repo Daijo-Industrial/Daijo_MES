@@ -13,6 +13,8 @@ class MasterItemLog extends Model
         'user_id',
         'item_code',
         'action',
+        'upload_batch_id',
+        'file_name',
         'old_values',
         'new_values',
     ];
@@ -25,5 +27,10 @@ class MasterItemLog extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function batch()
+    {
+        return $this->belongsTo(MasterItemImportBatch::class, 'upload_batch_id', 'batch_code');
     }
 }

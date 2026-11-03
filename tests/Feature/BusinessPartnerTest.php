@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\BusinessPartnerManager;
+use App\Models\Branch;
 use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\Role;
@@ -114,6 +115,17 @@ class BusinessPartnerTest extends TestCase
 
     public function test_search_customers_in_second_process_report(): void
     {
+        $jktBranch = \App\Models\Branch::firstOrCreate(
+            ['code' => 'JKT'],
+            ['name' => 'Jakarta Plant', 'is_active' => true]
+        );
+
+        $krwBranch = \App\Models\Branch::firstOrCreate(
+            ['code' => 'KRW'],
+            ['name' => 'Karawang Plant', 'is_active' => true]
+        );
+
+        // Jakarta customer with Automotive industry (SHOULD be returned)
         MasterBusinessPartner::create([
             'bp_code' => 'KD000022',
             'bp_name' => 'ALGERINDO PRIMA NUSANTARA PT.',
@@ -121,17 +133,43 @@ class BusinessPartnerTest extends TestCase
             'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
             'type' => 'PRODUCT',
             'foreign_name' => 'ALGERINDO',
+            'branch_id' => $jktBranch->id,
+            'industry' => MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
         ]);
 
+        // Vendor (should NOT be returned)
         MasterBusinessPartner::create([
             'bp_code' => 'VML0000115',
             'bp_name' => 'ASTRA HONDA MOTOR PT.',
             'group_code' => '101',
             'category' => MasterBusinessPartner::CATEGORY_VENDOR,
             'type' => 'MOULD',
+            'branch_id' => $jktBranch->id,
         ]);
 
-        // 1. Search by customer name or code
+        // Customer in Karawang branch (should NOT be returned)
+        MasterBusinessPartner::create([
+            'bp_code' => 'KD-KRW-01',
+            'bp_name' => 'ALGERINDO KARAWANG PT.',
+            'group_code' => '100',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'type' => 'PRODUCT',
+            'branch_id' => $krwBranch->id,
+            'industry' => MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
+        ]);
+
+        // Customer in Moulding industry (should NOT be returned)
+        MasterBusinessPartner::create([
+            'bp_code' => 'KD-MOLD-01',
+            'bp_name' => 'ALGERINDO MOULDING PT.',
+            'group_code' => '100',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'type' => 'PRODUCT',
+            'branch_id' => $jktBranch->id,
+            'industry' => MasterBusinessPartner::INDUSTRY_MOULDING,
+        ]);
+
+        // 1. Search by customer name or code returns Jakarta non-Moulding customer
         $response = $this->actingAs($this->user)
             ->getJson(route('second-process-reports.search-customers', ['query' => 'ALGERINDO']))
             ->assertOk()
@@ -148,6 +186,22 @@ class BusinessPartnerTest extends TestCase
             ->json();
 
         $this->assertCount(0, $vendorSearch);
+
+        // 3. Karawang customer should NOT appear
+        $krwSearch = $this->actingAs($this->user)
+            ->getJson(route('second-process-reports.search-customers', ['query' => 'KARAWANG']))
+            ->assertOk()
+            ->json();
+
+        $this->assertCount(0, $krwSearch);
+
+        // 4. Moulding industry customer should NOT appear
+        $moldSearch = $this->actingAs($this->user)
+            ->getJson(route('second-process-reports.search-customers', ['query' => 'MOULDING']))
+            ->assertOk()
+            ->json();
+
+        $this->assertCount(0, $moldSearch);
     }
 
     public function test_second_process_report_normalizes_and_validates_customer_with_business_partner(): void
@@ -416,5 +470,177 @@ class BusinessPartnerTest extends TestCase
             ->assertSee('BP-UNTAGGED-01')
             ->assertDontSee('BP-JKT-01')
             ->assertDontSee('BP-KRW-01');
+    }
+
+    public function test_super_admin_can_toggle_auto_branch_karawang_and_k_prefix_gets_branched_to_karawang(): void
+    {
+        $superAdminRole = Role::firstOrCreate(['name' => 'SUPER-ADMIN']);
+        $superAdmin = User::factory()->create(['role_id' => $superAdminRole->id]);
+
+        $jkt = Branch::firstOrCreate(['code' => 'JKT'], ['name' => 'Jakarta Plant', 'is_active' => true]);
+        $krw = Branch::firstOrCreate(['code' => 'KRW'], ['name' => 'Karawang Plant', 'is_active' => true]);
+
+        // Pre-existing BP starting with K with null branch
+        $preExistingK = MasterBusinessPartner::create([
+            'bp_code' => 'KD-PREEXIST-01',
+            'bp_name' => 'Pre-existing Karawang Customer PT',
+            'group_code' => '100',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'branch_id' => null,
+        ]);
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray([
+            ['#', 'CardCode', 'CardName', 'ForeignName', 'Type', 'GroupCode', 'SalesEmployee'],
+            ['1', 'KD-PREEXIST-01', 'Pre-existing Karawang Customer PT', '', 'PRODUCT', '100', ''],
+            ['2', 'KM-NEW-01', 'Brand New Karawang Customer PT', '', 'PRODUCT', '100', ''],
+            ['3', 'D0-JAKARTA-01', 'Jakarta Customer PT', '', 'PRODUCT', '100', ''],
+        ]);
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'test_autobranch_') . '.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($tempPath);
+
+        try {
+            $uploadedFile = UploadedFile::fake()->createWithContent(
+                'test_autobranch.xlsx',
+                file_get_contents($tempPath)
+            );
+
+            // 1. Verify Super-Admin sees the toggles in the modal
+            $component = Livewire::actingAs($superAdmin)
+                ->test(BusinessPartnerManager::class)
+                ->call('openUploadModal')
+                ->assertSee('Auto-Branch Karawang')
+                ->assertSee('Default Branch Jakarta')
+                ->set('file', $uploadedFile)
+                ->set('autoBranchKarawang', true)
+                ->set('defaultBranchJakarta', false)
+                ->call('uploadFile')
+                ->assertHasNoErrors()
+                ->assertSee('Auto-branch Karawang aktif');
+
+            // 2. KD-PREEXIST-01 must be auto-branched to Karawang
+            $this->assertEquals($krw->id, $preExistingK->fresh()->branch_id);
+
+            // 3. KM-NEW-01 must be auto-branched to Karawang
+            $newK = MasterBusinessPartner::where('bp_code', 'KM-NEW-01')->first();
+            $this->assertNotNull($newK);
+            $this->assertEquals($krw->id, $newK->branch_id);
+
+            // 4. D0-JAKARTA-01 does NOT start with K and default Jakarta was OFF, so branch remains null
+            $jakartaBp = MasterBusinessPartner::where('bp_code', 'D0-JAKARTA-01')->first();
+            $this->assertNotNull($jakartaBp);
+            $this->assertNull($jakartaBp->branch_id);
+        } finally {
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
+    }
+
+    public function test_super_admin_can_toggle_default_branch_jakarta(): void
+    {
+        $superAdminRole = Role::firstOrCreate(['name' => 'SUPER-ADMIN']);
+        $superAdmin = User::factory()->create(['role_id' => $superAdminRole->id]);
+
+        $jkt = Branch::firstOrCreate(['code' => 'JKT'], ['name' => 'Jakarta Plant', 'is_active' => true]);
+        $krw = Branch::firstOrCreate(['code' => 'KRW'], ['name' => 'Karawang Plant', 'is_active' => true]);
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray([
+            ['#', 'CardCode', 'CardName', 'ForeignName', 'Type', 'GroupCode', 'SalesEmployee'],
+            ['1', 'KM-KARAWANG-01', 'Karawang Customer PT', '', 'PRODUCT', '100', ''],
+            ['2', 'D0-JAKARTA-02', 'Jakarta Customer Two PT', '', 'PRODUCT', '100', ''],
+        ]);
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'test_defjkt_') . '.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($tempPath);
+
+        try {
+            $uploadedFile = UploadedFile::fake()->createWithContent(
+                'test_defjkt.xlsx',
+                file_get_contents($tempPath)
+            );
+
+            // Both toggles ON: K prefix to Karawang, others default to Jakarta
+            Livewire::actingAs($superAdmin)
+                ->test(BusinessPartnerManager::class)
+                ->set('file', $uploadedFile)
+                ->set('autoBranchKarawang', true)
+                ->set('defaultBranchJakarta', true)
+                ->call('uploadFile')
+                ->assertHasNoErrors()
+                ->assertSee('Auto-branch Karawang aktif')
+                ->assertSee('Default Jakarta aktif');
+
+            // KM goes to Karawang
+            $km = MasterBusinessPartner::where('bp_code', 'KM-KARAWANG-01')->first();
+            $this->assertNotNull($km);
+            $this->assertEquals($krw->id, $km->branch_id);
+
+            // D0 defaults to Jakarta
+            $d0 = MasterBusinessPartner::where('bp_code', 'D0-JAKARTA-02')->first();
+            $this->assertNotNull($d0);
+            $this->assertEquals($jkt->id, $d0->branch_id);
+        } finally {
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
+    }
+
+    public function test_non_super_admin_cannot_activate_auto_branch_or_default_jakarta(): void
+    {
+        $jkt = Branch::firstOrCreate(['code' => 'JKT'], ['name' => 'Jakarta Plant', 'is_active' => true]);
+        $krw = Branch::firstOrCreate(['code' => 'KRW'], ['name' => 'Karawang Plant', 'is_active' => true]);
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray([
+            ['#', 'CardCode', 'CardName', 'ForeignName', 'Type', 'GroupCode', 'SalesEmployee'],
+            ['1', 'KD-ADMIN-UPLOAD', 'Admin Upload Customer PT', '', 'PRODUCT', '100', ''],
+            ['2', 'D0-ADMIN-UPLOAD', 'Admin Upload Jakarta PT', '', 'PRODUCT', '100', ''],
+        ]);
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'test_admin_autobranch_') . '.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($tempPath);
+
+        try {
+            $uploadedFile = UploadedFile::fake()->createWithContent(
+                'test_admin_autobranch.xlsx',
+                file_get_contents($tempPath)
+            );
+
+            // Regular ADMIN user does not see toggles and cannot activate them
+            Livewire::actingAs($this->user)
+                ->test(BusinessPartnerManager::class)
+                ->call('openUploadModal')
+                ->assertDontSee('Auto-Branch Karawang')
+                ->assertDontSee('Default Branch Jakarta')
+                ->set('file', $uploadedFile)
+                ->set('autoBranchKarawang', true)
+                ->set('defaultBranchJakarta', true)
+                ->call('uploadFile')
+                ->assertHasNoErrors()
+                ->assertDontSee('Auto-branch Karawang aktif')
+                ->assertDontSee('Default Jakarta aktif');
+
+            $kd = MasterBusinessPartner::where('bp_code', 'KD-ADMIN-UPLOAD')->first();
+            $this->assertNotNull($kd);
+            $this->assertNull($kd->branch_id);
+
+            $d0 = MasterBusinessPartner::where('bp_code', 'D0-ADMIN-UPLOAD')->first();
+            $this->assertNotNull($d0);
+            $this->assertNull($d0->branch_id);
+        } finally {
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
     }
 }

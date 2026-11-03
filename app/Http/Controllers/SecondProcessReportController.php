@@ -897,13 +897,15 @@ class SecondProcessReportController extends Controller
 
     public function searchCustomers(Request $request)
     {
-        $query = $request->get('query');
-        if (! $query) {
+        $query = trim((string) $request->get('query', ''));
+        if ($query === '') {
             return response()->json([]);
         }
 
-        // 1. Search MasterBusinessPartner where category = CUSTOMER (bp_name, bp_code, foreign_name)
+        // Only search MasterBusinessPartner where category = CUSTOMER from Jakarta branch and not Moulding industry
         $bpResults = MasterBusinessPartner::customers()
+            ->jakartaBranch()
+            ->notMoulding()
             ->where(function ($q) use ($query) {
                 $q->where('bp_name', 'LIKE', "%{$query}%")
                     ->orWhere('bp_code', 'LIKE', "%{$query}%")
@@ -912,37 +914,18 @@ class SecondProcessReportController extends Controller
             ->limit(20)
             ->get();
 
-        if ($bpResults->isNotEmpty()) {
-            $customers = $bpResults->map(function ($bp) {
-                $details = array_filter([$bp->bp_code, $bp->foreign_name]);
-                $subtext = ! empty($details) ? ' (' . implode(' - ', $details) . ')' : '';
+        $customers = $bpResults->map(function ($bp) {
+            $details = array_filter([$bp->bp_code, $bp->foreign_name]);
+            $subtext = ! empty($details) ? ' (' . implode(' - ', $details) . ')' : '';
 
-                return [
-                    'id' => $bp->id,
-                    'customer_code' => $bp->bp_code,
-                    'customer_name' => $bp->bp_name,
-                    'name' => $bp->bp_name,
-                    'display_label' => $bp->bp_name . $subtext,
-                ];
-            });
-
-            return response()->json($customers);
-        }
-
-        // 2. Fallback to MasterCustomerDelivery
-        $customers = MasterCustomerDelivery::where('customer_name', 'LIKE', "%{$query}%")
-            ->orWhere('customer_code', 'LIKE', "%{$query}%")
-            ->limit(20)
-            ->get()
-            ->map(function ($cust) {
-                return [
-                    'id' => $cust->id,
-                    'customer_code' => $cust->customer_code,
-                    'customer_name' => $cust->customer_name,
-                    'name' => $cust->customer_name,
-                    'display_label' => $cust->customer_name . ' (' . $cust->customer_code . ')',
-                ];
-            });
+            return [
+                'id' => $bp->id,
+                'customer_code' => $bp->bp_code,
+                'customer_name' => $bp->bp_name,
+                'name' => $bp->bp_name,
+                'display_label' => $bp->bp_name . $subtext,
+            ];
+        });
 
         return response()->json($customers);
     }

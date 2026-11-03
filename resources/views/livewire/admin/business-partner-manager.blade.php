@@ -284,6 +284,34 @@
                 </div>
 
                 <form wire:submit.prevent="uploadFile" class="space-y-4">
+                    @if (auth()->user()?->hasRole('SUPER-ADMIN'))
+                        <div class="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2.5">
+                            <div class="text-[11px] font-black uppercase text-amber-900 tracking-wider flex items-center justify-between">
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                    Opsi Khusus Plant (Branch)
+                                </span>
+                                <span class="bg-amber-200 text-amber-800 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Super-Admin</span>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="flex items-start gap-2.5 cursor-pointer select-none">
+                                    <input type="checkbox" wire:model="autoBranchKarawang" id="autoBranchKarawang"
+                                        class="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500 h-4 w-4 cursor-pointer">
+                                    <span class="text-xs text-amber-950">
+                                        <strong>Auto-Branch Karawang:</strong> Semua Business Partner dengan kode berawalan <strong>"K"</strong> (misal: KD, KM, KN, KI) otomatis dipetakan ke <strong>Karawang Plant</strong>.
+                                    </span>
+                                </label>
+                                <label class="flex items-start gap-2.5 cursor-pointer select-none border-t border-amber-200/60 pt-2">
+                                    <input type="checkbox" wire:model="defaultBranchJakarta" id="defaultBranchJakarta"
+                                        class="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500 h-4 w-4 cursor-pointer">
+                                    <span class="text-xs text-amber-950">
+                                        <strong>Default Branch Jakarta:</strong> Otomatis petakan ke <strong>Jakarta Plant</strong> untuk Business Partner yang belum memiliki plant.
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-500 transition bg-gray-50/50">
                         <input type="file" wire:model="file" id="file" accept=".xls,.xlsx,.csv" class="hidden">
                         <label for="file" class="cursor-pointer block">

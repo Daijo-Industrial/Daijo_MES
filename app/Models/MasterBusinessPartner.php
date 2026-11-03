@@ -137,6 +137,29 @@ class MasterBusinessPartner extends Model
     }
 
     /**
+     * Scope for business partners belonging to Jakarta branch.
+     */
+    public function scopeJakartaBranch($query)
+    {
+        $branchIds = Branch::where('code', 'JKT')
+            ->orWhere('name', 'LIKE', '%Jakarta%')
+            ->pluck('id');
+
+        return $query->whereIn('branch_id', $branchIds);
+    }
+
+    /**
+     * Scope for business partners not in the Moulding industry.
+     */
+    public function scopeNotMoulding($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('industry')
+                ->orWhereRaw('UPPER(TRIM(industry)) != ?', [self::INDUSTRY_MOULDING]);
+        });
+    }
+
+    /**
      * Determine if this business partner is automotive.
      */
     public function getIsAutomotiveAttribute(): bool

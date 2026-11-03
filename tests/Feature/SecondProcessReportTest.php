@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
 use App\Models\FirstPieceInspection;
 use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
@@ -300,7 +301,7 @@ class SecondProcessReportTest extends TestCase
             'customer' => 'N/A',
         ]);
 
-        // 1. Unfiltered index passes distinct customers list to view
+        // 1. Unfiltered index passes distinct customers list from reports to view
         $res = $this->get(route('second-process-reports.index'));
         $res->assertOk();
         $res->assertViewHas('customers', function ($customers) {
@@ -895,24 +896,62 @@ class SecondProcessReportTest extends TestCase
     }
 
     /**
-     * Test search customers endpoint returns MasterCustomerDelivery items.
+     * Test search customers endpoint only returns MasterBusinessPartner customers from Jakarta branch and not Moulding industry.
      */
     public function test_search_customers_returns_master_customer(): void
     {
         $user = User::factory()->create(['role_id' => $this->adminRole->id]);
 
-        \App\Models\MasterCustomerDelivery::create([
-            'customer_code' => 'CUST-DEL-88',
-            'customer_name' => 'Daijo Motor Supply',
+        $jktBranch = Branch::firstOrCreate(
+            ['code' => 'JKT'],
+            ['name' => 'Jakarta Plant', 'is_active' => true]
+        );
+
+        $krwBranch = Branch::firstOrCreate(
+            ['code' => 'KRW'],
+            ['name' => 'Karawang Plant', 'is_active' => true]
+        );
+
+        // Jakarta customer with non-moulding industry (should be returned)
+        MasterBusinessPartner::create([
+            'bp_code' => 'CUST-DEL-88',
+            'bp_name' => 'Daijo Motor Supply',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
+            'branch_id' => $jktBranch->id,
+        ]);
+
+        // Karawang customer (should be excluded)
+        MasterBusinessPartner::create([
+            'bp_code' => 'CUST-KRW-88',
+            'bp_name' => 'Daijo Karawang Supply',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
+            'branch_id' => $krwBranch->id,
+        ]);
+
+        // Moulding industry customer (should be excluded)
+        MasterBusinessPartner::create([
+            'bp_code' => 'CUST-MOLD-88',
+            'bp_name' => 'Daijo Moulding Supply',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_MOULDING,
+            'branch_id' => $jktBranch->id,
+        ]);
+
+        // Legacy MasterCustomerDelivery without business partner should NOT be returned
+        MasterCustomerDelivery::create([
+            'customer_code' => 'CUST-DEL-OLD',
+            'customer_name' => 'Daijo Old Delivery',
         ]);
 
         $response = $this->actingAs($user)->get(route('second-process-reports.search-customers', ['query' => 'Daijo']));
 
-        $response->assertOk()
-            ->assertJsonFragment([
-                'customer_code' => 'CUST-DEL-88',
-                'customer_name' => 'Daijo Motor Supply',
-            ]);
+        $response->assertOk();
+        $data = $response->json();
+        $this->assertCount(1, $data);
+        $this->assertEquals('CUST-DEL-88', $data[0]['customer_code']);
+        $this->assertEquals('Daijo Motor Supply', $data[0]['customer_name']);
     }
 
     /**
