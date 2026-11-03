@@ -17,16 +17,19 @@ class SecondProcessReportController extends Controller
 {
     public function index(Request $request)
     {
-        $today = now()->toDateString();
-        $yesterday = now()->subDay()->toDateString();
-        $thisWeekStart = now()->startOfWeek()->toDateString();
-        $thisMonthStart = now()->startOfMonth()->toDateString();
+        $today = now('Asia/Jakarta')->toDateString();
+        $yesterday = now('Asia/Jakarta')->subDay()->toDateString();
+        $thisWeekStart = now('Asia/Jakarta')->startOfWeek()->toDateString();
+        $thisMonthStart = now('Asia/Jakarta')->startOfMonth()->toDateString();
+        $lastMonthStart = now('Asia/Jakarta')->subMonth()->startOfMonth()->toDateString();
+        $lastMonthEnd = now('Asia/Jakarta')->subMonth()->endOfMonth()->toDateString();
 
-        $preset = $request->input('preset');
-        $dateFrom = $request->input('date_from');
-        $dateTo = $request->input('date_to');
+        $preset = $request->query('preset');
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
 
-        if ($preset && ! $request->filled('date_from') && ! $request->filled('date_to')) {
+        // Apply quick preset dates if preset is selected and explicit dates are not passed
+        if ($preset && ! $request->has('date_from') && ! $request->has('date_to')) {
             switch ($preset) {
                 case 'today':
                     $dateFrom = $today;
@@ -44,6 +47,14 @@ class SecondProcessReportController extends Controller
                     $dateFrom = $thisMonthStart;
                     $dateTo = $today;
                     break;
+                case 'last_month':
+                    $dateFrom = $lastMonthStart;
+                    $dateTo = $lastMonthEnd;
+                    break;
+                case 'all':
+                    $dateFrom = null;
+                    $dateTo = null;
+                    break;
             }
 
             if ($dateFrom !== null && $dateTo !== null) {
@@ -52,10 +63,24 @@ class SecondProcessReportController extends Controller
                     'date_to' => $dateTo,
                 ]);
             }
+        } elseif (! $request->has('preset') && ! $request->has('date_from') && ! $request->has('date_to')) {
+            // Default when user first lands on index: This Month
+            $preset = 'this_month';
+            $dateFrom = $thisMonthStart;
+            $dateTo = $today;
+            $request->merge([
+                'preset' => 'this_month',
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ]);
         }
 
         $activePreset = null;
-        if (! empty($dateFrom) && ! empty($dateTo)) {
+        if ($preset === 'custom') {
+            $activePreset = 'custom';
+        } elseif ($preset === 'all') {
+            $activePreset = null;
+        } elseif (! empty($dateFrom) && ! empty($dateTo)) {
             if ($dateFrom === $today && $dateTo === $today) {
                 $activePreset = 'today';
             } elseif ($dateFrom === $yesterday && $dateTo === $yesterday) {
@@ -64,7 +89,13 @@ class SecondProcessReportController extends Controller
                 $activePreset = 'this_week';
             } elseif ($dateFrom === $thisMonthStart && $dateTo === $today) {
                 $activePreset = 'this_month';
+            } elseif ($dateFrom === $lastMonthStart && $dateTo === $lastMonthEnd) {
+                $activePreset = 'last_month';
+            } else {
+                $activePreset = 'custom';
             }
+        } elseif (! empty($dateFrom) || ! empty($dateTo)) {
+            $activePreset = 'custom';
         }
 
         $query = SecondProcessReport::query();
@@ -85,7 +116,37 @@ class SecondProcessReportController extends Controller
             $query->where('process_prod', $request->process_prod);
         }
         if ($request->filled('unit_line')) {
-            $query->where('unit_line', 'LIKE', '%' . $request->unit_line . '%');
+            $lineVal = $request->unit_line;
+            $spLines = config('mes.sp_lines', []);
+            $possibleValues = [$lineVal];
+            if (isset($spLines[$lineVal])) {
+                $possibleValues[] = $spLines[$lineVal];
+            }
+            $matchedSlug = array_search($lineVal, $spLines, true);
+            if ($matchedSlug !== false) {
+                $possibleValues[] = $matchedSlug;
+            }
+            $query->whereIn('unit_line', array_unique($possibleValues));
+        }
+
+        // Industry / Sector Filter (Automotive, Electronics, Moulding, General)
+        $selectedIndustry = $request->filled('industry') ? strtoupper(trim($request->input('industry'))) : null;
+        if ($selectedIndustry && in_array($selectedIndustry, [
+            MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
+            MasterBusinessPartner::INDUSTRY_ELECTRONICS,
+            MasterBusinessPartner::INDUSTRY_MOULDING,
+            MasterBusinessPartner::INDUSTRY_GENERAL,
+        ], true)) {
+            $customerNames = MasterBusinessPartner::where('industry', $selectedIndustry)->pluck('bp_name')->all();
+            $query->whereIn('customer', $customerNames);
+        }
+
+        if ($request->filled('customer')) {
+            $custVal = trim($request->customer);
+            $query->where(function ($q) use ($custVal) {
+                $q->where('customer', $custVal)
+                    ->orWhereRaw('TRIM(customer) = ?', [$custVal]);
+            });
         }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -107,19 +168,42 @@ class SecondProcessReportController extends Controller
             COUNT(*) as total_reports,
             COALESCE(SUM(jumlah_output), 0) as total_output,
             COALESCE(SUM(jumlah_ok), 0) as total_ok,
-            COALESCE(SUM(jumlah_ng), 0) as total_ng
+            COALESCE(SUM(jumlah_ng), 0) as total_ng,
+            COALESCE(SUM(sisa_input), 0) as total_sisa_input
         ')->first();
 
         $reports = $query->orderBy('date', 'desc')->paginate(25)->withQueryString();
 
+        $customers = SecondProcessReport::query()
+            ->whereNotNull('customer')
+            ->whereRaw("TRIM(customer) != ''")
+            ->selectRaw("DISTINCT TRIM(customer) as customer")
+            ->orderBy('customer')
+            ->pluck('customer');
+
+        $industries = [
+            'AUTOMOTIVE' => 'Automotive',
+            'ELECTRONICS' => 'Electronics',
+            'MOULDING' => 'Moulding',
+            'GENERAL' => 'General',
+        ];
+
+        $industryMap = MasterBusinessPartner::pluck('industry', 'bp_name')->all();
+
         return view('second_process.index', compact(
             'reports',
             'summary',
+            'customers',
+            'industries',
+            'selectedIndustry',
+            'industryMap',
             'activePreset',
             'today',
             'yesterday',
             'thisWeekStart',
-            'thisMonthStart'
+            'thisMonthStart',
+            'lastMonthStart',
+            'lastMonthEnd'
         ));
     }
 
