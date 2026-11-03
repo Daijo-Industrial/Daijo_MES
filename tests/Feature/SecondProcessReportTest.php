@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
 use App\Models\FirstPieceInspection;
 use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterListItem;
 use App\Models\Role;
+use App\Models\SecondProcessNgRecord;
 use App\Models\SecondProcessReport;
 use App\Models\SecondProcessTrouble;
 use App\Models\User;
@@ -178,6 +180,93 @@ class SecondProcessReportTest extends TestCase
     }
 
     /**
+     * Test quick filter preset persists when user submits other filters with empty date inputs.
+     */
+    public function test_index_page_persists_quick_filter_preset_when_submitting_other_filters(): void
+    {
+        $user = User::factory()->create(['role_id' => $this->adminRole->id]);
+        $this->actingAs($user);
+
+        $todayDate = now()->toDateString();
+        $olderDate = now()->subDays(40)->toDateString();
+
+        SecondProcessReport::create([
+            'date' => $todayDate,
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-LINE1-TODAY',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        SecondProcessReport::create([
+            'date' => $todayDate,
+            'unit_line' => 'Line 2',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-LINE2-TODAY',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        SecondProcessReport::create([
+            'date' => $olderDate,
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-LINE1-OLD',
+            'customer' => 'Toyota Motor Corp',
+        ]);
+
+        // 1. Initial page landing defaults to this_month and renders hidden preset input
+        $resLanding = $this->get(route('second-process-reports.index'));
+        $resLanding->assertOk();
+        $resLanding->assertViewHas('activePreset', 'this_month');
+        $resLanding->assertSee('name="preset" id="filter-preset-input" value="this_month"', false);
+
+        // 2. User filters by Unit Line with preset 'today' and empty date inputs
+        $resTodayFilter = $this->get(route('second-process-reports.index', [
+            'preset' => 'today',
+            'date_from' => '',
+            'date_to' => '',
+            'unit_line' => 'Line 1',
+        ]));
+        $resTodayFilter->assertOk();
+        $resTodayFilter->assertViewHas('activePreset', 'today');
+        $resTodayFilter->assertSee('name="preset" id="filter-preset-input" value="today"', false);
+        $resTodayFilter->assertSee('PART-LINE1-TODAY');
+        $resTodayFilter->assertDontSee('PART-LINE2-TODAY');
+        $resTodayFilter->assertDontSee('PART-LINE1-OLD');
+
+        // 3. User filters with preset 'this_month' and empty date inputs
+        $resMonthFilter = $this->get(route('second-process-reports.index', [
+            'preset' => 'this_month',
+            'date_from' => '',
+            'date_to' => '',
+            'unit_line' => 'Line 2',
+        ]));
+        $resMonthFilter->assertOk();
+        $resMonthFilter->assertViewHas('activePreset', 'this_month');
+        $resMonthFilter->assertSee('name="preset" id="filter-preset-input" value="this_month"', false);
+        $resMonthFilter->assertSee('PART-LINE2-TODAY');
+        $resMonthFilter->assertDontSee('PART-LINE1-TODAY');
+        $resMonthFilter->assertDontSee('PART-LINE1-OLD');
+
+        // 4. Custom range persists custom dates and displays custom inputs populated
+        $resCustomFilter = $this->get(route('second-process-reports.index', [
+            'preset' => 'custom',
+            'date_from' => $olderDate,
+            'date_to' => $olderDate,
+            'unit_line' => 'Line 1',
+        ]));
+        $resCustomFilter->assertOk();
+        $resCustomFilter->assertViewHas('activePreset', 'custom');
+        $resCustomFilter->assertSee('name="preset" id="filter-preset-input" value="custom"', false);
+        $resCustomFilter->assertSee('PART-LINE1-OLD');
+        $resCustomFilter->assertDontSee('PART-LINE1-TODAY');
+        $resCustomFilter->assertSee('value="' . $olderDate . '"', false);
+    }
+
+    /**
      * Test filtering reports by customer distinct list and handling N/A.
      */
     public function test_index_page_filters_by_customer_distinct_list(): void
@@ -212,7 +301,7 @@ class SecondProcessReportTest extends TestCase
             'customer' => 'N/A',
         ]);
 
-        // 1. Unfiltered index passes distinct customers list to view
+        // 1. Unfiltered index passes distinct customers list from reports to view
         $res = $this->get(route('second-process-reports.index'));
         $res->assertOk();
         $res->assertViewHas('customers', function ($customers) {
@@ -807,24 +896,62 @@ class SecondProcessReportTest extends TestCase
     }
 
     /**
-     * Test search customers endpoint returns MasterCustomerDelivery items.
+     * Test search customers endpoint only returns MasterBusinessPartner customers from Jakarta branch and not Moulding industry.
      */
     public function test_search_customers_returns_master_customer(): void
     {
         $user = User::factory()->create(['role_id' => $this->adminRole->id]);
 
-        \App\Models\MasterCustomerDelivery::create([
-            'customer_code' => 'CUST-DEL-88',
-            'customer_name' => 'Daijo Motor Supply',
+        $jktBranch = Branch::firstOrCreate(
+            ['code' => 'JKT'],
+            ['name' => 'Jakarta Plant', 'is_active' => true]
+        );
+
+        $krwBranch = Branch::firstOrCreate(
+            ['code' => 'KRW'],
+            ['name' => 'Karawang Plant', 'is_active' => true]
+        );
+
+        // Jakarta customer with non-moulding industry (should be returned)
+        MasterBusinessPartner::create([
+            'bp_code' => 'CUST-DEL-88',
+            'bp_name' => 'Daijo Motor Supply',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
+            'branch_id' => $jktBranch->id,
+        ]);
+
+        // Karawang customer (should be excluded)
+        MasterBusinessPartner::create([
+            'bp_code' => 'CUST-KRW-88',
+            'bp_name' => 'Daijo Karawang Supply',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_AUTOMOTIVE,
+            'branch_id' => $krwBranch->id,
+        ]);
+
+        // Moulding industry customer (should be excluded)
+        MasterBusinessPartner::create([
+            'bp_code' => 'CUST-MOLD-88',
+            'bp_name' => 'Daijo Moulding Supply',
+            'category' => MasterBusinessPartner::CATEGORY_CUSTOMER,
+            'industry' => MasterBusinessPartner::INDUSTRY_MOULDING,
+            'branch_id' => $jktBranch->id,
+        ]);
+
+        // Legacy MasterCustomerDelivery without business partner should NOT be returned
+        MasterCustomerDelivery::create([
+            'customer_code' => 'CUST-DEL-OLD',
+            'customer_name' => 'Daijo Old Delivery',
         ]);
 
         $response = $this->actingAs($user)->get(route('second-process-reports.search-customers', ['query' => 'Daijo']));
 
-        $response->assertOk()
-            ->assertJsonFragment([
-                'customer_code' => 'CUST-DEL-88',
-                'customer_name' => 'Daijo Motor Supply',
-            ]);
+        $response->assertOk();
+        $data = $response->json();
+        $this->assertCount(1, $data);
+        $this->assertEquals('CUST-DEL-88', $data[0]['customer_code']);
+        $this->assertEquals('Daijo Motor Supply', $data[0]['customer_name']);
     }
 
     /**
@@ -2530,5 +2657,171 @@ class SecondProcessReportTest extends TestCase
         $this->assertContains('Paint #2', $savedNames);
         $this->assertContains('Topcoat Gloss', $savedNames);
         $this->assertContains('Clear Coat', $savedNames);
+    }
+
+    public function test_create_form_renders_empty_initial_ng_columns_and_reusable_ng_pills(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // Create an existing report with custom NG to test historical NG retrieval
+        $existingReport = SecondProcessReport::create([
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-HISTORICAL-NG',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+        ]);
+        SecondProcessNgRecord::create([
+            'report_id' => $existingReport->id,
+            'ng_name' => 'ORANGE PEEL CUSTOM',
+            'total_ng' => 3,
+            'ng_category' => 'NG-PROCESS',
+        ]);
+
+        $response = $this->get(route('second-process-reports.create'));
+        $response->assertStatus(200);
+
+        // 1. Assert initial spreadsheet table does NOT contain default hardcoded NG column headers
+        $response->assertDontSee('<th class="group px-3 py-2 w-36 text-center ng-type-header relative select-none border-b border-gray-200" data-ng="SCRATCH">', false);
+
+        // 2. Assert empty table notice is rendered
+        $response->assertSee('id="ng-empty-table-notice"', false);
+        $response->assertSee('Belum ada kolom Tipe NG pada tabel');
+
+        // 3. Assert quick preset pills and historical NG are displayed for 1-click reuse
+        $response->assertSee('data-ng-preset="SCRATCH"', false);
+        $response->assertSee('data-ng-preset="DIRTY"', false);
+        $response->assertSee('data-ng-preset="ORANGE PEEL CUSTOM"', false);
+
+        // 4. Assert modal button and modal structure exist
+        $response->assertSee('+ NG Type');
+        $response->assertSee('id="ng-type-modal"', false);
+        $response->assertSee('id="custom-ng-name-input"', false);
+
+        // 5. Assert NG Default Kategori options match config('mes.sp_ng_remark_categories')
+        $response->assertSee('Default Kategori:');
+        foreach (config('mes.sp_ng_remark_categories') as $cat) {
+            $response->assertSee('value="' . $cat . '"', false);
+            $response->assertSee($cat);
+        }
+    }
+
+    public function test_submitting_trouble_with_zero_minutes_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $payload = [
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-TROUBLE-ZERO',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'troubles' => [
+                [
+                    'penyebab' => 'Mesin',
+                    'masalah' => 'Sensor nozzle rusak',
+                    'penanganan' => 'Kalibrasi ulang sensor',
+                    'loss_time_minutes' => 0,
+                ],
+            ],
+        ];
+
+        $response = $this->post(route('second-process-reports.store'), $payload);
+        $response->assertSessionHasErrors(['troubles.0.loss_time_minutes']);
+        $this->assertDatabaseMissing('second_process_reports', ['part_number' => 'PART-TROUBLE-ZERO']);
+    }
+
+    public function test_submitting_trouble_with_missing_fields_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // Missing masalah
+        $payload1 = [
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-TROUBLE-NOMSG',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'troubles' => [
+                [
+                    'penyebab' => 'Mesin',
+                    'masalah' => '',
+                    'penanganan' => 'Ganti filter',
+                    'loss_time_minutes' => 15,
+                ],
+            ],
+        ];
+
+        $response1 = $this->post(route('second-process-reports.store'), $payload1);
+        $response1->assertSessionHasErrors(['troubles.0.masalah']);
+
+        // Missing penanganan
+        $payload2 = [
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-TROUBLE-NOPEN',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'troubles' => [
+                [
+                    'penyebab' => 'Mesin',
+                    'masalah' => 'Filter oli tersumbat',
+                    'penanganan' => '',
+                    'loss_time_minutes' => 15,
+                ],
+            ],
+        ];
+
+        $response2 = $this->post(route('second-process-reports.store'), $payload2);
+        $response2->assertSessionHasErrors(['troubles.0.penanganan']);
+    }
+
+    public function test_submitting_trouble_with_valid_data_succeeds(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $payload = [
+            'date' => now()->toDateString(),
+            'unit_line' => 'Line 1',
+            'shift' => '1',
+            'process_prod' => 'Buffing',
+            'part_number' => 'PART-TROUBLE-VALID',
+            'customer' => 'Toyota Motor Corp',
+            'status' => 'draft',
+            'troubles' => [
+                [
+                    'penyebab' => 'Mesin',
+                    'masalah' => 'Dinamo mesin overheating',
+                    'penanganan' => 'Pembersihan heatsink dan penggantian pendingin',
+                    'loss_time_minutes' => 25,
+                ],
+            ],
+        ];
+
+        $response = $this->post(route('second-process-reports.store'), $payload);
+        $response->assertRedirect(route('second-process-reports.index'));
+
+        $report = SecondProcessReport::where('part_number', 'PART-TROUBLE-VALID')->first();
+        $this->assertNotNull($report);
+        $this->assertCount(1, $report->troubles);
+
+        $trouble = $report->troubles->first();
+        $this->assertEquals('Mesin', $trouble->penyebab);
+        $this->assertEquals('Dinamo mesin overheating', $trouble->masalah);
+        $this->assertEquals('Pembersihan heatsink dan penggantian pendingin', $trouble->penanganan);
+        $this->assertEquals(25, $trouble->loss_time_minutes);
+        $this->assertEquals('25 mins', $trouble->loss_time);
     }
 }

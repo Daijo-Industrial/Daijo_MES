@@ -69,7 +69,7 @@
                 <div id="analytics-progress-bar" class="hidden absolute top-0 left-0 right-0 h-1 bg-blue-100 overflow-hidden rounded-t-xl z-30">
                     <div class="w-full h-full bg-blue-600 animate-pulse origin-left"></div>
                 </div>
-                <input type="hidden" name="preset" id="analytics-preset-input" value="{{ request('preset') }}">
+                <input type="hidden" name="preset" id="analytics-preset-input" value="{{ $activePreset ?? request('preset', 'this_month') }}">
                 <input type="hidden" name="ng_category" value="{{ $selectedNgCategory ?? request('ng_category') }}">
                 {{-- Row 1: Quick Range Presets & Action Buttons --}}
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
@@ -111,12 +111,12 @@
                         <div x-show="showCustomDates" {{ ($activePreset ?? '') !== 'custom' ? 'x-cloak style=display:none;' : '' }}
                             class="inline-flex items-center gap-1.5 ml-1 transition-all">
                             <input type="date" name="date_from" id="analytics-date-from"
-                                value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_from')) ? request('date_from', $dateFrom) : '' }}"
+                                value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_from')) ? ($dateFrom ?? request('date_from', '')) : '' }}"
                                 onchange="applyCustomDateIfComplete()"
                                 class="px-2 py-0.5 border-gray-300 bg-white rounded-md text-xs focus:ring-blue-500 focus:border-blue-500 font-medium">
                             <span class="text-xs text-gray-400 font-semibold">–</span>
                             <input type="date" name="date_to" id="analytics-date-to"
-                                value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_to')) ? request('date_to', $dateTo) : '' }}"
+                                value="{{ ($activePreset ?? '') === 'custom' || (!request()->filled('preset') && request()->filled('date_to')) ? ($dateTo ?? request('date_to', '')) : '' }}"
                                 onchange="applyCustomDateIfComplete()"
                                 class="px-2 py-0.5 border-gray-300 bg-white rounded-md text-xs focus:ring-blue-500 focus:border-blue-500 font-medium">
                         </div>
@@ -994,8 +994,8 @@
                     const toInput = document.getElementById('analytics-date-to');
                     const presetInput = document.getElementById('analytics-preset-input');
                     
-                    if (fromInput) fromInput.value = presets[preset].from;
-                    if (toInput) toInput.value = presets[preset].to;
+                    if (fromInput) fromInput.value = '';
+                    if (toInput) toInput.value = '';
                     if (presetInput) presetInput.value = preset;
                     form.submit();
                 }

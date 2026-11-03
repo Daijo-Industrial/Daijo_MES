@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
+use App\Models\MasterItemImportBatch;
 use App\Models\MasterItemLog;
 use App\Models\MasterListItem;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,17 @@ class MasterListManager extends Component
 
     // Excel Import status
     public $tempFilePath = '';
+
+    public string $originalFileName = '';
+
+    public string $uploadBatchCode = '';
+
+    public array $batchMetrics = [
+        'created' => 0,
+        'updated' => 0,
+        'critical' => 0,
+        'impact' => [],
+    ];
 
     public $totalRows = 0;
 
@@ -205,6 +217,7 @@ class MasterListManager extends Component
         ]);
 
         try {
+            $this->originalFileName = $this->file ? $this->file->getClientOriginalName() : 'master_list_item.xls';
             $realPath = $this->file->getRealPath();
 
             // Load spreadsheet using PhpSpreadsheet
@@ -380,6 +393,13 @@ class MasterListManager extends Component
     public function startImport()
     {
         $this->importedRowsCount = 0;
+        $this->uploadBatchCode = 'BATCH-' . now()->format('Ymd-His');
+        $this->batchMetrics = [
+            'created' => 0,
+            'updated' => 0,
+            'critical' => 0,
+            'impact' => [],
+        ];
         $this->importing = true;
     }
 
@@ -464,9 +484,19 @@ class MasterListManager extends Component
                                 'user_id' => auth()->id(),
                                 'item_code' => $item->item_code,
                                 'action' => 'excel_import_update',
+                                'upload_batch_id' => $this->uploadBatchCode ?: ('BATCH-' . now()->format('Ymd-His')),
+                                'file_name' => $this->originalFileName ?: 'master_list_item.xls',
                                 'old_values' => $diffOld,
                                 'new_values' => $diffNew,
                             ]);
+
+                            $this->batchMetrics['updated'] = ($this->batchMetrics['updated'] ?? 0) + 1;
+                            foreach (array_keys($diffNew) as $changedKey) {
+                                $this->batchMetrics['impact'][$changedKey] = ($this->batchMetrics['impact'][$changedKey] ?? 0) + 1;
+                                if (in_array($changedKey, ['customer_code', 'part_weight', 'cycle_time', 'tipe_mesin', 'cavity'], true)) {
+                                    $this->batchMetrics['critical'] = ($this->batchMetrics['critical'] ?? 0) + 1;
+                                }
+                            }
                         }
                     }
                 } else {
@@ -495,9 +525,13 @@ class MasterListManager extends Component
                         'user_id' => auth()->id(),
                         'item_code' => $item->item_code,
                         'action' => 'excel_import_create',
+                        'upload_batch_id' => $this->uploadBatchCode ?: ('BATCH-' . now()->format('Ymd-His')),
+                        'file_name' => $this->originalFileName ?: 'master_list_item.xls',
                         'old_values' => null,
                         'new_values' => $item->only(array_merge(['item_code'], $fieldsToTrack)),
                     ]);
+
+                    $this->batchMetrics['created'] = ($this->batchMetrics['created'] ?? 0) + 1;
                 }
 
                 $processed++;
@@ -514,10 +548,26 @@ class MasterListManager extends Component
             $this->tempFilePath = '';
             $this->importing = false;
             $this->file = null;
+
+            // Persist the batch record
+            if ($this->totalRows > 0) {
+                MasterItemImportBatch::create([
+                    'batch_code' => $this->uploadBatchCode ?: ('BATCH-' . now()->format('Ymd-His')),
+                    'file_name' => $this->originalFileName ?: 'master_list_item.xls',
+                    'user_id' => auth()->id(),
+                    'total_rows' => $this->totalRows,
+                    'created_count' => $this->batchMetrics['created'] ?? 0,
+                    'updated_count' => $this->batchMetrics['updated'] ?? 0,
+                    'critical_changes_count' => $this->batchMetrics['critical'] ?? 0,
+                    'impact_summary' => $this->batchMetrics['impact'] ?? [],
+                ]);
+            }
+
+            $fileNameDisplay = $this->originalFileName ?: 'master_list_item.xls';
             $this->totalRows = 0;
             $this->previewRows = [];
             $this->importedRowsCount = 0;
-            session()->flash('message', 'Successfully synced records from SAP Excel.');
+            session()->flash('message', "Successfully synced records from {$fileNameDisplay}.");
         }
     }
 

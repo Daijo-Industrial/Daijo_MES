@@ -930,9 +930,23 @@
 
             @php
                 $currentHoursCount = max(8, $report->hourlyProductions->count());
-                $defaultNgs = $report->ngRecords->isNotEmpty()
-                    ? $report->ngRecords->pluck('ng_name')->unique()->toArray()
-                    : config('mes.sp_default_ng_types');
+                // Remove initial default NG: SCRATCH, DIRTY, HAIR MARK, DENTED, OVERCUT on new forms
+                $defaultNgs = [];
+                if (old('ngs')) {
+                    $defaultNgs = collect(old('ngs'))->pluck('ng_name')->filter()->unique()->values()->toArray();
+                } elseif ($report->ngRecords->isNotEmpty()) {
+                    $defaultNgs = $report->ngRecords->pluck('ng_name')->unique()->values()->toArray();
+                }
+
+                $availableNgTypes = $availableNgTypes ?? config('mes.sp_default_ng_types', []);
+
+                $rawNgCategories = config('mes.sp_ng_remark_categories', []);
+                $ngRemarkCategories = [];
+                foreach ($rawNgCategories as $key => $val) {
+                    $catName = is_string($key) && ! is_numeric($key) ? $key : $val;
+                    $ngRemarkCategories[$catName] = $catName;
+                }
+                $defaultNgCategory = array_key_first($ngRemarkCategories) ?? 'NG-PROSES';
             @endphp
             <!-- Unified Production & NG Log Grid -->
             <div class="space-y-6">
@@ -976,6 +990,43 @@
                             </button>
                         </div>
                     </div>
+
+                    {{-- Notice & Quick Suggestions when active NG types are empty --}}
+                    <div id="ng-empty-table-notice" class="mx-3 sm:mx-5 my-3 p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-xl {{ count($defaultNgs) > 0 ? 'hidden' : '' }}">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                            <div class="flex items-center gap-2">
+                                <span class="p-1.5 bg-indigo-100 text-indigo-700 rounded-lg shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </span>
+                                <div>
+                                    <h5 class="text-xs sm:text-sm font-bold text-indigo-950">Belum ada kolom Tipe NG pada tabel</h5>
+                                    <p class="text-[11px] sm:text-xs text-indigo-700">Tabel dimulai tanpa kolom defect awal. Klik tombol <strong>+ NG Type</strong> atau pilih langsung dari tipe NG sebelumnya di bawah ini:</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="openNgModal()"
+                                class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition cursor-pointer shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                <span>+ NG Type</span>
+                            </button>
+                        </div>
+                        <div class="mt-2.5 pt-2 border-t border-indigo-100 flex flex-wrap gap-1.5 items-center">
+                            <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mr-1">Rekomendasi Cepat:</span>
+                            @foreach(array_slice($availableNgTypes, 0, 10) as $ng)
+                                <button type="button"
+                                    data-ng-preset="{{ $ng }}"
+                                    onclick="addNgTypeToSpreadsheet('{{ $ng }}')"
+                                    class="ng-preset-pill inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold border transition bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 shadow-2xs cursor-pointer">
+                                    <span class="text-indigo-500 font-bold">+</span> <span>{{ $ng }}</span>
+                                </button>
+                            @endforeach
+                            @if(count($availableNgTypes) > 10)
+                                <button type="button" onclick="openNgModal()" class="text-xs text-indigo-600 hover:underline font-bold ml-1 cursor-pointer">
+                                    + Lihat Semua ({{ count($availableNgTypes) }}) &rarr;
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="overflow-x-auto touch-pan-x" style="-webkit-overflow-scrolling: touch;">
                         <!-- ponytail: apply minimum width to all spreadsheet number inputs cleanly via CSS -->
                         <style>
@@ -1015,9 +1066,9 @@
                                         @php
                                             $ngRecord = $report->ngRecords->where('ng_name', $ng)->first();
                                             $colTotalNg = (int) old("ngs.{$index}.total_ng", $ngRecord ? $ngRecord->total_ng : 0);
-                                            $currentCategory = old("ngs.{$index}.ng_category", $ngRecord ? $ngRecord->ng_category : 'NG-PROCESS');
+                                            $currentCategory = old("ngs.{$index}.ng_category", $ngRecord ? $ngRecord->ng_category : $defaultNgCategory);
                                             if (empty($currentCategory)) {
-                                                $currentCategory = 'NG-PROCESS';
+                                                $currentCategory = $defaultNgCategory;
                                             }
                                         @endphp
                                         <th class="group px-3 py-2 w-36 text-center ng-type-header relative select-none border-b border-gray-200"
@@ -1035,8 +1086,9 @@
                                                     <select name="ngs[{{ $index }}][ng_category]"
                                                         class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select {{ $currentCategory === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300' }}"
                                                         onchange="updateNgCategoryStyle(this)">
-                                                        <option value="NG-PROCESS" {{ $currentCategory === 'NG-PROCESS' ? 'selected' : '' }}>NG-PROCESS</option>
-                                                        <option value="NG-INPUT" {{ $currentCategory === 'NG-INPUT' ? 'selected' : '' }}>NG-INPUT</option>
+                                                        @foreach ($ngRemarkCategories as $catVal => $catLabel)
+                                                            <option value="{{ $catVal }}" {{ strcasecmp($currentCategory, $catVal) === 0 ? 'selected' : '' }}>{{ $catLabel }}</option>
+                                                        @endforeach
                                                     </select>
                                                 </div>
                                                 <input type="hidden" name="ngs[{{ $index }}][ng_name]"
@@ -1119,6 +1171,80 @@
 
             </div>
 
+            <!-- Modal + NG Type Selection & Addition -->
+            <div id="ng-type-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs hidden p-4 transition-all">
+                <div class="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <!-- Header -->
+                    <div class="bg-gradient-to-r from-indigo-700 to-blue-700 px-5 py-3.5 text-white flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <h3 class="text-sm sm:text-base font-bold">Tambah Kolom Tipe Defect (NG)</h3>
+                        </div>
+                        <button type="button" onclick="closeNgModal()" class="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer text-lg leading-none">&times;</button>
+                    </div>
+
+                    <div class="p-5 space-y-5 overflow-y-auto">
+                        <!-- Custom Input Box -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+                            <label for="custom-ng-name-input" class="block text-xs font-bold text-gray-700 uppercase tracking-wide">
+                                Input Nama Defect Baru:
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="text" id="custom-ng-name-input"
+                                    placeholder="Contoh: BINTIK, PAINT RUN, BUBBLE..."
+                                    onkeydown="if(event.key === 'Enter'){ event.preventDefault(); submitCustomNgFromModal(); }"
+                                    class="flex-1 uppercase font-bold text-xs sm:text-sm rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 py-2 px-3">
+                                <button type="button" onclick="submitCustomNgFromModal()"
+                                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition shrink-0 cursor-pointer">
+                                    + Tambah
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-4 text-xs font-semibold text-gray-600 pt-1">
+                                <span class="text-[11px] uppercase tracking-wider text-gray-400">Default Kategori:</span>
+                                @foreach ($ngRemarkCategories as $catVal => $catLabel)
+                                    <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                        <input type="radio" name="modal_ng_category" value="{{ $catVal }}"
+                                            {{ $loop->first ? 'checked' : '' }}
+                                            class="{{ $catVal === 'NG-INPUT' ? 'text-amber-600 focus:ring-amber-500' : 'text-indigo-600 focus:ring-indigo-500' }}">
+                                        <span>{{ $catLabel }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- Previously Inputted / Catalog Defect Types -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                    <span>Pilih Dari Tipe NG Sebelumnya / Terdaftar:</span>
+                                </label>
+                                <span class="text-[11px] text-gray-400 font-medium">Klik untuk menambahkan</span>
+                            </div>
+
+                            <div class="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto p-2 border border-gray-100 rounded-lg bg-gray-50/50">
+                                @foreach($availableNgTypes as $ng)
+                                    <button type="button"
+                                        data-ng-preset="{{ $ng }}"
+                                        onclick="addNgTypeToSpreadsheet('{{ $ng }}')"
+                                        class="ng-preset-pill inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border transition bg-white text-indigo-700 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 shadow-2xs cursor-pointer">
+                                        <span class="text-indigo-500 font-bold">+</span> <span>{{ $ng }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="bg-gray-50 px-5 py-3 border-t border-gray-200 flex justify-end">
+                        <button type="button" onclick="closeNgModal()"
+                            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs rounded-lg transition cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Navigation Tab 3 -->
             <div class="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-4 items-stretch sm:items-center justify-between pt-4 border-t border-gray-200 mt-6">
                 <button type="button" onclick="switchTab('materials')"
@@ -1160,10 +1286,10 @@
                         <thead class="hidden md:table-header-group bg-gray-50 font-bold text-gray-600 border-b border-gray-200">
                             <tr>
                                 <th class="px-3 py-2.5 text-center w-12">#</th>
-                                <th class="px-3 py-2.5 text-left w-3/12 min-w-[180px]">Masalah</th>
-                                <th class="px-3 py-2.5 text-left w-2/12 min-w-[160px]">Kategori</th>
-                                <th class="px-3 py-2.5 text-left w-4/12 min-w-[180px]">Penanganan</th>
-                                <th class="px-3 py-2.5 text-right w-1/12 min-w-[140px]">Loss Time</th>
+                                <th class="px-3 py-2.5 text-left w-3/12 min-w-[180px]">Masalah <span class="text-red-500">*</span></th>
+                                <th class="px-3 py-2.5 text-left w-2/12 min-w-[160px]">Kategori <span class="text-red-500">*</span></th>
+                                <th class="px-3 py-2.5 text-left w-4/12 min-w-[180px]">Penanganan <span class="text-red-500">*</span></th>
+                                <th class="px-3 py-2.5 text-right w-1/12 min-w-[140px]">Loss Time (Min) <span class="text-red-500">*</span></th>
                                 <th class="px-2 py-2.5 text-center w-12"></th>
                             </tr>
                         </thead>
@@ -1200,7 +1326,7 @@
                                         <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
                                             Masalah <span class="text-red-500">*</span>
                                         </label>
-                                        <textarea name="troubles[{{ $index }}][masalah]" rows="2"
+                                        <textarea name="troubles[{{ $index }}][masalah]" rows="2" required
                                             class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 focus:border-blue-500 focus:ring-blue-500 transition shadow-xs {{ $errors->has('troubles.' . $index . '.masalah') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
                                             placeholder="Jelaskan kendala / masalah yang terjadi...">{{ old('troubles.' . $index . '.masalah', $trouble->masalah) }}</textarea>
                                         @if ($errors->has('troubles.' . $index . '.masalah'))
@@ -1211,7 +1337,7 @@
                                         <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
                                             Kategori <span class="text-red-500">*</span>
                                         </label>
-                                        <select name="troubles[{{ $index }}][penyebab]"
+                                        <select name="troubles[{{ $index }}][penyebab]" required
                                             class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 font-medium focus:border-blue-500 focus:ring-blue-500 transition shadow-xs">
                                             @foreach ($categoriesList as $catKey => $catLabel)
                                                 <option value="{{ $catKey }}" {{ strcasecmp($currentCat, $catKey) === 0 ? 'selected' : '' }}>
@@ -1222,23 +1348,27 @@
                                     </td>
                                     <td class="block md:table-cell p-0 mb-3 md:mb-0 md:px-3 md:py-3 align-top">
                                         <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
-                                            Penanganan
+                                            Penanganan <span class="text-red-500">*</span>
                                         </label>
-                                        <textarea name="troubles[{{ $index }}][penanganan]" rows="2"
-                                            class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 focus:border-blue-500 focus:ring-blue-500 transition shadow-xs"
+                                        <textarea name="troubles[{{ $index }}][penanganan]" rows="2" required
+                                            class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 focus:border-blue-500 focus:ring-blue-500 transition shadow-xs {{ $errors->has('troubles.' . $index . '.penanganan') ? 'border-red-500 ring-1 ring-red-500' : '' }}"
                                             placeholder="Tindakan penanganan / perbaikan...">{{ old('troubles.' . $index . '.penanganan', $trouble->penanganan) }}</textarea>
+                                        @if ($errors->has('troubles.' . $index . '.penanganan'))
+                                            <p class="text-[10px] text-red-600 font-bold mt-0.5">{{ $errors->first('troubles.' . $index . '.penanganan') }}</p>
+                                        @endif
                                     </td>
                                     <td class="block md:table-cell p-0 md:px-3 md:py-3 align-top">
                                         <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
-                                            Loss Time (Menit)
+                                            Loss Time (Menit) <span class="text-red-500">*</span>
                                         </label>
                                         <div class="relative rounded-lg shadow-xs">
                                             <input type="number"
                                                 name="troubles[{{ $index }}][loss_time_minutes]"
                                                 value="{{ old('troubles.' . $index . '.loss_time_minutes', $trouble->loss_time_minutes ?: '') }}"
-                                                min="0"
+                                                min="1"
                                                 max="1440"
-                                                placeholder="0"
+                                                placeholder="Min 1"
+                                                required
                                                 class="trouble-loss-minutes w-full text-xs md:text-sm rounded-lg border-gray-300 py-1.5 md:py-2 pr-12 text-right font-mono font-bold focus:border-blue-500 focus:ring-blue-500 {{ $errors->has('troubles.' . $index . '.loss_time_minutes') ? 'border-red-500 ring-1 ring-red-500' : '' }}">
                                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                                                 <span class="text-xs font-bold text-gray-400 uppercase">min</span>
@@ -1486,6 +1616,74 @@
             });
         });
 
+        // Validate trouble / downtime rows if added
+        function validateTroubleRows() {
+            const rows = document.querySelectorAll('#troubles-tbody tr.trouble-row');
+            if (rows.length === 0) {
+                return true;
+            }
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const masalahInput = row.querySelector('textarea[name*="[masalah]"]');
+                const penyebabSelect = row.querySelector('select[name*="[penyebab]"]');
+                const penangananInput = row.querySelector('textarea[name*="[penanganan]"]');
+                const lossTimeInput = row.querySelector('.trouble-loss-minutes');
+
+                const masalahVal = masalahInput ? masalahInput.value.trim() : '';
+                const penyebabVal = penyebabSelect ? penyebabSelect.value.trim() : '';
+                const penangananVal = penangananInput ? penangananInput.value.trim() : '';
+                const lossTimeVal = lossTimeInput ? parseInt(lossTimeInput.value, 10) : NaN;
+
+                if (!masalahVal) {
+                    switchTab('handover');
+                    if (masalahInput) {
+                        masalahInput.focus();
+                        masalahInput.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        setTimeout(() => masalahInput.classList.remove('border-red-500', 'ring-2', 'ring-red-500'), 5000);
+                    }
+                    alert(`Baris kendala/trouble #${i + 1} belum lengkap: Masalah wajib diisi!`);
+                    return false;
+                }
+
+                if (!penyebabVal) {
+                    switchTab('handover');
+                    if (penyebabSelect) {
+                        penyebabSelect.focus();
+                        penyebabSelect.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        setTimeout(() => penyebabSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-500'), 5000);
+                    }
+                    alert(`Baris kendala/trouble #${i + 1} belum lengkap: Kategori wajib dipilih!`);
+                    return false;
+                }
+
+                if (!penangananVal) {
+                    switchTab('handover');
+                    if (penangananInput) {
+                        penangananInput.focus();
+                        penangananInput.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        setTimeout(() => penangananInput.classList.remove('border-red-500', 'ring-2', 'ring-red-500'), 5000);
+                    }
+                    alert(`Baris kendala/trouble #${i + 1} belum lengkap: Penanganan wajib diisi!`);
+                    return false;
+                }
+
+                if (isNaN(lossTimeVal) || lossTimeVal < 1) {
+                    switchTab('handover');
+                    if (lossTimeInput) {
+                        lossTimeInput.focus();
+                        lossTimeInput.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        setTimeout(() => lossTimeInput.classList.remove('border-red-500', 'ring-2', 'ring-red-500'), 5000);
+                    }
+                    alert(`Baris kendala/trouble #${i + 1} tidak valid: Loss time harus diisi minimal 1 menit (tidak boleh 0 menit)!`);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+        window.validateTroubleRows = validateTroubleRows;
+
         // Save Draft helper function
         window.saveAsDraft = function() {
             const statusField = document.getElementById('status-field');
@@ -1514,6 +1712,11 @@
                 switchTab(tabId);
                 firstInvalid.focus();
                 alert(`Harap lengkapi kolom yang wajib diisi pada ${tabNamesMap[tabId] || tabId} untuk menyimpan draft.`);
+                return;
+            }
+
+            // Enforce trouble validation if any trouble row is added
+            if (!validateTroubleRows()) {
                 return;
             }
 
@@ -1548,6 +1751,11 @@
                 switchTab(tabId);
                 firstInvalid.focus();
                 alert(`Harap lengkapi kolom yang wajib diisi pada ${tabNamesMap[tabId] || tabId} untuk mengirim laporan.`);
+                return;
+            }
+
+            // Enforce trouble validation if any trouble row is added
+            if (!validateTroubleRows()) {
                 return;
             }
 
@@ -1822,19 +2030,56 @@
             calculateNgTotals();
         });
 
-        // ponytail: dynamic NG Type Add & Delete
-        addNgTypeBtn.addEventListener('click', function() {
-            const name = prompt("Masukkan nama Tipe NG Baru (contoh: PAINT RUN, BUBBLE):");
-            if (!name) return;
-            const uppercaseName = name.trim().toUpperCase();
-            if (uppercaseName === '') return;
-            if (activeNgs.includes(uppercaseName)) {
-                alert('Tipe NG tersebut sudah ada!');
+        // ponytail: dynamic NG Type Add & Delete via Modal & Quick Presets
+        window.openNgModal = function() {
+            syncNgPresetPills();
+            const modal = document.getElementById('ng-type-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => document.getElementById('custom-ng-name-input')?.focus(), 50);
+            }
+        };
+
+        window.closeNgModal = function() {
+            const modal = document.getElementById('ng-type-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        window.submitCustomNgFromModal = function() {
+            const input = document.getElementById('custom-ng-name-input');
+            const val = input ? input.value.trim() : '';
+            if (!val) {
+                alert('Silakan ketik nama tipe NG!');
+                input?.focus();
                 return;
+            }
+            const catRadio = document.querySelector('input[name="modal_ng_category"]:checked');
+            const cat = catRadio ? catRadio.value : '{{ $defaultNgCategory }}';
+            const added = addNgTypeToSpreadsheet(val, cat);
+            if (added) {
+                input.value = '';
+                closeNgModal();
+            }
+        };
+
+        window.addNgTypeToSpreadsheet = function(name, category = '{{ $defaultNgCategory }}') {
+            if (!name) return false;
+            const uppercaseName = name.trim().toUpperCase();
+            if (uppercaseName === '') return false;
+            if (activeNgs.includes(uppercaseName)) {
+                alert(`Tipe NG "${uppercaseName}" sudah ada di tabel spreadsheet!`);
+                return false;
             }
 
             activeNgs.push(uppercaseName);
             const newNgIndex = activeNgs.length - 1;
+
+            const ngCategoriesOptions = @json($ngRemarkCategories);
+            let optionsHtml = '';
+            for (const [val, label] of Object.entries(ngCategoriesOptions)) {
+                const isSelected = (category && category.toUpperCase() === val.toUpperCase()) ? 'selected' : '';
+                optionsHtml += `<option value="${escapeHtml(val)}" ${isSelected}>${escapeHtml(label)}</option>`;
+            }
 
             // 1. Add column to table header
             const headerRow = document.getElementById('production-header-row');
@@ -1849,9 +2094,8 @@
                         <button type="button" class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity delete-ng-col-btn text-[10px] font-bold" data-ng="${escapeHtml(uppercaseName)}" title="Delete ${escapeHtml(uppercaseName)}">&times;</button>
                     </div>
                     <div class="relative">
-                        <select name="ngs[${newNgIndex}][ng_category]" class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select bg-blue-50 text-blue-800 border-blue-300" onchange="updateNgCategoryStyle(this)">
-                            <option value="NG-PROCESS" selected>NG-PROCESS</option>
-                            <option value="NG-INPUT">NG-INPUT</option>
+                        <select name="ngs[${newNgIndex}][ng_category]" class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select ${category === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300'}" onchange="updateNgCategoryStyle(this)">
+                            ${optionsHtml}
                         </select>
                     </div>
                     <input type="hidden" name="ngs[${newNgIndex}][ng_name]" value="${escapeHtml(uppercaseName)}">
@@ -1873,8 +2117,44 @@
                 row.appendChild(td);
             });
 
+            syncNgPresetPills();
             calculateNgTotals();
-        });
+            return true;
+        };
+
+        function syncNgPresetPills() {
+            document.querySelectorAll('[data-ng-preset]').forEach(el => {
+                const ng = el.dataset.ngPreset;
+                const isAdded = activeNgs.includes(ng);
+                if (isAdded) {
+                    el.classList.remove('bg-white', 'text-indigo-700', 'border-indigo-200', 'hover:bg-indigo-50', 'hover:border-indigo-400', 'cursor-pointer');
+                    el.classList.add('bg-gray-100', 'text-gray-400', 'border-gray-200', 'cursor-default');
+                    el.innerHTML = `<span class="text-green-600 font-bold">✓</span> <span>${escapeHtml(ng)}</span>`;
+                    el.disabled = true;
+                } else {
+                    el.classList.remove('bg-gray-100', 'text-gray-400', 'border-gray-200', 'cursor-default');
+                    el.classList.add('bg-white', 'text-indigo-700', 'border-indigo-200', 'hover:bg-indigo-50', 'hover:border-indigo-400', 'cursor-pointer');
+                    el.innerHTML = `<span class="text-indigo-500 font-bold">+</span> <span>${escapeHtml(ng)}</span>`;
+                    el.disabled = false;
+                }
+            });
+
+            const emptyNotice = document.getElementById('ng-empty-table-notice');
+            if (emptyNotice) {
+                if (activeNgs.length === 0) {
+                    emptyNotice.classList.remove('hidden');
+                } else {
+                    emptyNotice.classList.add('hidden');
+                }
+            }
+        }
+        window.syncNgPresetPills = syncNgPresetPills;
+
+        if (addNgTypeBtn) {
+            addNgTypeBtn.addEventListener('click', function() {
+                openNgModal();
+            });
+        }
 
         // Event delegation for deleting NG columns
         document.getElementById('production-header-row').addEventListener('click', function(e) {
@@ -1884,7 +2164,6 @@
                 deleteNgType(ngName);
             }
         });
-
 
         function deleteNgType(ngName) {
             const countWithValues = Array.from(document.querySelectorAll(
@@ -1912,6 +2191,7 @@
 
             // 5. Re-index and calculate
             reindexNgs();
+            syncNgPresetPills();
             calculateNgTotals();
         }
 
@@ -2795,7 +3075,7 @@
                 <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
                     Masalah <span class="text-red-500">*</span>
                 </label>
-                <textarea name="troubles[${troubleRowIndex}][masalah]" rows="2"
+                <textarea name="troubles[${troubleRowIndex}][masalah]" rows="2" required
                     class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 focus:border-blue-500 focus:ring-blue-500 transition shadow-xs"
                     placeholder="Jelaskan kendala / masalah yang terjadi...">${escapeHtml(masalah)}</textarea>
             </td>
@@ -2803,7 +3083,7 @@
                 <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
                     Kategori <span class="text-red-500">*</span>
                 </label>
-                <select name="troubles[${troubleRowIndex}][penyebab]"
+                <select name="troubles[${troubleRowIndex}][penyebab]" required
                     class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 font-medium focus:border-blue-500 focus:ring-blue-500 transition shadow-xs">
                     @foreach (config('mes.sp_trouble_categories') as $catKey => $catLabel)
                         <option value="{{ $catKey }}" ${category === '{{ $catKey }}' ? 'selected' : ''}>{{ $catLabel }}</option>
@@ -2812,23 +3092,24 @@
             </td>
             <td class="block md:table-cell p-0 mb-3 md:mb-0 md:px-3 md:py-3 align-top">
                 <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
-                    Penanganan
+                    Penanganan <span class="text-red-500">*</span>
                 </label>
-                <textarea name="troubles[${troubleRowIndex}][penanganan]" rows="2"
+                <textarea name="troubles[${troubleRowIndex}][penanganan]" rows="2" required
                     class="w-full rounded-lg border-gray-300 text-xs md:text-sm py-1.5 md:py-2 focus:border-blue-500 focus:ring-blue-500 transition shadow-xs"
                     placeholder="Tindakan penanganan / perbaikan...">${escapeHtml(penanganan)}</textarea>
             </td>
             <td class="block md:table-cell p-0 md:px-3 md:py-3 align-top">
                 <label class="block md:hidden text-[11px] font-bold text-gray-600 uppercase mb-1">
-                    Loss Time (Menit)
+                    Loss Time (Menit) <span class="text-red-500">*</span>
                 </label>
                 <div class="relative rounded-lg shadow-xs">
                     <input type="number"
                         name="troubles[${troubleRowIndex}][loss_time_minutes]"
                         value="${lossTimeMinutes}"
-                        min="0"
+                        min="1"
                         max="1440"
-                        placeholder="0"
+                        placeholder="Min 1"
+                        required
                         class="trouble-loss-minutes w-full text-xs md:text-sm rounded-lg border-gray-300 py-1.5 md:py-2 pr-12 text-right font-mono font-bold focus:border-blue-500 focus:ring-blue-500">
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                         <span class="text-xs font-bold text-gray-400 uppercase">min</span>
@@ -2846,8 +3127,14 @@
 
         const input = tr.querySelector('.trouble-loss-minutes');
         if (input) {
-            input.addEventListener('input', updateTotalDowntime);
-            input.addEventListener('change', updateTotalDowntime);
+            const clampAndUpdate = function() {
+                if (this.value !== '' && parseInt(this.value, 10) < 1) {
+                    this.value = '1';
+                }
+                updateTotalDowntime();
+            };
+            input.addEventListener('input', clampAndUpdate);
+            input.addEventListener('change', clampAndUpdate);
         }
 
         reindexTroubleRows();
@@ -2904,8 +3191,14 @@
     }
 
     document.querySelectorAll('.trouble-loss-minutes').forEach(function(input) {
-        input.addEventListener('input', updateTotalDowntime);
-        input.addEventListener('change', updateTotalDowntime);
+        const clampAndUpdate = function() {
+            if (this.value !== '' && parseInt(this.value, 10) < 1) {
+                this.value = '1';
+            }
+            updateTotalDowntime();
+        };
+        input.addEventListener('input', clampAndUpdate);
+        input.addEventListener('change', clampAndUpdate);
     });
     reindexTroubleRows();
     updateTotalDowntime();

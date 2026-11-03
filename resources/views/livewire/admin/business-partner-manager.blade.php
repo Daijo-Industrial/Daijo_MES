@@ -104,6 +104,34 @@
             </button>
         </div>
 
+        <!-- Plant / Branch Filter -->
+        <div class="flex flex-wrap items-center gap-2 border-t pt-4">
+            <span class="text-xs font-bold text-gray-500 uppercase mr-2 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                Plant / Branch:
+            </span>
+
+            <button wire:click="setBranchFilter('ALL')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $branchFilter === 'ALL' ? 'bg-gray-800 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                <span>Semua Plant</span>
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $branchFilter === 'ALL' ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700' }}">{{ number_format($branchCounts['ALL'] ?? $counts['ALL']) }}</span>
+            </button>
+
+            @foreach($branches as $b)
+                <button wire:click="setBranchFilter('{{ $b->id }}')"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $branchFilter == $b->id ? 'bg-indigo-600 text-white shadow-sm' : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100' }}">
+                    <span>{{ $b->name }} ({{ $b->code }})</span>
+                    <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $branchFilter == $b->id ? 'bg-indigo-700 text-indigo-100' : 'bg-indigo-200 text-indigo-900' }}">{{ number_format($branchCounts[$b->id] ?? 0) }}</span>
+                </button>
+            @endforeach
+
+            <button wire:click="setBranchFilter('UNASSIGNED')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $branchFilter === 'UNASSIGNED' ? 'bg-amber-600 text-white shadow-sm' : 'bg-amber-50 text-amber-800 hover:bg-amber-100' }}">
+                <span>Belum Ditentukan</span>
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $branchFilter === 'UNASSIGNED' ? 'bg-amber-700 text-amber-100' : 'bg-amber-200 text-amber-900' }}">{{ number_format($branchCounts['UNASSIGNED'] ?? 0) }}</span>
+            </button>
+        </div>
+
     </div>
 
     <!-- Data Table Card -->
@@ -116,7 +144,18 @@
                         <th class="px-4 py-3">Nama Business Partner</th>
                         <th class="px-4 py-3 text-center">Group Code</th>
                         <th class="px-4 py-3">Kategori</th>
-                        <th class="px-4 py-3">Sektor / Industri</th>
+                        <th class="px-4 py-3">
+                            <div class="flex items-center gap-1.5">
+                                <span>Sektor / Industri</span>
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-300 tracking-tight" title="Tag Eksklusif MES - Tetap dipertahankan saat update SAP">MES TAG</span>
+                            </div>
+                        </th>
+                        <th class="px-4 py-3">
+                            <div class="flex items-center gap-1.5">
+                                <span>Plant / Branch</span>
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-indigo-100 text-indigo-800 border border-indigo-300 tracking-tight" title="Tag Eksklusif MES - Tetap dipertahankan saat update SAP">MES TAG</span>
+                            </div>
+                        </th>
                         <th class="px-4 py-3">Type Produksi</th>
                         <th class="px-4 py-3">Alias (Foreign Name)</th>
                         <th class="px-4 py-3">Sales Employee</th>
@@ -157,6 +196,18 @@
                                     <option value="GENERAL" {{ $bp->industry === 'GENERAL' ? 'selected' : '' }}>General</option>
                                 </select>
                             </td>
+                            <td class="px-4 py-2 whitespace-nowrap">
+                                <select wire:change="updateBranch({{ $bp->id }}, $event.target.value)"
+                                    class="text-xs font-bold rounded-lg border py-1 pl-2 pr-6 focus:ring-blue-500 focus:border-blue-500 cursor-pointer transition
+                                        {{ $bp->branch?->code === 'JKT' ? 'bg-sky-50 text-sky-800 border-sky-300' : ($bp->branch?->code === 'KRW' ? 'bg-purple-50 text-purple-800 border-purple-300' : 'bg-gray-50 text-gray-500 border-gray-300') }}">
+                                    <option value="">- Belum Ditentukan -</option>
+                                    @foreach ($branches as $b)
+                                        <option value="{{ $b->id }}" {{ $bp->branch_id == $b->id ? 'selected' : '' }}>
+                                            {{ $b->code }} - {{ $b->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 @if ($bp->type)
                                     <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
@@ -187,7 +238,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-12 text-center text-gray-500 font-semibold">
+                            <td colspan="9" class="px-4 py-12 text-center text-gray-500 font-semibold">
                                 Tidak ada data Business Partner yang sesuai filter.
                             </td>
                         </tr>
@@ -225,7 +276,42 @@
                     Sistem akan memetakan <strong>Group Code</strong> (<code class="font-bold text-emerald-700">100 = Customer</code>, <code class="font-bold text-blue-700">101/102 = Vendor</code>) dan menyinkronkan seluruh akun Customer ke <em>Master Customer Delivery</em>.
                 </p>
 
+                <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-900 flex items-start gap-2.5">
+                    <svg class="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                    <div class="leading-relaxed">
+                        <strong class="text-indigo-950 font-bold">Proteksi Tag Eksklusif MES:</strong> Tag <span class="bg-amber-100 text-amber-800 font-bold px-1 rounded">Sektor Industri</span> dan <span class="bg-indigo-100 text-indigo-800 font-bold px-1 rounded">Plant / Branch</span> yang telah diset secara manual di Daijo MES akan <strong>tetap dipertahankan (persisted)</strong> dan tidak akan tertimpa saat update data SAP.
+                    </div>
+                </div>
+
                 <form wire:submit.prevent="uploadFile" class="space-y-4">
+                    @if (auth()->user()?->hasRole('SUPER-ADMIN'))
+                        <div class="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2.5">
+                            <div class="text-[11px] font-black uppercase text-amber-900 tracking-wider flex items-center justify-between">
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                    Opsi Khusus Plant (Branch)
+                                </span>
+                                <span class="bg-amber-200 text-amber-800 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Super-Admin</span>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="flex items-start gap-2.5 cursor-pointer select-none">
+                                    <input type="checkbox" wire:model="autoBranchKarawang" id="autoBranchKarawang"
+                                        class="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500 h-4 w-4 cursor-pointer">
+                                    <span class="text-xs text-amber-950">
+                                        <strong>Auto-Branch Karawang:</strong> Semua Business Partner dengan kode berawalan <strong>"K"</strong> (misal: KD, KM, KN, KI) otomatis dipetakan ke <strong>Karawang Plant</strong>.
+                                    </span>
+                                </label>
+                                <label class="flex items-start gap-2.5 cursor-pointer select-none border-t border-amber-200/60 pt-2">
+                                    <input type="checkbox" wire:model="defaultBranchJakarta" id="defaultBranchJakarta"
+                                        class="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500 h-4 w-4 cursor-pointer">
+                                    <span class="text-xs text-amber-950">
+                                        <strong>Default Branch Jakarta:</strong> Otomatis petakan ke <strong>Jakarta Plant</strong> untuk Business Partner yang belum memiliki plant.
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-500 transition bg-gray-50/50">
                         <input type="file" wire:model="file" id="file" accept=".xls,.xlsx,.csv" class="hidden">
                         <label for="file" class="cursor-pointer block">

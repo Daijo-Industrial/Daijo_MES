@@ -8,6 +8,7 @@ use App\Models\IpqcInspection;
 use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterListItem;
+use App\Models\SecondProcessNgRecord;
 use App\Models\SecondProcessReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,78 +25,51 @@ class SecondProcessReportController extends Controller
         $lastMonthStart = now('Asia/Jakarta')->subMonth()->startOfMonth()->toDateString();
         $lastMonthEnd = now('Asia/Jakarta')->subMonth()->endOfMonth()->toDateString();
 
-        $preset = $request->query('preset');
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
+        $preset = $request->query('preset') ?: $request->input('preset');
+        $rawDateFrom = $request->filled('date_from') ? (string) $request->input('date_from') : null;
+        $rawDateTo = $request->filled('date_to') ? (string) $request->input('date_to') : null;
 
-        // Apply quick preset dates if preset is selected and explicit dates are not passed
-        if ($preset && ! $request->has('date_from') && ! $request->has('date_to')) {
-            switch ($preset) {
-                case 'today':
-                    $dateFrom = $today;
-                    $dateTo = $today;
-                    break;
-                case 'yesterday':
-                    $dateFrom = $yesterday;
-                    $dateTo = $yesterday;
-                    break;
-                case 'this_week':
-                    $dateFrom = $thisWeekStart;
-                    $dateTo = $today;
-                    break;
-                case 'this_month':
-                    $dateFrom = $thisMonthStart;
-                    $dateTo = $today;
-                    break;
-                case 'last_month':
-                    $dateFrom = $lastMonthStart;
-                    $dateTo = $lastMonthEnd;
-                    break;
-                case 'all':
-                    $dateFrom = null;
-                    $dateTo = null;
-                    break;
-            }
+        $presetDates = [
+            'today' => [$today, $today],
+            'yesterday' => [$yesterday, $yesterday],
+            'this_week' => [$thisWeekStart, $today],
+            'this_month' => [$thisMonthStart, $today],
+            'last_month' => [$lastMonthStart, $lastMonthEnd],
+        ];
 
-            if ($dateFrom !== null && $dateTo !== null) {
-                $request->merge([
-                    'date_from' => $dateFrom,
-                    'date_to' => $dateTo,
-                ]);
+        if ($preset === 'all') {
+            $activePreset = null;
+            $dateFrom = null;
+            $dateTo = null;
+            $request->merge(['preset' => 'all', 'date_from' => null, 'date_to' => null]);
+        } elseif (isset($presetDates[$preset])) {
+            [$pFrom, $pTo] = $presetDates[$preset];
+            // If explicit custom dates were provided that differ from preset, treat as custom
+            if (($rawDateFrom && $rawDateFrom !== $pFrom) || ($rawDateTo && $rawDateTo !== $pTo)) {
+                $activePreset = 'custom';
+                $preset = 'custom';
+                $dateFrom = $rawDateFrom;
+                $dateTo = $rawDateTo;
+                $request->merge(['preset' => 'custom', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
+            } else {
+                $activePreset = $preset;
+                $dateFrom = $pFrom;
+                $dateTo = $pTo;
+                $request->merge(['preset' => $preset, 'date_from' => $dateFrom, 'date_to' => $dateTo]);
             }
-        } elseif (! $request->has('preset') && ! $request->has('date_from') && ! $request->has('date_to')) {
+        } elseif ($preset === 'custom' || $rawDateFrom || $rawDateTo) {
+            $activePreset = 'custom';
+            $preset = 'custom';
+            $dateFrom = $rawDateFrom;
+            $dateTo = $rawDateTo;
+            $request->merge(['preset' => 'custom', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
+        } else {
             // Default when user first lands on index: This Month
+            $activePreset = 'this_month';
             $preset = 'this_month';
             $dateFrom = $thisMonthStart;
             $dateTo = $today;
-            $request->merge([
-                'preset' => 'this_month',
-                'date_from' => $dateFrom,
-                'date_to' => $dateTo,
-            ]);
-        }
-
-        $activePreset = null;
-        if ($preset === 'custom') {
-            $activePreset = 'custom';
-        } elseif ($preset === 'all') {
-            $activePreset = null;
-        } elseif (! empty($dateFrom) && ! empty($dateTo)) {
-            if ($dateFrom === $today && $dateTo === $today) {
-                $activePreset = 'today';
-            } elseif ($dateFrom === $yesterday && $dateTo === $yesterday) {
-                $activePreset = 'yesterday';
-            } elseif ($dateFrom === $thisWeekStart && $dateTo === $today) {
-                $activePreset = 'this_week';
-            } elseif ($dateFrom === $thisMonthStart && $dateTo === $today) {
-                $activePreset = 'this_month';
-            } elseif ($dateFrom === $lastMonthStart && $dateTo === $lastMonthEnd) {
-                $activePreset = 'last_month';
-            } else {
-                $activePreset = 'custom';
-            }
-        } elseif (! empty($dateFrom) || ! empty($dateTo)) {
-            $activePreset = 'custom';
+            $request->merge(['preset' => 'this_month', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
         }
 
         $query = SecondProcessReport::query();
@@ -198,6 +172,8 @@ class SecondProcessReportController extends Controller
             'selectedIndustry',
             'industryMap',
             'activePreset',
+            'dateFrom',
+            'dateTo',
             'today',
             'yesterday',
             'thisWeekStart',
@@ -219,7 +195,9 @@ class SecondProcessReportController extends Controller
             $report->shift = $request->input('shift');
         }
 
-        return view('second_process.create', compact('report'));
+        $availableNgTypes = $this->getAvailableNgTypes();
+
+        return view('second_process.create', compact('report', 'availableNgTypes'));
     }
 
     public function store(Request $request)
@@ -273,7 +251,32 @@ class SecondProcessReportController extends Controller
                 ->with('error', $gate->message());
         }
 
-        return view('second_process.edit', compact('report'));
+        $availableNgTypes = $this->getAvailableNgTypes();
+
+        return view('second_process.edit', compact('report', 'availableNgTypes'));
+    }
+
+    /**
+     * Get unique previously inputted NG defect types combined with standard catalog.
+     */
+    private function getAvailableNgTypes(): array
+    {
+        $dbNgTypes = SecondProcessNgRecord::query()
+            ->whereNotNull('ng_name')
+            ->whereRaw("TRIM(ng_name) != ''")
+            ->selectRaw("DISTINCT UPPER(TRIM(ng_name)) as ng_name")
+            ->pluck('ng_name')
+            ->toArray();
+
+        $catalogNgTypes = config('mes.sp_default_ng_types', []);
+
+        return collect(array_merge($catalogNgTypes, $dbNgTypes))
+            ->filter()
+            ->map(fn($item) => strtoupper(trim($item)))
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
     }
 
     public function update(Request $request, $id)
@@ -326,11 +329,10 @@ class SecondProcessReportController extends Controller
                 }
                 $hasMasalah = ! empty(trim((string) ($tr['masalah'] ?? '')));
                 $hasPenanganan = ! empty(trim((string) ($tr['penanganan'] ?? '')));
-                $hasLossTime = (! empty($tr['loss_time_minutes']) && (int) $tr['loss_time_minutes'] > 0)
+                $hasLossTime = (isset($tr['loss_time_minutes']) && trim((string) $tr['loss_time_minutes']) !== '')
                     || ! empty(trim((string) ($tr['loss_time'] ?? '')));
-                $hasCategory = ! empty(trim((string) ($tr['category'] ?? ''))) || ! empty(trim((string) ($tr['penyebab'] ?? '')));
 
-                return $hasMasalah || $hasPenanganan || $hasLossTime || $hasCategory;
+                return $hasMasalah || $hasPenanganan || $hasLossTime;
             }));
             $request->merge(['troubles' => $cleanedTroubles]);
         }
@@ -388,6 +390,7 @@ class SecondProcessReportController extends Controller
             'troubles.*.loss_time_minutes' => 'Loss Time (menit)',
             'troubles.*.penanganan' => 'Penanganan Trouble',
             'troubles.*.masalah' => 'Deskripsi Masalah Trouble',
+            'troubles.*.penyebab' => 'Kategori Kendala',
             'hourly.*.ok_qty' => 'Qty OK',
             'hourly.*.ng_qty' => 'Qty NG',
             'ngs.*.ng_input_item' => 'Detail Remark Defect (NG)',
@@ -401,6 +404,11 @@ class SecondProcessReportController extends Controller
             'process_prod.required' => 'Proses Produksi wajib dipilih.',
             'shift.required' => 'Shift wajib dipilih.',
             'date.required' => 'Tanggal wajib diisi.',
+            'troubles.*.loss_time_minutes.min' => 'Loss Time (Menit) untuk kendala tidak boleh 0 menit (minimal 1 menit).',
+            'troubles.*.loss_time_minutes.required' => 'Loss Time (Menit) untuk kendala wajib diisi (minimal 1 menit).',
+            'troubles.*.masalah.required' => 'Kolom Masalah pada catatan kendala wajib diisi.',
+            'troubles.*.penanganan.required' => 'Kolom Penanganan pada catatan kendala wajib diisi.',
+            'troubles.*.penyebab.required' => 'Kategori kendala wajib dipilih.',
         ];
 
         $validated = $request->validate([
@@ -410,7 +418,7 @@ class SecondProcessReportController extends Controller
             'shift' => 'required|string',
             'process_prod' => 'required|string',
             'status' => 'nullable|string',
-            'output_destination' => 'nullable|string|in:fg,buffing,next_process',
+            'output_destination' => ['nullable', 'string', \Illuminate\Validation\Rule::in(array_keys(config('mes.sp_output_destinations', [])))],
             'model' => 'nullable|string',
             'part_number' => 'required|string',
             'part_name' => 'nullable|string',
@@ -487,18 +495,21 @@ class SecondProcessReportController extends Controller
 
             // Troubles
             'troubles' => 'nullable|array',
-            'troubles.*.penyebab' => 'nullable|string',
-            'troubles.*.penanganan' => 'nullable|string',
+            'troubles.*.penyebab' => 'required|string',
+            'troubles.*.penanganan' => 'required|string',
             'troubles.*.loss_time' => 'nullable|string',
             'troubles.*.category' => 'nullable|string',
-            'troubles.*.masalah' => 'nullable|string',
-            'troubles.*.loss_time_minutes' => 'nullable|integer|min:0|max:1440',
+            'troubles.*.masalah' => 'required|string',
+            'troubles.*.loss_time_minutes' => 'required|integer|min:1|max:1440',
         ], $customMessages, $customAttributes);
 
         $effectiveStatus = $validated['status'] ?? ($report->exists ? $report->status : 'draft');
 
         // Enforce target_per_hour for painting processes on submission
-        $paintingProcesses = ['Painting', 'Painting Basecoat', 'Painting Topcoat'];
+        $paintingProcesses = array_values(array_filter(
+            config('mes.sp_processes', []),
+            fn ($p) => str_starts_with(strtolower($p), 'painting')
+        ));
         if ($effectiveStatus === 'submitted' && in_array($validated['process_prod'] ?? '', $paintingProcesses, true)) {
             $targetPerHour = (int) ($validated['target_per_hour'] ?? 0);
             if ($targetPerHour <= 0) {
@@ -535,6 +546,10 @@ class SecondProcessReportController extends Controller
 
         // Enforce defect remarks / categories for submitted reports when Total NG > 0
         if (! empty($validated['ngs']) && is_array($validated['ngs'])) {
+            $validCategories = array_values(config('mes.sp_ng_remark_categories', []));
+            if (! in_array('NG-PROCESS', $validCategories, true)) {
+                $validCategories[] = 'NG-PROCESS';
+            }
             $ngErrors = [];
             foreach ($validated['ngs'] as $idx => $ng) {
                 $ngName = $ng['ng_name'] ?? ('Defect #' . ($idx + 1));
@@ -547,8 +562,8 @@ class SecondProcessReportController extends Controller
 
                 $hasCategory = ! empty($ng['ng_category']);
                 $category = $hasCategory ? strtoupper(trim((string) $ng['ng_category'])) : null;
-                if ($category && ! in_array($category, ['NG-PROCESS', 'NG-PROSES', 'NG-INPUT'], true)) {
-                    $category = 'NG-PROCESS';
+                if ($category && ! in_array($category, $validCategories, true)) {
+                    $category = $validCategories[0] ?? null;
                 }
                 $validated['ngs'][$idx]['ng_category'] = $category;
 
@@ -729,8 +744,8 @@ class SecondProcessReportController extends Controller
             // Create Materials
             if (isset($validated['materials'])) {
                 foreach ($validated['materials'] as $material) {
-                    // Item Paint is only recorded if process_prod is Painting or Repair
-                    if (($material['type'] ?? '') === 'paint' && ! in_array(($validated['process_prod'] ?? ''), ['Painting', 'Repair'])) {
+                    // Item Paint is only recorded if process_prod is chemical process (e.g. Painting or Repair)
+                    if (($material['type'] ?? '') === 'paint' && ! in_array(($validated['process_prod'] ?? ''), config('mes.chemical_processes', []), true)) {
                         continue;
                     }
 
@@ -882,13 +897,15 @@ class SecondProcessReportController extends Controller
 
     public function searchCustomers(Request $request)
     {
-        $query = $request->get('query');
-        if (! $query) {
+        $query = trim((string) $request->get('query', ''));
+        if ($query === '') {
             return response()->json([]);
         }
 
-        // 1. Search MasterBusinessPartner where category = CUSTOMER (bp_name, bp_code, foreign_name)
+        // Only search MasterBusinessPartner where category = CUSTOMER from Jakarta branch and not Moulding industry
         $bpResults = MasterBusinessPartner::customers()
+            ->jakartaBranch()
+            ->notMoulding()
             ->where(function ($q) use ($query) {
                 $q->where('bp_name', 'LIKE', "%{$query}%")
                     ->orWhere('bp_code', 'LIKE', "%{$query}%")
@@ -897,37 +914,18 @@ class SecondProcessReportController extends Controller
             ->limit(20)
             ->get();
 
-        if ($bpResults->isNotEmpty()) {
-            $customers = $bpResults->map(function ($bp) {
-                $details = array_filter([$bp->bp_code, $bp->foreign_name]);
-                $subtext = ! empty($details) ? ' (' . implode(' - ', $details) . ')' : '';
+        $customers = $bpResults->map(function ($bp) {
+            $details = array_filter([$bp->bp_code, $bp->foreign_name]);
+            $subtext = ! empty($details) ? ' (' . implode(' - ', $details) . ')' : '';
 
-                return [
-                    'id' => $bp->id,
-                    'customer_code' => $bp->bp_code,
-                    'customer_name' => $bp->bp_name,
-                    'name' => $bp->bp_name,
-                    'display_label' => $bp->bp_name . $subtext,
-                ];
-            });
-
-            return response()->json($customers);
-        }
-
-        // 2. Fallback to MasterCustomerDelivery
-        $customers = MasterCustomerDelivery::where('customer_name', 'LIKE', "%{$query}%")
-            ->orWhere('customer_code', 'LIKE', "%{$query}%")
-            ->limit(20)
-            ->get()
-            ->map(function ($cust) {
-                return [
-                    'id' => $cust->id,
-                    'customer_code' => $cust->customer_code,
-                    'customer_name' => $cust->customer_name,
-                    'name' => $cust->customer_name,
-                    'display_label' => $cust->customer_name . ' (' . $cust->customer_code . ')',
-                ];
-            });
+            return [
+                'id' => $bp->id,
+                'customer_code' => $bp->bp_code,
+                'customer_name' => $bp->bp_name,
+                'name' => $bp->bp_name,
+                'display_label' => $bp->bp_name . $subtext,
+            ];
+        });
 
         return response()->json($customers);
     }

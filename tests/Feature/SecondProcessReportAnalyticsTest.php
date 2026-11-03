@@ -360,6 +360,67 @@ class SecondProcessReportAnalyticsTest extends TestCase
         $resCustom->assertSee('applyCustomDateIfComplete()');
     }
 
+    public function test_analytics_persists_quick_filter_preset_when_submitting_other_filters(): void
+    {
+        $today = now()->toDateString();
+        $lastMonth = now()->subMonth()->startOfMonth()->toDateString();
+
+        SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 1',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-A-TODAY',
+            'customer' => 'Customer A',
+            'jumlah_output' => 100,
+            'jumlah_ok' => 95,
+            'jumlah_ng' => 5,
+        ]);
+
+        SecondProcessReport::create([
+            'date' => $today,
+            'unit_line' => 'Line 2',
+            'shift' => 1,
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-B-TODAY',
+            'customer' => 'Customer B',
+            'jumlah_output' => 200,
+            'jumlah_ok' => 190,
+            'jumlah_ng' => 10,
+        ]);
+
+        // 1. Initial page landing defaults to this_month and renders hidden preset input
+        $resLanding = $this->actingAs($this->user)->get(route('second-process.report-analytics'));
+        $resLanding->assertOk();
+        $resLanding->assertViewHas('activePreset', 'this_month');
+        $resLanding->assertSee('name="preset" id="analytics-preset-input" value="this_month"', false);
+
+        // 2. Filter by Unit Line with preset 'today' and empty date inputs persists preset
+        $resTodayFilter = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'preset' => 'today',
+            'date_from' => '',
+            'date_to' => '',
+            'unit_line' => 'Line 1',
+        ]));
+        $resTodayFilter->assertOk();
+        $resTodayFilter->assertViewHas('activePreset', 'today');
+        $resTodayFilter->assertSee('name="preset" id="analytics-preset-input" value="today"', false);
+        $resTodayFilter->assertSee('PART-A-TODAY');
+        $resTodayFilter->assertDontSee('PART-B-TODAY');
+
+        // 3. Custom date range persists and keeps custom inputs populated
+        $resCustomFilter = $this->actingAs($this->user)->get(route('second-process.report-analytics', [
+            'preset' => 'custom',
+            'date_from' => $lastMonth,
+            'date_to' => $lastMonth,
+            'unit_line' => 'Line 1',
+        ]));
+        $resCustomFilter->assertOk();
+        $resCustomFilter->assertViewHas('activePreset', 'custom');
+        $resCustomFilter->assertSee('name="preset" id="analytics-preset-input" value="custom"', false);
+        $resCustomFilter->assertSee('value="' . $lastMonth . '"', false);
+    }
+
     public function test_analytics_aggregates_downtime_with_category_and_penyebab_fallback(): void
     {
         $today = now()->format('Y-m-d');
