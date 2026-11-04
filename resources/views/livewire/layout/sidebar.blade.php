@@ -138,6 +138,7 @@ new class extends Component {
                             auth()->user()?->can('second-process-dashboard') ? ['name' => 'second-process.dashboard', 'label' => 'Floor Overview Dashboard'] : null,
                             auth()->user()?->can('second-process-approvals') ? ['name' => 'sp-approvals.index', 'label' => 'Production Approvals'] : null,
                             auth()->user()?->can('second-process-analytics') ? ['name' => 'second-process.report-analytics', 'label' => 'Daily Report Analytics'] : null,
+                            auth()->user()?->can('second-process-reports') ? ['name' => 'second-process.defect-manager', 'label' => 'Defect Catalog & Aliases'] : null,
                             auth()->user()?->can('second-process-reports') ? ['name' => 'second-process-reports.index', 'label' => 'Second Process Daily Report'] : null,
                         ]));
                     @endphp
@@ -431,6 +432,7 @@ new class extends Component {
                             auth()->user()?->can('second-process-dashboard') ? ['name' => 'second-process.dashboard', 'label' => 'Floor Overview Dashboard'] : null,
                             auth()->user()?->can('second-process-approvals') ? ['name' => 'sp-approvals.index', 'label' => 'Production Approvals'] : null,
                             auth()->user()?->can('second-process-analytics') ? ['name' => 'second-process.report-analytics', 'label' => 'Daily Report Analytics'] : null,
+                            auth()->user()?->can('second-process-reports') ? ['name' => 'second-process.defect-manager', 'label' => 'Defect Catalog & Aliases'] : null,
                             auth()->user()?->can('second-process-reports') ? ['name' => 'second-process-reports.index', 'label' => 'Second Process Daily Report'] : null,
                         ]));
                     @endphp

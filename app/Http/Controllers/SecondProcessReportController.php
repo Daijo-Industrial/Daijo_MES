@@ -8,6 +8,8 @@ use App\Models\IpqcInspection;
 use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterListItem;
+use App\Models\SecondProcessDefectAlias;
+use App\Models\SecondProcessDefectCatalog;
 use App\Models\SecondProcessNgRecord;
 use App\Models\SecondProcessReport;
 use Illuminate\Http\Request;
@@ -274,22 +276,12 @@ class SecondProcessReportController extends Controller
      */
     private function getAvailableNgTypes(): array
     {
-        $dbNgTypes = SecondProcessNgRecord::query()
-            ->whereNotNull('ng_name')
-            ->whereRaw("TRIM(ng_name) != ''")
-            ->selectRaw('DISTINCT UPPER(TRIM(ng_name)) as ng_name')
-            ->pluck('ng_name')
-            ->toArray();
+        $catalogNgTypes = SecondProcessDefectCatalog::activeNames();
+        if (empty($catalogNgTypes)) {
+            $catalogNgTypes = config('mes.sp_default_ng_types', []);
+        }
 
-        $catalogNgTypes = config('mes.sp_default_ng_types', []);
-
-        return collect(array_merge($catalogNgTypes, $dbNgTypes))
-            ->filter()
-            ->map(fn ($item) => strtoupper(trim($item)))
-            ->unique()
-            ->sort()
-            ->values()
-            ->toArray();
+        return $catalogNgTypes;
     }
 
     public function update(Request $request, $id)
@@ -565,7 +557,11 @@ class SecondProcessReportController extends Controller
             }
             $ngErrors = [];
             foreach ($validated['ngs'] as $idx => $ng) {
-                $ngName = $ng['ng_name'] ?? ('Defect #' . ($idx + 1));
+                if (! empty($ng['ng_name'])) {
+                    $resolvedName = SecondProcessDefectAlias::resolveCanonical($ng['ng_name']);
+                    $validated['ngs'][$idx]['ng_name'] = $resolvedName ?: strtoupper(trim((string) $ng['ng_name']));
+                }
+                $ngName = $validated['ngs'][$idx]['ng_name'] ?? ('Defect #' . ($idx + 1));
                 $colTotal = 0;
                 if (! empty($ng['hours']) && is_array($ng['hours'])) {
                     foreach ($ng['hours'] as $val) {
