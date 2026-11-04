@@ -1037,7 +1037,13 @@
                         if (data.part_no) item.part_no = data.part_no;
                         if (data.model_name) item.model_name = data.model_name;
                     }
-                    this.focusActiveSpk();
+                    // Kalau baris aktif sudah ada SPK-nya (inherit), fokus langsung ke label
+                    let activeRow = this.localScans.find(r => r.status === 'new');
+                    if (activeRow && activeRow.spk_no) {
+                        this.focusActiveLabel();
+                    } else {
+                        this.focusActiveSpk();
+                    }
                 },
 
                 onScanError(event) {
