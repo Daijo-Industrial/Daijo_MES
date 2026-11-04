@@ -7,11 +7,7 @@
         _scanTimer: null,
         setPlant(newPlant) {
             this.plant = newPlant;
-            let newWh = (newPlant === 'KARAWANG') ? 'KRFG' : 'FG';
-            this.currentWarehouse = newWh;
-            this.localScans.forEach(row => {
-                row.warehouse = newWh;
-            });
+            this.currentWarehouse = (newPlant === 'KARAWANG') ? 'KRFG' : 'FG';
             @this.setPlant(newPlant);
         },
         initScans(items) {
@@ -22,7 +18,7 @@
                 part_no: item.part_no,
                 model_name: item.model_name,
                 qty: item.qty,
-                warehouse: item.warehouse || this.currentWarehouse,
+                warehouse: item.warehouse || '',
                 status: 'success',
                 error: null
             }));
@@ -30,9 +26,15 @@
         },
         focusActiveSpk() {
             let tryFocus = () => {
-                let activeIdx = this.localScans.findIndex(r => r.status === 'new');
+                let activeIdx = this.localScans.map(r => r.status).lastIndexOf('new');
+                if (activeIdx < 0) {
+                    activeIdx = this.localScans.length - 1;
+                }
                 if (activeIdx >= 0) {
-                    let el = document.getElementById('spk_input_' + activeIdx) || document.getElementById('spk_input_mobile_' + activeIdx);
+                    let isMobile = window.innerWidth < 768;
+                    let el = isMobile 
+                        ? (document.getElementById('spk_input_mobile_' + activeIdx) || document.getElementById('spk_input_' + activeIdx))
+                        : (document.getElementById('spk_input_' + activeIdx) || document.getElementById('spk_input_mobile_' + activeIdx));
                     if (el && !el.disabled) {
                         el.focus();
                         el.select();
@@ -46,15 +48,15 @@
             if (!tryFocus()) {
                 this.$nextTick(() => {
                     if (!tryFocus()) {
-                        setTimeout(tryFocus, 40);
-                        setTimeout(tryFocus, 120);
-                        setTimeout(tryFocus, 250);
+                        setTimeout(tryFocus, 30);
+                        setTimeout(tryFocus, 80);
+                        setTimeout(tryFocus, 160);
                     }
                 });
             } else {
-                // Ensure focus isn't lost during DOM unmount / Livewire update roundtrip
                 this.$nextTick(() => tryFocus());
-                setTimeout(tryFocus, 50);
+                setTimeout(tryFocus, 40);
+                setTimeout(tryFocus, 100);
             }
         },
         _addEmptyRow() {
@@ -63,7 +65,7 @@
                 label: '',
                 spk_no: '',
                 qty: '',
-                warehouse: this.currentWarehouse,
+                warehouse: '',
                 part_no: '',
                 model_name: '',
                 status: 'new',
@@ -77,40 +79,98 @@
                 row.label = '';
                 row.spk_no = '';
                 row.qty = '';
-                row.warehouse = this.currentWarehouse;
+                row.warehouse = '';
             }
             this.focusActiveSpk();
+        },
+        handleCompositeBarcode(val, idx) {
+            if (!val || !val.includes('\t')) return false;
+            let parts = val.split('\t').map(s => s.trim());
+            // Format Barcode Daijo: [SPK] \t [Qty] \t [Warehouse] \t [Label] (\t)
+            if (parts.length >= 4 && parts[0]) {
+                let row = this.localScans[idx];
+                if (!row || row.status !== 'new') return false;
+
+                row.spk_no = parts[0];
+                row.qty = parseFloat(parts[1]) || 0;
+                row.warehouse = parts[2] || '';
+                row.label = parts[3] || '';
+
+                // Sinkronkan plant secara otomatis dari warehouse barcode
+                if (row.warehouse) {
+                    let whUpper = row.warehouse.toUpperCase();
+                    if (whUpper.startsWith('KR') || whUpper.includes('KARAWANG')) {
+                        if (this.plant !== 'KARAWANG') {
+                            this.plant = 'KARAWANG';
+                            @this.setPlant('KARAWANG');
+                        }
+                    } else if (whUpper === 'FG' || whUpper === 'FFI') {
+                        if (this.plant !== 'KBN') {
+                            this.plant = 'KBN';
+                            @this.setPlant('KBN');
+                        }
+                    }
+                }
+
+                this.$nextTick(() => {
+                    this.commitScan(idx);
+                });
+                return true;
+            }
+            return false;
         },
         onSpkInput(idx) {
             let row = this.localScans[idx];
             if (!row || row.status !== 'new') return;
             let val = row.spk_no || '';
-            // Auto-detect and parse tab-delimited barcode from 2D scanner if scanned into SPK input
+
             if (val.includes('\t')) {
-                let parts = val.split('\t').map(s => s.trim());
-                if (parts.length >= 4) {
-                    // [Part] \t [SPK] \t [Qty] \t [Label]
-                    row.spk_no = parts[1];
-                    row.qty = parseFloat(parts[2]) || row.qty;
-                    row.label = parts[3];
-                    this.$nextTick(() => {
-                        this.commitScan(idx);
-                    });
+                if (this.handleCompositeBarcode(val, idx)) {
                     return;
-                } else if (parts.length >= 2) {
-                    row.spk_no = parts[1];
-                    let next = document.getElementById('qty_input_' + idx);
+                }
+                let parts = val.split('\t').map(s => s.trim());
+                if (parts.length >= 2 && parts[0]) {
+                    row.spk_no = parts[0];
+                    if (parts[1]) row.qty = parseFloat(parts[1]) || row.qty;
+                    let next = document.getElementById('qty_input_' + idx) || document.getElementById('qty_input_mobile_' + idx);
                     if (next) { next.focus(); next.select(); }
                     return;
                 }
             }
         },
+        handleSpkEnter(idx) {
+            let row = this.localScans[idx];
+            if (!row || row.status !== 'new') return;
+            if (this.handleCompositeBarcode(row.spk_no, idx)) {
+                return;
+            }
+            if (row.spk_no && row.label) {
+                this.commitScan(idx);
+                return;
+            }
+            let el = document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx);
+            if (el) { el.focus(); el.select(); }
+        },
         onLabelInput(idx) {
             clearTimeout(this._scanTimer);
             let row = this.localScans[idx];
             if (!row || row.status !== 'new') return;
-            let val = (row.label || '').trim();
-            if (val.length >= 1) {
+            let val = row.label || '';
+
+            if (val.includes('\t')) {
+                if (this.handleCompositeBarcode(val, idx)) {
+                    return;
+                }
+                // Jika barcode memiliki tab di akhir label (e.g. "123\t")
+                row.label = val.replace(/\t/g, '').trim();
+                this.$nextTick(() => {
+                    this.commitScan(idx);
+                });
+                return;
+            }
+
+            let trimmed = val.trim();
+            if (trimmed.length >= 1) {
                 this._scanTimer = setTimeout(() => {
                     this.commitScan(idx);
                 }, 400);
@@ -121,12 +181,12 @@
             let row = this.localScans[idx];
             if (!row || row.status !== 'new') return;
 
-            let labelVal = (row.label || '').trim();
-            let spkVal = (row.spk_no || '').trim();
+            let labelVal = (row.label || '').replace(/\t/g, '').trim();
+            let spkVal = (row.spk_no || '').replace(/\t/g, '').trim();
             let qtyVal = parseFloat(row.qty) || 0;
-            let whseVal = (row.warehouse || '').trim();
+            let whseVal = (row.warehouse || '').replace(/\t/g, '').trim();
 
-            if (!labelVal) return;
+            if (!labelVal || !spkVal) return;
 
             // Client-side duplicate check
             let isDuplicate = this.localScans.some((r, i) => i !== idx && r.label === labelVal && r.spk_no === spkVal);
@@ -148,10 +208,13 @@
             row.qty = qtyVal;
             row.warehouse = whseVal;
 
-            // Add new empty row below and ensure focus immediately
+            // 1. Tambah baris baru di bawah
             this._addEmptyRow();
 
-            // Fire Livewire in background
+            // 2. FOKUS LANGSUNG ke input SPK Code di baris baru
+            this.focusActiveSpk();
+
+            // 3. Kirim ke Livewire di background
             @this.addItem(labelVal, spkVal, qtyVal, whseVal, row.cid);
         },
         removeScan(item) {
@@ -515,6 +578,7 @@
                                                    :id="'spk_input_' + idx"
                                                    x-model="item.spk_no"
                                                    @input="onSpkInput(idx)"
+                                                   @keydown.enter.prevent="handleSpkEnter(idx)"
                                                    :disabled="item.status !== 'new'"
                                                    placeholder="SPK Code"
                                                    class="w-full px-2 py-1 border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 disabled:border-transparent transition-all uppercase">
@@ -540,10 +604,13 @@
 
                                         {{-- Warehouse --}}
                                         <td class="px-3 py-2 border-r border-gray-100 text-center">
-                                            <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-black font-mono border shadow-xs"
-                                                  :class="(item.warehouse || currentWarehouse) === 'KRFG' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
-                                                  x-text="item.warehouse || currentWarehouse">
-                                            </span>
+                                            <input type="text"
+                                                   :id="'whse_input_' + idx"
+                                                   x-model="item.warehouse"
+                                                   @change="updateWhse(item, $event.target.value)"
+                                                   :disabled="item.status === 'syncing'"
+                                                   placeholder="Whse"
+                                                   class="w-16 px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 disabled:border-transparent transition-all uppercase">
                                         </td>
 
                                         {{-- Label Barcode --}}
@@ -553,6 +620,7 @@
                                                        :id="'label_input_' + idx"
                                                        x-model="item.label"
                                                        @input="onLabelInput(idx)"
+                                                       @keydown.tab.prevent="commitScan(idx)"
                                                        @keydown.enter.prevent="commitScan(idx)"
                                                        placeholder="Scan barcode label..."
                                                        class="w-full px-2 py-1.5 border border-blue-300 rounded-lg outline-none text-xs font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:bg-white bg-blue-50/30 transition-all uppercase">
@@ -631,6 +699,7 @@
                                            :id="'spk_input_mobile_' + idx"
                                            x-model="item.spk_no"
                                            @input="onSpkInput(idx)"
+                                           @keydown.enter.prevent="handleSpkEnter(idx)"
                                            :disabled="item.status !== 'new'"
                                            placeholder="SPK Code"
                                            class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 disabled:bg-gray-100 transition-all uppercase">
@@ -654,10 +723,13 @@
                                         <div>
                                             <span class="text-[10px] font-bold text-gray-400 uppercase block">Whse</span>
                                             <div class="mt-1">
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-black font-mono border"
-                                                      :class="(item.warehouse || currentWarehouse) === 'KRFG' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
-                                                      x-text="item.warehouse || currentWarehouse">
-                                                </span>
+                                                <input type="text"
+                                                       :id="'whse_input_mobile_' + idx"
+                                                       x-model="item.warehouse"
+                                                       @change="updateWhse(item, $event.target.value)"
+                                                       :disabled="item.status === 'syncing'"
+                                                       placeholder="Whse"
+                                                       class="w-full px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 uppercase">
                                             </div>
                                         </div>
                                     </div>
@@ -667,7 +739,10 @@
                                     <label class="text-[10px] font-bold text-gray-400 uppercase">Label Barcode</label>
                                     <template x-if="item.status === 'new'">
                                         <input type="text"
+                                               :id="'label_input_mobile_' + idx"
                                                x-model="item.label"
+                                               @input="onLabelInput(idx)"
+                                               @keydown.tab.prevent="commitScan(idx)"
                                                @keydown.enter.prevent="commitScan(idx)"
                                                placeholder="Scan barcode label..."
                                                class="w-full px-2 py-1.5 border border-blue-300 rounded-lg text-xs font-mono font-bold uppercase focus:ring-1 focus:ring-blue-500">

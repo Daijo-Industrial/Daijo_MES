@@ -178,6 +178,12 @@ class PalletFormCreator extends Component
         }
         if ($directWhse) {
             $this->scan_whse = trim($directWhse);
+            $upperWh = strtoupper($this->scan_whse);
+            if (str_starts_with($upperWh, 'KR') || str_contains($upperWh, 'KARAWANG')) {
+                $this->plant = 'KARAWANG';
+            } elseif (in_array($upperWh, ['FG', 'FFI'])) {
+                $this->plant = 'KBN';
+            }
         }
 
         // ─── Case 2: No-Label Mode ─────────────────────────────────────────────
@@ -200,7 +206,7 @@ class PalletFormCreator extends Component
                     'customer_code' => null,
                     'spk_no' => null,
                     'qty' => (float) $this->scan_qty,
-                    'warehouse' => $this->isDelivery ? $defaultWh : ($this->scan_whse ?: $defaultWh),
+                    'warehouse' => $this->scan_whse ?: ($this->isDelivery ? $defaultWh : null),
                     'label' => null,
                     'is_no_label' => true,
                     'no_label_reason' => $this->no_label_reason ?: null,
@@ -272,7 +278,7 @@ class PalletFormCreator extends Component
 
         $defaultWh = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
 
-        // Tambahkan ke list
+        // Tambahkan ke list (utamakan warehouse dari data barcode yang discan)
         $this->scanned_items[] = [
             'cid' => $cid ?: uniqid(),
             'part_no' => $partNo,
@@ -280,7 +286,7 @@ class PalletFormCreator extends Component
             'customer_code' => $customerCode,
             'spk_no' => trim($this->scan_spk),
             'qty' => (float) ($this->scan_qty ?: 0),
-            'warehouse' => $this->isDelivery ? $defaultWh : ($this->scan_whse ?: $defaultWh),
+            'warehouse' => $this->scan_whse ?: ($this->isDelivery ? $defaultWh : null),
             'label' => trim($this->scan_label),
             'is_no_label' => false,
             'no_label_reason' => null,
