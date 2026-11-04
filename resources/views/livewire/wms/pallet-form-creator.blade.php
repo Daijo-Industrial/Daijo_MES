@@ -517,11 +517,24 @@
                 init() {
                     this.initScans(config.initialScans || []);
                     this.focusActiveSpk();
-                    this.$watch('$wire.scanned_items', (value) => {
-                        if (!value || value.length === 0) {
+                    this.$watch('$wire.scanned_items', (newItems) => {
+                        if (!newItems || newItems.length === 0) {
                             this.initScans([]);
                             this.focusActiveSpk();
+                            return;
                         }
+
+                        // Auto-sync part_no, model_name, and status directly from Livewire array
+                        newItems.forEach(serverItem => {
+                            let local = this.localScans.find(l => l.cid === serverItem.cid);
+                            if (local) {
+                                if (serverItem.part_no) local.part_no = serverItem.part_no;
+                                if (serverItem.model_name) local.model_name = serverItem.model_name;
+                                if (serverItem.qty) local.qty = serverItem.qty;
+                                if (serverItem.warehouse) local.warehouse = serverItem.warehouse;
+                                local.status = 'success';
+                            }
+                        });
                     });
                 },
 
@@ -876,27 +889,47 @@
                     this.focusActiveSpk();
                 },
 
+                _extractEventData(event) {
+                    let d = event ? event.detail : null;
+                    if (Array.isArray(d) && d.length > 0) return d[0];
+                    if (d && typeof d === 'object') {
+                        if (d.cid !== undefined || d.message !== undefined) return d;
+                        if (d[0] && typeof d[0] === 'object') return d[0];
+                    }
+                    return d || {};
+                },
+
                 onScanSuccess(event) {
-                    let item = this.localScans.find(i => i.cid === event.detail.cid);
+                    let data = this._extractEventData(event);
+                    let targetCid = data.cid;
+                    let item = targetCid ? this.localScans.find(i => i.cid === targetCid) : null;
+                    if (!item) {
+                        item = this.localScans.find(i => i.status === 'syncing');
+                    }
                     if (item) {
                         item.status = 'success';
-                        item.part_no = event.detail.part_no;
-                        item.model_name = event.detail.model_name;
+                        if (data.part_no) item.part_no = data.part_no;
+                        if (data.model_name) item.model_name = data.model_name;
                     }
                     this.focusActiveSpk();
                 },
 
                 onScanError(event) {
-                    let errItem = this.localScans.find(i => i.cid === event.detail.cid);
+                    let data = this._extractEventData(event);
+                    let targetCid = data.cid;
+                    let errItem = targetCid ? this.localScans.find(i => i.cid === targetCid) : null;
+                    if (!errItem) {
+                        errItem = this.localScans.find(i => i.status === 'syncing');
+                    }
                     if (errItem) {
                         this.localScans = this.localScans.filter(i => i.cid !== errItem.cid);
-                        this.localScanError = event.detail.message || 'Scan error';
-                        if (typeof window.playTone === 'function') {
-                            window.playTone(100, 400, 'square', 0.6);
-                            setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
-                        }
-                        this.focusActiveSpk();
                     }
+                    this.localScanError = data.message || 'Scan error';
+                    if (typeof window.playTone === 'function') {
+                        window.playTone(100, 400, 'square', 0.6);
+                        setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
+                    }
+                    this.focusActiveSpk();
                 }
             };
         }

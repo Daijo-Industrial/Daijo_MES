@@ -236,9 +236,16 @@ class PalletFormCreator extends Component
             return;
         }
 
-        // Pastikan SPK valid (ada di database)
+        // Pastikan SPK valid (ada di database SpkItemHistory atau SpkMaster)
         $spkHistory = SpkItemHistory::where('spk_number', trim($this->scan_spk))->first();
+        $spkMaster = null;
         if (! $spkHistory) {
+            $spkMaster = SpkMaster::where('spk_number', trim($this->scan_spk))->first();
+        }
+
+        $partNo = $spkHistory?->item_code ?? $spkMaster?->item_code;
+
+        if (! $partNo) {
             $failedSpk = $this->scan_spk;
             $this->resetScanner();
             session()->flash('scan_error', 'SPK "' . $failedSpk . '" tidak ditemukan di sistem. Pastikan SPK sudah terdaftar.');
@@ -247,10 +254,9 @@ class PalletFormCreator extends Component
             return;
         }
 
-        $item = MasterListItem::where('item_code', $spkHistory->item_code)->first();
-        $partNo = $spkHistory->item_code;
-        $modelName = $item?->item_name ?? '-';
-        $customerCode = $item?->customer_code ?? '';
+        $item = MasterListItem::where('item_code', $partNo)->first();
+        $modelName = $item?->item_name ?? ($spkMaster?->masterItem?->item_name ?? '-');
+        $customerCode = $item?->customer_code ?? ($spkMaster?->masterItem?->customer_code ?? '');
 
         // Wajib ada label
         if (empty(trim($this->scan_label))) {
