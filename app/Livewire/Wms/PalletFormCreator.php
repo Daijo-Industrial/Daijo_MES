@@ -183,8 +183,8 @@ class PalletFormCreator extends Component
             $this->scan_qty = $directQty;
         }
         if ($directWhse) {
-            $this->scan_whse = trim($directWhse);
-            $upperWh = strtoupper($this->scan_whse);
+            $this->scan_whse = strtoupper(trim($directWhse));
+            $upperWh = $this->scan_whse;
             if (str_starts_with($upperWh, 'KR') || str_contains($upperWh, 'KARAWANG')) {
                 $this->plant = 'KARAWANG';
             } elseif (in_array($upperWh, ['FG', 'FFI'])) {
@@ -212,7 +212,7 @@ class PalletFormCreator extends Component
                     'customer_code' => null,
                     'spk_no' => null,
                     'qty' => (float) $this->scan_qty,
-                    'warehouse' => $this->scan_whse ?: ($this->isDelivery ? $defaultWh : null),
+                    'warehouse' => strtoupper(trim($this->scan_whse ?: ($this->isDelivery ? $defaultWh : ''))),
                     'label' => null,
                     'is_no_label' => true,
                     'no_label_reason' => $this->no_label_reason ?: null,
@@ -298,7 +298,7 @@ class PalletFormCreator extends Component
             'customer_code' => $customerCode,
             'spk_no' => trim($this->scan_spk),
             'qty' => (float) ($this->scan_qty ?: 0),
-            'warehouse' => $this->scan_whse ?: ($this->isDelivery ? $defaultWh : null),
+            'warehouse' => strtoupper(trim($this->scan_whse ?: ($this->isDelivery ? $defaultWh : ''))),
             'label' => trim($this->scan_label),
             'is_no_label' => false,
             'no_label_reason' => null,
@@ -354,7 +354,7 @@ class PalletFormCreator extends Component
     {
         foreach ($this->scanned_items as &$item) {
             if (($item['cid'] ?? null) === $cid) {
-                $item['warehouse'] = trim($whse);
+                $item['warehouse'] = strtoupper(trim($whse));
                 break;
             }
         }
