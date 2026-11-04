@@ -36,8 +36,8 @@ return [
     ],
 
     'sap' => [
-        'base_url' => env('SAP_BASE_URL', 'http://192.168.6.149:9001'),
-        'auth_url' => env('SAP_AUTH_URL', 'http://192.168.6.149:9001/auth/token'),
+        'base_url' => env('SAP_BASE_URL'),
+        'auth_url' => env('SAP_AUTH_URL'),
         'company_db' => env('SAP_COMPANY_DB'),
         'username' => env('SAP_USERNAME'),
         'password' => env('SAP_PASSWORD'),

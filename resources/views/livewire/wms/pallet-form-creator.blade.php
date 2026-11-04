@@ -1,9 +1,14 @@
+@php
+    $serverErrorMsg = session('scan_error') ?: (session('error') ?: '');
+@endphp
 <div class="p-6 bg-gray-50 min-h-screen" 
      x-data="palletFormCreator({
          initialPlant: '{{ $plant }}',
-         initialScans: @js($scanned_items)
+         initialScans: @js($scanned_items),
+         initialServerError: @js($serverErrorMsg)
      })"
      x-init="init()"
+     x-effect="if (@js($serverErrorMsg)) { serverError = @js($serverErrorMsg); }"
      x-on:scan-success.window="onScanSuccess($event)"
      x-on:scan-error.window="onScanError($event)"
      @if($showSuccessModal && $sapSyncStatus === 'pending') wire:poll.2s="checkSapSyncStatus" @endif>
@@ -51,19 +56,19 @@
             </div>
         @endif
 
-        @if (session()->has('error'))
-            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl flex items-start space-x-3">
-                <svg class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <p class="text-red-700 font-medium">{{ session('error') }}</p>
-            </div>
-        @endif
-
-        <div x-show="localScanError" x-cloak class="bg-red-100 border-l-4 border-red-500 p-4 rounded-xl flex items-center justify-between shadow-sm mb-4">
+        {{-- Unified Error Banner (Single Dismissible Banner for Both Server & Client Errors) --}}
+        <div x-show="Boolean((localScanError && localScanError.trim()) || (serverError && serverError.trim()))" 
+             x-cloak 
+             class="bg-red-100 border-l-4 border-red-500 p-4 rounded-xl flex items-center justify-between shadow-sm mb-4 transition-all">
             <div class="flex items-center space-x-3">
-                <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <p class="text-red-800 font-bold text-sm" x-text="localScanError"></p>
+                <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p class="text-red-800 font-bold text-sm" x-text="(localScanError && localScanError.trim()) ? localScanError : serverError"></p>
             </div>
-            <button type="button" @click="localScanError = ''" class="text-red-600 hover:text-red-800 font-black text-xs px-2.5 py-1 bg-white rounded-lg border border-red-200">
+            <button type="button" 
+                    @click="closeError()" 
+                    class="text-red-600 hover:text-red-800 font-black text-xs px-3 py-1.5 bg-white hover:bg-red-50 rounded-lg border border-red-200 transition-all cursor-pointer shadow-xs active:scale-95 flex-shrink-0">
                 ✕ TUTUP
             </button>
         </div>
@@ -616,10 +621,18 @@
         function palletFormCreator(config) {
             return {
                 plant: config.initialPlant,
-                currentWarehouse: (config.initialPlant === 'KARAWANG') ? 'KRFG' : 'FG',
+                currentWarehouse: '',
                 localScans: [],
                 localScanError: '',
+                serverError: config.initialServerError || '',
                 _scanTimer: null,
+
+                closeError() {
+                    this.localScanError = '';
+                    this.serverError = '';
+                    this.serverError = '';
+                    this.focusActiveSpk();
+                },
 
                 init() {
                     this.initScans(config.initialScans || []);
@@ -658,7 +671,7 @@
 
                 setPlant(newPlant) {
                     this.plant = newPlant;
-                    this.currentWarehouse = (newPlant === 'KARAWANG') ? 'KRFG' : 'FG';
+                    this.currentWarehouse = '';
                     const wire = this.getWire();
                     if (wire) wire.setPlant(newPlant);
                 },
@@ -701,7 +714,7 @@
                     }
 
                     let nextQty = lastRow ? lastRow.qty : '';
-                    let nextWhse = lastRow ? (lastRow.warehouse || '').toUpperCase() : (this.currentWarehouse || '');
+                    let nextWhse = '';
 
                     this.localScans.push({
                         cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -802,6 +815,7 @@
                     if (row) {
                         row.label = '';
                         row.spk_no = '';
+                        row.warehouse = '';
                         row.error = null;
                     }
                     let idx = this._getRowIdx(itemOrIdx);
@@ -810,6 +824,8 @@
                         if (lEl) lEl.value = '';
                         let sEl = document.getElementById('spk_input_' + idx) || document.getElementById('spk_input_mobile_' + idx);
                         if (sEl) sEl.value = '';
+                        let wEl = document.getElementById('whse_input_' + idx) || document.getElementById('whse_input_mobile_' + idx);
+                        if (wEl) wEl.value = '';
                     }
                     if (document.activeElement && document.activeElement.blur) {
                         document.activeElement.blur();
@@ -1007,6 +1023,7 @@
                     }
 
                     this.localScanError = '';
+                    this.serverError = '';
                     row.status = 'syncing';
                     row.label = labelVal;
                     row.spk_no = spkVal;
@@ -1069,6 +1086,7 @@
                 resetSheet() {
                     this.localScans = [];
                     this.localScanError = '';
+                    this.serverError = '';
                     const wire = this.getWire();
                     if (wire) {
                         wire.resetScanner();
@@ -1186,11 +1204,14 @@
 
                 _extractEventData(event) {
                     let d = event ? event.detail : null;
-                    if (Array.isArray(d) && d.length > 0) return d[0];
+                    if (Array.isArray(d) && d.length > 0) {
+                        return (typeof d[0] === 'object' && d[0] !== null) ? d[0] : { message: d[0] };
+                    }
                     if (d && typeof d === 'object') {
                         if (d.cid !== undefined || d.message !== undefined) return d;
                         if (d[0] && typeof d[0] === 'object') return d[0];
                     }
+                    if (typeof d === 'string') return { message: d };
                     return d || {};
                 },
 
@@ -1221,7 +1242,8 @@
                     if (errItem) {
                         this.localScans = this.localScans.filter(i => i.cid !== errItem.cid);
                     }
-                    this.localScanError = data.message || 'Scan error';
+                    let errMsg = (data && data.message) ? String(data.message) : (typeof data === 'string' ? data : '');
+                    this.localScanError = errMsg.trim() ? errMsg.trim() : 'Terjadi kendala saat memproses barcode / SPK.';
                     if (typeof window.playTone === 'function') {
                         window.playTone(100, 400, 'square', 0.6);
                         setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
