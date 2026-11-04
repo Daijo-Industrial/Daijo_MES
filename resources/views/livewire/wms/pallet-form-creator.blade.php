@@ -257,6 +257,10 @@
                                                    @keydown.tab="handleSpkTab($event, idx)"
                                                    @keydown.enter.prevent="handleSpkEnter(idx)"
                                                    :disabled="item.status !== 'new'"
+                                                   autocomplete="off"
+                                                   autocorrect="off"
+                                                   autocapitalize="off"
+                                                   spellcheck="false"
                                                    placeholder="SPK Code"
                                                    class="w-full px-2 py-1 border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 disabled:border-transparent transition-all uppercase">
                                         </td>
@@ -277,6 +281,7 @@
                                                    @change="updateQty(item, $event.target.value)"
                                                    @keydown.enter.prevent="handleQtyEnter(idx)"
                                                    :disabled="item.status === 'syncing'"
+                                                   autocomplete="off"
                                                    class="w-20 px-2 py-1 text-right border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 transition-all">
                                         </td>
 
@@ -288,6 +293,10 @@
                                                    @change="updateWhse(item, $event.target.value)"
                                                    @keydown.enter.prevent="handleWhseEnter(idx)"
                                                    :disabled="item.status === 'syncing'"
+                                                   autocomplete="off"
+                                                   autocorrect="off"
+                                                   autocapitalize="off"
+                                                   spellcheck="false"
                                                    placeholder="Whse"
                                                    class="w-16 px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 disabled:border-transparent transition-all uppercase">
                                         </td>
@@ -299,8 +308,13 @@
                                                        :id="'label_input_' + idx"
                                                        x-model="item.label"
                                                        @input="onLabelInput(idx)"
-                                                       @keydown.tab.prevent="commitScan(idx)"
-                                                       @keydown.enter.prevent="commitScan(idx)"
+                                                       @change="onLabelChange(idx)"
+                                                       @keydown.tab="handleLabelKey($event, idx)"
+                                                       @keydown.enter="handleLabelKey($event, idx)"
+                                                       autocomplete="off"
+                                                       autocorrect="off"
+                                                       autocapitalize="off"
+                                                       spellcheck="false"
                                                        placeholder="Scan barcode label..."
                                                        class="w-full px-2 py-1.5 border border-blue-300 rounded-lg outline-none text-xs font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:bg-white bg-blue-50/30 transition-all uppercase">
                                             </template>
@@ -381,6 +395,10 @@
                                            @keydown.tab="handleSpkTab($event, idx)"
                                            @keydown.enter.prevent="handleSpkEnter(idx)"
                                            :disabled="item.status !== 'new'"
+                                           autocomplete="off"
+                                           autocorrect="off"
+                                           autocapitalize="off"
+                                           spellcheck="false"
                                            placeholder="SPK Code"
                                            class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 disabled:bg-gray-100 transition-all uppercase">
                                 </div>
@@ -399,6 +417,7 @@
                                                    @change="updateQty(item, $event.target.value)"
                                                    @keydown.enter.prevent="handleQtyEnter(idx)"
                                                    :disabled="item.status === 'syncing'"
+                                                   autocomplete="off"
                                                    class="w-full px-2 py-1 border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700">
                                         </div>
                                         <div>
@@ -410,6 +429,10 @@
                                                        @change="updateWhse(item, $event.target.value)"
                                                        @keydown.enter.prevent="handleWhseEnter(idx)"
                                                        :disabled="item.status === 'syncing'"
+                                                       autocomplete="off"
+                                                       autocorrect="off"
+                                                       autocapitalize="off"
+                                                       spellcheck="false"
                                                        placeholder="Whse"
                                                        class="w-full px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 uppercase">
                                             </div>
@@ -424,8 +447,13 @@
                                                :id="'label_input_mobile_' + idx"
                                                x-model="item.label"
                                                @input="onLabelInput(idx)"
-                                               @keydown.tab.prevent="commitScan(idx)"
-                                               @keydown.enter.prevent="commitScan(idx)"
+                                               @change="onLabelChange(idx)"
+                                               @keydown.tab="handleLabelKey($event, idx)"
+                                               @keydown.enter="handleLabelKey($event, idx)"
+                                               autocomplete="off"
+                                               autocorrect="off"
+                                               autocapitalize="off"
+                                               spellcheck="false"
                                                placeholder="Scan barcode label..."
                                                class="w-full px-2 py-1.5 border border-blue-300 rounded-lg text-xs font-mono font-bold uppercase focus:ring-1 focus:ring-blue-500">
                                     </template>
@@ -595,19 +623,68 @@
                     });
                 },
 
+                focusActiveLabel() {
+                    const doFocus = () => {
+                        let activeIdx = this.localScans.map(r => r.status).lastIndexOf('new');
+                        if (activeIdx < 0) {
+                            activeIdx = this.localScans.length - 1;
+                        }
+                        if (activeIdx >= 0) {
+                            const isMobile = window.innerWidth < 768;
+                            const el = isMobile 
+                                ? (document.getElementById('label_input_mobile_' + activeIdx) || document.getElementById('label_input_' + activeIdx))
+                                : (document.getElementById('label_input_' + activeIdx) || document.getElementById('label_input_mobile_' + activeIdx));
+                            if (el && !el.disabled) {
+                                el.focus();
+                                el.select();
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+
+                    if (doFocus()) return;
+
+                    this.$nextTick(() => {
+                        if (doFocus()) return;
+                        setTimeout(doFocus, 25);
+                        setTimeout(doFocus, 75);
+                        setTimeout(doFocus, 150);
+                        setTimeout(doFocus, 300);
+                    });
+                },
+
                 _addEmptyRow() {
+                    let lastRow = null;
+                    for (let i = this.localScans.length - 1; i >= 0; i--) {
+                        if (this.localScans[i].status !== 'new' && this.localScans[i].spk_no) {
+                            lastRow = this.localScans[i];
+                            break;
+                        }
+                    }
+
+                    let nextSpk = lastRow ? lastRow.spk_no : '';
+                    let nextQty = lastRow ? lastRow.qty : '';
+                    let nextWhse = lastRow ? lastRow.warehouse : (this.currentWarehouse || '');
+
                     this.localScans.push({
                         cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                         label: '',
-                        spk_no: '',
-                        qty: '',
-                        warehouse: '',
+                        spk_no: nextSpk,
+                        qty: nextQty,
+                        warehouse: nextWhse,
                         part_no: '',
                         model_name: '',
                         status: 'new',
                         error: null
                     });
-                    this.focusActiveSpk();
+
+                    // Jika SPK sudah terisi otomatis (turunan dari baris sebelumnya), langsung fokus ke Label Barcode
+                    if (nextSpk) {
+                        this.focusActiveLabel();
+                    } else {
+                        this.focusActiveSpk();
+                    }
                 },
 
                 _resetActiveRow(idx) {
@@ -709,11 +786,40 @@
                     if (el) { el.focus(); el.select(); }
                 },
 
+                handleLabelKey(e, idx) {
+                    e.preventDefault();
+                    clearTimeout(this._scanTimer);
+                    let row = this.localScans[idx];
+                    if (!row || row.status !== 'new') return;
+
+                    let inputEl = e.target || document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx);
+                    let currentVal = inputEl ? inputEl.value : row.label;
+                    if (currentVal) {
+                        row.label = currentVal.trim();
+                    }
+
+                    this.commitScan(idx);
+                },
+
+                onLabelChange(idx) {
+                    let row = this.localScans[idx];
+                    if (!row || row.status !== 'new') return;
+                    let inputEl = document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx);
+                    if (inputEl && inputEl.value) {
+                        row.label = inputEl.value.trim();
+                    }
+                    if (row.label) {
+                        this.commitScan(idx);
+                    }
+                },
+
                 onLabelInput(idx) {
                     clearTimeout(this._scanTimer);
                     let row = this.localScans[idx];
                     if (!row || row.status !== 'new') return;
-                    let val = row.label || '';
+
+                    let inputEl = document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx);
+                    let val = (inputEl ? inputEl.value : row.label) || '';
 
                     if (val.includes('\t')) {
                         if (this.handleCompositeBarcode(val, idx)) {
@@ -731,7 +837,7 @@
                     if (trimmed.length >= 1) {
                         this._scanTimer = setTimeout(() => {
                             this.commitScan(idx);
-                        }, 400);
+                        }, 500);
                     }
                 },
 
@@ -740,10 +846,15 @@
                     let row = this.localScans[idx];
                     if (!row || row.status !== 'new') return;
 
-                    let labelVal = (row.label || '').replace(/\t/g, '').trim();
-                    let spkVal = (row.spk_no || '').replace(/\t/g, '').trim();
-                    let qtyVal = parseFloat(row.qty) || 0;
-                    let whseVal = (row.warehouse || '').replace(/\t/g, '').trim();
+                    let labelInputEl = document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx);
+                    let spkInputEl = document.getElementById('spk_input_' + idx) || document.getElementById('spk_input_mobile_' + idx);
+                    let qtyInputEl = document.getElementById('qty_input_' + idx) || document.getElementById('qty_input_mobile_' + idx);
+                    let whseInputEl = document.getElementById('whse_input_' + idx) || document.getElementById('whse_input_mobile_' + idx);
+
+                    let labelVal = (row.label || (labelInputEl ? labelInputEl.value : '') || '').replace(/\t/g, '').trim();
+                    let spkVal = (row.spk_no || (spkInputEl ? spkInputEl.value : '') || '').replace(/\t/g, '').trim();
+                    let qtyVal = parseFloat(row.qty !== '' ? row.qty : (qtyInputEl ? qtyInputEl.value : 0)) || 0;
+                    let whseVal = (row.warehouse || (whseInputEl ? whseInputEl.value : '') || '').replace(/\t/g, '').trim();
 
                     if (!labelVal || !spkVal) return;
 
@@ -766,13 +877,10 @@
                     row.qty = qtyVal;
                     row.warehouse = whseVal;
 
-                    // 1. Tambah baris baru di bawah
+                    // 1. Tambah baris baru di bawah (mewariskan SPK, Qty, Whse)
                     this._addEmptyRow();
 
-                    // 2. FOKUS LANGSUNG ke input SPK Code di baris baru
-                    this.focusActiveSpk();
-
-                    // 3. Kirim ke Livewire di background
+                    // 2. Kirim ke Livewire di background
                     const wire = this.getWire();
                     if (wire) wire.addItem(labelVal, spkVal, qtyVal, whseVal, row.cid);
                 },
