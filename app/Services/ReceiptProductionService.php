@@ -392,11 +392,7 @@ class ReceiptProductionService extends BaseSapService
 
         // 1. Kirim notifikasi Email
         try {
-            $recipients = config('services.sap.timeout_alert_recipients', [
-                'andreas@daijo.co.id',
-                'timo@daijo.co.id',
-                'thomasilver88@gmail.com',
-            ]);
+            $recipients = config('services.sap.timeout_alert_recipients', []);
 
             if (! empty($recipients)) {
                 $logObj = (object) [

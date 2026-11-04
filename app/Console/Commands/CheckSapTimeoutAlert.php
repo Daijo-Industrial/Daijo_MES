@@ -36,18 +36,14 @@ class CheckSapTimeoutAlert extends Command
     public function handle()
     {
         // 1. Tentukan daftar penerima email
-        $configuredRecipients = config('services.sap.timeout_alert_recipients', [
-            'andreas@daijo.co.id',
-            'timo@daijo.co.id',
-            'thomasilver88@gmail.com',
-        ]);
-
-        if (empty($configuredRecipients)) {
-            $configuredRecipients = ['andreas@daijo.co.id', 'timo@daijo.co.id', 'thomasilver88@gmail.com'];
-        }
-
+        $configuredRecipients = config('services.sap.timeout_alert_recipients', []);
         $extraEmails = (array) $this->option('email');
-        $recipients = array_values(array_unique(array_merge($configuredRecipients, $extraEmails)));
+        $recipients = array_values(array_unique(array_filter(array_merge($configuredRecipients, $extraEmails))));
+
+        if (empty($recipients)) {
+            $this->info('Notifikasi email timeout dimatikan (tidak ada penerima yang dikonfigurasi).');
+            return \Illuminate\Console\Command::SUCCESS;
+        }
 
         // 2. Mode Uji Coba (--test)
         if ($this->option('test')) {

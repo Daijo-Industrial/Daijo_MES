@@ -183,17 +183,18 @@
                             </div>
                         @endif
 
-                        <div class="pt-4 border-t border-gray-100" x-data="{ isSubmitting: false }">
+                        <div class="pt-4 border-t border-gray-100">
                             <button 
-                                @click="if (isSubmitting) { $event.preventDefault(); return false; } isSubmitting = true; setTimeout(() => isSubmitting = false, 4000);"
-                                wire:click.throttle.2000ms="generateForm(plant)" 
+                                wire:click="generateForm(plant)" 
                                 type="button"
                                 wire:loading.attr="disabled"
                                 wire:target="generateForm"
-                                :disabled="isSubmitting || @js($isProcessing)"
-                                class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center disabled:bg-gray-400 disabled:shadow-none text-sm uppercase">
+                                class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center disabled:bg-gray-400 disabled:shadow-none text-sm uppercase cursor-pointer">
                                 <span wire:loading.remove wire:target="generateForm">GENERATE PALLET FORM</span>
-                                <span wire:loading wire:target="generateForm">PROCESSING...</span>
+                                <span wire:loading wire:target="generateForm" class="flex items-center space-x-2">
+                                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                    PROCESSING...
+                                </span>
                                 <svg wire:loading.remove wire:target="generateForm" class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                             </button>
                         </div>
@@ -211,13 +212,17 @@
                             </h2>
                             <p class="text-xs text-gray-400">Scan label barcode pada baris aktif. Nilai SPK, Qty, dan Whse otomatis menurun ke baris baru.</p>
                         </div>
-                        <div class="flex space-x-2">
+                        <div class="flex space-x-2 flex-wrap gap-y-2">
                             <button @click="addNoLabelRow()" type="button"
-                                class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-all shadow-md">
+                                class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer">
                                 ➕ TANPA LABEL (MANUAL)
                             </button>
-                            <button @click="initScans([])" type="button"
-                                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all">
+                            <button @click="ensureEmptyRow(true)" type="button"
+                                class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1">
+                                ➕ BARIS BARU
+                            </button>
+                            <button @click="resetSheet()" type="button"
+                                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer">
                                 🔄 RESET SHEET
                             </button>
                         </div>
@@ -344,11 +349,10 @@
                                                 {{-- New Row Indicator --}}
                                                 <span x-show="item.status === 'new'" class="text-amber-500 font-bold text-xs animate-pulse">📝 EDITING</span>
 
-                                                {{-- Delete Button --}}
-                                                <button x-show="item.status !== 'new'"
-                                                        @click.stop="removeScan(item)"
+                                                {{-- Delete Button (Selalu bisa diklik di semua status baris) --}}
+                                                <button @click.stop="removeScan(item)"
                                                         type="button"
-                                                        title="Hapus baris ini"
+                                                        title="Hapus / Reset baris ini"
                                                         class="p-1.5 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg transition-colors border border-transparent cursor-pointer">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                 </button>
@@ -373,8 +377,7 @@
                                 <div class="flex justify-between items-center">
                                     <span class="px-2 py-0.5 bg-gray-100 rounded-lg text-xs font-black text-gray-500 font-mono" x-text="'No. ' + (idx + 1)"></span>
                                     <div class="flex space-x-2">
-                                        <button x-show="item.status !== 'new'"
-                                                type="button" 
+                                        <button type="button" 
                                                 @click.stop="removeScan(item)" 
                                                 class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg transition-all cursor-pointer">
                                             HAPUS
@@ -528,6 +531,86 @@
                         </table>
                     </div>
                 </div>
+            </div> {{-- Closes lg:col-span-2 (wire:ignore) --}}
+        </div> {{-- Closes Grid Wrapper --}}
+
+        {{-- Success Modal (Di luar wire:ignore agar ter-render oleh Livewire) --}}
+        @if($showSuccessModal)
+            <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="p-8 text-center flex-1 overflow-y-auto custom-scrollbar">
+                        <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <h3 class="text-2xl font-black text-gray-800 mb-2 tracking-tighter italic">PALLET CREATED!</h3>
+                        <p class="text-gray-500 mb-6 text-sm">Pallet ID: <span class="font-black text-blue-600 tracking-tight">{{ $lastGeneratedPalletId }}</span></p>
+                        
+                        {{-- SAP Sync Status Section --}}
+                        <div class="mb-8 p-4 rounded-2xl border-2 {{ $sapSyncStatus === 'pending' ? 'bg-blue-50 border-blue-100' : (empty($failedSapItems) ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100') }} transition-colors">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-[10px] font-black uppercase tracking-widest {{ $sapSyncStatus === 'pending' ? 'text-blue-500' : (empty($failedSapItems) ? 'text-green-600' : 'text-red-600') }}">
+                                    SAP Integration Status
+                                </span>
+                                @if($sapSyncStatus === 'pending')
+                                    <div class="flex items-center space-x-1">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.5s]"></div>
+                                    </div>
+                                @endif
+                            </div>
+
+                            @if($sapSyncStatus === 'pending')
+                                <p class="text-xs font-bold text-blue-700 italic">Sinkronisasi ke SAP sedang berjalan di background...</p>
+                            @elseif(empty($failedSapItems))
+                                <p class="text-xs font-bold text-green-700">✅ Berhasil! Semua data terkirim ke SAP tanpa kendala.</p>
+                            @else
+                                <div class="space-y-3">
+                                    <p class="text-xs font-black text-red-700 uppercase tracking-tighter">⚠️ Ada {{ count($failedSapItems) }} SPK yang gagal terkirim ke SAP:</p>
+                                    <div class="overflow-hidden border border-red-200 rounded-xl">
+                                        <table class="w-full text-left text-[10px]">
+                                            <thead class="bg-red-100 text-red-700 font-black uppercase tracking-widest">
+                                                <tr>
+                                                    <th class="px-3 py-2">SPK No</th>
+                                                    <th class="px-3 py-2">Error Message</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-red-100 bg-white">
+                                                @foreach($failedSapItems as $failed)
+                                                    <tr>
+                                                        <td class="px-3 py-2 font-black text-gray-800">{{ $failed['spk_no'] }}</td>
+                                                        <td class="px-3 py-2 font-bold text-red-600 italic break-words">{{ $failed['sap_error_msg'] }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button wire:click="retrySapSync" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-red-200">
+                                        RETRY SAP SYNC
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <a href="{{ $lastGeneratedPalletId ? route('wms.pallet-form.print', $lastGeneratedPalletId) : '#' }}" target="_blank" 
+                                class="block py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 text-sm uppercase">
+                                Print Label
+                            </a>
+                            <button wire:click="resetWholeForm" type="button"
+                                class="block py-4 bg-slate-800 hover:bg-black text-white font-bold rounded-2xl transition-all active:scale-95 text-sm uppercase cursor-pointer">
+                                Next Scan
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-8 py-4 text-center">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SAP Batch Processing v2.0</span>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+    </div> {{-- Closes Container max-w-7xl --}}
 
     <script>
         function palletFormCreator(config) {
@@ -548,7 +631,7 @@
                             return;
                         }
 
-                        // Prune items yang sudah dihapus dari server
+                        // Prune items yang sudah dihapus dari server (selalu simpan baris 'new' & 'syncing')
                         let serverCids = new Set(newItems.map(s => s.cid));
                         this.localScans = this.localScans.filter(local => local.status === 'new' || local.status === 'syncing' || serverCids.has(local.cid));
 
@@ -559,10 +642,13 @@
                                 if (serverItem.part_no) local.part_no = serverItem.part_no;
                                 if (serverItem.model_name) local.model_name = serverItem.model_name;
                                 if (serverItem.qty) local.qty = serverItem.qty;
-                                if (serverItem.warehouse) local.warehouse = serverItem.warehouse;
+                                if (serverItem.warehouse) local.warehouse = (serverItem.warehouse || '').toUpperCase();
                                 local.status = 'success';
                             }
                         });
+
+                        // Jamin selalu ada 1 baris input baru yang siap discan
+                        this.ensureEmptyRow();
                     });
                 },
 
@@ -585,16 +671,60 @@
                         part_no: item.part_no,
                         model_name: item.model_name,
                         qty: item.qty,
-                        warehouse: item.warehouse || '',
+                        warehouse: (item.warehouse || '').toUpperCase(),
                         status: 'success',
                         error: null
                     }));
-                    this._addEmptyRow();
+                    this.ensureEmptyRow();
+                },
+
+                ensureEmptyRow(force = false) {
+                    let newRows = this.localScans.filter(r => r.status === 'new');
+                    if (!force && newRows.length === 1) {
+                        this.focusActiveSpk();
+                        return;
+                    }
+                    if (!force && newRows.length > 1) {
+                        let lastNew = newRows[newRows.length - 1];
+                        this.localScans = this.localScans.filter(r => r.status !== 'new' || r.cid === lastNew.cid);
+                        this.focusActiveSpk();
+                        return;
+                    }
+
+                    // Inherit Qty & Whse saja — SPK TIDAK diwariskan (user harus scan ulang)
+                    let lastRow = null;
+                    for (let i = this.localScans.length - 1; i >= 0; i--) {
+                        if (this.localScans[i].status !== 'new' && this.localScans[i].spk_no) {
+                            lastRow = this.localScans[i];
+                            break;
+                        }
+                    }
+
+                    let nextQty = lastRow ? lastRow.qty : '';
+                    let nextWhse = lastRow ? (lastRow.warehouse || '').toUpperCase() : (this.currentWarehouse || '');
+
+                    this.localScans.push({
+                        cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                        label: '',
+                        spk_no: '',
+                        qty: nextQty,
+                        warehouse: nextWhse,
+                        part_no: '',
+                        model_name: '',
+                        status: 'new',
+                        error: null
+                    });
+
+                    this.focusActiveSpk();
+                },
+
+                _addEmptyRow() {
+                    this.ensureEmptyRow();
                 },
 
                 focusActiveSpk() {
                     const doFocus = () => {
-                        let activeIdx = this.localScans.map(r => r.status).lastIndexOf('new');
+                        let activeIdx = this.localScans.findIndex(r => r.status === 'new');
                         if (activeIdx < 0) {
                             activeIdx = this.localScans.length - 1;
                         }
@@ -612,20 +742,20 @@
                         return false;
                     };
 
-                    if (doFocus()) return;
+                    doFocus();
 
                     this.$nextTick(() => {
-                        if (doFocus()) return;
-                        setTimeout(doFocus, 25);
-                        setTimeout(doFocus, 75);
-                        setTimeout(doFocus, 150);
-                        setTimeout(doFocus, 300);
+                        doFocus();
+                        setTimeout(doFocus, 30);
+                        setTimeout(doFocus, 100);
+                        setTimeout(doFocus, 250);
+                        setTimeout(doFocus, 500);
                     });
                 },
 
                 focusActiveLabel() {
                     const doFocus = () => {
-                        let activeIdx = this.localScans.map(r => r.status).lastIndexOf('new');
+                        let activeIdx = this.localScans.findIndex(r => r.status === 'new');
                         if (activeIdx < 0) {
                             activeIdx = this.localScans.length - 1;
                         }
@@ -643,14 +773,13 @@
                         return false;
                     };
 
-                    if (doFocus()) return;
+                    doFocus();
 
                     this.$nextTick(() => {
-                        if (doFocus()) return;
-                        setTimeout(doFocus, 25);
-                        setTimeout(doFocus, 75);
-                        setTimeout(doFocus, 150);
-                        setTimeout(doFocus, 300);
+                        doFocus();
+                        setTimeout(doFocus, 30);
+                        setTimeout(doFocus, 100);
+                        setTimeout(doFocus, 250);
                     });
                 },
 
@@ -668,47 +797,22 @@
                     return -1;
                 },
 
-                _addEmptyRow() {
-                    // Guard: jangan buat baris baru kalau sudah ada 'new' row
-                    if (this.localScans.some(r => r.status === 'new')) {
-                        this.focusActiveSpk();
-                        return;
-                    }
-
-                    // Inherit Qty & Whse saja — SPK TIDAK diwariskan (user harus scan ulang)
-                    let lastRow = null;
-                    for (let i = this.localScans.length - 1; i >= 0; i--) {
-                        if (this.localScans[i].status !== 'new' && this.localScans[i].spk_no) {
-                            lastRow = this.localScans[i];
-                            break;
-                        }
-                    }
-
-                    let nextQty = lastRow ? lastRow.qty : '';
-                    let nextWhse = lastRow ? lastRow.warehouse : (this.currentWarehouse || '');
-
-                    this.localScans.push({
-                        cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                        label: '',
-                        spk_no: '',
-                        qty: nextQty,
-                        warehouse: nextWhse,
-                        part_no: '',
-                        model_name: '',
-                        status: 'new',
-                        error: null
-                    });
-
-                    this.$nextTick(() => this.focusActiveSpk());
-                },
-
                 _resetActiveRow(itemOrIdx) {
                     let row = this._getRow(itemOrIdx);
-                    if (row && row.status === 'new') {
+                    if (row) {
                         row.label = '';
                         row.spk_no = '';
-                        row.qty = '';
-                        row.warehouse = '';
+                        row.error = null;
+                    }
+                    let idx = this._getRowIdx(itemOrIdx);
+                    if (idx >= 0) {
+                        let lEl = document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx);
+                        if (lEl) lEl.value = '';
+                        let sEl = document.getElementById('spk_input_' + idx) || document.getElementById('spk_input_mobile_' + idx);
+                        if (sEl) sEl.value = '';
+                    }
+                    if (document.activeElement && document.activeElement.blur) {
+                        document.activeElement.blur();
                     }
                     this.focusActiveSpk();
                 },
@@ -723,7 +827,7 @@
 
                         row.spk_no = parts[0];
                         row.qty = parseFloat(parts[1]) || 0;
-                        row.warehouse = parts[2] || '';
+                        row.warehouse = (parts[2] || '').toUpperCase();
                         row.label = parts[3] || '';
 
                         // Sinkronkan plant secara otomatis dari warehouse barcode
@@ -829,7 +933,8 @@
                     if (inputEl && inputEl.value) {
                         row.label = inputEl.value.trim();
                     }
-                    if (row.label) {
+                    // Hanya otomatis submit jika SPK DAN Label keduanya sudah ada
+                    if (row.label && row.spk_no) {
                         this.commitScan(row);
                     }
                 },
@@ -856,7 +961,7 @@
                     }
 
                     let trimmed = val.trim();
-                    if (trimmed.length >= 1) {
+                    if (trimmed.length >= 1 && row.spk_no) {
                         this._scanTimer = setTimeout(() => {
                             this.commitScan(row);
                         }, 500);
@@ -877,12 +982,20 @@
                     let labelVal = (row.label || (labelInputEl ? labelInputEl.value : '') || '').replace(/\t/g, '').trim();
                     let spkVal = (row.spk_no || (spkInputEl ? spkInputEl.value : '') || '').replace(/\t/g, '').trim();
                     let qtyVal = parseFloat(row.qty !== '' ? row.qty : (qtyInputEl ? qtyInputEl.value : 0)) || 0;
-                    let whseVal = (row.warehouse || (whseInputEl ? whseInputEl.value : '') || '').replace(/\t/g, '').trim();
+                    let whseVal = (row.warehouse || (whseInputEl ? whseInputEl.value : '') || '').replace(/\t/g, '').trim().toUpperCase();
 
-                    if (!labelVal || !spkVal) return;
+                    if (!spkVal) {
+                        this.localScanError = 'SPK Code belum diisi.';
+                        this.focusActiveSpk();
+                        return;
+                    }
+
+                    if (!labelVal) {
+                        return;
+                    }
 
                     // Client-side duplicate check
-                    let isDuplicate = this.localScans.some(r => r.cid !== row.cid && r.label === labelVal && r.spk_no === spkVal);
+                    let isDuplicate = this.localScans.some(r => r.cid !== row.cid && (r.label || '').trim() === labelVal && (r.spk_no || '').trim() === spkVal);
                     if (isDuplicate) {
                         this.localScanError = 'Label [' + labelVal + '] dengan SPK ini sudah terdaftar.';
                         if (typeof window.playTone === 'function') {
@@ -900,10 +1013,21 @@
                     row.qty = qtyVal;
                     row.warehouse = whseVal;
 
-                    // 1. Tambah baris baru di bawah (mewariskan SPK, Qty, Whse)
-                    this._addEmptyRow();
+                    // 1. Tambah baris baru di bawah
+                    this.ensureEmptyRow();
 
-                    // 2. Kirim ke Livewire di background
+                    // 2. Safety timeout 8s jika server lambat / timeout
+                    let rowCid = row.cid;
+                    setTimeout(() => {
+                        let stuck = this.localScans.find(i => i.cid === rowCid && i.status === 'syncing');
+                        if (stuck) {
+                            stuck.status = 'error';
+                            stuck.error = 'Waktu sinkronisasi habis (Timeout)';
+                            this.ensureEmptyRow();
+                        }
+                    }, 8000);
+
+                    // 3. Kirim ke Livewire di background
                     const wire = this.getWire();
                     if (wire) wire.addItem(labelVal, spkVal, qtyVal, whseVal, row.cid);
                 },
@@ -920,10 +1044,18 @@
                     }
                     if (!targetCid) return;
 
-                    this.localScans = this.localScans.filter(i => i.cid !== targetCid);
-                    if (!this.localScans.some(r => r.status === 'new')) {
-                        this._addEmptyRow();
+                    let targetRow = this.localScans.find(i => i.cid === targetCid);
+                    
+                    // Kalau satu-satunya baris dan berstatus 'new', cukup reset nilainya
+                    if (this.localScans.length === 1 && targetRow && targetRow.status === 'new') {
+                        this._resetActiveRow(targetRow);
+                        return;
                     }
+
+                    this.localScans = this.localScans.filter(i => i.cid !== targetCid);
+                    
+                    // Pastikan selalu ada baris 'new'
+                    this.ensureEmptyRow();
 
                     const wire = this.getWire();
                     if (wire) wire.removeItemByCid(targetCid);
@@ -934,6 +1066,18 @@
                     this.removeScan(cid);
                 },
 
+                resetSheet() {
+                    this.localScans = [];
+                    this.localScanError = '';
+                    const wire = this.getWire();
+                    if (wire) {
+                        wire.resetScanner();
+                        wire.set('scanned_items', []);
+                    }
+                    this.ensureEmptyRow();
+                    this.focusActiveSpk();
+                },
+
                 updateQty(item, newQty) {
                     item.qty = parseFloat(newQty) || 0;
                     const wire = this.getWire();
@@ -941,9 +1085,9 @@
                 },
 
                 updateWhse(item, newWhse) {
-                    item.warehouse = newWhse;
+                    item.warehouse = (newWhse || '').toUpperCase();
                     const wire = this.getWire();
-                    if (wire) wire.updateWhseByCid(item.cid, newWhse);
+                    if (wire) wire.updateWhseByCid(item.cid, item.warehouse);
                 },
 
                 updateLabel(item, newLabel) {
@@ -956,7 +1100,7 @@
                     let lastRow = this.localScans[this.localScans.length - 1];
                     let spk = lastRow ? lastRow.spk_no : '';
                     let qty = lastRow ? lastRow.qty : 50;
-                    let whse = this.currentWarehouse;
+                    let whse = (this.currentWarehouse || 'FG').toUpperCase();
                     
                     const wire = this.getWire();
                     if (wire) {
@@ -987,12 +1131,14 @@
                 getSummaryData() {
                     let groups = {};
                     this.localScans.forEach(row => {
-                        if (row.status === 'new') return;
-                        let key = (row.spk_no || '').trim() + '||' + (row.warehouse || '').trim();
+                        if (row.status === 'new' || row.status === 'error') return;
+                        let whse = (row.warehouse || '').trim().toUpperCase();
+                        let spk = (row.spk_no || '').trim();
+                        let key = spk + '||' + whse;
                         if (!groups[key]) {
                             groups[key] = {
-                                spk_no: row.spk_no,
-                                warehouse: row.warehouse,
+                                spk_no: spk,
+                                warehouse: whse,
                                 part_no: row.part_no,
                                 model_name: row.model_name,
                                 qty: 0,
@@ -1012,15 +1158,18 @@
                 },
 
                 removeSummaryGroup(summary) {
+                    let summaryWhse = (summary.warehouse || '').trim().toUpperCase();
+                    let summarySpk = (summary.spk_no || '').trim();
+
                     let toRemove = this.localScans.filter(i => 
-                        (i.spk_no || '').trim() === summary.spk_no && 
-                        (i.warehouse || '').trim() === summary.warehouse && 
+                        (i.spk_no || '').trim() === summarySpk && 
+                        (i.warehouse || '').trim().toUpperCase() === summaryWhse && 
                         i.status !== 'new'
                     );
                     
                     this.localScans = this.localScans.filter(i => {
-                        let match = (i.spk_no || '').trim() === summary.spk_no && 
-                                    (i.warehouse || '').trim() === summary.warehouse && 
+                        let match = (i.spk_no || '').trim() === summarySpk && 
+                                    (i.warehouse || '').trim().toUpperCase() === summaryWhse && 
                                     i.status !== 'new';
                         return !match;
                     });
@@ -1031,6 +1180,7 @@
                             wire.removeItemByCid(i.cid);
                         });
                     }
+                    this.ensureEmptyRow();
                     this.focusActiveSpk();
                 },
 
@@ -1056,12 +1206,9 @@
                         if (data.part_no) item.part_no = data.part_no;
                         if (data.model_name) item.model_name = data.model_name;
                     }
-                    // Pastikan ada baris 'new' setelah sukses (kalau belum ada, buat)
-                    if (!this.localScans.some(r => r.status === 'new')) {
-                        this._addEmptyRow();
-                    } else {
-                        this.$nextTick(() => this.focusActiveSpk());
-                    }
+                    // Pastikan selalu ada baris 'new' setelah sukses
+                    this.ensureEmptyRow();
+                    this.focusActiveSpk();
                 },
 
                 onScanError(event) {
@@ -1079,7 +1226,14 @@
                         window.playTone(100, 400, 'square', 0.6);
                         setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
                     }
-                    this.focusActiveSpk();
+                    
+                    this.ensureEmptyRow();
+                    let activeRow = this.localScans.find(r => r.status === 'new');
+                    if (activeRow) {
+                        this._resetActiveRow(activeRow);
+                    } else {
+                        this.focusActiveSpk();
+                    }
                 }
             };
         }
@@ -1124,80 +1278,4 @@
             box-shadow: 0 0 0 3px rgba(255,255,255,0.35);
         }
     </style>
-
-    {{-- Success Modal --}}
-    @if($showSuccessModal)
-        <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
-                <div class="p-8 text-center flex-1 overflow-y-auto custom-scrollbar">
-                    <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                    </div>
-                    <h3 class="text-2xl font-black text-gray-800 mb-2 tracking-tighter italic">PALLET CREATED!</h3>
-                    <p class="text-gray-500 mb-6 text-sm">Pallet ID: <span class="font-black text-blue-600 tracking-tight">{{ $lastGeneratedPalletId }}</span></p>
-                    
-                    {{-- SAP Sync Status Section --}}
-                    <div class="mb-8 p-4 rounded-2xl border-2 {{ $sapSyncStatus === 'pending' ? 'bg-blue-50 border-blue-100' : (empty($failedSapItems) ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100') }} transition-colors">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-[10px] font-black uppercase tracking-widest {{ $sapSyncStatus === 'pending' ? 'text-blue-500' : (empty($failedSapItems) ? 'text-green-600' : 'text-red-600') }}">
-                                SAP Integration Status
-                            </span>
-                            @if($sapSyncStatus === 'pending')
-                                <div class="flex items-center space-x-1">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.5s]"></div>
-                                </div>
-                            @endif
-                        </div>
-
-                        @if($sapSyncStatus === 'pending')
-                            <p class="text-xs font-bold text-blue-700 italic">Sinkronisasi ke SAP sedang berjalan di background...</p>
-                        @elseif(empty($failedSapItems))
-                            <p class="text-xs font-bold text-green-700">✅ Berhasil! Semua data terkirim ke SAP tanpa kendala.</p>
-                        @else
-                            <div class="space-y-3">
-                                <p class="text-xs font-black text-red-700 uppercase tracking-tighter">⚠️ Ada {{ count($failedSapItems) }} SPK yang gagal terkirim ke SAP:</p>
-                                <div class="overflow-hidden border border-red-200 rounded-xl">
-                                    <table class="w-full text-left text-[10px]">
-                                        <thead class="bg-red-100 text-red-700 font-black uppercase tracking-widest">
-                                            <tr>
-                                                <th class="px-3 py-2">SPK No</th>
-                                                <th class="px-3 py-2">Error Message</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-red-100 bg-white">
-                                            @foreach($failedSapItems as $failed)
-                                                <tr>
-                                                    <td class="px-3 py-2 font-black text-gray-800">{{ $failed['spk_no'] }}</td>
-                                                    <td class="px-3 py-2 font-bold text-red-600 italic break-words">{{ $failed['sap_error_msg'] }}</td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <button wire:click="retrySapSync" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-red-200">
-                                    RETRY SAP SYNC
-                                </button>
-                            </div>
-                        @endif
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <a href="{{ route('wms.pallet-form.print', $lastGeneratedPalletId) }}" target="_blank" 
-                            class="block py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 text-sm uppercase">
-                            Print Label
-                        </a>
-                        <button wire:click="resetWholeForm" type="button"
-                            class="block py-4 bg-slate-800 hover:bg-black text-white font-bold rounded-2xl transition-all active:scale-95 text-sm uppercase">
-                            Next Scan
-                        </button>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-8 py-4 text-center">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SAP Batch Processing v2.0</span>
-                </div>
-            </div>
-        </div>
-    @endif
 </div>

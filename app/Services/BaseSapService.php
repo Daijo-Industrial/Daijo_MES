@@ -166,8 +166,8 @@ class BaseSapService
     {
         try {
             $token = $this->getToken();
-            $timeout = (int) config('services.sap.post_timeout', 8);
-            $connectTimeout = (int) config('services.sap.connect_timeout', 3);
+            $timeout = (int) config('services.sap.post_timeout', 60);
+            $connectTimeout = (int) config('services.sap.connect_timeout', 10);
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $token,
