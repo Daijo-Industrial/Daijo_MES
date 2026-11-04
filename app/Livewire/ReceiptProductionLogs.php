@@ -290,10 +290,12 @@ class ReceiptProductionLogs extends Component
     }
 
     /**
-     * Manual push single SPK to SAP
+     * Manual push single SPK to SAP (Direct Live Execution)
      */
-    public function pushToSapManual(int $summaryId): void
+    public function pushToSapManual(int $summaryId, ?ReceiptProductionService $service = null): void
     {
+        $service = $service ?? app(ReceiptProductionService::class);
+
         try {
             // Cek apakah SPK ada dan bisa dikirim
             $summary = DB::table('production_summary')
@@ -309,42 +311,60 @@ class ReceiptProductionLogs extends Component
                 return;
             }
 
-            // Lock record di UI thread segera agar status berubah jadi "Processing" di UI
-            $locked = DB::table('production_summary')
-                ->where('id', $summaryId)
-                ->whereIn('sap_sent', [0, 3])
-                ->update(['sap_sent' => 2, 'updated_at' => now()]);
+            // Cari scanned data
+            $scannedData = DB::table('production_scanned_data')
+                ->where('spk_code', $summary->spk_code)
+                ->first();
 
-            if ($locked) {
-                // Dispatch job background
-                PushSingleReceiptProductionJob::dispatch($summaryId);
+            if (! $scannedData) {
+                DB::table('production_summary')
+                    ->where('id', $summaryId)
+                    ->update(['sap_sent' => 3, 'updated_at' => now()]);
 
-                if ($this->activeErrorModal && ($this->activeErrorModal['summary_id'] ?? null) === $summaryId) {
-                    $this->activeErrorModal = null;
-                }
+                $this->dispatch('push-notification', [
+                    'status' => 'error',
+                    'message' => "Scanned data tidak ditemukan untuk SPK {$summary->spk_code}",
+                ]);
 
-                $this->clearStatsCache();
+                return;
+            }
 
+            // Eksekusi langsung ke SAP (synchronous) tanpa harus antre di queue worker
+            $response = $service->pushSingleRecord($summary, $scannedData, false);
+
+            if ($this->activeErrorModal && ($this->activeErrorModal['summary_id'] ?? null) === $summaryId) {
+                $this->activeErrorModal = null;
+            }
+
+            $this->clearStatsCache();
+
+            if ($response['success']) {
                 $this->dispatch('push-notification', [
                     'status' => 'success',
-                    'message' => 'SPK ' . $summary->spk_code . ' sedang dikirim ke SAP di background',
+                    'message' => "SPK {$summary->spk_code} berhasil dikirim ke SAP",
                 ]);
             } else {
+                $errMsg = $response['message'] ?? 'Gagal dikirim ke SAP';
                 $this->dispatch('push-notification', [
-                    'status' => 'warning',
-                    'message' => 'SPK tidak dapat diproses (sedang dikirim atau sudah selesai)',
+                    'status' => 'error',
+                    'message' => "SPK {$summary->spk_code} gagal: {$errMsg}",
                 ]);
             }
 
         } catch (\Throwable $e) {
-            Log::error('Manual push dispatch error', [
+            Log::error('Manual direct push error', [
                 'summary_id' => $summaryId,
                 'error' => $e->getMessage(),
             ]);
 
+            DB::table('production_summary')
+                ->where('id', $summaryId)
+                ->where('sap_sent', 2)
+                ->update(['sap_sent' => 3, 'updated_at' => now()]);
+
             $this->dispatch('push-notification', [
                 'status' => 'error',
-                'message' => 'Gagal memulai proses: ' . $e->getMessage(),
+                'message' => 'Gagal mengirim: ' . $e->getMessage(),
             ]);
         }
     }

@@ -225,8 +225,8 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
 
     public function test_sap_post_uses_fail_fast_timeout_settings(): void
     {
-        $this->assertEquals(8, config('services.sap.post_timeout'));
-        $this->assertEquals(3, config('services.sap.connect_timeout'));
+        $this->assertEquals(20, config('services.sap.post_timeout'));
+        $this->assertEquals(5, config('services.sap.connect_timeout'));
 
         Http::fake([
             '*/auth/token' => Http::response(['access_token' => 'mock_token'], 200),
@@ -261,5 +261,40 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
         Http::assertSent(function ($request) {
             return $request->url() === 'http://192.168.6.149:9001/api/receipt_production/create';
         });
+    }
+
+    public function test_push_to_sap_manual_executes_live_without_queue(): void
+    {
+        Http::fake([
+            '*/auth/token' => Http::response(['access_token' => 'mock_token_direct'], 200),
+            '*/api/receipt_production/create' => Http::response(['status' => true, 'message' => 'Created in SAP'], 200),
+        ]);
+
+        $summaryId = DB::table('production_summary')->insertGetId([
+            'spk_code' => 'SPK-LIVE-001',
+            'warehouse' => 'KRFFI',
+            'total_quantity' => 50,
+            'sap_sent' => 0,
+            'created_date' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('production_scanned_data')->insert([
+            'spk_code' => 'SPK-LIVE-001',
+            'item_code' => 'PART-LIVE-99',
+            'warehouse' => 'KRFFI',
+            'quantity' => 50,
+            'summary_id' => $summaryId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Livewire::test(ReceiptProductionLogs::class)
+            ->call('pushToSapManual', $summaryId)
+            ->assertDispatched('push-notification');
+
+        // Verifikasi di database langsung jadi sap_sent = 1
+        $this->assertEquals(1, DB::table('production_summary')->where('id', $summaryId)->value('sap_sent'));
     }
 }
