@@ -432,13 +432,16 @@
                                 </button>
                                 @else
                                 <button wire:click="pushToSapManual({{ $row->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="pushToSapManual({{ $row->id }})"
                                         wire:confirm="Kirim SPK {{ $row->spk_code }} ke SAP sekarang?"
                                         style="background:#FEF3C7; border:1px solid #FDE68A; color:#B45309;
                                             padding:5px 10px; border-radius:2px; font-size:10px; font-weight:700;
                                             cursor:pointer; font-family:'IBM Plex Sans',sans-serif; 
                                             white-space:nowrap; width:100%; transition:all 0.2s;
                                             hover:background:#FCD34D;">
-                                    🚀 Kirim SAP
+                                    <span wire:loading.remove wire:target="pushToSapManual({{ $row->id }})">🚀 Kirim SAP</span>
+                                    <span wire:loading wire:target="pushToSapManual({{ $row->id }})">⏳ Mengirim...</span>
                                 </button>
                                 @endif
 
@@ -926,10 +929,12 @@
                     @if(!empty($activeErrorModal['summary_id']))
                         <button type="button"
                                 wire:click="pushToSapManual({{ $activeErrorModal['summary_id'] }})"
+                                wire:loading.attr="disabled"
+                                wire:target="pushToSapManual"
                                 wire:confirm="Kirim ulang SPK {{ $activeErrorModal['spk_code'] }} ke SAP sekarang?"
                                 style="background:#2563EB; color:#fff; border:none; border-radius:4px; padding:7px 14px; font-size:11px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s; hover:background:#1D4ED8;">
-                            <span>🚀</span>
-                            <span>Kirim Ulang Sekarang</span>
+                            <span wire:loading.remove wire:target="pushToSapManual">🚀 Kirim Ulang Sekarang</span>
+                            <span wire:loading wire:target="pushToSapManual">⏳ Mengirim...</span>
                         </button>
 
                         <button type="button"

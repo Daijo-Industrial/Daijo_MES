@@ -83,7 +83,8 @@ class BaseSapService
                 'Host' => 'localhost',
                 'Content-Type' => 'application/json',
             ])
-                ->timeout(30)
+                ->timeout(10)
+                ->connectTimeout(3)
                 ->post($this->authUrl, [
                     'CompanyDB' => config('services.sap.company_db', env('SAP_COMPANY_DB')),
                     'Username' => config('services.sap.username', env('SAP_USERNAME')),
