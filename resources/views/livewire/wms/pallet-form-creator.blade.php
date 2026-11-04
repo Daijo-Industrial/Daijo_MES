@@ -1,345 +1,11 @@
 <div class="p-6 bg-gray-50 min-h-screen" 
-     x-data="{ 
-        plant: '{{ $plant }}',
-        currentWarehouse: '{{ $plant === 'KARAWANG' ? 'KRFG' : 'FG' }}',
-        localScans: [],
-        localScanError: '',
-        _scanTimer: null,
-        setPlant(newPlant) {
-            this.plant = newPlant;
-            this.currentWarehouse = (newPlant === 'KARAWANG') ? 'KRFG' : 'FG';
-            @this.setPlant(newPlant);
-        },
-        initScans(items) {
-            this.localScans = items.map(item => ({
-                cid: item.cid || 'c_' + Math.random().toString(36).substr(2, 5),
-                label: item.label,
-                spk_no: item.spk_no,
-                part_no: item.part_no,
-                model_name: item.model_name,
-                qty: item.qty,
-                warehouse: item.warehouse || '',
-                status: 'success',
-                error: null
-            }));
-            this._addEmptyRow();
-        },
-        focusActiveSpk() {
-            let tryFocus = () => {
-                let activeIdx = this.localScans.map(r => r.status).lastIndexOf('new');
-                if (activeIdx < 0) {
-                    activeIdx = this.localScans.length - 1;
-                }
-                if (activeIdx >= 0) {
-                    let isMobile = window.innerWidth < 768;
-                    let el = isMobile 
-                        ? (document.getElementById('spk_input_mobile_' + activeIdx) || document.getElementById('spk_input_' + activeIdx))
-                        : (document.getElementById('spk_input_' + activeIdx) || document.getElementById('spk_input_mobile_' + activeIdx));
-                    if (el && !el.disabled) {
-                        el.focus();
-                        el.select();
-                        return true;
-                    }
-                }
-                return false;
-            };
-
-            // Immediate attempt
-            if (!tryFocus()) {
-                this.$nextTick(() => {
-                    if (!tryFocus()) {
-                        setTimeout(tryFocus, 30);
-                        setTimeout(tryFocus, 80);
-                        setTimeout(tryFocus, 160);
-                    }
-                });
-            } else {
-                this.$nextTick(() => tryFocus());
-                setTimeout(tryFocus, 40);
-                setTimeout(tryFocus, 100);
-            }
-        },
-        _addEmptyRow() {
-            this.localScans.push({
-                cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                label: '',
-                spk_no: '',
-                qty: '',
-                warehouse: '',
-                part_no: '',
-                model_name: '',
-                status: 'new',
-                error: null
-            });
-            this.focusActiveSpk();
-        },
-        _resetActiveRow(idx) {
-            let row = this.localScans[idx];
-            if (row && row.status === 'new') {
-                row.label = '';
-                row.spk_no = '';
-                row.qty = '';
-                row.warehouse = '';
-            }
-            this.focusActiveSpk();
-        },
-        handleCompositeBarcode(val, idx) {
-            if (!val || !val.includes('\t')) return false;
-            let parts = val.split('\t').map(s => s.trim());
-            // Format Barcode Daijo: [SPK] \t [Qty] \t [Warehouse] \t [Label] (\t)
-            if (parts.length >= 4 && parts[0]) {
-                let row = this.localScans[idx];
-                if (!row || row.status !== 'new') return false;
-
-                row.spk_no = parts[0];
-                row.qty = parseFloat(parts[1]) || 0;
-                row.warehouse = parts[2] || '';
-                row.label = parts[3] || '';
-
-                // Sinkronkan plant secara otomatis dari warehouse barcode
-                if (row.warehouse) {
-                    let whUpper = row.warehouse.toUpperCase();
-                    if (whUpper.startsWith('KR') || whUpper.includes('KARAWANG')) {
-                        if (this.plant !== 'KARAWANG') {
-                            this.plant = 'KARAWANG';
-                            @this.setPlant('KARAWANG');
-                        }
-                    } else if (whUpper === 'FG' || whUpper === 'FFI') {
-                        if (this.plant !== 'KBN') {
-                            this.plant = 'KBN';
-                            @this.setPlant('KBN');
-                        }
-                    }
-                }
-
-                this.$nextTick(() => {
-                    this.commitScan(idx);
-                });
-                return true;
-            }
-            return false;
-        },
-        onSpkInput(idx) {
-            let row = this.localScans[idx];
-            if (!row || row.status !== 'new') return;
-            let val = row.spk_no || '';
-
-            if (val.includes('\t')) {
-                if (this.handleCompositeBarcode(val, idx)) {
-                    return;
-                }
-                let parts = val.split('\t').map(s => s.trim());
-                if (parts.length >= 2 && parts[0]) {
-                    row.spk_no = parts[0];
-                    if (parts[1]) row.qty = parseFloat(parts[1]) || row.qty;
-                    let next = document.getElementById('qty_input_' + idx) || document.getElementById('qty_input_mobile_' + idx);
-                    if (next) { next.focus(); next.select(); }
-                    return;
-                }
-            }
-        },
-        handleSpkEnter(idx) {
-            let row = this.localScans[idx];
-            if (!row || row.status !== 'new') return;
-            if (this.handleCompositeBarcode(row.spk_no, idx)) {
-                return;
-            }
-            if (row.spk_no && row.label) {
-                this.commitScan(idx);
-                return;
-            }
-            let el = document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx);
-            if (el) { el.focus(); el.select(); }
-        },
-        onLabelInput(idx) {
-            clearTimeout(this._scanTimer);
-            let row = this.localScans[idx];
-            if (!row || row.status !== 'new') return;
-            let val = row.label || '';
-
-            if (val.includes('\t')) {
-                if (this.handleCompositeBarcode(val, idx)) {
-                    return;
-                }
-                // Jika barcode memiliki tab di akhir label (e.g. "123\t")
-                row.label = val.replace(/\t/g, '').trim();
-                this.$nextTick(() => {
-                    this.commitScan(idx);
-                });
-                return;
-            }
-
-            let trimmed = val.trim();
-            if (trimmed.length >= 1) {
-                this._scanTimer = setTimeout(() => {
-                    this.commitScan(idx);
-                }, 400);
-            }
-        },
-        commitScan(idx) {
-            clearTimeout(this._scanTimer);
-            let row = this.localScans[idx];
-            if (!row || row.status !== 'new') return;
-
-            let labelVal = (row.label || '').replace(/\t/g, '').trim();
-            let spkVal = (row.spk_no || '').replace(/\t/g, '').trim();
-            let qtyVal = parseFloat(row.qty) || 0;
-            let whseVal = (row.warehouse || '').replace(/\t/g, '').trim();
-
-            if (!labelVal || !spkVal) return;
-
-            // Client-side duplicate check
-            let isDuplicate = this.localScans.some((r, i) => i !== idx && r.label === labelVal && r.spk_no === spkVal);
-            if (isDuplicate) {
-                this.localScanError = 'Label [' + labelVal + '] dengan SPK ini sudah terdaftar.';
-                if (typeof window.playTone === 'function') {
-                    window.playTone(100, 400, 'square', 0.6);
-                    setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
-                }
-                // Reset row and focus back to SPK
-                this._resetActiveRow(idx);
-                return;
-            }
-
-            this.localScanError = '';
-            row.status = 'syncing';
-            row.label = labelVal;
-            row.spk_no = spkVal;
-            row.qty = qtyVal;
-            row.warehouse = whseVal;
-
-            // 1. Tambah baris baru di bawah
-            this._addEmptyRow();
-
-            // 2. FOKUS LANGSUNG ke input SPK Code di baris baru
-            this.focusActiveSpk();
-
-            // 3. Kirim ke Livewire di background
-            @this.addItem(labelVal, spkVal, qtyVal, whseVal, row.cid);
-        },
-        removeScan(item) {
-            this.localScans = this.localScans.filter(i => i.cid !== item.cid);
-            @this.removeItemByCid(item.cid);
-        },
-        updateQty(item, newQty) {
-            item.qty = parseFloat(newQty) || 0;
-            @this.updateQtyByCid(item.cid, newQty);
-        },
-        updateWhse(item, newWhse) {
-            item.warehouse = newWhse;
-            @this.updateWhseByCid(item.cid, newWhse);
-        },
-        updateLabel(item, newLabel) {
-            item.label = newLabel;
-            @this.updateLabelByCid(item.cid, newLabel);
-        },
-        addNoLabelRow() {
-            let lastRow = this.localScans[this.localScans.length - 1];
-            let spk = lastRow ? lastRow.spk_no : '';
-            let qty = lastRow ? lastRow.qty : 50;
-            let whse = this.currentWarehouse;
-            
-            @this.set('label_mode', 'NO_LABEL');
-            @this.set('scan_qty', qty);
-            @this.set('scan_box_count', 1);
-            @this.set('no_label_reason', 'Box Lama');
-            
-            let cid = 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-            
-            // Masukkan secara lokal sebelum index baris input baru
-            this.localScans.splice(this.localScans.length - 1, 0, {
-                cid: cid,
-                label: null,
-                spk_no: spk,
-                part_no: 'Loading...',
-                model_name: 'Syncing...',
-                qty: qty,
-                warehouse: whse,
-                status: 'syncing',
-                error: null
-            });
-            
-            @this.addItem('', '', qty, whse, cid);
-        },
-        getSummaryData() {
-            let groups = {};
-            this.localScans.forEach(row => {
-                if (row.status === 'new') return;
-                let key = (row.spk_no || '').trim() + '||' + (row.warehouse || '').trim();
-                if (!groups[key]) {
-                    groups[key] = {
-                        spk_no: row.spk_no,
-                        warehouse: row.warehouse,
-                        part_no: row.part_no,
-                        model_name: row.model_name,
-                        qty: 0,
-                        boxes: 0
-                    };
-                }
-                groups[key].qty += parseFloat(row.qty) || 0;
-                groups[key].boxes += 1;
-                if (row.part_no && row.part_no !== 'Loading...') {
-                    groups[key].part_no = row.part_no;
-                }
-                if (row.model_name && row.model_name !== 'Syncing...') {
-                    groups[key].model_name = row.model_name;
-                }
-            });
-            return Object.values(groups);
-        },
-        removeSummaryGroup(summary) {
-            let toRemove = this.localScans.filter(i => 
-                (i.spk_no || '').trim() === summary.spk_no && 
-                (i.warehouse || '').trim() === summary.warehouse && 
-                i.status !== 'new'
-            );
-            
-            // Filter localScans
-            this.localScans = this.localScans.filter(i => {
-                let match = (i.spk_no || '').trim() === summary.spk_no && 
-                            (i.warehouse || '').trim() === summary.warehouse && 
-                            i.status !== 'new';
-                return !match;
-            });
-            
-            // Remove from Livewire array
-            toRemove.forEach(i => {
-                @this.removeItemByCid(i.cid);
-            });
-        }
-     }"
-     x-init="
-        initScans(@js($scanned_items));
-        focusActiveSpk();
-        $watch('$wire.scanned_items', value => {
-            if (value.length === 0) {
-                initScans([]);
-                focusActiveSpk();
-            }
-        });
-     "
-     x-on:scan-success.window="
-        let item = localScans.find(i => i.cid === $event.detail.cid);
-        if (item) {
-            item.status = 'success';
-            item.part_no = $event.detail.part_no;
-            item.model_name = $event.detail.model_name;
-        }
-        focusActiveSpk();
-     "
-     x-on:scan-error.window="
-        let errItem = localScans.find(i => i.cid === $event.detail.cid);
-        if (errItem) {
-            // Remove the failed syncing row entirely
-            localScans = localScans.filter(i => i.cid !== errItem.cid);
-            localScanError = $event.detail.message || 'Scan error';
-            if (typeof window.playTone === 'function') {
-                window.playTone(100, 400, 'square', 0.6);
-                setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
-            }
-            focusActiveSpk();
-        }
-     "
+     x-data="palletFormCreator({
+         initialPlant: '{{ $plant }}',
+         initialScans: @js($scanned_items)
+     })"
+     x-init="init()"
+     x-on:scan-success.window="onScanSuccess($event)"
+     x-on:scan-error.window="onScanError($event)"
      @if($showSuccessModal && $sapSyncStatus === 'pending') wire:poll.2s="checkSapSyncStatus" @endif>
     <div class="max-w-7xl mx-auto space-y-6">
 
@@ -391,6 +57,16 @@
                 <p class="text-red-700 font-medium">{{ session('error') }}</p>
             </div>
         @endif
+
+        <div x-show="localScanError" x-cloak class="bg-red-100 border-l-4 border-red-500 p-4 rounded-xl flex items-center justify-between shadow-sm mb-4">
+            <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <p class="text-red-800 font-bold text-sm" x-text="localScanError"></p>
+            </div>
+            <button type="button" @click="localScanError = ''" class="text-red-600 hover:text-red-800 font-black text-xs px-2.5 py-1 bg-white rounded-lg border border-red-200">
+                ✕ TUTUP
+            </button>
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -578,6 +254,7 @@
                                                    :id="'spk_input_' + idx"
                                                    x-model="item.spk_no"
                                                    @input="onSpkInput(idx)"
+                                                   @keydown.tab="handleSpkTab($event, idx)"
                                                    @keydown.enter.prevent="handleSpkEnter(idx)"
                                                    :disabled="item.status !== 'new'"
                                                    placeholder="SPK Code"
@@ -598,6 +275,7 @@
                                                    :id="'qty_input_' + idx"
                                                    :value="item.qty"
                                                    @change="updateQty(item, $event.target.value)"
+                                                   @keydown.enter.prevent="handleQtyEnter(idx)"
                                                    :disabled="item.status === 'syncing'"
                                                    class="w-20 px-2 py-1 text-right border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 transition-all">
                                         </td>
@@ -608,6 +286,7 @@
                                                    :id="'whse_input_' + idx"
                                                    x-model="item.warehouse"
                                                    @change="updateWhse(item, $event.target.value)"
+                                                   @keydown.enter.prevent="handleWhseEnter(idx)"
                                                    :disabled="item.status === 'syncing'"
                                                    placeholder="Whse"
                                                    class="w-16 px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 disabled:border-transparent transition-all uppercase">
@@ -699,6 +378,7 @@
                                            :id="'spk_input_mobile_' + idx"
                                            x-model="item.spk_no"
                                            @input="onSpkInput(idx)"
+                                           @keydown.tab="handleSpkTab($event, idx)"
                                            @keydown.enter.prevent="handleSpkEnter(idx)"
                                            :disabled="item.status !== 'new'"
                                            placeholder="SPK Code"
@@ -717,6 +397,7 @@
                                             <input type="number"
                                                    :value="item.qty"
                                                    @change="updateQty(item, $event.target.value)"
+                                                   @keydown.enter.prevent="handleQtyEnter(idx)"
                                                    :disabled="item.status === 'syncing'"
                                                    class="w-full px-2 py-1 border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700">
                                         </div>
@@ -727,6 +408,7 @@
                                                        :id="'whse_input_mobile_' + idx"
                                                        x-model="item.warehouse"
                                                        @change="updateWhse(item, $event.target.value)"
+                                                       @keydown.enter.prevent="handleWhseEnter(idx)"
                                                        :disabled="item.status === 'syncing'"
                                                        placeholder="Whse"
                                                        class="w-full px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 uppercase">
@@ -824,8 +506,403 @@
                 </div>
 
     <script>
+        function palletFormCreator(config) {
+            return {
+                plant: config.initialPlant,
+                currentWarehouse: (config.initialPlant === 'KARAWANG') ? 'KRFG' : 'FG',
+                localScans: [],
+                localScanError: '',
+                _scanTimer: null,
+
+                init() {
+                    this.initScans(config.initialScans || []);
+                    this.focusActiveSpk();
+                    this.$watch('$wire.scanned_items', (value) => {
+                        if (!value || value.length === 0) {
+                            this.initScans([]);
+                            this.focusActiveSpk();
+                        }
+                    });
+                },
+
+                getWire() {
+                    return this.$wire || (window.Livewire ? window.Livewire.find('{{ $_instance->getId() }}') : null);
+                },
+
+                setPlant(newPlant) {
+                    this.plant = newPlant;
+                    this.currentWarehouse = (newPlant === 'KARAWANG') ? 'KRFG' : 'FG';
+                    const wire = this.getWire();
+                    if (wire) wire.setPlant(newPlant);
+                },
+
+                initScans(items) {
+                    this.localScans = (items || []).map(item => ({
+                        cid: item.cid || 'c_' + Math.random().toString(36).substr(2, 5),
+                        label: item.label,
+                        spk_no: item.spk_no,
+                        part_no: item.part_no,
+                        model_name: item.model_name,
+                        qty: item.qty,
+                        warehouse: item.warehouse || '',
+                        status: 'success',
+                        error: null
+                    }));
+                    this._addEmptyRow();
+                },
+
+                focusActiveSpk() {
+                    const doFocus = () => {
+                        let activeIdx = this.localScans.map(r => r.status).lastIndexOf('new');
+                        if (activeIdx < 0) {
+                            activeIdx = this.localScans.length - 1;
+                        }
+                        if (activeIdx >= 0) {
+                            const isMobile = window.innerWidth < 768;
+                            const el = isMobile 
+                                ? (document.getElementById('spk_input_mobile_' + activeIdx) || document.getElementById('spk_input_' + activeIdx))
+                                : (document.getElementById('spk_input_' + activeIdx) || document.getElementById('spk_input_mobile_' + activeIdx));
+                            if (el && !el.disabled) {
+                                el.focus();
+                                el.select();
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+
+                    if (doFocus()) return;
+
+                    this.$nextTick(() => {
+                        if (doFocus()) return;
+                        setTimeout(doFocus, 25);
+                        setTimeout(doFocus, 75);
+                        setTimeout(doFocus, 150);
+                        setTimeout(doFocus, 300);
+                    });
+                },
+
+                _addEmptyRow() {
+                    this.localScans.push({
+                        cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                        label: '',
+                        spk_no: '',
+                        qty: '',
+                        warehouse: '',
+                        part_no: '',
+                        model_name: '',
+                        status: 'new',
+                        error: null
+                    });
+                    this.focusActiveSpk();
+                },
+
+                _resetActiveRow(idx) {
+                    let row = this.localScans[idx];
+                    if (row && row.status === 'new') {
+                        row.label = '';
+                        row.spk_no = '';
+                        row.qty = '';
+                        row.warehouse = '';
+                    }
+                    this.focusActiveSpk();
+                },
+
+                handleCompositeBarcode(val, idx) {
+                    if (!val || !val.includes('\t')) return false;
+                    let parts = val.split('\t').map(s => s.trim());
+                    // Format Barcode: [SPK] \t [Qty] \t [Warehouse] \t [Label] (\t)
+                    if (parts.length >= 4 && parts[0]) {
+                        let row = this.localScans[idx];
+                        if (!row || row.status !== 'new') return false;
+
+                        row.spk_no = parts[0];
+                        row.qty = parseFloat(parts[1]) || 0;
+                        row.warehouse = parts[2] || '';
+                        row.label = parts[3] || '';
+
+                        // Sinkronkan plant secara otomatis dari warehouse barcode
+                        if (row.warehouse) {
+                            let whUpper = row.warehouse.toUpperCase();
+                            if (whUpper.startsWith('KR') || whUpper.includes('KARAWANG')) {
+                                if (this.plant !== 'KARAWANG') {
+                                    this.setPlant('KARAWANG');
+                                }
+                            } else if (whUpper === 'FG' || whUpper === 'FFI') {
+                                if (this.plant !== 'KBN') {
+                                    this.setPlant('KBN');
+                                }
+                            }
+                        }
+
+                        this.$nextTick(() => {
+                            this.commitScan(idx);
+                        });
+                        return true;
+                    }
+                    return false;
+                },
+
+                onSpkInput(idx) {
+                    let row = this.localScans[idx];
+                    if (!row || row.status !== 'new') return;
+                    let val = row.spk_no || '';
+
+                    if (val.includes('\t')) {
+                        if (this.handleCompositeBarcode(val, idx)) {
+                            return;
+                        }
+                        let parts = val.split('\t').map(s => s.trim());
+                        if (parts.length >= 2 && parts[0]) {
+                            row.spk_no = parts[0];
+                            if (parts[1]) row.qty = parseFloat(parts[1]) || row.qty;
+                            let next = document.getElementById('whse_input_' + idx) || document.getElementById('whse_input_mobile_' + idx);
+                            if (next) { next.focus(); next.select(); }
+                            return;
+                        }
+                    }
+                },
+
+                handleSpkTab(e, idx) {
+                    let row = this.localScans[idx];
+                    if (!row || row.status !== 'new') return;
+                    if (row.spk_no && row.spk_no.includes('\t')) {
+                        e.preventDefault();
+                        this.handleCompositeBarcode(row.spk_no, idx);
+                    }
+                },
+
+                handleSpkEnter(idx) {
+                    let row = this.localScans[idx];
+                    if (!row || row.status !== 'new') return;
+                    if (this.handleCompositeBarcode(row.spk_no, idx)) {
+                        return;
+                    }
+                    if (row.spk_no && row.label) {
+                        this.commitScan(idx);
+                        return;
+                    }
+                    let el = document.getElementById('qty_input_' + idx) || document.getElementById('qty_input_mobile_' + idx);
+                    if (el) { el.focus(); el.select(); }
+                },
+
+                handleQtyEnter(idx) {
+                    let el = document.getElementById('whse_input_' + idx) || document.getElementById('whse_input_mobile_' + idx);
+                    if (el) { el.focus(); el.select(); }
+                },
+
+                handleWhseEnter(idx) {
+                    let el = document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx);
+                    if (el) { el.focus(); el.select(); }
+                },
+
+                onLabelInput(idx) {
+                    clearTimeout(this._scanTimer);
+                    let row = this.localScans[idx];
+                    if (!row || row.status !== 'new') return;
+                    let val = row.label || '';
+
+                    if (val.includes('\t')) {
+                        if (this.handleCompositeBarcode(val, idx)) {
+                            return;
+                        }
+                        // Trailing tab pada label barcode
+                        row.label = val.replace(/\t/g, '').trim();
+                        this.$nextTick(() => {
+                            this.commitScan(idx);
+                        });
+                        return;
+                    }
+
+                    let trimmed = val.trim();
+                    if (trimmed.length >= 1) {
+                        this._scanTimer = setTimeout(() => {
+                            this.commitScan(idx);
+                        }, 400);
+                    }
+                },
+
+                commitScan(idx) {
+                    clearTimeout(this._scanTimer);
+                    let row = this.localScans[idx];
+                    if (!row || row.status !== 'new') return;
+
+                    let labelVal = (row.label || '').replace(/\t/g, '').trim();
+                    let spkVal = (row.spk_no || '').replace(/\t/g, '').trim();
+                    let qtyVal = parseFloat(row.qty) || 0;
+                    let whseVal = (row.warehouse || '').replace(/\t/g, '').trim();
+
+                    if (!labelVal || !spkVal) return;
+
+                    // Client-side duplicate check
+                    let isDuplicate = this.localScans.some((r, i) => i !== idx && r.label === labelVal && r.spk_no === spkVal);
+                    if (isDuplicate) {
+                        this.localScanError = 'Label [' + labelVal + '] dengan SPK ini sudah terdaftar.';
+                        if (typeof window.playTone === 'function') {
+                            window.playTone(100, 400, 'square', 0.6);
+                            setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
+                        }
+                        this._resetActiveRow(idx);
+                        return;
+                    }
+
+                    this.localScanError = '';
+                    row.status = 'syncing';
+                    row.label = labelVal;
+                    row.spk_no = spkVal;
+                    row.qty = qtyVal;
+                    row.warehouse = whseVal;
+
+                    // 1. Tambah baris baru di bawah
+                    this._addEmptyRow();
+
+                    // 2. FOKUS LANGSUNG ke input SPK Code di baris baru
+                    this.focusActiveSpk();
+
+                    // 3. Kirim ke Livewire di background
+                    const wire = this.getWire();
+                    if (wire) wire.addItem(labelVal, spkVal, qtyVal, whseVal, row.cid);
+                },
+
+                removeScan(item) {
+                    this.localScans = this.localScans.filter(i => i.cid !== item.cid);
+                    const wire = this.getWire();
+                    if (wire) wire.removeItemByCid(item.cid);
+                    this.focusActiveSpk();
+                },
+
+                removeLocalScan(cid) {
+                    let item = this.localScans.find(i => i.cid === cid);
+                    if (item) this.removeScan(item);
+                },
+
+                updateQty(item, newQty) {
+                    item.qty = parseFloat(newQty) || 0;
+                    const wire = this.getWire();
+                    if (wire) wire.updateQtyByCid(item.cid, newQty);
+                },
+
+                updateWhse(item, newWhse) {
+                    item.warehouse = newWhse;
+                    const wire = this.getWire();
+                    if (wire) wire.updateWhseByCid(item.cid, newWhse);
+                },
+
+                updateLabel(item, newLabel) {
+                    item.label = newLabel;
+                    const wire = this.getWire();
+                    if (wire) wire.updateLabelByCid(item.cid, newLabel);
+                },
+
+                addNoLabelRow() {
+                    let lastRow = this.localScans[this.localScans.length - 1];
+                    let spk = lastRow ? lastRow.spk_no : '';
+                    let qty = lastRow ? lastRow.qty : 50;
+                    let whse = this.currentWarehouse;
+                    
+                    const wire = this.getWire();
+                    if (wire) {
+                        wire.set('label_mode', 'NO_LABEL');
+                        wire.set('scan_qty', qty);
+                        wire.set('scan_box_count', 1);
+                        wire.set('no_label_reason', 'Box Lama');
+                    }
+                    
+                    let cid = 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+                    
+                    this.localScans.splice(this.localScans.length - 1, 0, {
+                        cid: cid,
+                        label: null,
+                        spk_no: spk,
+                        part_no: 'Loading...',
+                        model_name: 'Syncing...',
+                        qty: qty,
+                        warehouse: whse,
+                        status: 'syncing',
+                        error: null
+                    });
+                    
+                    if (wire) wire.addItem('', '', qty, whse, cid);
+                    this.focusActiveSpk();
+                },
+
+                getSummaryData() {
+                    let groups = {};
+                    this.localScans.forEach(row => {
+                        if (row.status === 'new') return;
+                        let key = (row.spk_no || '').trim() + '||' + (row.warehouse || '').trim();
+                        if (!groups[key]) {
+                            groups[key] = {
+                                spk_no: row.spk_no,
+                                warehouse: row.warehouse,
+                                part_no: row.part_no,
+                                model_name: row.model_name,
+                                qty: 0,
+                                boxes: 0
+                            };
+                        }
+                        groups[key].qty += parseFloat(row.qty) || 0;
+                        groups[key].boxes += 1;
+                        if (row.part_no && row.part_no !== 'Loading...') {
+                            groups[key].part_no = row.part_no;
+                        }
+                        if (row.model_name && row.model_name !== 'Syncing...') {
+                            groups[key].model_name = row.model_name;
+                        }
+                    });
+                    return Object.values(groups);
+                },
+
+                removeSummaryGroup(summary) {
+                    let toRemove = this.localScans.filter(i => 
+                        (i.spk_no || '').trim() === summary.spk_no && 
+                        (i.warehouse || '').trim() === summary.warehouse && 
+                        i.status !== 'new'
+                    );
+                    
+                    this.localScans = this.localScans.filter(i => {
+                        let match = (i.spk_no || '').trim() === summary.spk_no && 
+                                    (i.warehouse || '').trim() === summary.warehouse && 
+                                    i.status !== 'new';
+                        return !match;
+                    });
+                    
+                    const wire = this.getWire();
+                    if (wire) {
+                        toRemove.forEach(i => {
+                            wire.removeItemByCid(i.cid);
+                        });
+                    }
+                    this.focusActiveSpk();
+                },
+
+                onScanSuccess(event) {
+                    let item = this.localScans.find(i => i.cid === event.detail.cid);
+                    if (item) {
+                        item.status = 'success';
+                        item.part_no = event.detail.part_no;
+                        item.model_name = event.detail.model_name;
+                    }
+                    this.focusActiveSpk();
+                },
+
+                onScanError(event) {
+                    let errItem = this.localScans.find(i => i.cid === event.detail.cid);
+                    if (errItem) {
+                        this.localScans = this.localScans.filter(i => i.cid !== errItem.cid);
+                        this.localScanError = event.detail.message || 'Scan error';
+                        if (typeof window.playTone === 'function') {
+                            window.playTone(100, 400, 'square', 0.6);
+                            setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
+                        }
+                        this.focusActiveSpk();
+                    }
+                }
+            };
+        }
+        window.palletFormCreator = palletFormCreator;
+
         document.addEventListener('livewire:init', () => {
-            // Audio Feedback Logic
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
             window.playTone = function(frequency, duration, type = 'sine', volume = 0.1) {
@@ -855,31 +932,6 @@
                 window.playTone(100, 400, 'square', 0.6); 
                 setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
             });
-        });
-
-        // Enter key navigation in the grid: SPK -> Qty -> Whse -> Label
-        document.addEventListener('keydown', (e) => {
-            if (e.key !== 'Enter') return;
-
-            const active = document.activeElement;
-            if (!active || !active.id) return;
-
-            if (active.id.startsWith('spk_input_')) {
-                e.preventDefault();
-                let idx = active.id.replace('spk_input_', '');
-                let next = document.getElementById('qty_input_' + idx);
-                if (next) next.focus();
-            } else if (active.id.startsWith('qty_input_')) {
-                e.preventDefault();
-                let idx = active.id.replace('qty_input_', '');
-                let next = document.getElementById('whse_input_' + idx);
-                if (next) next.focus();
-            } else if (active.id.startsWith('whse_input_')) {
-                e.preventDefault();
-                let idx = active.id.replace('whse_input_', '');
-                let next = document.getElementById('label_input_' + idx);
-                if (next) next.focus();
-            }
         });
     </script>
 
