@@ -327,7 +327,7 @@ class PalletFormCreator extends Component
     public function removeItemByCid($cid): void
     {
         $this->scanned_items = array_values(array_filter($this->scanned_items, function ($item) use ($cid) {
-            return ($item['cid'] ?? null) !== $cid;
+            return (string) ($item['cid'] ?? '') !== (string) $cid;
         }));
         $this->calculateTotals();
     }
