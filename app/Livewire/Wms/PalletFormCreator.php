@@ -82,6 +82,12 @@ class PalletFormCreator extends Component
         'delivery_shift' => 'required',
     ];
 
+    protected $messages = [
+        'delivery_name.required' => 'Nama pengirim (Delivery Name) wajib diisi sebelum generate palet.',
+        'delivery_shift.required' => 'Shift delivery wajib dipilih.',
+        'prod_date.required' => 'Tanggal produksi wajib diisi.',
+    ];
+
     public function mount(?bool $isDelivery = null, ?string $plant = null): void
     {
         $this->prod_date = \App\Services\WmsDeliveryRecapService::getCurrentProductionDate();
@@ -518,6 +524,7 @@ class PalletFormCreator extends Component
 
             $this->lastGeneratedPalletId = $palletId;
             $this->showSuccessModal = true;
+            $this->dispatch('pallet-created', ['palletId' => $palletId]);
 
             // Trigger SAP Sync in Background
             \App\Jobs\SyncPalletToSapJob::dispatch($palletId);
