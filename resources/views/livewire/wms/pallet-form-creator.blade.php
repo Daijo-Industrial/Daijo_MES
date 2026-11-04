@@ -669,6 +669,13 @@
                 },
 
                 _addEmptyRow() {
+                    // Guard: jangan buat baris baru kalau sudah ada 'new' row
+                    if (this.localScans.some(r => r.status === 'new')) {
+                        this.focusActiveSpk();
+                        return;
+                    }
+
+                    // Inherit Qty & Whse saja — SPK TIDAK diwariskan (user harus scan ulang)
                     let lastRow = null;
                     for (let i = this.localScans.length - 1; i >= 0; i--) {
                         if (this.localScans[i].status !== 'new' && this.localScans[i].spk_no) {
@@ -677,14 +684,13 @@
                         }
                     }
 
-                    let nextSpk = lastRow ? lastRow.spk_no : '';
                     let nextQty = lastRow ? lastRow.qty : '';
                     let nextWhse = lastRow ? lastRow.warehouse : (this.currentWarehouse || '');
 
                     this.localScans.push({
                         cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                         label: '',
-                        spk_no: nextSpk,
+                        spk_no: '',
                         qty: nextQty,
                         warehouse: nextWhse,
                         part_no: '',
@@ -693,8 +699,7 @@
                         error: null
                     });
 
-                    // Fokus selalu kembali ke SPK Code baris baru
-                    this.focusActiveSpk();
+                    this.$nextTick(() => this.focusActiveSpk());
                 },
 
                 _resetActiveRow(itemOrIdx) {
@@ -1037,12 +1042,11 @@
                         if (data.part_no) item.part_no = data.part_no;
                         if (data.model_name) item.model_name = data.model_name;
                     }
-                    // Kalau baris aktif sudah ada SPK-nya (inherit), fokus langsung ke label
-                    let activeRow = this.localScans.find(r => r.status === 'new');
-                    if (activeRow && activeRow.spk_no) {
-                        this.focusActiveLabel();
+                    // Pastikan ada baris 'new' setelah sukses (kalau belum ada, buat)
+                    if (!this.localScans.some(r => r.status === 'new')) {
+                        this._addEmptyRow();
                     } else {
-                        this.focusActiveSpk();
+                        this.$nextTick(() => this.focusActiveSpk());
                     }
                 },
 
@@ -1095,6 +1099,7 @@
 
             Livewire.on('scan-error', () => {
                 window.playTone(100, 400, 'square', 0.6); 
+                setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
                 setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
             });
         });
