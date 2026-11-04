@@ -4,6 +4,7 @@ namespace App\Livewire\Wms;
 
 use App\Models\MasterListItem;
 use App\Models\SpkItemHistory;
+use App\Models\SpkMaster;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
 use App\Services\WmsService;
@@ -173,149 +174,166 @@ class PalletFormCreator extends Component
      */
     public function addItem($directLabel = null, $directSpk = null, $directQty = null, $directWhse = null, $cid = null): void
     {
-        if ($directLabel) {
-            $this->scan_label = trim($directLabel);
-        }
-        if ($directSpk) {
-            $this->scan_spk = trim($directSpk);
-        }
-        if ($directQty) {
-            $this->scan_qty = $directQty;
-        }
-        if ($directWhse) {
-            $this->scan_whse = strtoupper(trim($directWhse));
-            $upperWh = $this->scan_whse;
-            if (str_starts_with($upperWh, 'KR') || str_contains($upperWh, 'KARAWANG')) {
-                $this->plant = 'KARAWANG';
-            } elseif (in_array($upperWh, ['FG', 'FFI'])) {
-                $this->plant = 'KBN';
+        try {
+            if ($directLabel) {
+                $this->scan_label = trim($directLabel);
             }
-        }
+            if ($directSpk) {
+                $this->scan_spk = trim($directSpk);
+            }
+            if ($directQty) {
+                $this->scan_qty = $directQty;
+            }
+            if ($directWhse) {
+                $this->scan_whse = strtoupper(trim($directWhse));
+                $upperWh = $this->scan_whse;
+                if (str_starts_with($upperWh, 'KR') || str_contains($upperWh, 'KARAWANG')) {
+                    $this->plant = 'KARAWANG';
+                } elseif (in_array($upperWh, ['FG', 'FFI'])) {
+                    $this->plant = 'KBN';
+                }
+            }
 
-        // ─── Case 2: No-Label Mode ─────────────────────────────────────────────
-        if ($this->label_mode === 'NO_LABEL') {
-            if (empty(trim($this->scan_qty))) {
-                session()->flash('scan_error', 'Qty per box harus diisi.');
-                $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'Qty kosong']);
+            // ─── Case 2: No-Label Mode ─────────────────────────────────────────────
+            if ($this->label_mode === 'NO_LABEL') {
+                if (empty(trim($this->scan_qty))) {
+                    $msg = 'Qty per box harus diisi.';
+                    session()->flash('scan_error', $msg);
+                    $this->dispatch('scan-error', ['cid' => $cid, 'message' => $msg]);
+
+                    return;
+                }
+
+                $count = max(1, (int) $this->scan_box_count);
+                $defaultWh = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
+
+                for ($i = 0; $i < $count; $i++) {
+                    $this->scanned_items[] = [
+                        'cid' => $cid ? $cid . '_' . $i : uniqid(),
+                        'part_no' => null,
+                        'model_name' => null,
+                        'customer_code' => null,
+                        'spk_no' => null,
+                        'qty' => (float) $this->scan_qty,
+                        'warehouse' => strtoupper(trim($this->scan_whse ?: ($this->isDelivery ? $defaultWh : ''))),
+                        'label' => null,
+                        'is_no_label' => true,
+                        'no_label_reason' => $this->no_label_reason ?: null,
+                    ];
+                }
+
+                $this->label_mode = 'SCAN';
+                $this->resetScanner();
+                $this->calculateTotals();
+                $this->dispatch('scan-success', [
+                    'cid' => $cid,
+                    'part_no' => null,
+                    'model_name' => 'No Label Box',
+                ]);
 
                 return;
             }
 
-            $count = max(1, (int) $this->scan_box_count);
-            $defaultWh = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
+            // ─── Case 1: Normal / Multi-Item Mode ──────────────────────────────────
 
-            for ($i = 0; $i < $count; $i++) {
-                $this->scanned_items[] = [
-                    'cid' => $cid ? $cid . '_' . $i : uniqid(),
-                    'part_no' => null,
-                    'model_name' => null,
-                    'customer_code' => null,
-                    'spk_no' => null,
-                    'qty' => (float) $this->scan_qty,
-                    'warehouse' => strtoupper(trim($this->scan_whse ?: ($this->isDelivery ? $defaultWh : ''))),
-                    'label' => null,
-                    'is_no_label' => true,
-                    'no_label_reason' => $this->no_label_reason ?: null,
-                ];
+            // Wajib ada SPK
+            if (empty(trim($this->scan_spk))) {
+                $this->resetScanner();
+                $msg = 'SPK harus di-scan terlebih dahulu.';
+                session()->flash('scan_error', $msg);
+                $this->dispatch('scan-error', ['cid' => $cid, 'message' => $msg]);
+
+                return;
             }
 
-            $this->label_mode = 'SCAN';
+            // Pastikan SPK valid (ada di database SpkItemHistory atau SpkMaster)
+            $spkHistory = SpkItemHistory::where('spk_number', trim($this->scan_spk))->first();
+            $spkMaster = null;
+            if (! $spkHistory) {
+                $spkMaster = SpkMaster::where('spk_number', trim($this->scan_spk))->first();
+            }
+
+            $partNo = $spkHistory?->item_code ?? $spkMaster?->item_code;
+
+            if (! $partNo) {
+                $failedSpk = $this->scan_spk;
+                $this->resetScanner();
+                $msg = 'SPK "' . $failedSpk . '" tidak ditemukan di sistem. Pastikan SPK sudah terdaftar.';
+                session()->flash('scan_error', $msg);
+                $this->dispatch('scan-error', ['cid' => $cid, 'message' => $msg]);
+
+                return;
+            }
+
+            $item = MasterListItem::where('item_code', $partNo)->first();
+            $modelName = $item?->item_name ?? ($spkMaster?->masterItem?->item_name ?? '-');
+            $customerCode = $item?->customer_code ?? ($spkMaster?->masterItem?->customer_code ?? '');
+
+            // Wajib ada label
+            if (empty(trim($this->scan_label))) {
+                $msg = 'Label harus di-scan, atau tekan "Tanpa Label" jika box tidak memiliki label.';
+                session()->flash('scan_error', $msg);
+                $this->dispatch('scan-error', ['cid' => $cid, 'message' => $msg]);
+
+                return;
+            }
+
+            // Cek duplikat di session yang sedang berjalan
+            foreach ($this->scanned_items as $scanned) {
+                if (
+                    ! empty($scanned['label']) &&
+                    $scanned['label'] === trim($this->scan_label) &&
+                    $scanned['spk_no'] === trim($this->scan_spk)
+                ) {
+                    $failedLabel = $this->scan_label;
+                    $this->resetScanner();
+                    $msg = 'Label "' . $failedLabel . '" dengan SPK ini sudah ada di daftar scan saat ini.';
+                    session()->flash('scan_error', $msg);
+                    $this->dispatch('scan-error', ['cid' => $cid, 'message' => $msg]);
+
+                    return;
+                }
+            }
+
+            $defaultWh = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
+
+            // Tambahkan ke list (utamakan warehouse dari data barcode yang discan)
+            $this->scanned_items[] = [
+                'cid' => $cid ?: uniqid(),
+                'part_no' => $partNo,
+                'model_name' => $modelName,
+                'customer_code' => $customerCode,
+                'spk_no' => trim($this->scan_spk),
+                'qty' => (float) ($this->scan_qty ?: 0),
+                'warehouse' => strtoupper(trim($this->scan_whse ?: ($this->isDelivery ? $defaultWh : ''))),
+                'label' => trim($this->scan_label),
+                'is_no_label' => false,
+                'no_label_reason' => null,
+            ];
+
+            // Update local helper states agar UI Livewire sinkron
+            $this->scan_part_no = $partNo;
+            $this->scan_model_name = $modelName;
+            $this->scan_customer_code = $customerCode;
+
             $this->resetScanner();
             $this->calculateTotals();
             $this->dispatch('scan-success', [
                 'cid' => $cid,
-                'part_no' => null,
-                'model_name' => 'No Label Box',
+                'part_no' => $partNo,
+                'model_name' => $modelName,
             ]);
-
-            return;
-        }
-
-        // ─── Case 1: Normal / Multi-Item Mode ──────────────────────────────────
-
-        // Wajib ada SPK
-        if (empty(trim($this->scan_spk))) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('PalletFormCreator addItem exception: ' . $e->getMessage(), [
+                'cid' => $cid,
+                'spk' => $this->scan_spk,
+                'label' => $this->scan_label,
+                'trace' => $e->getTraceAsString(),
+            ]);
             $this->resetScanner();
-            session()->flash('scan_error', 'SPK harus di-scan terlebih dahulu.');
-            $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'SPK kosong']);
-
-            return;
+            session()->flash('scan_error', 'Gagal memproses item: ' . $e->getMessage());
+            $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'Error: ' . $e->getMessage()]);
         }
-
-        // Pastikan SPK valid (ada di database SpkItemHistory atau SpkMaster)
-        $spkHistory = SpkItemHistory::where('spk_number', trim($this->scan_spk))->first();
-        $spkMaster = null;
-        if (! $spkHistory) {
-            $spkMaster = SpkMaster::where('spk_number', trim($this->scan_spk))->first();
-        }
-
-        $partNo = $spkHistory?->item_code ?? $spkMaster?->item_code;
-
-        if (! $partNo) {
-            $failedSpk = $this->scan_spk;
-            $this->resetScanner();
-            session()->flash('scan_error', 'SPK "' . $failedSpk . '" tidak ditemukan di sistem. Pastikan SPK sudah terdaftar.');
-            $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'SPK tidak valid']);
-
-            return;
-        }
-
-        $item = MasterListItem::where('item_code', $partNo)->first();
-        $modelName = $item?->item_name ?? ($spkMaster?->masterItem?->item_name ?? '-');
-        $customerCode = $item?->customer_code ?? ($spkMaster?->masterItem?->customer_code ?? '');
-
-        // Wajib ada label
-        if (empty(trim($this->scan_label))) {
-            session()->flash('scan_error', 'Label harus di-scan, atau tekan "Tanpa Label" jika box tidak memiliki label.');
-            $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'Label kosong']);
-
-            return;
-        }
-
-        // Cek duplikat di session yang sedang berjalan
-        foreach ($this->scanned_items as $scanned) {
-            if (
-                ! empty($scanned['label']) &&
-                $scanned['label'] === trim($this->scan_label) &&
-                $scanned['spk_no'] === trim($this->scan_spk)
-            ) {
-                $failedLabel = $this->scan_label;
-                $this->resetScanner();
-                session()->flash('scan_error', 'Label "' . $failedLabel . '" dengan SPK ini sudah ada di daftar scan saat ini.');
-                $this->dispatch('scan-error', ['cid' => $cid, 'message' => 'Label duplikat']);
-
-                return;
-            }
-        }
-
-        $defaultWh = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
-
-        // Tambahkan ke list (utamakan warehouse dari data barcode yang discan)
-        $this->scanned_items[] = [
-            'cid' => $cid ?: uniqid(),
-            'part_no' => $partNo,
-            'model_name' => $modelName,
-            'customer_code' => $customerCode,
-            'spk_no' => trim($this->scan_spk),
-            'qty' => (float) ($this->scan_qty ?: 0),
-            'warehouse' => strtoupper(trim($this->scan_whse ?: ($this->isDelivery ? $defaultWh : ''))),
-            'label' => trim($this->scan_label),
-            'is_no_label' => false,
-            'no_label_reason' => null,
-        ];
-
-        // Update local helper states agar UI Livewire sinkron
-        $this->scan_part_no = $partNo;
-        $this->scan_model_name = $modelName;
-        $this->scan_customer_code = $customerCode;
-
-        $this->resetScanner();
-        $this->calculateTotals();
-        $this->dispatch('scan-success', [
-            'cid' => $cid,
-            'part_no' => $partNo,
-            'model_name' => $modelName,
-        ]);
     }
 
     public function updatedScannedItems(): void
