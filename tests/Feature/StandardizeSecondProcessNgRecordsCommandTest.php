@@ -152,7 +152,7 @@ class StandardizeSecondProcessNgRecordsCommandTest extends TestCase
             'ng_input_qty' => 7,
         ]);
 
-        // 6. Null category with custom remark text (e.g. Oil) - should remain null category
+        // 6. Null category with custom remark text (e.g. Oil) - note preserved in remark, standardized to NG-PROSES
         $rec6 = SecondProcessNgRecord::create([
             'report_id' => $report->id,
             'ng_category' => null,
@@ -160,10 +160,33 @@ class StandardizeSecondProcessNgRecordsCommandTest extends TestCase
             'total_ng' => 10,
             'ng_input_item' => 'Oil',
             'ng_input_qty' => null,
+            'remark' => null,
         ]);
 
-        // 7. Already standard record - should NOT be changed
+        // 7. Null category with WIP marker - note preserved in remark, standardized to NG-INPUT
         $rec7 = SecondProcessNgRecord::create([
+            'report_id' => $report->id,
+            'ng_category' => null,
+            'ng_name' => 'DENTED',
+            'total_ng' => 4,
+            'ng_input_item' => '[4] PART-WIP',
+            'ng_input_qty' => 4,
+            'remark' => null,
+        ]);
+
+        // 8. Zero total NG with text - note preserved in remark, ng_input_item cleared to null
+        $rec8 = SecondProcessNgRecord::create([
+            'report_id' => $report->id,
+            'ng_category' => null,
+            'ng_name' => 'DENTED',
+            'total_ng' => 0,
+            'ng_input_item' => 'Sagging',
+            'ng_input_qty' => null,
+            'remark' => null,
+        ]);
+
+        // 9. Already standard record - should NOT be changed
+        $rec9 = SecondProcessNgRecord::create([
             'report_id' => $report->id,
             'ng_category' => 'NG-PROSES',
             'ng_name' => 'SCRATCH',
@@ -173,7 +196,7 @@ class StandardizeSecondProcessNgRecordsCommandTest extends TestCase
         ]);
 
         $this->artisan('second-process:standardize-ng-records', ['--force' => true])
-            ->expectsOutputToContain('Successfully updated 5 records in second_process_ng_records')
+            ->expectsOutputToContain('Successfully updated 8 records in second_process_ng_records')
             ->assertExitCode(0);
 
         // Verify rec1: NG-PROCESS -> NG-PROSES
@@ -211,23 +234,42 @@ class StandardizeSecondProcessNgRecordsCommandTest extends TestCase
             'ng_input_item' => '[7] NG-INPUT',
         ]);
 
-        // Verify rec6: custom text remained null category
+        // Verify rec6: custom text note copied to remark, standardized to [10] NG-PROSES
         $this->assertDatabaseHas('second_process_ng_records', [
             'id' => $rec6->id,
-            'ng_category' => null,
-            'ng_input_item' => 'Oil',
+            'ng_category' => 'NG-PROSES',
+            'ng_input_item' => '[10] NG-PROSES',
+            'ng_input_qty' => 10,
+            'remark' => 'Oil',
         ]);
 
-        // Verify rec7: remained untouched
+        // Verify rec7: WIP marker copied to remark, standardized to [4] NG-INPUT
         $this->assertDatabaseHas('second_process_ng_records', [
             'id' => $rec7->id,
+            'ng_category' => 'NG-INPUT',
+            'ng_input_item' => '[4] NG-INPUT',
+            'ng_input_qty' => 4,
+            'remark' => '[4] PART-WIP',
+        ]);
+
+        // Verify rec8: zero total_ng has note copied to remark, ng_input_item cleared
+        $this->assertDatabaseHas('second_process_ng_records', [
+            'id' => $rec8->id,
+            'ng_input_item' => null,
+            'ng_input_qty' => null,
+            'remark' => 'Sagging',
+        ]);
+
+        // Verify rec9: remained untouched
+        $this->assertDatabaseHas('second_process_ng_records', [
+            'id' => $rec9->id,
             'ng_category' => 'NG-PROSES',
             'ng_input_item' => '[2] NG-PROSES',
         ]);
 
-        // 8. Idempotency test: Running again should find 0 updates needed
+        // 10. Idempotency test: Running again should find 0 candidates / 0 updates needed
         $this->artisan('second-process:standardize-ng-records', ['--force' => true])
-            ->expectsOutputToContain('No records require modification')
+            ->expectsOutputToContain('All second_process_ng_records are already standardized')
             ->assertExitCode(0);
     }
 }

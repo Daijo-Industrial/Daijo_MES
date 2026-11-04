@@ -23,7 +23,7 @@ class StandardizeSecondProcessNgRecords extends Command
      *
      * @var string
      */
-    protected $description = 'Standardize legacy Second Process NG records (convert NG-PROCESS/NG-PROCES variants to NG-PROSES and backfill null categories from ng_input_item)';
+    protected $description = 'Standardize legacy Second Process NG records (convert NG-PROCESS/NG-PROCES variants to NG-PROSES, normalize ng_input_item, and preserve legacy notes in remark)';
 
     /**
      * Execute the console command.
@@ -47,6 +47,12 @@ class StandardizeSecondProcessNgRecords extends Command
                       $sub->whereNull('ng_category')
                           ->whereNotNull('ng_input_item')
                           ->where('ng_input_item', '!=', '');
+                  })
+                  ->orWhere(function ($sub) {
+                      $sub->whereNotNull('ng_input_item')
+                          ->where('ng_input_item', '!=', '')
+                          ->where('ng_input_item', 'not like', '%NG-PROSES%')
+                          ->where('ng_input_item', 'not like', '%NG-INPUT%');
                   });
             });
 
@@ -64,6 +70,7 @@ class StandardizeSecondProcessNgRecords extends Command
             'category_corrected' => 0,
             'category_backfilled' => 0,
             'input_item_normalized' => 0,
+            'legacy_remarks_preserved' => 0,
         ];
 
         // Process candidate records
@@ -74,13 +81,18 @@ class StandardizeSecondProcessNgRecords extends Command
             foreach ($records as $record) {
                 $origCategory = $record->ng_category;
                 $origInputItem = $record->ng_input_item;
+                $origInputQty = $record->ng_input_qty;
+                $origRemark = $record->remark;
 
                 $newCategory = $origCategory;
                 $newInputItem = $origInputItem;
+                $newInputQty = $origInputQty;
+                $newRemark = $origRemark;
 
                 $catChanged = false;
                 $catBackfilled = false;
                 $inputChanged = false;
+                $remarkChanged = false;
 
                 // 1. Normalize ng_category typos
                 if ($origCategory !== null) {
@@ -91,7 +103,7 @@ class StandardizeSecondProcessNgRecords extends Command
                     }
                 }
 
-                // 2. Normalize ng_input_item text
+                // 2. Normalize ng_input_item text for typos
                 if (! empty($origInputItem)) {
                     $normalizedInput = preg_replace('/\bNG-PROCESS\b/i', 'NG-PROSES', $origInputItem);
                     $normalizedInput = preg_replace('/\bNG-PROCES\b/i', 'NG-PROSES', $normalizedInput);
@@ -101,7 +113,7 @@ class StandardizeSecondProcessNgRecords extends Command
                     }
                 }
 
-                // 3. Backfill ng_category if null
+                // 3. Backfill ng_category if standard preset exists
                 if ($newCategory === null && ! empty($newInputItem)) {
                     if (preg_match('/\bNG-PROSES\b|\bNG-PROCESS\b|\bNG-PROCES\b/i', $newInputItem)) {
                         $newCategory = 'NG-PROSES';
@@ -112,7 +124,42 @@ class StandardizeSecondProcessNgRecords extends Command
                     }
                 }
 
-                if ($catChanged || $catBackfilled || $inputChanged) {
+                // 4. Handle legacy non-standard ng_input_item (notes, WIP markers, defect names in input item)
+                $isNonStandardInput = ! empty($newInputItem) &&
+                    ! preg_match('/\bNG-PROSES\b|\bNG-INPUT\b/i', $newInputItem);
+
+                if ($isNonStandardInput) {
+                    // Copy raw operator text to remark if remark is empty
+                    if (empty($origRemark)) {
+                        $newRemark = $origInputItem;
+                        $remarkChanged = true;
+                    }
+
+                    // Determine appropriate category
+                    if ($newCategory === null) {
+                        if (preg_match('/\bWIP\b|\bPART-WIP\b/i', $newInputItem)) {
+                            $newCategory = 'NG-INPUT';
+                        } else {
+                            $newCategory = 'NG-PROSES';
+                        }
+                        $catBackfilled = true;
+                    }
+
+                    // Standardize input item and quantity
+                    $totalNg = (int) $record->total_ng;
+                    if ($totalNg > 0) {
+                        $newInputItem = "[{$totalNg}] {$newCategory}";
+                        $newInputQty = $totalNg;
+                        $inputChanged = true;
+                    } else {
+                        // total_ng is 0 (note preserved in remark)
+                        $newInputItem = null;
+                        $newInputQty = null;
+                        $inputChanged = true;
+                    }
+                }
+
+                if ($catChanged || $catBackfilled || $inputChanged || $remarkChanged) {
                     if ($catChanged) {
                         $stats['category_corrected']++;
                     }
@@ -122,11 +169,16 @@ class StandardizeSecondProcessNgRecords extends Command
                     if ($inputChanged) {
                         $stats['input_item_normalized']++;
                     }
+                    if ($remarkChanged) {
+                        $stats['legacy_remarks_preserved']++;
+                    }
 
                     $recordsToUpdate[] = [
                         'id' => $record->id,
                         'ng_category' => $newCategory,
                         'ng_input_item' => $newInputItem,
+                        'ng_input_qty' => $newInputQty,
+                        'remark' => $newRemark,
                     ];
                 }
 
@@ -146,7 +198,8 @@ class StandardizeSecondProcessNgRecords extends Command
                 ['Records Requiring Updates', $totalAffected],
                 ['Categories Typo Corrected (NG-PROCESS/PROCES -> NG-PROSES)', $stats['category_corrected']],
                 ['Categories Backfilled from NULL', $stats['category_backfilled']],
-                ['Input Items Normalized (Text replacement)', $stats['input_item_normalized']],
+                ['Input Items Normalized to Preset Format', $stats['input_item_normalized']],
+                ['Legacy Operator Notes Preserved to Remark', $stats['legacy_remarks_preserved']],
             ]
         );
 
@@ -175,6 +228,8 @@ class StandardizeSecondProcessNgRecords extends Command
                     SecondProcessNgRecord::where('id', $item['id'])->update([
                         'ng_category' => $item['ng_category'],
                         'ng_input_item' => $item['ng_input_item'],
+                        'ng_input_qty' => $item['ng_input_qty'],
+                        'remark' => $item['remark'],
                     ]);
                 }
             }
