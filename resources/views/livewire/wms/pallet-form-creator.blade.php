@@ -253,10 +253,14 @@
                                             <input type="text"
                                                    :id="'spk_input_' + idx"
                                                    x-model="item.spk_no"
-                                                   @input="onSpkInput(idx)"
-                                                   @keydown.tab="handleSpkTab($event, idx)"
-                                                   @keydown.enter.prevent="handleSpkEnter(idx)"
+                                                   @input="onSpkInput(item)"
+                                                   @keydown.tab="handleSpkTab($event, item)"
+                                                   @keydown.enter.prevent="handleSpkEnter(item)"
                                                    :disabled="item.status !== 'new'"
+                                                   autocomplete="off"
+                                                   autocorrect="off"
+                                                   autocapitalize="off"
+                                                   spellcheck="false"
                                                    placeholder="SPK Code"
                                                    class="w-full px-2 py-1 border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 disabled:border-transparent transition-all uppercase">
                                         </td>
@@ -275,8 +279,9 @@
                                                    :id="'qty_input_' + idx"
                                                    :value="item.qty"
                                                    @change="updateQty(item, $event.target.value)"
-                                                   @keydown.enter.prevent="handleQtyEnter(idx)"
+                                                   @keydown.enter.prevent="handleQtyEnter(item)"
                                                    :disabled="item.status === 'syncing'"
+                                                   autocomplete="off"
                                                    class="w-20 px-2 py-1 text-right border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 transition-all">
                                         </td>
 
@@ -286,25 +291,34 @@
                                                    :id="'whse_input_' + idx"
                                                    x-model="item.warehouse"
                                                    @change="updateWhse(item, $event.target.value)"
-                                                   @keydown.enter.prevent="handleWhseEnter(idx)"
+                                                   @keydown.enter.prevent="handleWhseEnter(item)"
                                                    :disabled="item.status === 'syncing'"
+                                                   autocomplete="off"
+                                                   autocorrect="off"
+                                                   autocapitalize="off"
+                                                   spellcheck="false"
                                                    placeholder="Whse"
                                                    class="w-16 px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 disabled:border-transparent transition-all uppercase">
                                         </td>
 
                                         {{-- Label Barcode --}}
                                         <td class="px-3 py-2 border-r border-gray-100">
-                                            <template x-if="item.status === 'new'">
+                                            <div x-show="item.status === 'new'">
                                                 <input type="text"
                                                        :id="'label_input_' + idx"
                                                        x-model="item.label"
-                                                       @input="onLabelInput(idx)"
-                                                       @keydown.tab.prevent="commitScan(idx)"
-                                                       @keydown.enter.prevent="commitScan(idx)"
+                                                       @input="onLabelInput(item)"
+                                                       @change="onLabelChange(item)"
+                                                       @keydown.tab="handleLabelKey($event, item)"
+                                                       @keydown.enter="handleLabelKey($event, item)"
+                                                       autocomplete="off"
+                                                       autocorrect="off"
+                                                       autocapitalize="off"
+                                                       spellcheck="false"
                                                        placeholder="Scan barcode label..."
                                                        class="w-full px-2 py-1.5 border border-blue-300 rounded-lg outline-none text-xs font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:bg-white bg-blue-50/30 transition-all uppercase">
-                                            </template>
-                                            <template x-if="item.status !== 'new'">
+                                            </div>
+                                            <div x-show="item.status !== 'new'">
                                                 <div class="flex items-center space-x-1.5">
                                                     <template x-if="item.label === null">
                                                         <span class="text-orange-600 font-bold italic text-xs">🚫 No Label</span>
@@ -313,7 +327,7 @@
                                                         <span class="font-mono font-bold text-gray-700" x-text="item.label"></span>
                                                     </template>
                                                 </div>
-                                            </template>
+                                            </div>
                                         </td>
 
                                         {{-- Status & Actions --}}
@@ -377,10 +391,14 @@
                                     <input type="text"
                                            :id="'spk_input_mobile_' + idx"
                                            x-model="item.spk_no"
-                                           @input="onSpkInput(idx)"
-                                           @keydown.tab="handleSpkTab($event, idx)"
-                                           @keydown.enter.prevent="handleSpkEnter(idx)"
+                                           @input="onSpkInput(item)"
+                                           @keydown.tab="handleSpkTab($event, item)"
+                                           @keydown.enter.prevent="handleSpkEnter(item)"
                                            :disabled="item.status !== 'new'"
+                                           autocomplete="off"
+                                           autocorrect="off"
+                                           autocapitalize="off"
+                                           spellcheck="false"
                                            placeholder="SPK Code"
                                            class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 disabled:bg-gray-100 transition-all uppercase">
                                 </div>
@@ -397,8 +415,9 @@
                                             <input type="number"
                                                    :value="item.qty"
                                                    @change="updateQty(item, $event.target.value)"
-                                                   @keydown.enter.prevent="handleQtyEnter(idx)"
+                                                   @keydown.enter.prevent="handleQtyEnter(item)"
                                                    :disabled="item.status === 'syncing'"
+                                                   autocomplete="off"
                                                    class="w-full px-2 py-1 border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700">
                                         </div>
                                         <div>
@@ -408,8 +427,12 @@
                                                        :id="'whse_input_mobile_' + idx"
                                                        x-model="item.warehouse"
                                                        @change="updateWhse(item, $event.target.value)"
-                                                       @keydown.enter.prevent="handleWhseEnter(idx)"
+                                                       @keydown.enter.prevent="handleWhseEnter(item)"
                                                        :disabled="item.status === 'syncing'"
+                                                       autocomplete="off"
+                                                       autocorrect="off"
+                                                       autocapitalize="off"
+                                                       spellcheck="false"
                                                        placeholder="Whse"
                                                        class="w-full px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 uppercase">
                                             </div>
@@ -419,17 +442,22 @@
 
                                 <div class="space-y-1">
                                     <label class="text-[10px] font-bold text-gray-400 uppercase">Label Barcode</label>
-                                    <template x-if="item.status === 'new'">
+                                    <div x-show="item.status === 'new'">
                                         <input type="text"
                                                :id="'label_input_mobile_' + idx"
                                                x-model="item.label"
-                                               @input="onLabelInput(idx)"
-                                               @keydown.tab.prevent="commitScan(idx)"
-                                               @keydown.enter.prevent="commitScan(idx)"
+                                               @input="onLabelInput(item, $event)"
+                                               @change="onLabelChange(item)"
+                                               @keydown.tab="handleLabelKey($event, item)"
+                                               @keydown.enter="handleLabelKey($event, item)"
+                                               autocomplete="off"
+                                               autocorrect="off"
+                                               autocapitalize="off"
+                                               spellcheck="false"
                                                placeholder="Scan barcode label..."
                                                class="w-full px-2 py-1.5 border border-blue-300 rounded-lg text-xs font-mono font-bold uppercase focus:ring-1 focus:ring-blue-500">
-                                    </template>
-                                    <template x-if="item.status !== 'new'">
+                                    </div>
+                                    <div x-show="item.status !== 'new'">
                                         <div class="flex items-center space-x-1.5">
                                             <template x-if="item.label === null">
                                                 <span class="text-orange-600 font-bold italic text-xs">🚫 No Label</span>
@@ -438,7 +466,7 @@
                                                 <span class="font-mono font-bold text-xs text-gray-700" x-text="item.label"></span>
                                             </template>
                                         </div>
-                                    </template>
+                                    </div>
                                 </div>
                             </div>
                         </template>
@@ -595,23 +623,82 @@
                     });
                 },
 
+                focusActiveLabel() {
+                    const doFocus = () => {
+                        let activeIdx = this.localScans.map(r => r.status).lastIndexOf('new');
+                        if (activeIdx < 0) {
+                            activeIdx = this.localScans.length - 1;
+                        }
+                        if (activeIdx >= 0) {
+                            const isMobile = window.innerWidth < 768;
+                            const el = isMobile 
+                                ? (document.getElementById('label_input_mobile_' + activeIdx) || document.getElementById('label_input_' + activeIdx))
+                                : (document.getElementById('label_input_' + activeIdx) || document.getElementById('label_input_mobile_' + activeIdx));
+                            if (el && !el.disabled) {
+                                el.focus();
+                                el.select();
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+
+                    if (doFocus()) return;
+
+                    this.$nextTick(() => {
+                        if (doFocus()) return;
+                        setTimeout(doFocus, 25);
+                        setTimeout(doFocus, 75);
+                        setTimeout(doFocus, 150);
+                        setTimeout(doFocus, 300);
+                    });
+                },
+
+                _getRow(itemOrIdx) {
+                    if (itemOrIdx === null || itemOrIdx === undefined) return null;
+                    if (typeof itemOrIdx === 'object') return itemOrIdx;
+                    return this.localScans[itemOrIdx] || null;
+                },
+
+                _getRowIdx(itemOrIdx) {
+                    if (typeof itemOrIdx === 'number') return itemOrIdx;
+                    if (typeof itemOrIdx === 'object' && itemOrIdx !== null) {
+                        return this.localScans.findIndex(r => r.cid === itemOrIdx.cid);
+                    }
+                    return -1;
+                },
+
                 _addEmptyRow() {
+                    let lastRow = null;
+                    for (let i = this.localScans.length - 1; i >= 0; i--) {
+                        if (this.localScans[i].status !== 'new' && this.localScans[i].spk_no) {
+                            lastRow = this.localScans[i];
+                            break;
+                        }
+                    }
+
+                    let nextSpk = lastRow ? lastRow.spk_no : '';
+                    let nextQty = lastRow ? lastRow.qty : '';
+                    let nextWhse = lastRow ? lastRow.warehouse : (this.currentWarehouse || '');
+
                     this.localScans.push({
                         cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                         label: '',
-                        spk_no: '',
-                        qty: '',
-                        warehouse: '',
+                        spk_no: nextSpk,
+                        qty: nextQty,
+                        warehouse: nextWhse,
                         part_no: '',
                         model_name: '',
                         status: 'new',
                         error: null
                     });
+
+                    // Fokus selalu kembali ke SPK Code baris baru
                     this.focusActiveSpk();
                 },
 
-                _resetActiveRow(idx) {
-                    let row = this.localScans[idx];
+                _resetActiveRow(itemOrIdx) {
+                    let row = this._getRow(itemOrIdx);
                     if (row && row.status === 'new') {
                         row.label = '';
                         row.spk_no = '';
@@ -621,12 +708,12 @@
                     this.focusActiveSpk();
                 },
 
-                handleCompositeBarcode(val, idx) {
+                handleCompositeBarcode(val, itemOrIdx) {
                     if (!val || !val.includes('\t')) return false;
                     let parts = val.split('\t').map(s => s.trim());
                     // Format Barcode: [SPK] \t [Qty] \t [Warehouse] \t [Label] (\t)
                     if (parts.length >= 4 && parts[0]) {
-                        let row = this.localScans[idx];
+                        let row = this._getRow(itemOrIdx);
                         if (!row || row.status !== 'new') return false;
 
                         row.spk_no = parts[0];
@@ -649,80 +736,116 @@
                         }
 
                         this.$nextTick(() => {
-                            this.commitScan(idx);
+                            this.commitScan(row);
                         });
                         return true;
                     }
                     return false;
                 },
 
-                onSpkInput(idx) {
-                    let row = this.localScans[idx];
+                onSpkInput(itemOrIdx) {
+                    let row = this._getRow(itemOrIdx);
                     if (!row || row.status !== 'new') return;
                     let val = row.spk_no || '';
 
                     if (val.includes('\t')) {
-                        if (this.handleCompositeBarcode(val, idx)) {
+                        if (this.handleCompositeBarcode(val, row)) {
                             return;
                         }
                         let parts = val.split('\t').map(s => s.trim());
                         if (parts.length >= 2 && parts[0]) {
                             row.spk_no = parts[0];
                             if (parts[1]) row.qty = parseFloat(parts[1]) || row.qty;
-                            let next = document.getElementById('whse_input_' + idx) || document.getElementById('whse_input_mobile_' + idx);
+                            let idx = this._getRowIdx(itemOrIdx);
+                            let next = (idx >= 0) ? (document.getElementById('whse_input_' + idx) || document.getElementById('whse_input_mobile_' + idx)) : null;
                             if (next) { next.focus(); next.select(); }
                             return;
                         }
                     }
                 },
 
-                handleSpkTab(e, idx) {
-                    let row = this.localScans[idx];
+                handleSpkTab(e, itemOrIdx) {
+                    let row = this._getRow(itemOrIdx);
                     if (!row || row.status !== 'new') return;
                     if (row.spk_no && row.spk_no.includes('\t')) {
                         e.preventDefault();
-                        this.handleCompositeBarcode(row.spk_no, idx);
+                        this.handleCompositeBarcode(row.spk_no, row);
                     }
                 },
 
-                handleSpkEnter(idx) {
-                    let row = this.localScans[idx];
+                handleSpkEnter(itemOrIdx) {
+                    let row = this._getRow(itemOrIdx);
                     if (!row || row.status !== 'new') return;
-                    if (this.handleCompositeBarcode(row.spk_no, idx)) {
+                    if (this.handleCompositeBarcode(row.spk_no, row)) {
                         return;
                     }
                     if (row.spk_no && row.label) {
-                        this.commitScan(idx);
+                        this.commitScan(row);
                         return;
                     }
-                    let el = document.getElementById('qty_input_' + idx) || document.getElementById('qty_input_mobile_' + idx);
+                    let idx = this._getRowIdx(itemOrIdx);
+                    let el = (idx >= 0) ? (document.getElementById('qty_input_' + idx) || document.getElementById('qty_input_mobile_' + idx)) : null;
                     if (el) { el.focus(); el.select(); }
                 },
 
-                handleQtyEnter(idx) {
-                    let el = document.getElementById('whse_input_' + idx) || document.getElementById('whse_input_mobile_' + idx);
+                handleQtyEnter(itemOrIdx) {
+                    let idx = this._getRowIdx(itemOrIdx);
+                    let el = (idx >= 0) ? (document.getElementById('whse_input_' + idx) || document.getElementById('whse_input_mobile_' + idx)) : null;
                     if (el) { el.focus(); el.select(); }
                 },
 
-                handleWhseEnter(idx) {
-                    let el = document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx);
+                handleWhseEnter(itemOrIdx) {
+                    let idx = this._getRowIdx(itemOrIdx);
+                    let el = (idx >= 0) ? (document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx)) : null;
                     if (el) { el.focus(); el.select(); }
                 },
 
-                onLabelInput(idx) {
+                handleLabelKey(e, itemOrIdx) {
+                    e.preventDefault();
                     clearTimeout(this._scanTimer);
-                    let row = this.localScans[idx];
+                    let row = this._getRow(itemOrIdx);
                     if (!row || row.status !== 'new') return;
-                    let val = row.label || '';
+
+                    let idx = this._getRowIdx(itemOrIdx);
+                    let inputEl = e.target || (idx >= 0 ? (document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx)) : null);
+                    let currentVal = inputEl ? inputEl.value : row.label;
+                    if (currentVal) {
+                        row.label = currentVal.trim();
+                    }
+
+                    this.commitScan(row);
+                },
+
+                onLabelChange(itemOrIdx) {
+                    let row = this._getRow(itemOrIdx);
+                    if (!row || row.status !== 'new') return;
+                    let idx = this._getRowIdx(itemOrIdx);
+                    let inputEl = (idx >= 0) ? (document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx)) : null;
+                    if (inputEl && inputEl.value) {
+                        row.label = inputEl.value.trim();
+                    }
+                    if (row.label) {
+                        this.commitScan(row);
+                    }
+                },
+
+                onLabelInput(itemOrIdx, e) {
+                    clearTimeout(this._scanTimer);
+                    let row = this._getRow(itemOrIdx);
+                    if (!row || row.status !== 'new') return;
+
+                    let idx = this._getRowIdx(itemOrIdx);
+                    let inputEl = (e && e.target) || (idx >= 0 ? (document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx)) : null);
+                    let val = (inputEl ? inputEl.value : row.label) || '';
 
                     if (val.includes('\t')) {
-                        if (this.handleCompositeBarcode(val, idx)) {
+                        if (this.handleCompositeBarcode(val, row)) {
                             return;
                         }
                         // Trailing tab pada label barcode
                         row.label = val.replace(/\t/g, '').trim();
                         this.$nextTick(() => {
-                            this.commitScan(idx);
+                            this.commitScan(row);
                         });
                         return;
                     }
@@ -730,32 +853,38 @@
                     let trimmed = val.trim();
                     if (trimmed.length >= 1) {
                         this._scanTimer = setTimeout(() => {
-                            this.commitScan(idx);
-                        }, 400);
+                            this.commitScan(row);
+                        }, 500);
                     }
                 },
 
-                commitScan(idx) {
+                commitScan(itemOrIdx) {
                     clearTimeout(this._scanTimer);
-                    let row = this.localScans[idx];
+                    let row = this._getRow(itemOrIdx);
                     if (!row || row.status !== 'new') return;
 
-                    let labelVal = (row.label || '').replace(/\t/g, '').trim();
-                    let spkVal = (row.spk_no || '').replace(/\t/g, '').trim();
-                    let qtyVal = parseFloat(row.qty) || 0;
-                    let whseVal = (row.warehouse || '').replace(/\t/g, '').trim();
+                    let idx = this._getRowIdx(itemOrIdx);
+                    let labelInputEl = (idx >= 0) ? (document.getElementById('label_input_' + idx) || document.getElementById('label_input_mobile_' + idx)) : null;
+                    let spkInputEl = (idx >= 0) ? (document.getElementById('spk_input_' + idx) || document.getElementById('spk_input_mobile_' + idx)) : null;
+                    let qtyInputEl = (idx >= 0) ? (document.getElementById('qty_input_' + idx) || document.getElementById('qty_input_mobile_' + idx)) : null;
+                    let whseInputEl = (idx >= 0) ? (document.getElementById('whse_input_' + idx) || document.getElementById('whse_input_mobile_' + idx)) : null;
+
+                    let labelVal = (row.label || (labelInputEl ? labelInputEl.value : '') || '').replace(/\t/g, '').trim();
+                    let spkVal = (row.spk_no || (spkInputEl ? spkInputEl.value : '') || '').replace(/\t/g, '').trim();
+                    let qtyVal = parseFloat(row.qty !== '' ? row.qty : (qtyInputEl ? qtyInputEl.value : 0)) || 0;
+                    let whseVal = (row.warehouse || (whseInputEl ? whseInputEl.value : '') || '').replace(/\t/g, '').trim();
 
                     if (!labelVal || !spkVal) return;
 
                     // Client-side duplicate check
-                    let isDuplicate = this.localScans.some((r, i) => i !== idx && r.label === labelVal && r.spk_no === spkVal);
+                    let isDuplicate = this.localScans.some(r => r.cid !== row.cid && r.label === labelVal && r.spk_no === spkVal);
                     if (isDuplicate) {
                         this.localScanError = 'Label [' + labelVal + '] dengan SPK ini sudah terdaftar.';
                         if (typeof window.playTone === 'function') {
                             window.playTone(100, 400, 'square', 0.6);
                             setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
                         }
-                        this._resetActiveRow(idx);
+                        this._resetActiveRow(row);
                         return;
                     }
 
@@ -766,13 +895,10 @@
                     row.qty = qtyVal;
                     row.warehouse = whseVal;
 
-                    // 1. Tambah baris baru di bawah
+                    // 1. Tambah baris baru di bawah (mewariskan SPK, Qty, Whse)
                     this._addEmptyRow();
 
-                    // 2. FOKUS LANGSUNG ke input SPK Code di baris baru
-                    this.focusActiveSpk();
-
-                    // 3. Kirim ke Livewire di background
+                    // 2. Kirim ke Livewire di background
                     const wire = this.getWire();
                     if (wire) wire.addItem(labelVal, spkVal, qtyVal, whseVal, row.cid);
                 },
@@ -911,7 +1037,13 @@
                         if (data.part_no) item.part_no = data.part_no;
                         if (data.model_name) item.model_name = data.model_name;
                     }
-                    this.focusActiveSpk();
+                    // Kalau baris aktif sudah ada SPK-nya (inherit), fokus langsung ke label
+                    let activeRow = this.localScans.find(r => r.status === 'new');
+                    if (activeRow && activeRow.spk_no) {
+                        this.focusActiveLabel();
+                    } else {
+                        this.focusActiveSpk();
+                    }
                 },
 
                 onScanError(event) {
