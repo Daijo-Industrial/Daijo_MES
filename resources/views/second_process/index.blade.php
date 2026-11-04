@@ -24,11 +24,6 @@
                     ], fn($v) => !is_null($v) && $v !== '')) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow transition text-sm flex items-center gap-1.5" title="Buka Dashboard Analitik dengan filter aktif yang sama">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                         <span>Analytics Dashboard</span>
-                        @if(request('sisa_filter'))
-                            <span class="px-1.5 py-0.2 bg-indigo-800 text-indigo-100 rounded text-[10px] font-bold uppercase ml-0.5">
-                                {{ request('sisa_filter') }}
-                            </span>
-                        @endif
                     </a>
                     <a href="{{ route('second-process-reports.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition text-sm">
                         + New Report
@@ -68,10 +63,10 @@
                     </div>
                 </div>
                 {{-- Card 5: Sisa Input --}}
-                <div class="col-span-2 sm:col-span-1 bg-white border rounded-lg p-3.5 shadow-sm {{ request('sisa_filter') ? 'border-amber-400 bg-amber-50/20 ring-1 ring-amber-300' : 'border-gray-200' }}">
+                <div class="col-span-2 sm:col-span-1 bg-white border rounded-lg p-3.5 shadow-sm {{ request('sisa_filter') && request('sisa_filter') !== 'ideal' ? 'border-amber-400 bg-amber-50/20 ring-1 ring-amber-300' : 'border-gray-200' }}">
                     <div class="flex items-center justify-between">
-                        <div class="text-xs font-bold text-gray-500 uppercase">Sisa Input</div>
-                        @if(request('sisa_filter'))
+                        <div class="text-xs font-bold text-gray-500 uppercase">Sisa Input (Open)</div>
+                        @if(request('sisa_filter') && request('sisa_filter') !== 'ideal')
                             <span class="px-1.5 py-0.5 text-[9px] font-black rounded bg-amber-100 text-amber-800 uppercase">
                                 {{ request('sisa_filter') }}
                             </span>
@@ -80,20 +75,6 @@
                     <div class="text-2xl font-black mt-1 {{ ($summary->total_sisa_input ?? 0) > 0 ? 'text-amber-700' : 'text-gray-900' }}">
                         {{ number_format($summary->total_sisa_input ?? 0) }}
                         <span class="text-xs font-normal text-gray-400">pcs</span>
-                    </div>
-                    <div class="mt-1 flex items-center justify-between text-[10px]">
-                        @if(request('sisa_filter'))
-                            <a href="{{ route('second-process-reports.index', array_filter(request()->except(['sisa_filter', 'page']))) }}" class="font-bold text-red-600 hover:text-red-800 underline">
-                                ✕ Reset Sisa
-                            </a>
-                        @else
-                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'open']))) }}" class="font-bold text-amber-700 hover:text-amber-900 underline">
-                                Filter Open Sisa &rarr;
-                            </a>
-                        @endif
-                        <a href="{{ route('second-process.report-analytics', array_filter(request()->except('page'))) }}" class="text-indigo-600 hover:text-indigo-800 font-semibold" title="Buka rekonsiliasi sisa di Analytics">
-                            Analisis &rarr;
-                        </a>
                     </div>
                 </div>
             </div>
@@ -159,41 +140,6 @@
                                     title="Clear date filters">
                                     ✕ All Dates
                                 </button>
-                            @endif
-                        </div>
-
-                        {{-- Sisa Quick Filter Pill Strip --}}
-                        <div class="flex items-center gap-1.5 flex-wrap pt-2 mt-2 border-t border-gray-100 w-full">
-                            <span class="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 mr-1">
-                                Sisa Filter:
-                            </span>
-                            <a href="{{ route('second-process-reports.index', array_filter(request()->except(['sisa_filter', 'page']))) }}"
-                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ !request('sisa_filter') ? 'bg-slate-700 text-white border-slate-700 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100' }}">
-                                Semua Sisa
-                            </a>
-                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'open']))) }}"
-                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'open' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100' }}">
-                                ⚠️ Sisa Terbuka (Open)
-                            </a>
-                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'reconciled']))) }}"
-                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'reconciled' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100' }}">
-                                ✓ Sisa Tertutup
-                            </a>
-                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'has_sisa']))) }}"
-                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'has_sisa' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100' }}">
-                                Ada Sisa (&gt; 0)
-                            </a>
-                            <a href="{{ route('second-process-reports.index', array_filter(array_merge(request()->except('page'), ['sisa_filter' => 'ideal']))) }}"
-                                class="px-2 py-0.5 text-xs rounded-md font-semibold transition border {{ request('sisa_filter') === 'ideal' ? 'bg-gray-600 text-white border-gray-600 shadow-xs' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100' }}">
-                                Ideal (= 0)
-                            </a>
-
-                            @if(request('sisa_filter'))
-                                <a href="{{ route('second-process-reports.index', array_filter(request()->except(['sisa_filter', 'page']))) }}"
-                                    class="px-2 py-0.5 text-xs rounded-md font-medium text-red-600 hover:bg-red-50 border border-dashed border-red-300 transition ml-auto"
-                                    title="Reset filter sisa">
-                                    ✕ Clear Sisa Filter
-                                </a>
                             @endif
                         </div>
                     </div>
@@ -284,16 +230,8 @@
                             </select>
                         </div>
 
-                        {{-- Search keyword --}}
-                        <div class="col-span-1 xl:col-span-1">
-                            <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Search</label>
-                            <input type="text" name="search" value="{{ request('search') }}"
-                                placeholder="Model, part, cust..." 
-                                class="w-full border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
-                        </div>
-
                         {{-- Action buttons --}}
-                        <div class="col-span-2 xl:col-span-1 flex items-center gap-1.5">
+                        <div class="col-span-2 xl:col-span-2 flex items-center gap-1.5">
                             <button type="submit" id="filter-submit-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-2.5 rounded text-sm transition text-center shadow-xs">
                                 Filter
                             </button>

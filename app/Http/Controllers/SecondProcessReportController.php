@@ -148,9 +148,15 @@ class SecondProcessReportController extends Controller
             COUNT(*) as total_reports,
             COALESCE(SUM(jumlah_output), 0) as total_output,
             COALESCE(SUM(jumlah_ok), 0) as total_ok,
-            COALESCE(SUM(jumlah_ng), 0) as total_ng,
-            COALESCE(SUM(sisa_input), 0) as total_sisa_input
+            COALESCE(SUM(jumlah_ng), 0) as total_ng
         ')->first();
+
+        // Calculate Open Sisa (uncovered leftover WIP material)
+        $openSisaQuery = clone $query;
+        if ($sisaFilter !== 'open') {
+            $openSisaQuery->applySisaFilter('open');
+        }
+        $summary->total_sisa_input = (int) $openSisaQuery->sum('sisa_input');
 
         $reports = $query->orderBy('date', 'desc')->paginate(25)->withQueryString();
 
