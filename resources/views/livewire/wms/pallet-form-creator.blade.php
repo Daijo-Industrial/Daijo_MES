@@ -183,17 +183,18 @@
                             </div>
                         @endif
 
-                        <div class="pt-4 border-t border-gray-100" x-data="{ isSubmitting: false }">
+                        <div class="pt-4 border-t border-gray-100">
                             <button 
-                                @click="if (isSubmitting) { $event.preventDefault(); return false; } isSubmitting = true; setTimeout(() => isSubmitting = false, 4000);"
-                                wire:click.throttle.2000ms="generateForm(plant)" 
+                                wire:click="generateForm(plant)" 
                                 type="button"
                                 wire:loading.attr="disabled"
                                 wire:target="generateForm"
-                                :disabled="isSubmitting || @js($isProcessing)"
-                                class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center disabled:bg-gray-400 disabled:shadow-none text-sm uppercase">
+                                class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center disabled:bg-gray-400 disabled:shadow-none text-sm uppercase cursor-pointer">
                                 <span wire:loading.remove wire:target="generateForm">GENERATE PALLET FORM</span>
-                                <span wire:loading wire:target="generateForm">PROCESSING...</span>
+                                <span wire:loading wire:target="generateForm" class="flex items-center space-x-2">
+                                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                    PROCESSING...
+                                </span>
                                 <svg wire:loading.remove wire:target="generateForm" class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                             </button>
                         </div>
@@ -528,6 +529,86 @@
                         </table>
                     </div>
                 </div>
+            </div> {{-- Closes lg:col-span-2 (wire:ignore) --}}
+        </div> {{-- Closes Grid Wrapper --}}
+
+        {{-- Success Modal (Di luar wire:ignore agar ter-render oleh Livewire) --}}
+        @if($showSuccessModal)
+            <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="p-8 text-center flex-1 overflow-y-auto custom-scrollbar">
+                        <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <h3 class="text-2xl font-black text-gray-800 mb-2 tracking-tighter italic">PALLET CREATED!</h3>
+                        <p class="text-gray-500 mb-6 text-sm">Pallet ID: <span class="font-black text-blue-600 tracking-tight">{{ $lastGeneratedPalletId }}</span></p>
+                        
+                        {{-- SAP Sync Status Section --}}
+                        <div class="mb-8 p-4 rounded-2xl border-2 {{ $sapSyncStatus === 'pending' ? 'bg-blue-50 border-blue-100' : (empty($failedSapItems) ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100') }} transition-colors">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-[10px] font-black uppercase tracking-widest {{ $sapSyncStatus === 'pending' ? 'text-blue-500' : (empty($failedSapItems) ? 'text-green-600' : 'text-red-600') }}">
+                                    SAP Integration Status
+                                </span>
+                                @if($sapSyncStatus === 'pending')
+                                    <div class="flex items-center space-x-1">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.5s]"></div>
+                                    </div>
+                                @endif
+                            </div>
+
+                            @if($sapSyncStatus === 'pending')
+                                <p class="text-xs font-bold text-blue-700 italic">Sinkronisasi ke SAP sedang berjalan di background...</p>
+                            @elseif(empty($failedSapItems))
+                                <p class="text-xs font-bold text-green-700">✅ Berhasil! Semua data terkirim ke SAP tanpa kendala.</p>
+                            @else
+                                <div class="space-y-3">
+                                    <p class="text-xs font-black text-red-700 uppercase tracking-tighter">⚠️ Ada {{ count($failedSapItems) }} SPK yang gagal terkirim ke SAP:</p>
+                                    <div class="overflow-hidden border border-red-200 rounded-xl">
+                                        <table class="w-full text-left text-[10px]">
+                                            <thead class="bg-red-100 text-red-700 font-black uppercase tracking-widest">
+                                                <tr>
+                                                    <th class="px-3 py-2">SPK No</th>
+                                                    <th class="px-3 py-2">Error Message</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-red-100 bg-white">
+                                                @foreach($failedSapItems as $failed)
+                                                    <tr>
+                                                        <td class="px-3 py-2 font-black text-gray-800">{{ $failed['spk_no'] }}</td>
+                                                        <td class="px-3 py-2 font-bold text-red-600 italic break-words">{{ $failed['sap_error_msg'] }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button wire:click="retrySapSync" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-red-200">
+                                        RETRY SAP SYNC
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <a href="{{ $lastGeneratedPalletId ? route('wms.pallet-form.print', $lastGeneratedPalletId) : '#' }}" target="_blank" 
+                                class="block py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 text-sm uppercase">
+                                Print Label
+                            </a>
+                            <button wire:click="resetWholeForm" type="button"
+                                class="block py-4 bg-slate-800 hover:bg-black text-white font-bold rounded-2xl transition-all active:scale-95 text-sm uppercase cursor-pointer">
+                                Next Scan
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-8 py-4 text-center">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SAP Batch Processing v2.0</span>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+    </div> {{-- Closes Container max-w-7xl --}}
 
     <script>
         function palletFormCreator(config) {
@@ -1124,80 +1205,4 @@
             box-shadow: 0 0 0 3px rgba(255,255,255,0.35);
         }
     </style>
-
-    {{-- Success Modal --}}
-    @if($showSuccessModal)
-        <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
-                <div class="p-8 text-center flex-1 overflow-y-auto custom-scrollbar">
-                    <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                    </div>
-                    <h3 class="text-2xl font-black text-gray-800 mb-2 tracking-tighter italic">PALLET CREATED!</h3>
-                    <p class="text-gray-500 mb-6 text-sm">Pallet ID: <span class="font-black text-blue-600 tracking-tight">{{ $lastGeneratedPalletId }}</span></p>
-                    
-                    {{-- SAP Sync Status Section --}}
-                    <div class="mb-8 p-4 rounded-2xl border-2 {{ $sapSyncStatus === 'pending' ? 'bg-blue-50 border-blue-100' : (empty($failedSapItems) ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100') }} transition-colors">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-[10px] font-black uppercase tracking-widest {{ $sapSyncStatus === 'pending' ? 'text-blue-500' : (empty($failedSapItems) ? 'text-green-600' : 'text-red-600') }}">
-                                SAP Integration Status
-                            </span>
-                            @if($sapSyncStatus === 'pending')
-                                <div class="flex items-center space-x-1">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.5s]"></div>
-                                </div>
-                            @endif
-                        </div>
-
-                        @if($sapSyncStatus === 'pending')
-                            <p class="text-xs font-bold text-blue-700 italic">Sinkronisasi ke SAP sedang berjalan di background...</p>
-                        @elseif(empty($failedSapItems))
-                            <p class="text-xs font-bold text-green-700">✅ Berhasil! Semua data terkirim ke SAP tanpa kendala.</p>
-                        @else
-                            <div class="space-y-3">
-                                <p class="text-xs font-black text-red-700 uppercase tracking-tighter">⚠️ Ada {{ count($failedSapItems) }} SPK yang gagal terkirim ke SAP:</p>
-                                <div class="overflow-hidden border border-red-200 rounded-xl">
-                                    <table class="w-full text-left text-[10px]">
-                                        <thead class="bg-red-100 text-red-700 font-black uppercase tracking-widest">
-                                            <tr>
-                                                <th class="px-3 py-2">SPK No</th>
-                                                <th class="px-3 py-2">Error Message</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-red-100 bg-white">
-                                            @foreach($failedSapItems as $failed)
-                                                <tr>
-                                                    <td class="px-3 py-2 font-black text-gray-800">{{ $failed['spk_no'] }}</td>
-                                                    <td class="px-3 py-2 font-bold text-red-600 italic break-words">{{ $failed['sap_error_msg'] }}</td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <button wire:click="retrySapSync" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-red-200">
-                                    RETRY SAP SYNC
-                                </button>
-                            </div>
-                        @endif
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <a href="{{ route('wms.pallet-form.print', $lastGeneratedPalletId) }}" target="_blank" 
-                            class="block py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 text-sm uppercase">
-                            Print Label
-                        </a>
-                        <button wire:click="resetWholeForm" type="button"
-                            class="block py-4 bg-slate-800 hover:bg-black text-white font-bold rounded-2xl transition-all active:scale-95 text-sm uppercase">
-                            Next Scan
-                        </button>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-8 py-4 text-center">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SAP Batch Processing v2.0</span>
-                </div>
-            </div>
-        </div>
-    @endif
 </div>
