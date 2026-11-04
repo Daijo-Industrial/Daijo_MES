@@ -51,7 +51,6 @@
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-
             {{-- Analytics Loading Overlay --}}
             <div id="analytics-loading-overlay" class="hidden fixed inset-0 bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center z-50 transition-opacity">
                 <div class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white shadow-2xl border border-gray-200 text-sm font-bold text-gray-800">
@@ -65,7 +64,7 @@
 
             {{-- Filter Bar --}}
             <form id="analytics-filter-form" method="GET" action="{{ route('second-process.report-analytics') }}"
-                class="relative bg-white p-5 rounded-xl shadow-sm border border-gray-200 no-print space-y-4"
+                class="relative bg-white p-5 rounded-xl shadow-sm border border-gray-200 no-print space-y-4 pt-0"
                 onsubmit="showAnalyticsLoadingState()"
                 x-data="{ showCustomDates: {{ ($activePreset ?? '') === 'custom' ? 'true' : 'false' }} }">
                 {{-- Top loading progress bar --}}
@@ -127,25 +126,6 @@
 
                     {{-- Secondary Actions (Table shortcut & CSV Export) --}}
                     <div class="flex flex-wrap items-center gap-2">
-                        <a href="{{ route('second-process-reports.index', array_filter([
-                            'preset' => $activePreset ?? request('preset'),
-                            'date_from' => $dateFrom ?? request('date_from'),
-                            'date_to' => $dateTo ?? request('date_to'),
-                            'unit_line' => request('unit_line'),
-                            'shift' => request('shift'),
-                            'process_prod' => request('process_prod'),
-                            'industry' => $selectedIndustry ?? request('industry'),
-                            'customer' => request('customer'),
-                            'status' => request('status'),
-                            'search' => request('search'),
-                            'part_number' => request('part_number'),
-                            'sisa_filter' => request('sisa_filter'),
-                        ], fn($v) => !is_null($v) && $v !== '')) }}"
-                            class="inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-xs"
-                            title="Buka daftar laporan pada tabel dengan filter aktif yang sama">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            <span>Tabel Laporan ({{ number_format($summary->total_reports) }})</span>
-                        </a>
                         {{-- Multi-Option CSV Export Dropdown --}}
                         <div class="relative" x-data="{ openExport: false }">
                             <button type="button" @click="openExport = !openExport" @click.away="openExport = false"
