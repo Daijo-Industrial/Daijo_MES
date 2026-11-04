@@ -1199,17 +1199,6 @@
                                     + Tambah
                                 </button>
                             </div>
-                            <div class="flex items-center gap-4 text-xs font-semibold text-gray-600 pt-1">
-                                <span class="text-[11px] uppercase tracking-wider text-gray-400">Default Kategori:</span>
-                                @foreach ($ngRemarkCategories as $catVal => $catLabel)
-                                    <label class="inline-flex items-center gap-1.5 cursor-pointer">
-                                        <input type="radio" name="modal_ng_category" value="{{ $catVal }}"
-                                            {{ $loop->first ? 'checked' : '' }}
-                                            class="{{ $catVal === 'NG-INPUT' ? 'text-amber-600 focus:ring-amber-500' : 'text-indigo-600 focus:ring-indigo-500' }}">
-                                        <span>{{ $catLabel }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
                         </div>
 
                         <!-- Previously Inputted / Catalog Defect Types -->
