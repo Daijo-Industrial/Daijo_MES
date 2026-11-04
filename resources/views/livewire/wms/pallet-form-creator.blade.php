@@ -28,17 +28,6 @@
             }));
             this._addEmptyRow();
         },
-        _addEmptyRow() {
-            this.localScans.push({
-                cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                label: '',
-                spk_no: '',
-                qty: '',
-                warehouse: this.currentWarehouse,
-                part_no: '',
-                model_name: '',
-                status: 'new',
-                error: null
         focusActiveSpk() {
             let tryFocus = () => {
                 let activeIdx = this.localScans.findIndex(r => r.status === 'new');
