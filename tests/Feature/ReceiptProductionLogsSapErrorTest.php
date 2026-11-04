@@ -225,8 +225,8 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
 
     public function test_sap_post_uses_fail_fast_timeout_settings(): void
     {
-        $this->assertEquals(20, config('services.sap.post_timeout'));
-        $this->assertEquals(5, config('services.sap.connect_timeout'));
+        $this->assertEquals(60, config('services.sap.post_timeout'));
+        $this->assertEquals(10, config('services.sap.connect_timeout'));
 
         Http::fake([
             '*/auth/token' => Http::response(['access_token' => 'mock_token'], 200),

@@ -41,8 +41,8 @@ return [
         'company_db' => env('SAP_COMPANY_DB'),
         'username' => env('SAP_USERNAME'),
         'password' => env('SAP_PASSWORD'),
-        'post_timeout' => (int) env('SAP_POST_TIMEOUT', 20),
-        'connect_timeout' => (int) env('SAP_CONNECT_TIMEOUT', 5),
+        'post_timeout' => (int) env('SAP_POST_TIMEOUT', 60),
+        'connect_timeout' => (int) env('SAP_CONNECT_TIMEOUT', 10),
         'timeout_alert_recipients' => array_values(array_filter(array_map('trim', explode(',', env('SAP_TIMEOUT_ALERT_EMAILS', ''))))),
     ],
 
