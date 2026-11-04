@@ -17,16 +17,20 @@ class DailyDeliveryRecapExport implements WithMultipleSheets
 
     protected ?string $search;
 
+    protected ?string $plantFilter;
+
     public function __construct(
         string $selectedDate,
         ?string $shiftFilter = null,
         ?string $deliveryFilter = null,
-        ?string $search = null
+        ?string $search = null,
+        ?string $plantFilter = null
     ) {
         $this->selectedDate = $selectedDate;
         $this->shiftFilter = $shiftFilter;
         $this->deliveryFilter = $deliveryFilter;
         $this->search = $search;
+        $this->plantFilter = $plantFilter;
     }
 
     public function sheets(): array
@@ -36,7 +40,8 @@ class DailyDeliveryRecapExport implements WithMultipleSheets
             $this->selectedDate,
             $this->shiftFilter,
             $this->deliveryFilter,
-            $this->search
+            $this->search,
+            $this->plantFilter
         );
 
         return [

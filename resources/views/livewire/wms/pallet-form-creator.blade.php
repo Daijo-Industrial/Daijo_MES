@@ -1,8 +1,19 @@
 <div class="p-6 bg-gray-50 min-h-screen" 
      x-data="{ 
+        plant: '{{ $plant }}',
+        currentWarehouse: '{{ $plant === 'KARAWANG' ? 'KRFG' : 'FG' }}',
         localScans: [],
         localScanError: '',
         _scanTimer: null,
+        setPlant(newPlant) {
+            this.plant = newPlant;
+            let newWh = (newPlant === 'KARAWANG') ? 'KRFG' : 'FG';
+            this.currentWarehouse = newWh;
+            this.localScans.forEach(row => {
+                row.warehouse = newWh;
+            });
+            @this.setPlant(newPlant);
+        },
         initScans(items) {
             this.localScans = items.map(item => ({
                 cid: item.cid || 'c_' + Math.random().toString(36).substr(2, 5),
@@ -11,11 +22,40 @@
                 part_no: item.part_no,
                 model_name: item.model_name,
                 qty: item.qty,
-                warehouse: item.warehouse,
+                warehouse: item.warehouse || this.currentWarehouse,
                 status: 'success',
                 error: null
             }));
             this._addEmptyRow();
+        },
+        focusActiveSpk() {
+            let tryFocus = () => {
+                let activeIdx = this.localScans.findIndex(r => r.status === 'new');
+                if (activeIdx >= 0) {
+                    let el = document.getElementById('spk_input_' + activeIdx) || document.getElementById('spk_input_mobile_' + activeIdx);
+                    if (el && !el.disabled) {
+                        el.focus();
+                        el.select();
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            // Immediate attempt
+            if (!tryFocus()) {
+                this.$nextTick(() => {
+                    if (!tryFocus()) {
+                        setTimeout(tryFocus, 40);
+                        setTimeout(tryFocus, 120);
+                        setTimeout(tryFocus, 250);
+                    }
+                });
+            } else {
+                // Ensure focus isn't lost during DOM unmount / Livewire update roundtrip
+                this.$nextTick(() => tryFocus());
+                setTimeout(tryFocus, 50);
+            }
         },
         _addEmptyRow() {
             this.localScans.push({
@@ -23,16 +63,13 @@
                 label: '',
                 spk_no: '',
                 qty: '',
-                warehouse: '',
+                warehouse: this.currentWarehouse,
                 part_no: '',
                 model_name: '',
                 status: 'new',
                 error: null
             });
-            this.$nextTick(() => {
-                let el = document.getElementById('spk_input_' + (this.localScans.length - 1));
-                if (el) el.focus();
-            });
+            this.focusActiveSpk();
         },
         _resetActiveRow(idx) {
             let row = this.localScans[idx];
@@ -40,12 +77,33 @@
                 row.label = '';
                 row.spk_no = '';
                 row.qty = '';
-                row.warehouse = '';
+                row.warehouse = this.currentWarehouse;
             }
-            this.$nextTick(() => {
-                let el = document.getElementById('spk_input_' + idx);
-                if (el) { el.focus(); el.select(); }
-            });
+            this.focusActiveSpk();
+        },
+        onSpkInput(idx) {
+            let row = this.localScans[idx];
+            if (!row || row.status !== 'new') return;
+            let val = row.spk_no || '';
+            // Auto-detect and parse tab-delimited barcode from 2D scanner if scanned into SPK input
+            if (val.includes('\t')) {
+                let parts = val.split('\t').map(s => s.trim());
+                if (parts.length >= 4) {
+                    // [Part] \t [SPK] \t [Qty] \t [Label]
+                    row.spk_no = parts[1];
+                    row.qty = parseFloat(parts[2]) || row.qty;
+                    row.label = parts[3];
+                    this.$nextTick(() => {
+                        this.commitScan(idx);
+                    });
+                    return;
+                } else if (parts.length >= 2) {
+                    row.spk_no = parts[1];
+                    let next = document.getElementById('qty_input_' + idx);
+                    if (next) { next.focus(); next.select(); }
+                    return;
+                }
+            }
         },
         onLabelInput(idx) {
             clearTimeout(this._scanTimer);
@@ -90,7 +148,7 @@
             row.qty = qtyVal;
             row.warehouse = whseVal;
 
-            // Add new empty row below
+            // Add new empty row below and ensure focus immediately
             this._addEmptyRow();
 
             // Fire Livewire in background
@@ -116,7 +174,7 @@
             let lastRow = this.localScans[this.localScans.length - 1];
             let spk = lastRow ? lastRow.spk_no : '';
             let qty = lastRow ? lastRow.qty : 50;
-            let whse = lastRow ? lastRow.warehouse : 'FG';
+            let whse = this.currentWarehouse;
             
             @this.set('label_mode', 'NO_LABEL');
             @this.set('scan_qty', qty);
@@ -189,9 +247,11 @@
      }"
      x-init="
         initScans(@js($scanned_items));
+        focusActiveSpk();
         $watch('$wire.scanned_items', value => {
             if (value.length === 0) {
                 initScans([]);
+                focusActiveSpk();
             }
         });
      "
@@ -202,6 +262,7 @@
             item.part_no = $event.detail.part_no;
             item.model_name = $event.detail.model_name;
         }
+        focusActiveSpk();
      "
      x-on:scan-error.window="
         let errItem = localScans.find(i => i.cid === $event.detail.cid);
@@ -213,14 +274,7 @@
                 window.playTone(100, 400, 'square', 0.6);
                 setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
             }
-            // Find active row (status=new) and focus its SPK
-            let activeIdx = localScans.findIndex(r => r.status === 'new');
-            if (activeIdx >= 0) {
-                $nextTick(() => {
-                    let el = document.getElementById('spk_input_' + activeIdx);
-                    if (el) { el.focus(); el.select(); }
-                });
-            }
+            focusActiveSpk();
         }
      "
      @if($showSuccessModal && $sapSyncStatus === 'pending') wire:poll.2s="checkSapSyncStatus" @endif>
@@ -229,8 +283,20 @@
         {{-- Header --}}
         <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">{{ $isDelivery ? 'Generate Pallet Form (Delivery)' : 'Generate Pallet Form' }}</h1>
-                <p class="text-gray-500 text-sm">Scan box dan lengkapi detail palet. Mendukung multi-item per pallet.</p>
+                <div class="flex items-center gap-2.5 mb-1 flex-wrap" wire:ignore>
+                    <h1 class="text-2xl font-bold text-gray-800">{{ $isDelivery ? 'Generate Pallet Form (Delivery)' : 'Generate Pallet Form' }}</h1>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-black border"
+                          :class="plant === 'KARAWANG' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-amber-100 text-amber-800 border-amber-200'"
+                          x-text="'PLANT ' + plant">
+                    </span>
+                </div>
+                <p class="text-gray-500 text-sm" wire:ignore>
+                    Scan box dan lengkapi detail palet. Alur Transfer SAP: 
+                    <strong class="font-mono font-bold"
+                            :class="plant === 'KARAWANG' ? 'text-blue-700' : 'text-amber-700'"
+                            x-text="plant === 'KARAWANG' ? 'KRFFI ➔ KRFG' : 'FFI ➔ FG'">
+                    </strong>
+                </p>
             </div>
             <div class="flex items-center space-x-2 flex-wrap">
                 <a href="{{ route('wms.pallet-form.daily-recap') }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center transition-all shadow-md shadow-emerald-100">
@@ -268,10 +334,54 @@
             {{-- Left: Header Form --}}
             <div class="lg:col-span-1 space-y-6">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="text-lg font-semibold mb-5 flex items-center text-gray-800">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center text-gray-800">
                         <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         Pallet Details
                     </h2>
+
+                    {{-- Plant Selection (KBN vs Karawang) --}}
+                    <div class="mb-5 p-3.5 bg-gray-50 border border-gray-200 rounded-2xl" wire:ignore>
+                        <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+                            <span>Pilih Plant / Alur Gudang</span>
+                            <span class="text-[10px] font-black"
+                                  :class="plant === 'KARAWANG' ? 'text-blue-600' : 'text-amber-600'"
+                                  x-text="plant === 'KARAWANG' ? 'KARAWANG (KRFFI ➔ KRFG)' : 'KBN (FFI ➔ FG)'">
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button"
+                                    @click="setPlant('KBN')"
+                                    class="py-2.5 px-3 rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center border cursor-pointer"
+                                    :class="plant === 'KBN' ? 'bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-200 ring-2 ring-amber-300' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'">
+                                <span class="flex items-center gap-1.5 text-sm font-extrabold">
+                                    <span>🏭</span>
+                                    <span>Plant KBN</span>
+                                </span>
+                                <span class="text-[10px] font-bold opacity-90 mt-0.5 font-mono">FFI ➔ FG</span>
+                            </button>
+                            <button type="button"
+                                    @click="setPlant('KARAWANG')"
+                                    class="py-2.5 px-3 rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center border cursor-pointer"
+                                    :class="plant === 'KARAWANG' ? 'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-200 ring-2 ring-blue-300' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'">
+                                <span class="flex items-center gap-1.5 text-sm font-extrabold">
+                                    <span>🏭</span>
+                                    <span>Plant Karawang</span>
+                                </span>
+                                <span class="text-[10px] font-bold opacity-90 mt-0.5 font-mono">KRFFI ➔ KRFG</span>
+                            </button>
+                        </div>
+                        <div class="mt-2.5 text-[11px] leading-snug p-2.5 rounded-xl border flex items-center gap-2 font-medium"
+                             :class="plant === 'KARAWANG' ? 'text-blue-900 bg-blue-50/80 border-blue-200' : 'text-amber-900 bg-amber-50/80 border-amber-200'">
+                            <span class="text-base flex-shrink-0" x-text="plant === 'KARAWANG' ? '🔵' : '🟡'"></span>
+                            <span x-show="plant === 'KARAWANG'">
+                                <strong>Plant Karawang aktif:</strong> Box akan disimpan ke gudang <strong>KRFG</strong> dan transfer SAP otomatis diproses dari <strong>KRFFI ➔ KRFG</strong>.
+                            </span>
+                            <span x-show="plant === 'KBN'">
+                                <strong>Plant KBN aktif:</strong> Box akan disimpan ke gudang <strong>FG</strong> dan transfer SAP otomatis diproses dari <strong>FFI ➔ FG</strong>.
+                            </span>
+                        </div>
+                    </div>
+
                     <div class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -337,7 +447,7 @@
                         <div class="pt-4 border-t border-gray-100" x-data="{ isSubmitting: false }">
                             <button 
                                 @click="if (isSubmitting) { $event.preventDefault(); return false; } isSubmitting = true; setTimeout(() => isSubmitting = false, 4000);"
-                                wire:click.throttle.2000ms="generateForm" 
+                                wire:click.throttle.2000ms="generateForm(plant)" 
                                 type="button"
                                 wire:loading.attr="disabled"
                                 wire:target="generateForm"
@@ -353,7 +463,7 @@
             </div>
 
             {{-- Right: Excel Scan Sheet --}}
-            <div class="lg:col-span-2 space-y-6">
+            <div class="lg:col-span-2 space-y-6" wire:ignore>
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
@@ -404,6 +514,7 @@
                                             <input type="text"
                                                    :id="'spk_input_' + idx"
                                                    x-model="item.spk_no"
+                                                   @input="onSpkInput(idx)"
                                                    :disabled="item.status !== 'new'"
                                                    placeholder="SPK Code"
                                                    class="w-full px-2 py-1 border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 disabled:border-transparent transition-all uppercase">
@@ -429,13 +540,10 @@
 
                                         {{-- Warehouse --}}
                                         <td class="px-3 py-2 border-r border-gray-100 text-center">
-                                            <input type="text"
-                                                   :id="'whse_input_' + idx"
-                                                   x-model="item.warehouse"
-                                                   @change="updateWhse(item, $event.target.value)"
-                                                   :disabled="item.status === 'syncing'"
-                                                   placeholder="Whse"
-                                                   class="w-16 px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 bg-gray-50/30 focus:bg-white disabled:bg-gray-100/50 disabled:border-transparent transition-all uppercase">
+                                            <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-black font-mono border shadow-xs"
+                                                  :class="(item.warehouse || currentWarehouse) === 'KRFG' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
+                                                  x-text="item.warehouse || currentWarehouse">
+                                            </span>
                                         </td>
 
                                         {{-- Label Barcode --}}
@@ -520,7 +628,9 @@
                                 <div class="space-y-1">
                                     <label class="text-[10px] font-bold text-gray-400 uppercase">SPK Code</label>
                                     <input type="text"
+                                           :id="'spk_input_mobile_' + idx"
                                            x-model="item.spk_no"
+                                           @input="onSpkInput(idx)"
                                            :disabled="item.status !== 'new'"
                                            placeholder="SPK Code"
                                            class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 disabled:bg-gray-100 transition-all uppercase">
@@ -543,11 +653,12 @@
                                         </div>
                                         <div>
                                             <span class="text-[10px] font-bold text-gray-400 uppercase block">Whse</span>
-                                            <input type="text"
-                                                   x-model="item.warehouse"
-                                                   @change="updateWhse(item, $event.target.value)"
-                                                   :disabled="item.status === 'syncing'"
-                                                   class="w-full px-1 py-1 text-center border border-gray-200 rounded-lg outline-none text-xs font-bold text-gray-700 uppercase">
+                                            <div class="mt-1">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-black font-mono border"
+                                                      :class="(item.warehouse || currentWarehouse) === 'KRFG' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
+                                                      x-text="item.warehouse || currentWarehouse">
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

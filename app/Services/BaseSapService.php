@@ -83,7 +83,8 @@ class BaseSapService
                 'Host' => 'localhost',
                 'Content-Type' => 'application/json',
             ])
-                ->timeout(30)
+                ->timeout(10)
+                ->connectTimeout(3)
                 ->post($this->authUrl, [
                     'CompanyDB' => config('services.sap.company_db', env('SAP_COMPANY_DB')),
                     'Username' => config('services.sap.username', env('SAP_USERNAME')),
@@ -159,12 +160,14 @@ class BaseSapService
     }
 
     /**
-     * Send a POST request to SAP API
+     * Send a POST request to SAP API (Transactional - Fail-Fast within 5-8s)
      */
     protected function post($endpoint, $payload = [])
     {
         try {
             $token = $this->getToken();
+            $timeout = (int) config('services.sap.post_timeout', 8);
+            $connectTimeout = (int) config('services.sap.connect_timeout', 3);
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $token,
@@ -172,9 +175,8 @@ class BaseSapService
                 'Content-Type' => 'application/json',
                 'Host' => 'localhost',
             ])
-                ->timeout(120)
-                ->connectTimeout(15)
-                ->retry(2, 1000, throw: false)
+                ->timeout($timeout)
+                ->connectTimeout($connectTimeout)
                 ->post($this->baseUrl . $endpoint, $payload);
 
             if ($response && $response->status() === 401) {
@@ -189,9 +191,8 @@ class BaseSapService
                     'Content-Type' => 'application/json',
                     'Host' => 'localhost',
                 ])
-                    ->timeout(120)
-                    ->connectTimeout(15)
-                    ->retry(2, 1000, throw: false)
+                    ->timeout($timeout)
+                    ->connectTimeout($connectTimeout)
                     ->post($this->baseUrl . $endpoint, $payload);
             }
 
