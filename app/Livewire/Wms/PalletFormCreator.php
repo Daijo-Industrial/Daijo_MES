@@ -68,6 +68,13 @@ class PalletFormCreator extends Component
     // Accumulated scan list
     public array $scanned_items = [];
 
+    // ─── Plant Selection (KBN vs Karawang) ──────────────────────────────────────
+    public string $plant = 'KBN'; // 'KBN' | 'KARAWANG'
+
+    protected $queryString = [
+        'plant' => ['except' => 'KBN'],
+    ];
+
     // ─── Validation ────────────────────────────────────────────────────────────
     protected $rules = [
         'prod_date' => 'required|date',
@@ -75,11 +82,30 @@ class PalletFormCreator extends Component
         'delivery_shift' => 'required',
     ];
 
-    public function mount(?bool $isDelivery = null): void
+    public function mount(?bool $isDelivery = null, ?string $plant = null): void
     {
         $this->prod_date = \App\Services\WmsDeliveryRecapService::getCurrentProductionDate();
         $this->isDelivery = $isDelivery ?? true;
         $this->delivery_shift = (string) \App\Services\WmsDeliveryRecapService::determineShiftFromTime(now());
+        if ($plant) {
+            $this->plant = strtoupper($plant) === 'KARAWANG' ? 'KARAWANG' : 'KBN';
+        }
+    }
+
+    public function setPlant(string $plant): void
+    {
+        $this->plant = strtoupper($plant) === 'KARAWANG' ? 'KARAWANG' : 'KBN';
+        $targetWh = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
+
+        foreach ($this->scanned_items as &$item) {
+            $item['warehouse'] = $targetWh;
+        }
+        unset($item);
+
+        $this->dispatch('plant-changed', [
+            'plant' => $this->plant,
+            'warehouse' => $targetWh,
+        ]);
     }
 
     // ─── No-Label Toggle ───────────────────────────────────────────────────────
@@ -164,6 +190,7 @@ class PalletFormCreator extends Component
             }
 
             $count = max(1, (int) $this->scan_box_count);
+            $defaultWh = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
 
             for ($i = 0; $i < $count; $i++) {
                 $this->scanned_items[] = [
@@ -173,7 +200,7 @@ class PalletFormCreator extends Component
                     'customer_code' => null,
                     'spk_no' => null,
                     'qty' => (float) $this->scan_qty,
-                    'warehouse' => $this->scan_whse ?: null,
+                    'warehouse' => $this->isDelivery ? $defaultWh : ($this->scan_whse ?: $defaultWh),
                     'label' => null,
                     'is_no_label' => true,
                     'no_label_reason' => $this->no_label_reason ?: null,
@@ -243,6 +270,8 @@ class PalletFormCreator extends Component
             }
         }
 
+        $defaultWh = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
+
         // Tambahkan ke list
         $this->scanned_items[] = [
             'cid' => $cid ?: uniqid(),
@@ -251,7 +280,7 @@ class PalletFormCreator extends Component
             'customer_code' => $customerCode,
             'spk_no' => trim($this->scan_spk),
             'qty' => (float) ($this->scan_qty ?: 0),
-            'warehouse' => $this->scan_whse ?: null,
+            'warehouse' => $this->isDelivery ? $defaultWh : ($this->scan_whse ?: $defaultWh),
             'label' => trim($this->scan_label),
             'is_no_label' => false,
             'no_label_reason' => null,
@@ -337,8 +366,12 @@ class PalletFormCreator extends Component
 
     // ─── Generate Pallet Form ──────────────────────────────────────────────────
 
-    public function generateForm(WmsService $wmsService)
+    public function generateForm(WmsService $wmsService, ?string $clientPlant = null)
     {
+        if ($clientPlant) {
+            $this->plant = strtoupper($clientPlant) === 'KARAWANG' ? 'KARAWANG' : 'KBN';
+        }
+
         $this->validate();
 
         if (count($this->scanned_items) === 0) {
@@ -433,6 +466,7 @@ class PalletFormCreator extends Component
             // --- Create Header ---
             WmsPalletForm::create([
                 'pallet_id' => $palletId,
+                'plant' => $this->plant,
                 'position_id' => null,
                 'part_no' => $headerPartNo,
                 'model_name' => $headerModelName,
@@ -446,6 +480,8 @@ class PalletFormCreator extends Component
             ]);
 
             // --- Create Details ---
+            $targetWarehouse = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
+
             foreach ($this->scanned_items as $boxItem) {
                 WmsPalletFormDetail::create([
                     'pallet_form_id' => $palletId,
@@ -453,7 +489,7 @@ class PalletFormCreator extends Component
                     'model_name' => $boxItem['model_name'],
                     'spk_no' => $boxItem['spk_no'],
                     'qty' => $boxItem['qty'],
-                    'warehouse' => $this->isDelivery ? 'FG' : $boxItem['warehouse'],
+                    'warehouse' => $this->isDelivery ? $targetWarehouse : ($boxItem['warehouse'] ?: $targetWarehouse),
                     'label' => $boxItem['label'],
                     'is_no_label' => $boxItem['is_no_label'],
                     'no_label_reason' => $boxItem['no_label_reason'],

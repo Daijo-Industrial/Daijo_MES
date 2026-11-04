@@ -62,7 +62,8 @@ class WmsDeliveryRecapService
         string $selectedDate,
         ?string $shiftFilter = null,
         ?string $deliveryFilter = null,
-        ?string $search = null
+        ?string $search = null,
+        ?string $plantFilter = null
     ): array {
         [$startTime, $endTime] = self::getTimeWindow($selectedDate);
 
@@ -75,6 +76,10 @@ class WmsDeliveryRecapService
                 'position.rack.warehouse',
             ])
             ->whereBetween('created_at', [$startTime, $endTime]);
+
+        if (! empty($plantFilter) && $plantFilter !== 'ALL') {
+            $palletQuery->forPlant($plantFilter);
+        }
 
         if (! empty($deliveryFilter) && $deliveryFilter !== 'ALL') {
             $palletQuery->where('delivery_name', $deliveryFilter);
@@ -211,11 +216,15 @@ class WmsDeliveryRecapService
                 if (! isset($groupedItems[$partNo]['pallets'][$pallet->pallet_id])) {
                     $groupedItems[$partNo]['pallets'][$pallet->pallet_id] = [
                         'pallet_id' => $pallet->pallet_id,
+                        'plant' => $pallet->plant ?: 'KBN',
                         'delivery_name' => $pallet->delivery_name ?: '-',
                         'delivery_shift' => $shift,
                         'lot_no' => $pallet->lot_no ?: '-',
                         'slot' => $slotCode,
                         'status' => $pallet->status ?: 'STORED',
+                        'sap_sync_status' => $pallet->sap_sync_status ?: 'PENDING',
+                        'sap_error_msg' => $pallet->sap_error_msg,
+                        'sap_sync_at' => $pallet->sap_sync_at ? $pallet->sap_sync_at->format('d/m H:i') : null,
                         'created_at' => $pallet->created_at ? $pallet->created_at->format('H:i') : '-',
                         'created_full' => $pallet->created_at ? $pallet->created_at->format('d M Y H:i:s') : '-',
                         'item_qty' => 0,
@@ -261,6 +270,7 @@ class WmsDeliveryRecapService
                 // Flat Box Log untuk Tab Audit / Sheet 2 Excel
                 $flatBoxLogs[] = [
                     'pallet_id' => $pallet->pallet_id,
+                    'plant' => $pallet->plant ?: 'KBN',
                     'delivery_name' => $pallet->delivery_name ?: '-',
                     'shift' => $shift,
                     'lot_no' => $pallet->lot_no ?: '-',
@@ -362,6 +372,7 @@ class WmsDeliveryRecapService
 
             $palletsSummaryList[] = [
                 'pallet_id' => $p->pallet_id,
+                'plant' => $p->plant ?: 'KBN',
                 'delivery_name' => $p->delivery_name ?: '-',
                 'delivery_shift' => $actualShift,
                 'lot_no' => $p->lot_no ?: '-',
@@ -373,6 +384,9 @@ class WmsDeliveryRecapService
                 'qty_out' => $qtyOutSum,
                 'status' => $palletStatus,
                 'status_label' => $palletStatusLabel,
+                'sap_sync_status' => $p->sap_sync_status ?: 'PENDING',
+                'sap_error_msg' => $p->sap_error_msg,
+                'sap_sync_at' => $p->sap_sync_at ? $p->sap_sync_at->format('d/m H:i') : null,
                 'is_out' => $isPalletOut,
                 'is_partial_out' => $isPalletPartial,
                 'out_time' => $palletOutFormatted,

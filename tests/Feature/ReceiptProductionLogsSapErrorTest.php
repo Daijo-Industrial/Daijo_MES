@@ -6,6 +6,7 @@ use App\Livewire\ReceiptProductionLogs;
 use App\Services\SapErrorParser;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -57,6 +58,8 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
         Schema::create('api_logs', function (Blueprint $table) {
             $table->id();
             $table->string('api_name')->nullable();
+            $table->string('method')->nullable();
+            $table->string('endpoint')->nullable();
             $table->string('status')->nullable();
             $table->integer('status_code')->nullable();
             $table->text('message')->nullable();
@@ -84,6 +87,17 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
         $this->assertEquals('2', $parsed['bom_line']);
         $this->assertStringContainsString('SAP menolak penerimaan hasil produksi karena stok material/komponen', $parsed['user_message']);
         $this->assertStringContainsString('Goods Issue', $parsed['action_recommendation']);
+    }
+
+    public function test_sap_error_parser_extracts_production_order_bom_line_over_ign1_receipt_line(): void
+    {
+        $raw = 'SPK 26030494 failed: {"status":false,"message":"Error for SPK 26030494: [-5002] Make sure that the consumed quantity of the component item would not cause the item\'s inventory to fall below zero [IGN1.WhsCode][line: 1] , \'Production Order no: 26030494 Line: 2\'"}';
+
+        $parsed = SapErrorParser::parse($raw, 200, '26030494');
+
+        $this->assertEquals('stock_deficit', $parsed['category']);
+        $this->assertEquals('2', $parsed['bom_line']);
+        $this->assertStringContainsString('pada baris komponen 2', $parsed['user_message']);
     }
 
     public function test_sap_error_parser_categorizes_connection_timeout(): void
@@ -207,5 +221,45 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
         // Close modal
         $component->call('closeErrorModal')
             ->assertSet('activeErrorModal', null);
+    }
+
+    public function test_sap_post_uses_fail_fast_timeout_settings(): void
+    {
+        $this->assertEquals(8, config('services.sap.post_timeout'));
+        $this->assertEquals(3, config('services.sap.connect_timeout'));
+
+        Http::fake([
+            '*/auth/token' => Http::response(['access_token' => 'mock_token'], 200),
+            '*/api/receipt_production/create' => Http::response(['status' => true, 'message' => 'Success'], 200),
+        ]);
+
+        $service = app(\App\Services\ReceiptProductionService::class);
+        $summary = (object) [
+            'id' => 9991,
+            'spk_code' => 'SPK-FAST-01',
+            'warehouse' => 'FFI',
+            'total_quantity' => 100,
+        ];
+        $scannedData = (object) [
+            'item_code' => 'PART-FAST',
+        ];
+
+        DB::table('production_summary')->insert([
+            'id' => 9991,
+            'spk_code' => 'SPK-FAST-01',
+            'warehouse' => 'FFI',
+            'total_quantity' => 100,
+            'sap_sent' => 0,
+            'created_date' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $res = $service->pushSingleRecord($summary, $scannedData);
+        $this->assertTrue($res['success']);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'http://192.168.6.149:9001/api/receipt_production/create';
+        });
     }
 }

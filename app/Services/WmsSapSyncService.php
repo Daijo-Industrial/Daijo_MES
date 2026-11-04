@@ -97,11 +97,17 @@ class WmsSapSyncService extends BaseSapService
             $spkHistory = SpkItemHistory::where('spk_number', $spkNo)->first();
             $actualItemCode = $spkHistory ? $spkHistory->item_code : '';
 
+            $detailWh = strtoupper(trim($firstItem->warehouse ?? 'FG'));
+            $isKarawang = in_array($detailWh, ['KRFG', 'KRFFI', 'KARAWANG']);
+
+            $fromWh = $isKarawang ? 'KRFFI' : 'FFI';
+            $toWh = $isKarawang ? 'KRFG' : 'FG';
+
             $lines[] = [
                 'itemCode' => $actualItemCode,
                 'quantity' => (float) $items->sum('qty'),
-                'fromWarehouse' => 'FFI',
-                'toWarehouse' => 'FG',
+                'fromWarehouse' => $fromWh,
+                'toWarehouse' => $toWh,
                 'u_NUMPR' => (string) $spkNo,
             ];
         }
