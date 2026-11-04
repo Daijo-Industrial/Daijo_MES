@@ -333,30 +333,25 @@
                                         {{-- Status & Actions --}}
                                         <td class="px-3 py-2 text-right">
                                             <div class="flex items-center justify-end space-x-2">
-                                                <template x-if="item.status === 'success'">
-                                                    <span class="text-green-600 font-bold text-xs">✅ OK</span>
-                                                </template>
+                                                <span x-show="item.status === 'success'" class="text-green-600 font-bold text-xs">✅ OK</span>
 
                                                 {{-- Error --}}
-                                                <template x-if="item.status === 'error'">
-                                                    <div class="flex flex-col items-end group relative cursor-help">
-                                                        <span class="text-red-600 font-black text-xs">⚠️ ERR</span>
-                                                        <span class="text-red-500 text-[9px] italic leading-none max-w-[120px] truncate" x-text="item.error"></span>
-                                                    </div>
-                                                </template>
+                                                <div x-show="item.status === 'error'" class="flex flex-col items-end group relative cursor-help">
+                                                    <span class="text-red-600 font-black text-xs">⚠️ ERR</span>
+                                                    <span class="text-red-500 text-[9px] italic leading-none max-w-[120px] truncate" x-text="item.error"></span>
+                                                </div>
 
                                                 {{-- New Row Indicator --}}
-                                                <template x-if="item.status === 'new'">
-                                                    <span class="text-amber-500 font-bold text-xs animate-pulse">📝 EDITING</span>
-                                                </template>
+                                                <span x-show="item.status === 'new'" class="text-amber-500 font-bold text-xs animate-pulse">📝 EDITING</span>
 
-                                                {{-- Delete --}}
-                                                <template x-if="item.status !== 'new'">
-                                                    <button @click="removeScan(item)" type="button"
-                                                            class="p-1.5 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg transition-colors border border-transparent">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                    </button>
-                                                </template>
+                                                {{-- Delete Button --}}
+                                                <button x-show="item.status !== 'new'"
+                                                        @click.stop="removeScan(item)"
+                                                        type="button"
+                                                        title="Hapus baris ini"
+                                                        class="p-1.5 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg transition-colors border border-transparent cursor-pointer">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -378,11 +373,12 @@
                                 <div class="flex justify-between items-center">
                                     <span class="px-2 py-0.5 bg-gray-100 rounded-lg text-xs font-black text-gray-500 font-mono" x-text="'No. ' + (idx + 1)"></span>
                                     <div class="flex space-x-2">
-                                        <template x-if="item.status === 'new' || item.status === 'error'">
-                                            <button type="button" @click="removeLocalScan(item.cid)" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg transition-all">
-                                                HAPUS
-                                            </button>
-                                        </template>
+                                        <button x-show="item.status !== 'new'"
+                                                type="button" 
+                                                @click.stop="removeScan(item)" 
+                                                class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg transition-all cursor-pointer">
+                                            HAPUS
+                                        </button>
                                     </div>
                                 </div>
 
@@ -552,6 +548,10 @@
                             return;
                         }
 
+                        // Prune items yang sudah dihapus dari server
+                        let serverCids = new Set(newItems.map(s => s.cid));
+                        this.localScans = this.localScans.filter(local => local.status === 'new' || local.status === 'syncing' || serverCids.has(local.cid));
+
                         // Auto-sync part_no, model_name, and status directly from Livewire array
                         newItems.forEach(serverItem => {
                             let local = this.localScans.find(l => l.cid === serverItem.cid);
@@ -669,6 +669,13 @@
                 },
 
                 _addEmptyRow() {
+                    // Guard: jangan buat baris baru kalau sudah ada 'new' row
+                    if (this.localScans.some(r => r.status === 'new')) {
+                        this.focusActiveSpk();
+                        return;
+                    }
+
+                    // Inherit Qty & Whse saja — SPK TIDAK diwariskan (user harus scan ulang)
                     let lastRow = null;
                     for (let i = this.localScans.length - 1; i >= 0; i--) {
                         if (this.localScans[i].status !== 'new' && this.localScans[i].spk_no) {
@@ -677,14 +684,13 @@
                         }
                     }
 
-                    let nextSpk = lastRow ? lastRow.spk_no : '';
                     let nextQty = lastRow ? lastRow.qty : '';
                     let nextWhse = lastRow ? lastRow.warehouse : (this.currentWarehouse || '');
 
                     this.localScans.push({
                         cid: 'c_active_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                         label: '',
-                        spk_no: nextSpk,
+                        spk_no: '',
                         qty: nextQty,
                         warehouse: nextWhse,
                         part_no: '',
@@ -693,8 +699,7 @@
                         error: null
                     });
 
-                    // Fokus selalu kembali ke SPK Code baris baru
-                    this.focusActiveSpk();
+                    this.$nextTick(() => this.focusActiveSpk());
                 },
 
                 _resetActiveRow(itemOrIdx) {
@@ -903,16 +908,30 @@
                     if (wire) wire.addItem(labelVal, spkVal, qtyVal, whseVal, row.cid);
                 },
 
-                removeScan(item) {
-                    this.localScans = this.localScans.filter(i => i.cid !== item.cid);
+                removeScan(target) {
+                    let targetCid = null;
+                    if (target && typeof target === 'object') {
+                        targetCid = target.cid;
+                    } else if (typeof target === 'string') {
+                        targetCid = target;
+                    } else if (typeof target === 'number') {
+                        let row = this.localScans[target];
+                        targetCid = row ? row.cid : null;
+                    }
+                    if (!targetCid) return;
+
+                    this.localScans = this.localScans.filter(i => i.cid !== targetCid);
+                    if (!this.localScans.some(r => r.status === 'new')) {
+                        this._addEmptyRow();
+                    }
+
                     const wire = this.getWire();
-                    if (wire) wire.removeItemByCid(item.cid);
+                    if (wire) wire.removeItemByCid(targetCid);
                     this.focusActiveSpk();
                 },
 
                 removeLocalScan(cid) {
-                    let item = this.localScans.find(i => i.cid === cid);
-                    if (item) this.removeScan(item);
+                    this.removeScan(cid);
                 },
 
                 updateQty(item, newQty) {
@@ -1037,12 +1056,11 @@
                         if (data.part_no) item.part_no = data.part_no;
                         if (data.model_name) item.model_name = data.model_name;
                     }
-                    // Kalau baris aktif sudah ada SPK-nya (inherit), fokus langsung ke label
-                    let activeRow = this.localScans.find(r => r.status === 'new');
-                    if (activeRow && activeRow.spk_no) {
-                        this.focusActiveLabel();
+                    // Pastikan ada baris 'new' setelah sukses (kalau belum ada, buat)
+                    if (!this.localScans.some(r => r.status === 'new')) {
+                        this._addEmptyRow();
                     } else {
-                        this.focusActiveSpk();
+                        this.$nextTick(() => this.focusActiveSpk());
                     }
                 },
 
@@ -1095,6 +1113,7 @@
 
             Livewire.on('scan-error', () => {
                 window.playTone(100, 400, 'square', 0.6); 
+                setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
                 setTimeout(() => window.playTone(100, 400, 'square', 0.6), 500);
             });
         });
