@@ -22,6 +22,17 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
    - Periksa `git status` secara teliti.
    - Stage hanya file kode yang sengaja diubah dan diuji. Jaga agar konfigurasi lokal pengembang (seperti IP HMR dev server di `vite.config.js` atau catatan kerja) tetap terisolasi dan tidak ter-stage secara tidak sengaja.
 
+## Testing Environment & Database Safety Invariant
+1. **Strict Testing Isolation**:
+   - Seluruh aktivitas pengujian (test suite, benchmarks, verifikasi controller) WAJIB menggunakan environment `testing` (`DB_DATABASE=testing`).
+   - Selalu jalankan pengujian melalui `./vendor/bin/sail test` yang secara otomatis mengisolasi koneksi ke database `testing` sesuai `phpunit.xml`.
+2. **Zero Local Data Loss & Destructive Command Ban**:
+   - JANGAN PERNAH menjalankan perintah database destruktif (`migrate:fresh`, `db:wipe`, `migrate:reset`) terhadap database lokal/development (`DAIJO_MES`).
+   - Jangan berasumsi opsi `--env=testing` otomatis aman tanpa memastikan file `.env.testing` ada dan koneksi aktif menunjuk ke database `testing`.
+   - Jika perlu melakukan investigasi artisan, pastikan target database terverifikasi sebelum mengeksekusi (`config('database.connections.mysql.database') === 'testing'`).
+3. **KPI Summary Cards UI Consistency**:
+   - Kartu ringkasan metrik (KPI cards) harus difokuskan sebagai penyaji data ringkas (label, nominal, persentase) tanpa menumpuk tautan aksi/filter inline yang redundan dengan toolbar filter utama.
+
 ---
 
 # Daijo MES: App Context & Architecture
