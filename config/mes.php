@@ -261,5 +261,5 @@ return [
     | Baseline NG percentage threshold line for analytics charts and KPI alerts.
     |
     */
-    'sp_target_ng_rate' => 2.0,
+    'sp_target_ng_rate' => 3.6,
 ];
