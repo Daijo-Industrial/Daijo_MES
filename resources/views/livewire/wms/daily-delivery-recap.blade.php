@@ -44,7 +44,7 @@
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                 {{-- Date Navigation --}}
-                <div class="md:col-span-5 flex items-center gap-1.5">
+                <div class="md:col-span-4 flex items-center gap-1.5">
                     <button type="button" wire:click="setYesterday" 
                             class="px-3 py-2 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50 transition" 
                             title="Hari Sebelumnya">
@@ -64,6 +64,16 @@
                             title="Hari Berikutnya">
                         Besok ▶
                     </button>
+                </div>
+
+                {{-- Plant Filter --}}
+                <div class="md:col-span-2">
+                    <select wire:model.live="plantFilter" 
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                        <option value="ALL">Semua Plant (KBN &amp; Karawang)</option>
+                        <option value="KBN">🏭 Plant KBN</option>
+                        <option value="KARAWANG">🏭 Plant Karawang</option>
+                    </select>
                 </div>
 
                 {{-- Shift Filter --}}
@@ -89,10 +99,10 @@
                 </div>
 
                 {{-- Search Box --}}
-                <div class="md:col-span-3">
+                <div class="md:col-span-2">
                     <div class="relative">
                         <input type="text" wire:model.live.debounce.300ms="search" 
-                               placeholder="Cari part no, spk, pallet..."
+                               placeholder="Cari part, pallet..."
                                class="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>

@@ -16,6 +16,8 @@ class DailyDeliveryRecap extends Component
 
     public string $deliveryFilter = 'ALL';
 
+    public string $plantFilter = 'ALL';
+
     public string $search = '';
 
     public string $activeTab = 'items'; // 'items' | 'pallets' | 'box_logs'
@@ -24,6 +26,7 @@ class DailyDeliveryRecap extends Component
         'selectedDate' => ['except' => ''],
         'shiftFilter' => ['except' => 'ALL'],
         'deliveryFilter' => ['except' => 'ALL'],
+        'plantFilter' => ['except' => 'ALL'],
         'search' => ['except' => ''],
         'activeTab' => ['except' => 'items'],
     ];
@@ -60,7 +63,8 @@ class DailyDeliveryRecap extends Component
                 $this->selectedDate,
                 $this->shiftFilter,
                 $this->deliveryFilter,
-                $this->search
+                $this->search,
+                $this->plantFilter
             ),
             $fileName
         );
@@ -72,7 +76,8 @@ class DailyDeliveryRecap extends Component
             $this->selectedDate,
             $this->shiftFilter,
             $this->deliveryFilter,
-            $this->search
+            $this->search,
+            $this->plantFilter
         );
 
         return view('livewire.wms.daily-delivery-recap', [

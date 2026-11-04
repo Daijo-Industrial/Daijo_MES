@@ -171,6 +171,7 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
 
         Schema::create('wms_pallet_forms', function (Blueprint $table) {
             $table->string('pallet_id')->primary();
+            $table->string('plant', 20)->default('KBN');
             $table->foreignId('position_id')->nullable();
             $table->dateTime('assigned_at')->nullable();
             $table->string('part_no')->nullable();
@@ -315,6 +316,93 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
         $this->assertNotNull($detail);
         // Verify warehouse is overwritten to FG in database
         $this->assertEquals('FG', $detail->warehouse);
+    }
+
+    /**
+     * Test Plant Selection (KBN vs Karawang):
+     * - KBN: detail warehouse = 'FG', SAP payload fromWarehouse = 'FFI', toWarehouse = 'FG'
+     * - Karawang: detail warehouse = 'KRFG', SAP payload fromWarehouse = 'KRFFI', toWarehouse = 'KRFG'
+     */
+    public function test_plant_selection_kbn_and_karawang_routing_and_sap_payload(): void
+    {
+        Queue::fake();
+        Http::fake([
+            '*/auth/token' => Http::response(['access_token' => 'mock_token'], 200),
+            '*/api/inventory_transfer/create' => Http::response(['status' => true, 'message' => 'Success'], 200),
+        ]);
+
+        $wmsService = app(WmsService::class);
+        $sapSyncService = app(WmsSapSyncService::class);
+
+        // 1. Karawang test via Livewire setPlant('KARAWANG')
+        Livewire::actingAs($this->adminUser)
+            ->test(\App\Livewire\Wms\PalletFormCreator::class, ['isDelivery' => true])
+            ->assertSet('plant', 'KBN')
+            ->call('setPlant', 'KARAWANG')
+            ->assertSet('plant', 'KARAWANG')
+            ->assertDispatched('plant-changed', [
+                'plant' => 'KARAWANG',
+                'warehouse' => 'KRFG',
+            ])
+            ->set('prod_date', '2026-11-03')
+            ->set('delivery_name', 'Operator Karawang')
+            ->set('delivery_shift', '1')
+            ->call('addItem', 'LBL-KRW-01', 'SPK-1234', 80, 'KRFFI')
+            ->call('generateForm', $wmsService)
+            ->assertHasNoErrors();
+
+        $krPallet = WmsPalletForm::where('delivery_name', 'Operator Karawang')->first();
+        $this->assertNotNull($krPallet);
+        $krDetail = WmsPalletFormDetail::where('pallet_form_id', $krPallet->pallet_id)->first();
+        $this->assertNotNull($krDetail);
+        $this->assertEquals('KRFG', $krDetail->warehouse);
+
+        // Run SAP Sync on Karawang Pallet
+        $sapSyncService->syncPalletInventoryTransfer($krPallet->pallet_id);
+
+        Http::assertSent(function ($request) use ($krPallet) {
+            if ($request->url() === 'http://192.168.6.149:9001/api/inventory_transfer/create') {
+                $payload = $request->data();
+                if ($payload['remarks'] === "Inventory Transfer created from {$krPallet->pallet_id}") {
+                    return $payload['lines'][0]['fromWarehouse'] === 'KRFFI'
+                        && $payload['lines'][0]['toWarehouse'] === 'KRFG'
+                        && $payload['lines'][0]['quantity'] == 80;
+                }
+            }
+            return false;
+        });
+
+        // 2. KBN test (default)
+        Livewire::actingAs($this->adminUser)
+            ->test(\App\Livewire\Wms\PalletFormCreator::class, ['isDelivery' => true])
+            ->assertSet('plant', 'KBN')
+            ->set('prod_date', '2026-11-03')
+            ->set('delivery_name', 'Operator KBN')
+            ->set('delivery_shift', '2')
+            ->call('addItem', 'LBL-KBN-01', 'SPK-1234', 60, 'FFI')
+            ->call('generateForm', $wmsService)
+            ->assertHasNoErrors();
+
+        $kbnPallet = WmsPalletForm::where('delivery_name', 'Operator KBN')->first();
+        $this->assertNotNull($kbnPallet);
+        $kbnDetail = WmsPalletFormDetail::where('pallet_form_id', $kbnPallet->pallet_id)->first();
+        $this->assertNotNull($kbnDetail);
+        $this->assertEquals('FG', $kbnDetail->warehouse);
+
+        // Run SAP Sync on KBN Pallet
+        $sapSyncService->syncPalletInventoryTransfer($kbnPallet->pallet_id);
+
+        Http::assertSent(function ($request) use ($kbnPallet) {
+            if ($request->url() === 'http://192.168.6.149:9001/api/inventory_transfer/create') {
+                $payload = $request->data();
+                if ($payload['remarks'] === "Inventory Transfer created from {$kbnPallet->pallet_id}") {
+                    return $payload['lines'][0]['fromWarehouse'] === 'FFI'
+                        && $payload['lines'][0]['toWarehouse'] === 'FG'
+                        && $payload['lines'][0]['quantity'] == 60;
+                }
+            }
+            return false;
+        });
     }
 
     /**

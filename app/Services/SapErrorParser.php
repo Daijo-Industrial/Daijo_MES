@@ -286,11 +286,23 @@ class SapErrorParser
 
     /**
      * Extract BOM line number if present.
+     *
+     * In SAP DI-API responses for negative inventory errors ([-5002]), the error string contains:
+     * "[IGN1.WhsCode][line: 1] , 'Production Order no: 26030494 Line: 2'"
+     * [line: 1] corresponds to the transaction receipt document (IGN1),
+     * while the actual deficit BOM component row in the Production Order is indicated by "Production Order ... Line: 2".
+     * We prioritize extracting the Production Order line number over the generic document line.
      */
     private static function extractBomLine(string $raw): ?string
     {
-        if (preg_match("/(?:line|baris)[\s:#]+(\d+)/i", $raw, $m)) {
+        // Prioritas 1: Baris komponen BOM pada Production Order (e.g. "Production Order no: 26030494 Line: 2")
+        if (preg_match("/Production\s+Order.*?Line[\s:#]+(\d+)/i", $raw, $m)) {
             return $m[1];
+        }
+
+        // Prioritas 2: Format umum (ambil line terakhir jika ada beberapa baris, menghindari IGN1 [line: 1])
+        if (preg_match_all("/(?:line|baris)[\s:#]+(\d+)/i", $raw, $matches)) {
+            return end($matches[1]);
         }
 
         return null;

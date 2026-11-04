@@ -29,6 +29,9 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         $this->withoutVite();
 
+        config(['app.timezone' => 'Asia/Jakarta']);
+        date_default_timezone_set('Asia/Jakarta');
+
         config(['database.default' => 'sqlite']);
         config(['database.connections.sqlite' => [
             'driver' => 'sqlite',
@@ -111,6 +114,7 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         Schema::create('wms_pallet_forms', function (Blueprint $table) {
             $table->string('pallet_id')->primary();
+            $table->string('plant', 20)->default('KBN');
             $table->foreignId('position_id')->nullable();
             $table->dateTime('assigned_at')->nullable();
             $table->string('part_no')->nullable();
@@ -462,5 +466,88 @@ class WmsDailyDeliveryRecapTest extends TestCase
         $boxLog2 = collect($recap['box_logs'])->firstWhere('label', 'LBL-OUT-02');
         $this->assertFalse($boxLog2['is_out']);
         $this->assertEquals('DI GUDANG', $boxLog2['status']);
+    }
+
+    public function test_recap_filters_by_plant_correctly(): void
+    {
+        $kbnPallet = WmsPalletForm::create([
+            'pallet_id' => 'PLT-KBN-01',
+            'plant' => 'KBN',
+            'prod_date' => '2026-10-06',
+            'delivery_name' => 'Driver KBN',
+            'delivery_shift' => 1,
+            'lot_no' => 'LOT-KBN',
+            'box_qty' => 1,
+            'total_pallet_qty' => 100,
+            'status' => 'STORED',
+        ]);
+        $kbnPallet->created_at = Carbon::parse('2026-10-06 10:00:00');
+        $kbnPallet->save();
+
+        WmsPalletFormDetail::create([
+            'pallet_form_id' => 'PLT-KBN-01',
+            'part_no' => 'PART-KBN',
+            'model_name' => 'Part KBN',
+            'spk_no' => 'SPK-KBN-01',
+            'warehouse' => 'FG',
+            'qty' => 100,
+            'label' => 'LBL-KBN-01',
+            'created_at' => Carbon::parse('2026-10-06 10:00:00'),
+        ]);
+
+        $krPallet = WmsPalletForm::create([
+            'pallet_id' => 'PLT-KRW-01',
+            'plant' => 'KARAWANG',
+            'prod_date' => '2026-10-06',
+            'delivery_name' => 'Driver Karawang',
+            'delivery_shift' => 1,
+            'lot_no' => 'LOT-KRW',
+            'box_qty' => 1,
+            'total_pallet_qty' => 200,
+            'status' => 'STORED',
+        ]);
+        $krPallet->created_at = Carbon::parse('2026-10-06 11:00:00');
+        $krPallet->save();
+
+        WmsPalletFormDetail::create([
+            'pallet_form_id' => 'PLT-KRW-01',
+            'part_no' => 'PART-KRW',
+            'model_name' => 'Part Karawang',
+            'spk_no' => 'SPK-KRW-01',
+            'warehouse' => 'KRFG',
+            'qty' => 200,
+            'label' => 'LBL-KRW-01',
+            'created_at' => Carbon::parse('2026-10-06 11:00:00'),
+        ]);
+
+        $service = app(WmsDeliveryRecapService::class);
+
+        // 1. ALL Filter
+        $allRecap = $service->getDailyRecap('2026-10-06', 'ALL', 'ALL', null, 'ALL');
+        $this->assertEquals(300, $allRecap['kpis']['total_qty']);
+        $this->assertEquals(2, $allRecap['kpis']['total_pallets']);
+
+        // 2. KBN Filter
+        $kbnRecap = $service->getDailyRecap('2026-10-06', 'ALL', 'ALL', null, 'KBN');
+        $this->assertEquals(100, $kbnRecap['kpis']['total_qty']);
+        $this->assertEquals(1, $kbnRecap['kpis']['total_pallets']);
+        $this->assertEquals('PLT-KBN-01', $kbnRecap['pallets_list'][0]['pallet_id']);
+        $this->assertEquals('KBN', $kbnRecap['pallets_list'][0]['plant']);
+
+        // 3. Karawang Filter
+        $krRecap = $service->getDailyRecap('2026-10-06', 'ALL', 'ALL', null, 'KARAWANG');
+        $this->assertEquals(200, $krRecap['kpis']['total_qty']);
+        $this->assertEquals(1, $krRecap['kpis']['total_pallets']);
+        $this->assertEquals('PLT-KRW-01', $krRecap['pallets_list'][0]['pallet_id']);
+        $this->assertEquals('KARAWANG', $krRecap['pallets_list'][0]['plant']);
+
+        // 4. Livewire Component interaction with plantFilter
+        Livewire::actingAs($this->adminUser)
+            ->test(DailyDeliveryRecap::class)
+            ->set('selectedDate', '2026-10-06')
+            ->set('plantFilter', 'KARAWANG')
+            ->assertSet('plantFilter', 'KARAWANG')
+            ->assertSee('PLT-KRW-01')
+            ->assertDontSee('PLT-KBN-01');
     }
 }
