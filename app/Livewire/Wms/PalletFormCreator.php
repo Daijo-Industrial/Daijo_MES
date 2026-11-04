@@ -178,6 +178,12 @@ class PalletFormCreator extends Component
         }
         if ($directWhse) {
             $this->scan_whse = trim($directWhse);
+            $upperWh = strtoupper($this->scan_whse);
+            if (str_starts_with($upperWh, 'KR') || str_contains($upperWh, 'KARAWANG')) {
+                $this->plant = 'KARAWANG';
+            } elseif (in_array($upperWh, ['FG', 'FFI'])) {
+                $this->plant = 'KBN';
+            }
         }
 
         // ─── Case 2: No-Label Mode ─────────────────────────────────────────────
@@ -200,7 +206,7 @@ class PalletFormCreator extends Component
                     'customer_code' => null,
                     'spk_no' => null,
                     'qty' => (float) $this->scan_qty,
-                    'warehouse' => $this->isDelivery ? $defaultWh : ($this->scan_whse ?: $defaultWh),
+                    'warehouse' => $this->scan_whse ?: ($this->isDelivery ? $defaultWh : null),
                     'label' => null,
                     'is_no_label' => true,
                     'no_label_reason' => $this->no_label_reason ?: null,
@@ -230,9 +236,16 @@ class PalletFormCreator extends Component
             return;
         }
 
-        // Pastikan SPK valid (ada di database)
+        // Pastikan SPK valid (ada di database SpkItemHistory atau SpkMaster)
         $spkHistory = SpkItemHistory::where('spk_number', trim($this->scan_spk))->first();
+        $spkMaster = null;
         if (! $spkHistory) {
+            $spkMaster = SpkMaster::where('spk_number', trim($this->scan_spk))->first();
+        }
+
+        $partNo = $spkHistory?->item_code ?? $spkMaster?->item_code;
+
+        if (! $partNo) {
             $failedSpk = $this->scan_spk;
             $this->resetScanner();
             session()->flash('scan_error', 'SPK "' . $failedSpk . '" tidak ditemukan di sistem. Pastikan SPK sudah terdaftar.');
@@ -241,10 +254,9 @@ class PalletFormCreator extends Component
             return;
         }
 
-        $item = MasterListItem::where('item_code', $spkHistory->item_code)->first();
-        $partNo = $spkHistory->item_code;
-        $modelName = $item?->item_name ?? '-';
-        $customerCode = $item?->customer_code ?? '';
+        $item = MasterListItem::where('item_code', $partNo)->first();
+        $modelName = $item?->item_name ?? ($spkMaster?->masterItem?->item_name ?? '-');
+        $customerCode = $item?->customer_code ?? ($spkMaster?->masterItem?->customer_code ?? '');
 
         // Wajib ada label
         if (empty(trim($this->scan_label))) {
@@ -272,7 +284,7 @@ class PalletFormCreator extends Component
 
         $defaultWh = ($this->plant === 'KARAWANG') ? 'KRFG' : 'FG';
 
-        // Tambahkan ke list
+        // Tambahkan ke list (utamakan warehouse dari data barcode yang discan)
         $this->scanned_items[] = [
             'cid' => $cid ?: uniqid(),
             'part_no' => $partNo,
@@ -280,7 +292,7 @@ class PalletFormCreator extends Component
             'customer_code' => $customerCode,
             'spk_no' => trim($this->scan_spk),
             'qty' => (float) ($this->scan_qty ?: 0),
-            'warehouse' => $this->isDelivery ? $defaultWh : ($this->scan_whse ?: $defaultWh),
+            'warehouse' => $this->scan_whse ?: ($this->isDelivery ? $defaultWh : null),
             'label' => trim($this->scan_label),
             'is_no_label' => false,
             'no_label_reason' => null,
