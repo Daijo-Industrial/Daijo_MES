@@ -448,4 +448,70 @@ class SecondProcessPartCycleTest extends TestCase
         $analyticsRes->assertSee('sisa_filter=open');
         $analyticsRes->assertSee('Tabel Laporan');
     }
+
+    public function test_index_summary_sisa_input_only_counts_open_sisa(): void
+    {
+        $today = Carbon::now('Asia/Jakarta')->toDateString();
+
+        // Report 1: sisa 50, reconciled by Report 2
+        $rep1 = SecondProcessReport::create([
+            'date' => $today,
+            'shift' => 1,
+            'unit_line' => 'Line 1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-INDEX-SISA-OPEN',
+            'customer' => 'PT Astra',
+            'jml_input_wip' => 100,
+            'jumlah_output' => 50,
+            'jumlah_ok' => 50,
+            'jumlah_ng' => 0,
+            'sisa_input' => 50,
+            'status' => 'submitted',
+        ]);
+
+        // Report 2: absorbs Report 1
+        $rep2 = SecondProcessReport::create([
+            'date' => $today,
+            'shift' => 2,
+            'unit_line' => 'Line 1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-INDEX-SISA-OPEN',
+            'customer' => 'PT Astra',
+            'jml_input_wip' => 50,
+            'jumlah_output' => 50,
+            'jumlah_ok' => 50,
+            'jumlah_ng' => 0,
+            'sisa_input' => 0,
+            'status' => 'submitted',
+        ]);
+
+        // Report 3: sisa 18, open (uncovered)
+        $rep3 = SecondProcessReport::create([
+            'date' => $today,
+            'shift' => 3,
+            'unit_line' => 'Line 1',
+            'process_prod' => 'Painting',
+            'part_number' => 'PART-INDEX-SISA-OPEN',
+            'customer' => 'PT Astra',
+            'jml_input_wip' => 50,
+            'jumlah_output' => 32,
+            'jumlah_ok' => 32,
+            'jumlah_ng' => 0,
+            'sisa_input' => 18,
+            'status' => 'submitted',
+        ]);
+
+        $res = $this->actingAs($this->user)->get(route('second-process-reports.index', [
+            'part_number' => 'PART-INDEX-SISA-OPEN',
+            'preset' => 'all',
+        ]));
+
+        $res->assertStatus(200);
+        // Card 5 must only count Open Sisa (18), NOT naive sum (68)!
+        $res->assertViewHas('summary', function ($summary) {
+            return (int) $summary->total_sisa_input === 18;
+        });
+        $res->assertSee('Sisa Input (Open)');
+        $res->assertSee('18');
+    }
 }
