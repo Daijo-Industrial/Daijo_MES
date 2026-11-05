@@ -55,6 +55,10 @@ class Index extends Component
 
     public function exportExcel()
     {
+        if (! auth()->user()?->hasRole('SUPER-ADMIN')) {
+            abort(403, 'Fitur export Excel khusus untuk role Super-Admin.');
+        }
+
         $fileName = 'Mould_Checklist_' . Carbon::now()->format('Ymd_His') . '.xlsx';
 
         return Excel::download(

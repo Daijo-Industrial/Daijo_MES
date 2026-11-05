@@ -20,10 +20,12 @@ class MouldChecklistTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected Role $superAdminRole;
     protected Role $adminRole;
     protected Role $leaderRole;
     protected Role $operatorRole;
 
+    protected User $superAdminUser;
     protected User $adminUser;
     protected User $leaderUser;
     protected User $operatorUser;
@@ -32,10 +34,12 @@ class MouldChecklistTest extends TestCase
     {
         parent::setUp();
 
+        $this->superAdminRole = Role::create(['name' => 'SUPER-ADMIN']);
         $this->adminRole = Role::create(['name' => 'ADMIN']);
         $this->leaderRole = Role::create(['name' => 'LEADER']);
         $this->operatorRole = Role::create(['name' => 'OPERATOR']);
 
+        $this->superAdminUser = User::factory()->create(['name' => 'Super Admin User', 'role_id' => $this->superAdminRole->id]);
         $this->adminUser = User::factory()->create(['name' => 'Admin User', 'role_id' => $this->adminRole->id]);
         $this->leaderUser = User::factory()->create(['name' => 'Leader User', 'role_id' => $this->leaderRole->id]);
         $this->operatorUser = User::factory()->create(['name' => 'Operator User', 'role_id' => $this->operatorRole->id]);
@@ -43,18 +47,35 @@ class MouldChecklistTest extends TestCase
 
     public function test_master_mould_can_be_created_and_managed(): void
     {
+        // 1. Non-superadmin cannot see upload/add buttons and is forbidden from calling modals
         $this->actingAs($this->adminUser);
+        Livewire::test(MasterMouldIndex::class)
+            ->assertDontSee('Upload Excel')
+            ->assertDontSee('+ Tambah Mould')
+            ->call('openAddModal')
+            ->assertForbidden();
 
-        $mould = MasterMould::create([
-            'mould_no' => 'IK-MM-005-010',
-            'part_no' => '401-76934B001P',
-            'part_name' => 'GARNISH RR PLR RH 5H45',
-            'model' => '5H45',
-            'customer' => 'IKUYO',
-            'machine_number' => '1300T',
-            'material' => 'PP-KF06 LD',
-            'is_active' => true,
-        ]);
+        Livewire::test(MasterMouldIndex::class)
+            ->call('openUploadModal')
+            ->assertForbidden();
+
+        // 2. Super-admin can see buttons, create, and manage mould
+        $this->actingAs($this->superAdminUser);
+
+        Livewire::test(MasterMouldIndex::class)
+            ->assertSee('Upload Excel')
+            ->assertSee('+ Tambah Mould')
+            ->call('openAddModal')
+            ->assertSet('showFormModal', true)
+            ->set('mould_no', 'IK-MM-005-010')
+            ->set('part_no', '401-76934B001P')
+            ->set('part_name', 'GARNISH RR PLR RH 5H45')
+            ->set('model', '5H45')
+            ->set('customer', 'IKUYO')
+            ->set('machine_number', '1300T')
+            ->set('material', 'PP-KF06 LD')
+            ->call('saveMould')
+            ->assertHasNoErrors();
 
         $this->assertDatabaseHas('master_moulds', [
             'mould_no' => 'IK-MM-005-010',
@@ -218,8 +239,6 @@ class MouldChecklistTest extends TestCase
     {
         Excel::fake();
 
-        $this->actingAs($this->adminUser);
-
         MouldChecklist::create([
             'check_date' => now()->format('Y-m-d'),
             'mould_no' => 'IK-MM-005-010',
@@ -230,7 +249,17 @@ class MouldChecklistTest extends TestCase
             'status' => 'APPROVED',
         ]);
 
+        // 1. Non-superadmin cannot see export button and is forbidden from calling exportExcel
+        $this->actingAs($this->adminUser);
         Livewire::test(MouldChecklistIndex::class)
+            ->assertDontSee('Export Excel')
+            ->call('exportExcel')
+            ->assertForbidden();
+
+        // 2. Superadmin can see button and download Excel
+        $this->actingAs($this->superAdminUser);
+        Livewire::test(MouldChecklistIndex::class)
+            ->assertSee('Export Excel')
             ->call('exportExcel');
 
         Excel::assertDownloaded('Mould_Checklist_' . now()->format('Ymd_His') . '.xlsx', function (MouldChecklistExport $export) {
