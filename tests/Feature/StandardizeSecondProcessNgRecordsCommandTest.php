@@ -195,8 +195,30 @@ class StandardizeSecondProcessNgRecordsCommandTest extends TestCase
             'ng_input_qty' => 2,
         ]);
 
+        // 10. Legacy uncategorized record with positive total_ng (empty category & empty input item)
+        $rec10 = SecondProcessNgRecord::create([
+            'report_id' => $report->id,
+            'ng_category' => null,
+            'ng_name' => 'DIRTY',
+            'total_ng' => 15,
+            'ng_input_item' => null,
+            'ng_input_qty' => null,
+            'remark' => null,
+        ]);
+
+        // 11. Zero total_ng slot with null category and null input item (normal empty slot, should NOT be changed)
+        $rec11 = SecondProcessNgRecord::create([
+            'report_id' => $report->id,
+            'ng_category' => null,
+            'ng_name' => 'HAIR MARK',
+            'total_ng' => 0,
+            'ng_input_item' => null,
+            'ng_input_qty' => null,
+            'remark' => null,
+        ]);
+
         $this->artisan('second-process:standardize-ng-records', ['--force' => true])
-            ->expectsOutputToContain('Successfully updated 8 records in second_process_ng_records')
+            ->expectsOutputToContain('Successfully updated 9 records in second_process_ng_records')
             ->assertExitCode(0);
 
         // Verify rec1: NG-PROCESS -> NG-PROSES
@@ -267,7 +289,25 @@ class StandardizeSecondProcessNgRecordsCommandTest extends TestCase
             'ng_input_item' => '[2] NG-PROSES',
         ]);
 
-        // 10. Idempotency test: Running again should find 0 candidates / 0 updates needed
+        // Verify rec10: legacy uncategorized backfilled to NG-PROSES and preset format
+        $this->assertDatabaseHas('second_process_ng_records', [
+            'id' => $rec10->id,
+            'ng_category' => 'NG-PROSES',
+            'ng_input_item' => '[15] NG-PROSES',
+            'ng_input_qty' => 15,
+            'remark' => null,
+        ]);
+
+        // Verify rec11: zero defect empty slot remains untouched
+        $this->assertDatabaseHas('second_process_ng_records', [
+            'id' => $rec11->id,
+            'ng_category' => null,
+            'ng_input_item' => null,
+            'ng_input_qty' => null,
+            'remark' => null,
+        ]);
+
+        // 12. Idempotency test: Running again should find 0 candidates / 0 updates needed
         $this->artisan('second-process:standardize-ng-records', ['--force' => true])
             ->expectsOutputToContain('All second_process_ng_records are already standardized')
             ->assertExitCode(0);

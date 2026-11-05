@@ -23,7 +23,7 @@ class StandardizeSecondProcessNgRecords extends Command
      *
      * @var string
      */
-    protected $description = 'Standardize legacy Second Process NG records (convert NG-PROCESS/NG-PROCES variants to NG-PROSES, normalize ng_input_item, and preserve legacy notes in remark)';
+    protected $description = 'Standardize legacy Second Process NG records (convert NG-PROCESS/NG-PROCES variants to NG-PROSES, backfill uncategorized records with total_ng > 0, normalize ng_input_item, and preserve legacy notes in remark)';
 
     /**
      * Execute the console command.
@@ -53,6 +53,14 @@ class StandardizeSecondProcessNgRecords extends Command
                           ->where('ng_input_item', '!=', '')
                           ->where('ng_input_item', 'not like', '%NG-PROSES%')
                           ->where('ng_input_item', 'not like', '%NG-INPUT%');
+                  })
+                  ->orWhere(function ($sub) {
+                      $sub->where('total_ng', '>', 0)
+                          ->where(function ($missing) {
+                              $missing->whereNull('ng_category')
+                                      ->orWhereNull('ng_input_item')
+                                      ->orWhere('ng_input_item', '');
+                          });
                   });
             });
 
@@ -69,6 +77,7 @@ class StandardizeSecondProcessNgRecords extends Command
         $stats = [
             'category_corrected' => 0,
             'category_backfilled' => 0,
+            'uncategorized_legacy_backfilled' => 0,
             'input_item_normalized' => 0,
             'legacy_remarks_preserved' => 0,
         ];
@@ -93,6 +102,9 @@ class StandardizeSecondProcessNgRecords extends Command
                 $catBackfilled = false;
                 $inputChanged = false;
                 $remarkChanged = false;
+
+                // Track if this was a legacy uncategorized record (total_ng > 0, null category, and empty input item)
+                $isLegacyUncategorized = ($record->total_ng > 0 && $origCategory === null && empty($origInputItem));
 
                 // 1. Normalize ng_category typos
                 if ($origCategory !== null) {
@@ -159,12 +171,29 @@ class StandardizeSecondProcessNgRecords extends Command
                     }
                 }
 
+                // 5. Backfill legacy uncategorized records with total_ng > 0 (empty category / empty input item)
+                $totalNg = (int) $record->total_ng;
+                if ($totalNg > 0 && ($newCategory === null || empty($newInputItem))) {
+                    if ($newCategory === null) {
+                        $newCategory = 'NG-PROSES';
+                        $catBackfilled = true;
+                    }
+                    if (empty($newInputItem)) {
+                        $newInputItem = "[{$totalNg}] {$newCategory}";
+                        $newInputQty = $totalNg;
+                        $inputChanged = true;
+                    }
+                }
+
                 if ($catChanged || $catBackfilled || $inputChanged || $remarkChanged) {
                     if ($catChanged) {
                         $stats['category_corrected']++;
                     }
                     if ($catBackfilled) {
                         $stats['category_backfilled']++;
+                    }
+                    if ($isLegacyUncategorized) {
+                        $stats['uncategorized_legacy_backfilled']++;
                     }
                     if ($inputChanged) {
                         $stats['input_item_normalized']++;
@@ -198,6 +227,7 @@ class StandardizeSecondProcessNgRecords extends Command
                 ['Records Requiring Updates', $totalAffected],
                 ['Categories Typo Corrected (NG-PROCESS/PROCES -> NG-PROSES)', $stats['category_corrected']],
                 ['Categories Backfilled from NULL', $stats['category_backfilled']],
+                ['Legacy Uncategorized Records Backfilled to NG-PROSES', $stats['uncategorized_legacy_backfilled']],
                 ['Input Items Normalized to Preset Format', $stats['input_item_normalized']],
                 ['Legacy Operator Notes Preserved to Remark', $stats['legacy_remarks_preserved']],
             ]
@@ -221,6 +251,9 @@ class StandardizeSecondProcessNgRecords extends Command
 
         $this->info("Applying updates to {$totalAffected} records within an atomic database transaction...");
 
+        $updateBar = $this->output->createProgressBar($totalAffected);
+        $updateBar->start();
+
         DB::beginTransaction();
         try {
             foreach (array_chunk($recordsToUpdate, 500) as $chunk) {
@@ -231,14 +264,19 @@ class StandardizeSecondProcessNgRecords extends Command
                         'ng_input_qty' => $item['ng_input_qty'],
                         'remark' => $item['remark'],
                     ]);
+                    $updateBar->advance();
                 }
             }
 
             DB::commit();
+            $updateBar->finish();
+            $this->newLine(2);
             $this->info("🎉 Successfully updated {$totalAffected} records in second_process_ng_records!");
             return 0;
         } catch (Throwable $e) {
             DB::rollBack();
+            $updateBar->finish();
+            $this->newLine(2);
             $this->error("💥 An error occurred during database update: {$e->getMessage()}");
             $this->error('Transaction has been rolled back. Database remains untouched.');
             return 1;
