@@ -148,10 +148,14 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Jam Pengerjaan</label>
                     <div class="flex items-center gap-2">
-                        <input type="text" wire:model="start_time" placeholder="14:00" class="w-1/2 px-2.5 py-2.5 border border-slate-300 rounded-xl text-sm font-mono text-center">
-                        <span class="text-xs text-slate-400 font-bold">s/d</span>
-                        <input type="text" wire:model="end_time" placeholder="20:00" class="w-1/2 px-2.5 py-2.5 border border-slate-300 rounded-xl text-sm font-mono text-center">
+                        <input type="time" wire:model="start_time"
+                            class="w-1/2 px-2.5 py-2 border border-slate-300 rounded-xl text-sm font-mono text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                        <span class="text-xs text-slate-400 font-bold shrink-0">s/d</span>
+                        <input type="time" wire:model="end_time"
+                            class="w-1/2 px-2.5 py-2 border border-slate-300 rounded-xl text-sm font-mono text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
                     </div>
+                    @error('start_time') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                    @error('end_time') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
                 </div>
             </div>
         </div>

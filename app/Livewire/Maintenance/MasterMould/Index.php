@@ -64,6 +64,10 @@ class Index extends Component
 
     public function openAddModal()
     {
+        if (! auth()->user()?->hasRole('SUPER-ADMIN')) {
+            abort(403, 'Aksi ini hanya dapat dilakukan oleh Super-Admin.');
+        }
+
         $this->resetForm();
         $this->isEdit = false;
         $this->showFormModal = true;
@@ -108,6 +112,10 @@ class Index extends Component
 
     public function saveMould()
     {
+        if (! $this->isEdit && ! auth()->user()?->hasRole('SUPER-ADMIN')) {
+            abort(403, 'Tambah mould baru hanya dapat dilakukan oleh Super-Admin.');
+        }
+
         $this->validate();
 
         MasterMould::updateOrCreate(
@@ -137,6 +145,10 @@ class Index extends Component
 
     public function openUploadModal()
     {
+        if (! auth()->user()?->hasRole('SUPER-ADMIN')) {
+            abort(403, 'Aksi ini hanya dapat dilakukan oleh Super-Admin.');
+        }
+
         $this->excelFile = null;
         $this->showUploadModal = true;
     }
@@ -149,6 +161,10 @@ class Index extends Component
 
     public function uploadExcel()
     {
+        if (! auth()->user()?->hasRole('SUPER-ADMIN')) {
+            abort(403, 'Upload Excel hanya dapat dilakukan oleh Super-Admin.');
+        }
+
         $this->validate([
             'excelFile' => 'required|file|mimes:xlsx,xls|max:20480',
         ]);

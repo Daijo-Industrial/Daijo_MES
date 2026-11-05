@@ -13,22 +13,24 @@
             <p class="text-sm text-slate-500 mt-1">Katalog data master tooling mould, part number, customer, dan mesin injection.</p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-            <button wire:click="openUploadModal"
-                class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Upload Excel
-            </button>
-            <button wire:click="openAddModal"
-                class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                + Tambah Mould
-            </button>
-        </div>
+        @if (auth()->user()?->hasRole('SUPER-ADMIN'))
+            <div class="flex flex-wrap items-center gap-2">
+                <button wire:click="openUploadModal"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Upload Excel
+                </button>
+                <button wire:click="openAddModal"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    + Tambah Mould
+                </button>
+            </div>
+        @endif
     </div>
 
     <!-- Alert Messages -->
@@ -151,7 +153,9 @@
                         <tr>
                             <td colspan="8" class="px-4 py-12 text-center text-slate-400">
                                 <p class="text-base font-medium">Tidak ada data mould ditemukan.</p>
-                                <p class="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci pencarian atau upload file Excel.</p>
+                                <p class="text-xs text-slate-500 mt-1">
+                                    Coba sesuaikan kata kunci pencarian{{ auth()->user()?->hasRole('SUPER-ADMIN') ? ' atau upload file Excel.' : '.' }}
+                                </p>
                             </td>
                         </tr>
                     @endforelse
@@ -243,8 +247,8 @@
         </div>
     @endif
 
-    <!-- Modal Upload Excel -->
-    @if ($showUploadModal)
+    {{-- Modal Upload Excel --}}
+    @if ($showUploadModal && auth()->user()?->hasRole('SUPER-ADMIN'))
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
                 <div class="flex items-center justify-between pb-4 border-b border-slate-200">
