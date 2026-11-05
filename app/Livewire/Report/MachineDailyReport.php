@@ -206,7 +206,7 @@ class MachineDailyReport extends Component
             }
         } else {
             // Access control for Operator view
-            if (! $user->hasRole('OPERATOR') && ! $user->hasRole('ADMIN') && ! $user->hasRole('SUPER-ADMIN')) {
+            if (! $user->hasRole('OPERATOR')) {
                 abort(403, 'Unauthorized. Access is restricted to Operators.');
             }
 

@@ -10,7 +10,6 @@ use App\Http\Controllers\Inventory\StockHealthController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InvLineListController;
 use App\Http\Controllers\MaintenanceChecklistController;
-use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\Production\BillOfMaterialController;
 use App\Http\Controllers\Production\ForecastProductionController;
@@ -181,9 +180,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/daily-item-codes/{id}', [DailyItemCodeController::class, 'update'])->name('daily-item-code.update');
     Route::delete('/daily-item-codes/{id}', [DailyItemCodeController::class, 'destroy'])->name('daily-item-code.destroy');
     Route::get('/ppic/listup-machine', PpicListUpMachine::class)->name('ppic.listup.index');
-
-    // Route untuk bikin tanggal Maintenance
-    Route::get('/maintenance/index', [MaintenanceController::class, 'index'])->name('maintenance.index');
 
     // belum dipake sepertinya
     Route::get('/assembly-daily-process', [AssemblyDailyController::class, 'index'])->name('assembly.daily.process.index');
