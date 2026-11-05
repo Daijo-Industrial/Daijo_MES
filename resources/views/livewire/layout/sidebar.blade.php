@@ -407,7 +407,7 @@ new class extends Component {
                     <livewire:sidebar-link href="{{ route('master-mould.index') }}" label="Master Mould"
                         :active="request()->routeIs('master-mould.*')" wire:navigate />
 
-                    <livewire:sidebar-link href="{{ route('maintenance.checklist-report') }}" label="Checklist Predictive Maintenance"
+                    <livewire:sidebar-link href="{{ route('maintenance.checklist-report') }}" label="Laporan Predictive Maintenance Mesin"
                         :active="request()->routeIs('maintenance.checklist-report')" wire:navigate />
                 @endif
 
