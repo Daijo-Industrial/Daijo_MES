@@ -125,7 +125,7 @@ new class extends Component {
                 <livewire:parent-dropdown label="Maintenance & Machine" :initiallyOpen="false" :childRoutes="[
                     ['name' => 'mould-checklist.index', 'label' => 'Mould Maintenance Checklist'],
                     ['name' => 'master-mould.index', 'label' => 'Master Mould Directory'],
-                    ['name' => 'maintenance.checklist-report', 'label' => 'Checklist Predictive Mesin'],
+                    ['name' => 'maintenance.checklist-report', 'label' => 'Laporan Predictive Maintenance Mesin'],
                 ]" />
 
                 @if (app(\App\Services\PlantContextService::class)->supportsSecondProcess())
