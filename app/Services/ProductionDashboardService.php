@@ -326,7 +326,7 @@ class ProductionDashboardService
         $repairLogsRaw = $repairQuery->get();
 
         // 4. In-Memory Process All Sections Fast
-        $productionResult = $this->processProductionData($dailyData, $startDate, $endDate);
+        $productionResult = $this->processProductionData($dailyData, $startDate, $endDate, $adjustLogsRaw);
         $ngBreakdown = $this->processNgBreakdown($dailyData, $masterItems, $adjustLogsRaw);
         $downtimeAnalysis = $this->processDowntimeAnalysis($dailyData, $masterItems);
         $topRemarks = $this->processTopProblematicRemarks($dailyData, $masterItems);
@@ -396,7 +396,7 @@ class ProductionDashboardService
     /**
      * Process raw collection into chart-ready format (Fast in-memory)
      */
-    public function processProductionData($dailyData, Carbon $startDate, Carbon $endDate): array
+    public function processProductionData($dailyData, Carbon $startDate, Carbon $endDate, $adjustLogsRaw = null): array
     {
         $chartData = [];
         $summary = [
@@ -523,6 +523,21 @@ class ProductionDashboardService
                 $summary['total_ng'] += $ng;
             }
         }
+
+        $totalAdjusterNg = 0;
+        if ($adjustLogsRaw) {
+            foreach ($adjustLogsRaw as $adjLog) {
+                if ($adjLog->relationLoaded('ngDetails') || $adjLog->ngDetails) {
+                    foreach ($adjLog->ngDetails as $ngDetail) {
+                        $totalAdjusterNg += (int) ($ngDetail->ng_quantity ?? 0);
+                    }
+                }
+            }
+        }
+
+        $summary['total_ng_production'] = $summary['total_ng'];
+        $summary['total_adjuster_ng'] = $totalAdjusterNg;
+        $summary['total_ng'] += $totalAdjusterNg;
 
         $totalProduction = $summary['total_actual'] + $summary['total_ng'];
         $summary['ng_rate'] = $totalProduction > 0
@@ -1440,6 +1455,19 @@ class ProductionDashboardService
     }
 
     /**
+     * Backward-compatible getShiftPersonnelAnalysis alias
+     */
+    public function getShiftPersonnelAnalysis(
+        Carbon $startDate,
+        Carbon $endDate,
+        ?string $itemCode = null,
+        ?string $machineUserId = null,
+        ?string $plant = null
+    ): array {
+        return $this->getShiftPersonnelAndNgAnalysis($startDate, $endDate, $itemCode, $machineUserId, $plant);
+    }
+
+    /**
      * Backward-compatible getShiftPersonnelAndNgAnalysis
      */
     public function getShiftPersonnelAndNgAnalysis(
@@ -1682,7 +1710,9 @@ class ProductionDashboardService
             $ngValues = array_values($adjusterDailyNg[$adj]);
             $actualValues = array_values($adjusterDailyActual[$adj]);
 
-            $totalNg = array_sum($ngValues);
+            $ngProduction = array_sum($ngValues);
+            $directNg = $adjusterStats[$adj]['adjuster_direct_ng'] ?? 0;
+            $totalNg = $ngProduction + $directNg; // NG Production + NG Adjuster
             $totalActual = array_sum($actualValues);
             $totalProd = $totalActual + $totalNg;
             $ngRate = $totalProd > 0 ? round(($totalNg / $totalProd) * 100, 2) : 0;
@@ -1702,12 +1732,13 @@ class ProductionDashboardService
             $adjusterSummaries[] = [
                 'name' => $adj,
                 'color' => $color,
+                'ng_production' => $ngProduction,
                 'total_ng' => $totalNg,
                 'total_actual' => $totalActual,
                 'ng_rate' => $ngRate,
                 'adjust_count' => $adjusterStats[$adj]['adjust_count'] ?? 0,
                 'adjust_minutes' => round($adjusterStats[$adj]['adjust_minutes'] ?? 0, 1),
-                'direct_ng' => $adjusterStats[$adj]['adjuster_direct_ng'] ?? 0,
+                'direct_ng' => $directNg,
                 'direct_ng_breakdown' => $adjusterStats[$adj]['adjuster_ng_breakdown'] ?? [],
             ];
 

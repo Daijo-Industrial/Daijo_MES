@@ -310,6 +310,9 @@
                         <p class="text-sm font-medium text-gray-600">NG Rate</p>
                         <p class="text-2xl font-bold text-gray-800 mt-2">{{ number_format($summary['ng_rate'] ?? 0, 2) }}%</p>
                         <p class="text-xs text-gray-500 mt-1">{{ number_format($summary['total_ng'] ?? 0) }} pcs</p>
+                        @if(($summary['total_adjuster_ng'] ?? 0) > 0)
+                            <p class="text-[10px] text-gray-400 mt-0.5 font-medium">Prod: {{ number_format($summary['total_ng_production'] ?? 0) }} | Adj: {{ number_format($summary['total_adjuster_ng'] ?? 0) }}</p>
+                        @endif
                     </div>
                     <div class="bg-red-100 p-3 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -767,13 +770,17 @@
                                     {{ number_format($adjSummary['ng_rate'], 2) }}% NG
                                 </span>
                             </div>
-                            <div class="grid grid-cols-2 gap-2 text-center my-2">
+                            <div class="grid grid-cols-3 gap-1.5 text-center my-2">
                                 <div class="bg-white rounded p-1.5 border border-gray-200/60">
-                                    <div class="text-[10px] text-gray-400">Total NG</div>
-                                    <div class="text-xs font-bold text-red-600">{{ number_format($adjSummary['total_ng']) }} pcs</div>
+                                    <div class="text-[9px] text-gray-400 font-medium truncate" title="NG Production">NG Production</div>
+                                    <div class="text-xs font-bold text-rose-600">{{ number_format($adjSummary['ng_production'] ?? $adjSummary['total_ng']) }} pcs</div>
+                                </div>
+                                <div class="bg-white rounded p-1.5 border border-red-200/70 bg-red-50/40">
+                                    <div class="text-[9px] text-red-600 font-bold truncate" title="Total NG (Production + Adjuster)">Total NG</div>
+                                    <div class="text-xs font-black text-red-700">{{ number_format($adjSummary['total_ng']) }} pcs</div>
                                 </div>
                                 <div class="bg-white rounded p-1.5 border border-gray-200/60">
-                                    <div class="text-[10px] text-gray-400">Total Output</div>
+                                    <div class="text-[9px] text-gray-400 font-medium truncate" title="Total Output">Total Output</div>
                                     <div class="text-xs font-bold text-gray-800">{{ number_format($adjSummary['total_actual']) }} pcs</div>
                                 </div>
                             </div>
