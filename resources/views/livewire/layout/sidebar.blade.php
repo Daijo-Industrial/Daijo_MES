@@ -118,7 +118,6 @@ new class extends Component {
                     ['name' => 'capacityforecastindex', 'label' => 'Capacity By Forecast'],
                     ['name' => 'waiting_purchase_orders.index', 'label' => 'Waiting Purchase Orders'],
                     ['name' => 'notification_recipients.index', 'label' => 'Notification Recipients'],
-                    ['name' => 'maintenance.index', 'label' => 'Maintenance Index'],
                     ['name' => 'invlinelist', 'label' => 'Machine List'],
                 ]" />
 
@@ -217,27 +216,13 @@ new class extends Component {
                     ['name' => 'api.dashboard', 'label' => 'API Log Dashboard'],
                 ]" />
             @else
-                @if (
-                    !auth()->user()?->can('view-store-links') &&
-                        !auth()->user()?->can('view-business-links') &&
-                        !auth()->user()?->can('view-production-links') &&
-                        !auth()->user()?->can('view-quality-links'))
-                    <livewire:sidebar-link href="{{ route('dashboard') }}" label="Dashboard" :active="request()->routeIs('dashboard')"
-                        wire:navigate />
+                <livewire:sidebar-link href="{{ route('dashboard') }}" label="Dashboard" :active="request()->routeIs('dashboard')"
+                    wire:navigate />
 
+                @if(auth()->user()?->can('view-operator-links') || auth()->user()->hasRole('OPERATOR'))
                     <livewire:sidebar-link href="{{ route('operator.daily-report') }}" label="Laporan Harian Mesin"
                         :active="request()->routeIs('operator.daily-report')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('mould-checklist.index') }}" label="Checklist Mould"
-                        :active="request()->routeIs('mould-checklist.*')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('master-mould.index') }}" label="Master Mould"
-                        :active="request()->routeIs('master-mould.*')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('maintenance.checklist-report') }}" label="Checklist Predictive Maintenance"
-                        :active="request()->routeIs('maintenance.checklist-report')" wire:navigate />
                 @endif
-
 
                 @if (auth()->user()?->can('view-warehouse-links'))
                     <livewire:parent-dropdown label="Moulding" :childRoutes="[
@@ -415,11 +400,15 @@ new class extends Component {
                 <hr>
 
                 <!-- Maintenance Links -->
-                @if (auth()->user()?->can('view-maintenance-links') || auth()->user()?->role_id == 8 || auth()->user()?->role?->name === 'MAINTENANCE')
+                @if (auth()->user()?->can('view-maintenance-links'))
+                    <livewire:sidebar-link href="{{ route('mould-checklist.index') }}" label="Checklist Mould"
+                        :active="request()->routeIs('mould-checklist.*')" wire:navigate />
+
+                    <livewire:sidebar-link href="{{ route('master-mould.index') }}" label="Master Mould"
+                        :active="request()->routeIs('master-mould.*')" wire:navigate />
+
                     <livewire:sidebar-link href="{{ route('maintenance.checklist-report') }}" label="Checklist Predictive Maintenance"
                         :active="request()->routeIs('maintenance.checklist-report')" wire:navigate />
-                    <livewire:sidebar-link href="{{ route('maintenance.index') }}" label="Maintenance Index"
-                        :active="request()->routeIs('maintenance.index')" wire:navigate />
                 @endif
 
                 <!-- Second Process Links (Departmental) -->
