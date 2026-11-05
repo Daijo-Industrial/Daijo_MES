@@ -36,6 +36,8 @@ class Form extends Component
 
     // Dropdown / Search state
     public $showMouldDropdown = false;
+    public $isManualMould = false;
+    public $auto_sign_check_by = false;
 
     protected function rules()
     {
@@ -100,6 +102,10 @@ class Form extends Component
             $this->start_time = Carbon::now('Asia/Jakarta')->format('H:i');
             $this->end_time = Carbon::now('Asia/Jakarta')->addHours(2)->format('H:i');
 
+            if (auth()->user()?->hasRole('MOULD-MAINTENANCE-LEADER')) {
+                $this->auto_sign_check_by = true;
+            }
+
             // Initialize standard 16 items
             $this->initStandardItems();
         }
@@ -146,7 +152,33 @@ class Form extends Component
             }
             $this->mould_search = $mould->mould_no . ' - ' . $mould->part_no;
             $this->showMouldDropdown = false;
+            $this->isManualMould = false;
         }
+    }
+
+    public function clearSelectedMould()
+    {
+        $this->mould_id = null;
+        $this->mould_no = '';
+        $this->part_no = '';
+        $this->part_name = '';
+        $this->model = '';
+        $this->customer = '';
+        $this->mould_search = '';
+        $this->isManualMould = false;
+        $this->showMouldDropdown = false;
+    }
+
+    public function enableManualMould()
+    {
+        $this->isManualMould = true;
+        $this->showMouldDropdown = false;
+        $this->mould_search = '';
+    }
+
+    public function disableManualMould()
+    {
+        $this->clearSelectedMould();
     }
 
     public function saveDraft()
@@ -175,15 +207,23 @@ class Form extends Component
             return;
         }
 
-        $checklist = $this->persistChecklist('SUBMITTED', true);
+        $autoSignCheckBy = $this->auto_sign_check_by && $user->hasRole('MOULD-MAINTENANCE-LEADER');
+        $status = $autoSignCheckBy ? 'APPROVED' : 'SUBMITTED';
 
-        session()->flash('success', 'Check sheet berhasil di-submit dan ditandatangani oleh ' . $checklist->issued_name . '!');
+        $checklist = $this->persistChecklist($status, true, $autoSignCheckBy);
+
+        if ($autoSignCheckBy) {
+            session()->flash('success', 'Check sheet berhasil di-submit dan disetujui (APPROVED) otomatis oleh Leader ' . $checklist->checked_name . '!');
+        } else {
+            session()->flash('success', 'Check sheet berhasil di-submit dan ditandatangani oleh ' . $checklist->issued_name . '!');
+        }
+
         return redirect()->route('mould-checklist.show', $checklist->id);
     }
 
-    private function persistChecklist(string $status, bool $signIssued = false): MouldChecklist
+    private function persistChecklist(string $status, bool $signIssued = false, bool $signChecked = false): MouldChecklist
     {
-        return DB::transaction(function () use ($status, $signIssued) {
+        return DB::transaction(function () use ($status, $signIssued, $signChecked) {
             $user = auth()->user();
 
             $data = [
@@ -207,6 +247,13 @@ class Form extends Component
                 $data['issued_by_id'] = $user->id;
                 $data['issued_name'] = $user->name;
                 $data['issued_at'] = now();
+            }
+
+            if ($signChecked) {
+                $data['checked_by_id'] = $user->id;
+                $data['checked_name'] = $user->name;
+                $data['checked_at'] = now();
+                $data['status'] = 'APPROVED';
             }
 
             if (! $this->isEdit) {

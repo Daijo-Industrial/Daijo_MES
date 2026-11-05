@@ -31,7 +31,7 @@
             <div class="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                     <h2 class="text-xl font-bold text-slate-900 uppercase tracking-tight">Form List Check Sheet Mould Maintenance</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Pemeriksaan dan pelumasan harian mould injection</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Pemeriksaan dan pelumasan mould injection</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 font-mono">
@@ -40,81 +40,172 @@
                 </div>
             </div>
 
-            <!-- Header Parameters Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Search & Select Master Mould -->
-                <div class="sm:col-span-2 relative">
-                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
-                        Cari Master Mould Tooling
-                        <span class="text-indigo-600 font-normal lowercase">(ketik mould no atau part no)</span>
-                    </label>
-                    <div class="relative">
-                        <input type="text" wire:model.live.debounce.250ms="mould_search"
-                            wire:focus="$set('showMouldDropdown', true)"
-                            placeholder="Ketik Mould No (contoh: IK-MM) atau Part No..."
-                            class="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-
-                    <!-- Dropdown Results -->
-                    @if ($showMouldDropdown && $mouldSearchResults->count() > 0)
-                        <div class="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-200 max-h-60 overflow-y-auto divide-y divide-slate-100">
-                            @foreach ($mouldSearchResults as $result)
-                                <button type="button" wire:click="selectMould({{ $result->id }})"
-                                    class="w-full p-2.5 text-left hover:bg-indigo-50/70 transition-colors flex items-center justify-between">
-                                    <div>
-                                        <p class="text-xs font-bold text-indigo-700">{{ $result->mould_no }}</p>
-                                        <p class="text-xs font-mono text-slate-800">{{ $result->part_no }} - {{ $result->part_name }}</p>
-                                    </div>
-                                    <span class="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded">
-                                        {{ $result->customer }}
+            <!-- Mould & Tooling Selection Section -->
+            <div class="mb-6">
+                @if ($mould_no && ! $isManualMould)
+                    {{-- Locked Selected Mould Card --}}
+                    <div class="bg-gradient-to-r from-indigo-50/90 via-blue-50/60 to-slate-50 border border-indigo-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div class="space-y-1.5">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 text-white text-xs sm:text-sm font-extrabold rounded-lg shadow-xs">
+                                        <svg class="w-4 h-4 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        {{ $mould_no }}
                                     </span>
-                                </button>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
+                                    <span class="px-2.5 py-1 text-xs font-bold bg-blue-100 text-blue-800 rounded-md border border-blue-200">
+                                        {{ $customer }}
+                                    </span>
+                                    @if ($model)
+                                        <span class="px-2 py-0.5 text-xs font-semibold bg-white text-slate-700 rounded border border-slate-200">
+                                            Model: {{ $model }}
+                                        </span>
+                                    @endif
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        ✓ Master Mould Terverifikasi
+                                    </span>
+                                </div>
+                                <div class="pt-1">
+                                    <span class="font-mono text-xs font-bold text-slate-600 tracking-wide">{{ $part_no }}</span>
+                                    <h4 class="text-base sm:text-lg font-bold text-slate-900 leading-snug">{{ $part_name }}</h4>
+                                </div>
+                            </div>
 
+                            <div class="shrink-0">
+                                <button type="button" wire:click="clearSelectedMould"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 text-xs font-semibold rounded-xl border border-slate-300 shadow-xs transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Ganti Mould
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                @elseif ($isManualMould)
+                    {{-- Manual Input Fallback Mode --}}
+                    <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 sm:p-5 space-y-4">
+                        <div class="flex items-center justify-between pb-2 border-b border-amber-200/60">
+                            <div class="flex items-center gap-2">
+                                <span class="p-1 bg-amber-100 text-amber-700 rounded-md">⚠️</span>
+                                <div>
+                                    <h4 class="text-xs font-bold text-amber-900 uppercase tracking-wider">Mode Input Manual (Mould Belum Terdaftar)</h4>
+                                    <p class="text-[11px] text-amber-700">Gunakan mode ini hanya jika mould belum terdaftar di Master Mould.</p>
+                                </div>
+                            </div>
+                            <button type="button" wire:click="disableManualMould"
+                                class="text-xs font-semibold text-indigo-700 hover:text-indigo-900 underline underline-offset-2">
+                                ← Kembali ke Cari dari Master
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Customer *</label>
+                                <input type="text" wire:model="customer" placeholder="Nama customer..."
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                                @error('customer') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mould Number *</label>
+                                <input type="text" wire:model="mould_no" placeholder="Contoh: IK-MM-005-010"
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-bold text-indigo-800">
+                                @error('mould_no') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Part Number *</label>
+                                <input type="text" wire:model="part_no" placeholder="Contoh: 401-76934B001P"
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-mono">
+                                @error('part_no') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Model / Proyek</label>
+                                <input type="text" wire:model="model" placeholder="Contoh: 5H45, 4L45W..."
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                            </div>
+                            <div class="sm:col-span-2 lg:col-span-4">
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Part Name *</label>
+                                <input type="text" wire:model="part_name" placeholder="Nama part lengkap..."
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                                @error('part_name') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    {{-- Prominent Search Mould Bar --}}
+                    <div class="relative bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                            <div>
+                                <label class="block text-sm font-extrabold text-slate-900 tracking-tight">
+                                    Cari & Pilih Mould dari Master Mould *
+                                </label>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    Ketik nomor mould (contoh: <span class="font-mono text-indigo-600 font-semibold">IK-MM</span>) atau part number untuk mengisi otomatis semua detail tooling.
+                                </p>
+                            </div>
+                            <button type="button" wire:click="enableManualMould"
+                                class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline underline-offset-2 self-start sm:self-auto">
+                                Mould belum terdaftar? Input Manual
+                            </button>
+                        </div>
+
+                        <div class="relative">
+                            <input type="text" wire:model.live.debounce.250ms="mould_search"
+                                wire:focus="$set('showMouldDropdown', true)"
+                                placeholder="Ketik Mould No atau Part No di sini..."
+                                class="w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-sm sm:text-base font-medium shadow-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
+                            <svg class="w-5 h-5 text-indigo-500 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+
+                        <!-- Dropdown Search Results -->
+                        @if ($showMouldDropdown && $mouldSearchResults->count() > 0)
+                            <div class="absolute left-4 right-4 z-30 mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-72 overflow-y-auto divide-y divide-slate-100">
+                                @foreach ($mouldSearchResults as $result)
+                                    <button type="button" wire:click="selectMould({{ $result->id }})"
+                                        class="w-full p-3 text-left hover:bg-indigo-50/80 transition-colors flex items-center justify-between group">
+                                        <div class="space-y-0.5">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-extrabold text-sm text-indigo-700 group-hover:text-indigo-900">{{ $result->mould_no }}</span>
+                                                <span class="font-mono text-xs text-slate-500">({{ $result->part_no }})</span>
+                                                @if ($result->machine_number)
+                                                    <span class="text-[11px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{{ $result->machine_number }}</span>
+                                                @endif
+                                            </div>
+                                            <p class="text-xs text-slate-800 font-medium line-clamp-1">{{ $result->part_name }}</p>
+                                        </div>
+                                        <span class="px-2.5 py-1 bg-slate-100 group-hover:bg-indigo-100 text-slate-700 group-hover:text-indigo-800 text-xs font-bold rounded-lg shrink-0">
+                                            {{ $result->customer }}
+                                        </span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @elseif ($showMouldDropdown && strlen($mould_search) >= 2)
+                            <div class="absolute left-4 right-4 z-30 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 p-4 text-center">
+                                <p class="text-xs text-slate-500">Tidak ada data mould yang cocok dengan "<span class="font-semibold text-slate-700">{{ $mould_search }}</span>".</p>
+                                <button type="button" wire:click="enableManualMould" class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-bold underline">
+                                    Gunakan Input Manual
+                                </button>
+                            </div>
+                        @endif
+
+                        @error('mould_no')
+                            <p class="text-xs text-rose-500 font-medium">⚠️ Silakan cari dan pilih mould terlebih dahulu, atau gunakan input manual.</p>
+                        @enderror
+                    </div>
+                @endif
+            </div>
+
+            <!-- Operational Parameters Grid (Date, Machine, PIC, Working Hours) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
                 <!-- Tanggal Check -->
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tanggal Pengerjaan *</label>
                     <input type="date" wire:model="check_date"
                         class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
                     @error('check_date') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
-                </div>
-
-                <!-- Customer -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Customer *</label>
-                    <input type="text" wire:model="customer" placeholder="Nama customer..."
-                        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50">
-                    @error('customer') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
-                </div>
-
-                <!-- Mould No -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mould Number *</label>
-                    <input type="text" wire:model="mould_no" placeholder="Contoh: IK-MM-005-010"
-                        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none font-bold text-indigo-800">
-                    @error('mould_no') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
-                </div>
-
-                <!-- Part No -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Part Number *</label>
-                    <input type="text" wire:model="part_no" placeholder="Contoh: 401-76934B001P"
-                        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
-                    @error('part_no') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
-                </div>
-
-                <!-- Part Name -->
-                <div class="sm:col-span-2">
-                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Part Name *</label>
-                    <input type="text" wire:model="part_name" placeholder="Nama part..."
-                        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    @error('part_name') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
                 </div>
 
                 <!-- Mesin Injection -->
@@ -129,18 +220,11 @@
                     </datalist>
                 </div>
 
-                <!-- Model -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Model / Proyek</label>
-                    <input type="text" wire:model="model" placeholder="Contoh: 5H45, 4L45W..."
-                        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                </div>
-
                 <!-- Teknisi Name -->
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nama Teknisi (PIC) *</label>
                     <input type="text" wire:model="technician_name" placeholder="Contoh: Maulana + Sorie"
-                        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
                     @error('technician_name') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
                 </div>
 
@@ -244,11 +328,19 @@
         </div>
 
         <!-- Sticky Bottom Action Bar -->
-        <div class="bg-white rounded-2xl p-4 shadow-lg border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div class="text-xs text-slate-500">
-                <span>Catatan: Menekan <strong class="text-slate-700">"Submit & Tanda Tangan"</strong> akan mencatat tanda tangan digital <strong class="text-indigo-600">{{ auth()->user()?->name }}</strong> sebagai Issued By dan mengubah status menjadi SUBMITTED untuk diverifikasi Leader.</span>
+        <div class="bg-white rounded-2xl p-4 shadow-lg border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="space-y-1.5 w-full md:w-auto">
+                @if (auth()->user()?->hasRole('MOULD-MAINTENANCE-LEADER'))
+                    <label class="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-indigo-950 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl cursor-pointer hover:bg-indigo-100 transition-colors">
+                        <input type="checkbox" wire:model.live="auto_sign_check_by" class="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                        <span>Otomatis tandatangani <strong>Check By</strong> & setujui (Status: APPROVED)</span>
+                    </label>
+                @endif
+                <p class="text-xs text-slate-500">
+                    Catatan: Menekan <strong class="text-slate-700">"Submit & Tanda Tangan"</strong> akan mencatat tanda tangan digital <strong class="text-indigo-600">{{ auth()->user()?->name }}</strong> sebagai Issued By{{ auth()->user()?->hasRole('MOULD-MAINTENANCE-LEADER') ? ' (dan Check By jika opsi aktif)' : ' dan mengubah status menjadi SUBMITTED untuk diverifikasi Leader' }}.
+                </p>
             </div>
-            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <div class="flex items-center gap-3 w-full md:w-auto justify-end">
                 <button type="button" wire:click="saveDraft"
                     class="px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
                     Simpan Draft
@@ -258,7 +350,7 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Submit & Tanda Tangan (Issued By)
+                    Submit & Tanda Tangan
                 </button>
             </div>
         </div>
