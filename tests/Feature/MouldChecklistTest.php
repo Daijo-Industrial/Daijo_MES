@@ -24,11 +24,13 @@ class MouldChecklistTest extends TestCase
     protected Role $adminRole;
     protected Role $leaderRole;
     protected Role $operatorRole;
+    protected Role $mouldLeaderRole;
 
     protected User $superAdminUser;
     protected User $adminUser;
     protected User $leaderUser;
     protected User $operatorUser;
+    protected User $mouldLeaderUser;
 
     protected function setUp(): void
     {
@@ -38,11 +40,13 @@ class MouldChecklistTest extends TestCase
         $this->adminRole = Role::create(['name' => 'ADMIN']);
         $this->leaderRole = Role::create(['name' => 'LEADER']);
         $this->operatorRole = Role::create(['name' => 'OPERATOR']);
+        $this->mouldLeaderRole = Role::create(['name' => 'MOULD-MAINTENANCE-LEADER']);
 
         $this->superAdminUser = User::factory()->create(['name' => 'Super Admin User', 'role_id' => $this->superAdminRole->id]);
         $this->adminUser = User::factory()->create(['name' => 'Admin User', 'role_id' => $this->adminRole->id]);
         $this->leaderUser = User::factory()->create(['name' => 'Leader User', 'role_id' => $this->leaderRole->id]);
         $this->operatorUser = User::factory()->create(['name' => 'Operator User', 'role_id' => $this->operatorRole->id]);
+        $this->mouldLeaderUser = User::factory()->create(['name' => 'Mould Leader User', 'role_id' => $this->mouldLeaderRole->id]);
     }
 
     public function test_master_mould_can_be_created_and_managed(): void
@@ -51,7 +55,7 @@ class MouldChecklistTest extends TestCase
         $this->actingAs($this->adminUser);
         Livewire::test(MasterMouldIndex::class)
             ->assertDontSee('Upload Excel')
-            ->assertDontSee('+ Tambah Mould')
+            ->assertDontSee('Tambah Mould')
             ->call('openAddModal')
             ->assertForbidden();
 
@@ -64,7 +68,7 @@ class MouldChecklistTest extends TestCase
 
         Livewire::test(MasterMouldIndex::class)
             ->assertSee('Upload Excel')
-            ->assertSee('+ Tambah Mould')
+            ->assertSee('Tambah Mould')
             ->call('openAddModal')
             ->assertSet('showFormModal', true)
             ->set('mould_no', 'IK-MM-005-010')
@@ -109,6 +113,8 @@ class MouldChecklistTest extends TestCase
             ->assertSet('part_no', '401-76934B001P')
             ->assertSet('customer', 'IKUYO')
             ->assertSet('machine_number', '1300T')
+            ->assertSee('Master Mould Terverifikasi')
+            ->assertSee('Ganti Mould')
             ->set('technician_name', 'Maulana + Sorie')
             ->set('start_time', '14:00')
             ->set('end_time', '20:00')
@@ -123,6 +129,47 @@ class MouldChecklistTest extends TestCase
         $this->assertEquals('Maulana + Sorie', $checklist->technician_name);
         $this->assertEquals('14:00', $checklist->start_time);
         $this->assertEquals('20:00', $checklist->end_time);
+    }
+
+    public function test_mould_checklist_form_supports_clear_and_manual_fallback(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'IK-MM-005-010',
+            'part_no' => '401-76934B001P',
+            'part_name' => 'GARNISH RR PLR RH 5H45',
+            'customer' => 'IKUYO',
+        ]);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->assertSee('Pilih Mould dari Master Mould')
+            ->assertSee('Mould belum terdaftar? Input Manual')
+            ->call('selectMould', $mould->id)
+            ->assertSee('Master Mould Terverifikasi')
+            ->assertSee('Ganti Mould')
+            ->call('clearSelectedMould')
+            ->assertSet('mould_no', '')
+            ->assertSee('Pilih Mould dari Master Mould')
+            ->call('enableManualMould')
+            ->assertSet('isManualMould', true)
+            ->assertSee('Mode Input Manual (Mould Belum Terdaftar)')
+            ->set('customer', 'MANUAL CUST')
+            ->set('mould_no', 'MAN-001')
+            ->set('part_no', 'PART-MAN-01')
+            ->set('part_name', 'Manual Part')
+            ->set('technician_name', 'Teknisi Manual')
+            ->call('saveDraft')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('mould_checklists', [
+            'customer' => 'MANUAL CUST',
+            'mould_no' => 'MAN-001',
+            'part_no' => 'PART-MAN-01',
+        ]);
+
+        $checklist = MouldChecklist::where('mould_no', 'MAN-001')->first();
+        $this->assertNotNull($checklist);
         $this->assertEquals(16, $checklist->details()->count());
 
         // Verify specific point check name
@@ -310,5 +357,121 @@ class MouldChecklistTest extends TestCase
         $response->assertSee('COOLING CIRCULATION');
         $response->assertSee('EJECTOR PIN');
         $response->assertSee('14:00 s/d 20:00');
+    }
+
+    public function test_mould_maintenance_leader_auto_signs_check_by_on_creation(): void
+    {
+        $this->actingAs($this->mouldLeaderUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'IK-MM-005-010',
+            'part_no' => '401-76934B001P',
+            'part_name' => 'GARNISH RR PLR RH 5H45',
+            'customer' => 'IKUYO',
+        ]);
+
+        $test = Livewire::test(MouldChecklistForm::class)
+            ->assertSet('auto_sign_check_by', true)
+            ->assertSee('Otomatis tandatangani')
+            ->assertSee('Check By')
+            ->call('selectMould', $mould->id)
+            ->set('technician_name', 'Leader Teknisi')
+            ->call('submitAndSign');
+
+        $test->assertRedirect();
+
+        $checklist = MouldChecklist::first();
+        $this->assertNotNull($checklist);
+        $this->assertEquals('APPROVED', $checklist->status);
+        $this->assertEquals($this->mouldLeaderUser->id, $checklist->issued_by_id);
+        $this->assertEquals($this->mouldLeaderUser->name, $checklist->issued_name);
+        $this->assertNotNull($checklist->issued_at);
+        $this->assertEquals($this->mouldLeaderUser->id, $checklist->checked_by_id);
+        $this->assertEquals($this->mouldLeaderUser->name, $checklist->checked_name);
+        $this->assertNotNull($checklist->checked_at);
+    }
+
+    public function test_mould_maintenance_leader_can_uncheck_auto_sign(): void
+    {
+        $this->actingAs($this->mouldLeaderUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'IK-MM-005-010',
+            'part_no' => '401-76934B001P',
+            'part_name' => 'GARNISH RR PLR RH 5H45',
+            'customer' => 'IKUYO',
+        ]);
+
+        $test = Livewire::test(MouldChecklistForm::class)
+            ->set('auto_sign_check_by', false)
+            ->call('selectMould', $mould->id)
+            ->set('technician_name', 'Leader Teknisi')
+            ->call('submitAndSign');
+
+        $test->assertRedirect();
+
+        $checklist = MouldChecklist::first();
+        $this->assertNotNull($checklist);
+        $this->assertEquals('SUBMITTED', $checklist->status);
+        $this->assertEquals($this->mouldLeaderUser->id, $checklist->issued_by_id);
+        $this->assertNull($checklist->checked_by_id);
+        $this->assertNull($checklist->checked_at);
+    }
+
+    public function test_non_leader_cannot_auto_sign_check_by(): void
+    {
+        $this->actingAs($this->adminUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'IK-MM-005-010',
+            'part_no' => '401-76934B001P',
+            'part_name' => 'GARNISH RR PLR RH 5H45',
+            'customer' => 'IKUYO',
+        ]);
+
+        $test = Livewire::test(MouldChecklistForm::class)
+            ->assertSet('auto_sign_check_by', false)
+            ->assertDontSee('Otomatis tandatangani')
+            ->set('auto_sign_check_by', true) // Even if component property is somehow altered
+            ->call('selectMould', $mould->id)
+            ->set('technician_name', 'Admin Teknisi')
+            ->call('submitAndSign');
+
+        $test->assertRedirect();
+
+        $checklist = MouldChecklist::first();
+        $this->assertNotNull($checklist);
+        // Admin role is not MOULD-MAINTENANCE-LEADER, so auto-sign checked_by is ignored
+        $this->assertEquals('SUBMITTED', $checklist->status);
+        $this->assertEquals($this->adminUser->id, $checklist->issued_by_id);
+        $this->assertNull($checklist->checked_by_id);
+    }
+
+    public function test_mould_maintenance_leader_can_approve_submitted_checklist_in_show(): void
+    {
+        $checklist = MouldChecklist::create([
+            'check_date' => now()->format('Y-m-d'),
+            'mould_no' => 'IK-MM-005-010',
+            'part_no' => '401-76934B001P',
+            'part_name' => 'GARNISH RR PLR RH 5H45',
+            'customer' => 'IKUYO',
+            'technician_name' => 'Teknisi B',
+            'status' => 'SUBMITTED',
+            'issued_by_id' => $this->operatorUser->id,
+            'issued_name' => $this->operatorUser->name,
+            'issued_at' => now(),
+        ]);
+
+        $this->actingAs($this->mouldLeaderUser);
+
+        Livewire::test(MouldChecklistShow::class, ['id' => $checklist->id])
+            ->call('approveAndSign')
+            ->assertHasNoErrors();
+
+        $checklist->refresh();
+        $this->assertEquals('APPROVED', $checklist->status);
+        $this->assertEquals($this->mouldLeaderUser->id, $checklist->checked_by_id);
+        $this->assertEquals($this->mouldLeaderUser->name, $checklist->checked_name);
+        $this->assertNotNull($checklist->checked_at);
     }
 }
