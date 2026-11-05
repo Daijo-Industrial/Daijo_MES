@@ -113,6 +113,15 @@ class ProductionDashboardOptimizationTest extends TestCase
             $table->softDeletes();
         });
 
+        Schema::create('adjust_machine_ng_details', function ($table) {
+            $table->id();
+            $table->foreignId('adjust_machine_log_id');
+            $table->foreignId('ng_type_id')->nullable();
+            $table->integer('ng_quantity')->default(0);
+            $table->string('ng_remarks')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('mould_change_logs', function ($table) {
             $table->id();
             $table->foreignId('user_id');
@@ -916,6 +925,84 @@ class ProductionDashboardOptimizationTest extends TestCase
             ->assertSee('Setup Downtime')
             ->assertSee('Total Setup Time:')
             ->assertSee('jam');
+    }
+
+    public function test_adjuster_ng_production_combined_total_and_ng_rate(): void
+    {
+        $service = app(ProductionDashboardService::class);
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::firstOrCreate(
+            ['email' => 'admin_adj_test@example.com'],
+            ['name' => 'Admin Adj Test', 'role_id' => $role->id, 'password' => bcrypt('password')]
+        );
+        $machine = User::firstOrCreate(
+            ['name' => 'K0450A'],
+            ['email' => 'k0450a_adj@example.com', 'password' => 'secret']
+        );
+        $date = Carbon::parse('2026-11-05');
+
+        // DIC: Actual = 1000, Production NG = 100
+        $dic = DailyItemCode::create([
+            'user_id' => $machine->id,
+            'item_code' => 'PART-ADJ-TEST',
+            'start_date' => $date->format('Y-m-d'),
+            'shift' => 1,
+        ]);
+        $hr = HourlyRemark::create([
+            'dic_id' => $dic->id,
+            'start_time' => '08:00',
+            'target' => 1100,
+            'actual_production' => 1000,
+        ]);
+        $ngType = ProductionNgType::firstOrCreate(['ng_type' => 'GASMARK']);
+        ProductionNgDetail::create([
+            'hourly_remark_id' => $hr->id,
+            'ng_type_id' => $ngType->id,
+            'ng_quantity' => 100,
+        ]);
+
+        // Adjust log: Rudi Siswanto with direct NG = 50
+        $adjLog = AdjustMachineLog::create([
+            'user_id' => $machine->id,
+            'item_code' => 'PART-ADJ-TEST',
+            'pic' => 'Rudi Siswanto',
+        ]);
+        $adjLog->created_at = '2026-11-05 01:00:00'; // 08:00 WIB
+        $adjLog->save();
+
+        \App\Models\AdjustMachineNgDetail::create([
+            'adjust_machine_log_id' => $adjLog->id,
+            'ng_type_id' => $ngType->id,
+            'ng_quantity' => 50,
+            'ng_remarks' => 'Setting adjust test',
+        ]);
+
+        $data = $service->getAllDashboardData($date, $date, null, (string) $machine->id, 'karawang', false);
+
+        // 1. Check Adjuster summary
+        $adjSummary = collect($data['adjuster_ng_trend']['adjuster_summaries'])->firstWhere('name', 'Rudi Siswanto');
+        $this->assertNotNull($adjSummary);
+        $this->assertEquals(100, $adjSummary['ng_production']);
+        $this->assertEquals(50, $adjSummary['direct_ng']);
+        $this->assertEquals(150, $adjSummary['total_ng']); // 100 prod + 50 direct
+        $this->assertEquals(1000, $adjSummary['total_actual']);
+        // ng_rate = (150 / (1000 + 150)) * 100 = 13.04%
+        $this->assertEquals(13.04, $adjSummary['ng_rate']);
+
+        // 2. Check Global Summary (KPI card)
+        $this->assertEquals(100, $data['summary']['total_ng_production']);
+        $this->assertEquals(50, $data['summary']['total_adjuster_ng']);
+        $this->assertEquals(150, $data['summary']['total_ng']);
+        $this->assertEquals(13.04, $data['summary']['ng_rate']);
+
+        // 3. Test Livewire blade render
+        $this->actingAs($user);
+        Livewire::test(ProductionDashboard::class)
+            ->set('viewType', 'daily')
+            ->set('selectedDate', '2026-11-05')
+            ->assertOk()
+            ->assertSee('NG Production')
+            ->assertSee('Total NG');
     }
 }
 
