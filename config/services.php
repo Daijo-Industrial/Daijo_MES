@@ -44,6 +44,7 @@ return [
         'post_timeout' => (int) env('SAP_POST_TIMEOUT', 60),
         'connect_timeout' => (int) env('SAP_CONNECT_TIMEOUT', 10),
         'timeout_alert_recipients' => array_values(array_filter(array_map('trim', explode(',', env('SAP_TIMEOUT_ALERT_EMAILS', ''))))),
+        'spk_planned_change_recipients' => array_values(array_filter(array_map('trim', explode(',', env('SPK_PLANNED_CHANGE_EMAILS', 'intan@daijo.co.id,sisca@daijo.co.id'))))),
     ],
 
     'api_secret_key' => env('API_SECRET_KEY'),

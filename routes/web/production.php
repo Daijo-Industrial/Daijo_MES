@@ -35,6 +35,7 @@ use App\Livewire\MasterBomView;
 use App\Livewire\MasterListItemView;
 use App\Livewire\MasterMachineManager;
 use App\Livewire\Ppic\PpicListUpMachine;
+use App\Livewire\Production\ProductionMaterialStation;
 use App\Livewire\ProductionDashboard;
 use App\Livewire\ProductionStoreHandoverIndex;
 use App\Livewire\ProductionSummaryMonitor;
@@ -120,6 +121,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/production-summary-monitor', ProductionSummaryMonitor::class)->name('production-summary-monitor');
     Route::get('/receipt-production-logs', ReceiptProductionLogs::class)->name('receipt-production-logs');
+    Route::get('/production-material-station', ProductionMaterialStation::class)->name('production.material-station');
     Route::get('/sap-verification', SapMesVerification::class)->name('sap.verification');
     Route::get('/qc-stock-transfer', QcStockTransfer::class)->name('qc-stock-transfer');
     Route::get('/qc-stock-transfer-kbn', QcStockTransferKbn::class)->name('qc-stock-transfer-kbn');

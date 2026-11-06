@@ -110,6 +110,7 @@ new class extends Component {
                 <livewire:parent-dropdown label="Production & Moulding" :initiallyOpen="false" :childRoutes="[
                     ['name' => 'wms.production-scan-crosscheck', 'label' => 'Crosscheck Scan Produksi'],
                     ['name' => 'production.store-handover', 'label' => 'Kontrol Produksi - Store'],
+                    ['name' => 'production.material-station', 'label' => 'Station Material Produksi'],
                     ['name' => 'production.bom.index', 'label' => 'Production BOM'],
                     ['name' => 'daily-item-code.index', 'label' => 'Daily Production Plan'],
                     ['name' => 'ppic.machine-daily-report', 'label' => 'Laporan Produksi Mesin'],
@@ -274,6 +275,9 @@ new class extends Component {
 
                     <livewire:sidebar-link href="{{ route('production.store-handover') }}" label="Kontrol Produksi - Store"
                         :active="request()->routeIs('production.store-handover')" wire:navigate />
+
+                    <livewire:sidebar-link href="{{ route('production.material-station') }}" label="Station Material Produksi"
+                        :active="request()->routeIs('production.material-station')" wire:navigate />
 
                     <livewire:sidebar-link href="{{ route('receipt-production-logs') }}" label="Cek Data masuk ke SAP"
                         :active="request()->routeIs('receipt-production-logs')" wire:navigate />
