@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Mail\SpkPlannedQuantityChangedMail;
 use App\Models\MasterListItem;
 use App\Models\SpkBomChangeLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class SpkMasterService extends BaseSapService
 {
@@ -233,10 +235,23 @@ class SpkMasterService extends BaseSapService
                 'updated_at' => now(),
             ]);
 
+            // Kirim notifikasi email ke penanggung jawab jika terdapat perubahan Planned Quantity
+            $plannedChanges = array_values(array_filter($changeLogs, function ($log) {
+                return isset($log['old_planned_qty'], $log['new_planned_qty'])
+                    && $log['old_planned_qty'] !== null
+                    && $log['new_planned_qty'] !== null
+                    && (int) $log['old_planned_qty'] !== (int) $log['new_planned_qty'];
+            }));
+
+            if (! empty($plannedChanges)) {
+                $this->notifyPlannedQuantityChanges($plannedChanges, $batchId);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Data SPK berhasil disinkronkan.',
                 'changes_count' => count($changeLogs),
+                'planned_changes_count' => count($plannedChanges),
                 'batch_id' => $batchId,
             ]);
         } catch (\Exception $e) {
@@ -252,6 +267,58 @@ class SpkMasterService extends BaseSapService
             ]);
 
             return response()->json(['message' => 'Gagal sinkron data SPK', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Kirim notifikasi email perubahan planned quantity SPK ke penanggung jawab (Intan & Sisca)
+     */
+    public function notifyPlannedQuantityChanges(array $plannedChanges, string $batchId, bool $isTest = false, array $overrideRecipients = []): void
+    {
+        if (empty($plannedChanges)) {
+            return;
+        }
+
+        $recipients = ! empty($overrideRecipients)
+            ? $overrideRecipients
+            : config('services.sap.spk_planned_change_recipients', ['intan@daijo.co.id', 'sisca@daijo.co.id']);
+
+        if (empty($recipients)) {
+            Log::info('[SPK_SYNC] Notifikasi email perubahan planned qty dilewati: tidak ada penerima.');
+
+            return;
+        }
+
+        try {
+            // Enrich dengan deskripsi part dari master_list_items
+            $itemCodes = collect($plannedChanges)->pluck('item_code')->filter()->unique()->toArray();
+            $itemNames = ! empty($itemCodes)
+                ? DB::table('master_list_items')->whereIn('item_code', $itemCodes)->pluck('item_name', 'item_code')->toArray()
+                : [];
+
+            $formattedChanges = array_map(function ($log) use ($itemNames) {
+                $code = $log['item_code'] ?? '';
+                $oldPlanned = (int) ($log['old_planned_qty'] ?? 0);
+                $newPlanned = (int) ($log['new_planned_qty'] ?? 0);
+
+                return [
+                    'spk_number' => $log['spk_number'],
+                    'item_code' => $code,
+                    'item_name' => $itemNames[$code] ?? null,
+                    'old_planned_qty' => $oldPlanned,
+                    'new_planned_qty' => $newPlanned,
+                    'planned_diff' => $newPlanned - $oldPlanned,
+                    'old_status' => $log['old_status'] ?? '-',
+                    'new_status' => $log['new_status'] ?? '-',
+                    'created_at' => $log['created_at'] ?? now(),
+                ];
+            }, $plannedChanges);
+
+            Mail::to($recipients)->send(new SpkPlannedQuantityChangedMail($formattedChanges, $batchId, $isTest));
+
+            Log::info('[SPK_SYNC] Email notifikasi perubahan planned qty (' . count($formattedChanges) . ' SPK) berhasil dikirim ke: ' . implode(', ', $recipients));
+        } catch (\Throwable $e) {
+            Log::error('[SPK_SYNC] Gagal mengirim email notifikasi perubahan planned qty: ' . $e->getMessage());
         }
     }
 
