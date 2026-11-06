@@ -219,7 +219,7 @@ new class extends Component {
                 <livewire:sidebar-link href="{{ route('dashboard') }}" label="Dashboard" :active="request()->routeIs('dashboard')"
                     wire:navigate />
 
-                @if(auth()->user()?->can('view-operator-links') || auth()->user()->hasRole('OPERATOR'))
+                @if(auth()->user()?->can('view-operator-links') || auth()->user()?->hasRole('OPERATOR'))
                     <livewire:sidebar-link href="{{ route('operator.daily-report') }}" label="Laporan Harian Mesin"
                         :active="request()->routeIs('operator.daily-report')" wire:navigate />
                 @endif
@@ -283,6 +283,9 @@ new class extends Component {
 
                     <livewire:sidebar-link href="{{ route('wms.sap-sync-monitor-delivery') }}" label="SAP Sync Monitor"
                         :active="request()->routeIs('wms.sap-sync-monitor*')" wire:navigate />
+
+                    <livewire:sidebar-link href="{{ route('spk.changes.index') }}" label="Log Perubahan SPK"
+                        :active="request()->routeIs('spk.changes.*')" wire:navigate />
 
                     <livewire:sidebar-link href="{{ route('api.dashboard') }}" label="API Log Dashboard"
                         :active="request()->routeIs('api.dashboard')" wire:navigate />
@@ -470,24 +473,32 @@ new class extends Component {
             </div>
 
             <div class="flex items-center space-x-1 shrink-0">
-                <a href="{{ route('profile') }}" wire:navigate
-                    class="p-2 text-gray-500 hover:text-blue-600 hover:bg-white rounded-lg transition"
-                    title="Profile">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                </a>
+                @auth
+                    <a href="{{ route('profile') }}" wire:navigate
+                        class="p-2 text-gray-500 hover:text-blue-600 hover:bg-white rounded-lg transition"
+                        title="Profile">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </a>
 
-                <button wire:click="logout"
-                    class="px-2.5 py-1.5 text-rose-600 hover:text-white hover:bg-rose-600 bg-rose-50 border border-rose-200/80 rounded-xl transition flex items-center space-x-1 text-xs font-bold shadow-xs active:scale-95"
-                    title="Log Out">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span>Logout</span>
-                </button>
+                    <button wire:click="logout"
+                        class="px-2.5 py-1.5 text-rose-600 hover:text-white hover:bg-rose-600 bg-rose-50 border border-rose-200/80 rounded-xl transition flex items-center space-x-1 text-xs font-bold shadow-xs active:scale-95"
+                        title="Log Out">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Logout</span>
+                    </button>
+                @else
+                    <a href="{{ route('login') }}"
+                        class="px-3 py-1.5 text-indigo-600 hover:text-white hover:bg-indigo-600 bg-indigo-50 border border-indigo-200/80 rounded-xl transition flex items-center space-x-1 text-xs font-bold shadow-xs active:scale-95"
+                        title="Log In">
+                        <span>Login</span>
+                    </a>
+                @endauth
             </div>
         </div>
     </div>

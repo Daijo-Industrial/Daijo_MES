@@ -94,6 +94,9 @@ class ReceiptProductionService extends BaseSapService
                     'warehouse' => $summary->warehouse,
                     'quantity' => $summary->total_quantity,
                     'label' => (string) $summary->id,
+                    'remarks' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
+                    'remark' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
+                    'comments' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
                 ],
             ];
 
@@ -228,6 +231,9 @@ class ReceiptProductionService extends BaseSapService
                     'warehouse' => $summary->warehouse,
                     'quantity' => $summary->total_quantity,
                     'label' => (string) $summary->id,
+                    'remarks' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
+                    'remark' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
+                    'comments' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
                 ],
             ];
 
