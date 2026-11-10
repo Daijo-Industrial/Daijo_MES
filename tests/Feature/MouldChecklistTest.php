@@ -51,16 +51,21 @@ class MouldChecklistTest extends TestCase
 
     public function test_master_mould_can_be_created_and_managed(): void
     {
-        // 1. Non-superadmin cannot see upload/add buttons and is forbidden from calling modals
+        // 1. Non-superadmin cannot see upload/add buttons and is forbidden from calling modals or mutating moulds
         $this->actingAs($this->adminUser);
         Livewire::test(MasterMouldIndex::class)
             ->assertDontSee('Upload Excel')
             ->assertDontSee('Tambah Mould')
+            ->assertDontSee('Aksi')
             ->call('openAddModal')
             ->assertForbidden();
 
         Livewire::test(MasterMouldIndex::class)
             ->call('openUploadModal')
+            ->assertForbidden();
+
+        Livewire::test(MasterMouldIndex::class)
+            ->call('saveMould')
             ->assertForbidden();
 
         // 2. Super-admin can see buttons, create, and manage mould
@@ -170,11 +175,65 @@ class MouldChecklistTest extends TestCase
 
         $checklist = MouldChecklist::where('mould_no', 'MAN-001')->first();
         $this->assertNotNull($checklist);
+        $this->assertNull($checklist->mould_id);
+        $this->assertDatabaseMissing('master_moulds', ['mould_no' => 'MAN-001']);
         $this->assertEquals(16, $checklist->details()->count());
 
         // Verify specific point check name
         $coolingDetail = $checklist->details()->where('item_no', 1)->first();
         $this->assertEquals('COOLING CIRCULATION', $coolingDetail->point_check);
+
+        $point7Detail = $checklist->details()->where('item_no', 7)->first();
+        $this->assertEquals('GAS SPRING / SPRING / CORE PULL', $point7Detail->point_check);
+    }
+
+    public function test_technician_can_select_custom_point_check_options_for_slash_items(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'MLD-SLASH-01',
+            'part_no' => 'PART-SLASH-01',
+            'part_name' => 'Test Slash Part',
+            'customer' => 'PT SLASH',
+        ]);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->call('selectMould', $mould->id)
+            ->set('technician_name', 'Teknisi Option')
+            ->set('items.5.point_check', 'ANGULAR PIN')
+            ->set('items.7.point_check', 'CORE PULL')
+            ->set('items.9.point_check', 'LIMIT SWITCH')
+            ->set('items.13.point_check', 'STOP BOLTS')
+            ->call('saveDraft')
+            ->assertHasNoErrors();
+
+        $checklist = MouldChecklist::where('mould_no', 'MLD-SLASH-01')->first();
+        $this->assertNotNull($checklist);
+
+        $detail5 = $checklist->details()->where('item_no', 5)->first();
+        $this->assertEquals('ANGULAR PIN', $detail5->point_check);
+
+        $detail7 = $checklist->details()->where('item_no', 7)->first();
+        $this->assertEquals('CORE PULL', $detail7->point_check);
+
+        $detail9 = $checklist->details()->where('item_no', 9)->first();
+        $this->assertEquals('LIMIT SWITCH', $detail9->point_check);
+
+        $detail13 = $checklist->details()->where('item_no', 13)->first();
+        $this->assertEquals('STOP BOLTS', $detail13->point_check);
+    }
+
+    public function test_get_point_check_options_helper(): void
+    {
+        $opts5 = MouldChecklist::getPointCheckOptions(5);
+        $this->assertEquals(['ANGULAR PIN / ANGULAR CAMS', 'ANGULAR PIN', 'ANGULAR CAMS'], $opts5);
+
+        $opts7 = MouldChecklist::getPointCheckOptions(7);
+        $this->assertEquals(['GAS SPRING / SPRING / CORE PULL', 'GAS SPRING', 'SPRING', 'CORE PULL'], $opts7);
+
+        $opts1 = MouldChecklist::getPointCheckOptions(1);
+        $this->assertEquals(['COOLING CIRCULATION'], $opts1);
     }
 
     public function test_technician_can_submit_and_sign_issued_by(): void
@@ -549,5 +608,179 @@ class MouldChecklistTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertDatabaseMissing('mould_checklists', ['id' => $checklist->id]);
+    }
+
+    public function test_manual_mould_input_requires_only_mould_no_and_part_no(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->call('enableManualMould')
+            ->assertSet('isManualMould', true)
+            // Leave customer, part_name, model empty
+            ->set('mould_no', 'MAN-ONLY-01')
+            ->set('part_no', 'PART-ONLY-01')
+            ->set('customer', '')
+            ->set('part_name', '')
+            ->set('model', '')
+            ->set('technician_name', 'Teknisi Minimal')
+            ->set('start_date', '2026-11-10')
+            ->set('start_time', '08:00')
+            ->set('end_date', '2026-11-10')
+            ->set('end_time', '10:00')
+            ->call('saveDraft')
+            ->assertHasNoErrors();
+
+        $checklist = MouldChecklist::where('mould_no', 'MAN-ONLY-01')->first();
+        $this->assertNotNull($checklist);
+        $this->assertNull($checklist->mould_id);
+        $this->assertEquals('PART-ONLY-01', $checklist->part_no);
+        $this->assertEquals('N/A', $checklist->customer);
+        $this->assertEquals('PART-ONLY-01', $checklist->part_name);
+    }
+
+    public function test_mould_checklist_supports_multi_day_schedule_and_timestamps(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'MLD-MULTIDAY-01',
+            'part_no' => 'PART-MULTI-01',
+            'part_name' => 'Multi Day Part',
+            'customer' => 'PT MULTI',
+        ]);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->call('selectMould', $mould->id)
+            ->set('technician_name', 'Teknisi Schedule')
+            ->set('start_date', '2026-11-10')
+            ->set('start_time', '08:00')
+            ->set('end_date', '2026-11-12')
+            ->set('end_time', '16:30')
+            ->call('saveDraft')
+            ->assertHasNoErrors();
+
+        $checklist = MouldChecklist::where('mould_no', 'MLD-MULTIDAY-01')->first();
+        $this->assertNotNull($checklist);
+        $this->assertFalse((bool) $checklist->is_ongoing);
+        $this->assertEquals('2026-11-10 08:00:00', $checklist->start_at->format('Y-m-d H:i:s'));
+        $this->assertEquals('2026-11-12 16:30:00', $checklist->end_at->format('Y-m-d H:i:s'));
+        $this->assertStringContainsString('s/d', $checklist->work_schedule_formatted);
+        $this->assertStringContainsString('+2 hari', $checklist->work_schedule_formatted);
+    }
+
+    public function test_mould_checklist_supports_ongoing_status_without_end_time(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'MLD-ONGOING-01',
+            'part_no' => 'PART-ONG-01',
+            'part_name' => 'Ongoing Part',
+            'customer' => 'PT ONGOING',
+        ]);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->call('selectMould', $mould->id)
+            ->set('technician_name', 'Teknisi Ongoing')
+            ->set('start_date', '2026-11-10')
+            ->set('start_time', '09:15')
+            ->set('is_ongoing', true)
+            ->set('end_date', '')
+            ->set('end_time', '')
+            ->call('saveDraft')
+            ->assertHasNoErrors();
+
+        $checklist = MouldChecklist::where('mould_no', 'MLD-ONGOING-01')->first();
+        $this->assertNotNull($checklist);
+        $this->assertTrue((bool) $checklist->is_ongoing);
+        $this->assertEquals('2026-11-10 09:15:00', $checklist->start_at->format('Y-m-d H:i:s'));
+        $this->assertNull($checklist->end_at);
+        $this->assertNull($checklist->end_time);
+        $this->assertStringContainsString('Ongoing', $checklist->work_schedule_formatted);
+    }
+
+    public function test_same_day_end_time_must_be_after_start_time(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'MLD-SAMEDAY-01',
+            'part_no' => 'PART-SD-01',
+            'part_name' => 'Same Day Part',
+            'customer' => 'PT SAMEDAY',
+        ]);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->call('selectMould', $mould->id)
+            ->set('technician_name', 'Teknisi Test')
+            ->set('start_date', '2026-11-10')
+            ->set('start_time', '14:00')
+            ->set('end_date', '2026-11-10')
+            ->set('end_time', '09:00') // Invalid: end_time before start_time on same day
+            ->call('saveDraft')
+            ->assertHasErrors(['end_time']);
+    }
+
+    public function test_submitting_ongoing_checklist_is_blocked_until_finished(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'MLD-SUBMIT-ONG-01',
+            'part_no' => 'PART-SO-01',
+            'part_name' => 'Submit Ongoing Part',
+            'customer' => 'PT SUBMIT',
+        ]);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->call('selectMould', $mould->id)
+            ->set('technician_name', 'Teknisi Test')
+            ->set('is_ongoing', true)
+            ->call('submitAndSign')
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseMissing('mould_checklists', ['mould_no' => 'MLD-SUBMIT-ONG-01']);
+    }
+
+    public function test_customer_special_characters_are_normalized_to_na(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->call('enableManualMould')
+            ->set('mould_no', 'MAN-NORM-01')
+            ->set('part_no', 'PART-NORM-01')
+            ->set('customer', '-') // Should normalize to 'N/A'
+            ->set('technician_name', 'Teknisi Norm')
+            ->call('saveDraft')
+            ->assertHasNoErrors();
+
+        $checklist = MouldChecklist::where('mould_no', 'MAN-NORM-01')->first();
+        $this->assertNotNull($checklist);
+        $this->assertEquals('N/A', $checklist->customer);
+    }
+
+    public function test_updating_end_date_immediately_updates_date_range_display(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->set('start_date', '2026-11-10')
+            ->set('end_date', '2026-11-10')
+            ->assertDontSee('12/11/2026')
+            ->set('end_date', '2026-11-12')
+            ->assertSee('10/11/2026')
+            ->assertSee('12/11/2026');
+    }
+
+    public function test_setting_end_date_before_start_date_flags_error(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->set('start_date', '2026-11-10')
+            ->set('end_date', '2026-11-08')
+            ->assertHasErrors(['end_date']);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Maintenance\MouldChecklist;
 
+use App\Models\MasterMachine;
 use App\Models\MasterMould;
 use App\Models\MouldChecklist;
 use App\Models\MouldChecklistDetail;
@@ -19,6 +20,11 @@ class Form extends Component
 
     // Header Fields
     public $check_date;
+    public $start_date = '';
+    public $start_time = '';
+    public $end_date = '';
+    public $end_time = '';
+    public $is_ongoing = false;
     public $mould_search = '';
     public $mould_id = null;
     public $mould_no = '';
@@ -28,8 +34,6 @@ class Form extends Component
     public $customer = '';
     public $machine_number = '';
     public $technician_name = '';
-    public $start_time = '';
-    public $end_time = '';
     public $doc_number = 'DI-F-P/PD/05/MTM-043';
     public $revision = '00';
 
@@ -47,16 +51,25 @@ class Form extends Component
 
     protected function rules()
     {
+        $isManual = (bool) $this->isManualMould;
+        $isOngoing = (bool) $this->is_ongoing;
+
         return [
+            'mould_id' => 'nullable|exists:master_moulds,id',
             'check_date' => 'required|date',
+            'start_date' => 'required|date',
+            'start_time' => 'required|string|max:10',
+            'end_date' => $isOngoing ? 'nullable|date' : 'required|date|after_or_equal:start_date',
+            'end_time' => $isOngoing ? 'nullable|string|max:10' : 'required|string|max:10',
+            'is_ongoing' => 'boolean',
             'mould_no' => 'required|string|max:100',
             'part_no' => 'required|string|max:100',
-            'part_name' => 'required|string|max:255',
-            'customer' => 'required|string|max:150',
+            'part_name' => $isManual ? 'nullable|string|max:255' : 'required|string|max:255',
+            'customer' => $isManual ? 'nullable|string|max:150' : 'required|string|max:150',
+            'model' => 'nullable|string|max:100',
             'technician_name' => 'required|string|max:255',
             'machine_number' => 'nullable|string|max:100',
-            'start_time' => 'nullable|string|max:10',
-            'end_time' => 'nullable|string|max:10',
+            'items.*.point_check' => 'required|string|max:255',
             'items.*.cleaning_status' => 'required|in:OK,NG,-',
             'items.*.lubricate_status' => 'required|in:OK,NG,-',
             'items.*.remark' => 'nullable|string|max:255',
@@ -66,15 +79,49 @@ class Form extends Component
     protected function messages(): array
     {
         return [
-            'mould_no.required' => 'Silakan pilih mould dari Master Mould atau gunakan mode Input Manual.',
+            'mould_no.required' => 'Mould number wajib diisi.',
             'part_no.required' => 'Part number wajib diisi.',
             'part_name.required' => 'Part name wajib diisi.',
             'customer.required' => 'Customer wajib diisi.',
             'technician_name.required' => 'Nama teknisi (PIC) wajib diisi.',
             'check_date.required' => 'Tanggal pengerjaan wajib diisi.',
+            'start_date.required' => 'Tanggal mulai wajib diisi.',
+            'start_time.required' => 'Jam mulai wajib diisi.',
+            'end_date.required' => 'Tanggal selesai wajib diisi jika pekerjaan sudah selesai.',
+            'end_date.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
+            'end_time.required' => 'Jam selesai wajib diisi jika pekerjaan sudah selesai.',
             'items.*.cleaning_status.required' => 'Status cleaning wajib dipilih.',
             'items.*.lubricate_status.required' => 'Status lubricate wajib dipilih.',
         ];
+    }
+
+    public function updatedStartDate($value)
+    {
+        $this->check_date = $value;
+        if (empty($this->end_date) || $this->end_date < $value) {
+            $this->end_date = $value;
+        }
+        if (! empty($this->end_date) && $this->end_date >= $value) {
+            $this->resetErrorBag('end_date');
+        }
+    }
+
+    public function updatedEndDate($value)
+    {
+        if (! empty($value) && ! empty($this->start_date)) {
+            if ($value < $this->start_date) {
+                $this->addError('end_date', 'Tanggal selesai tidak boleh sebelum tanggal mulai.');
+            } else {
+                $this->resetErrorBag('end_date');
+            }
+        }
+    }
+
+    public function updatedIsOngoing($value)
+    {
+        if ($value) {
+            $this->resetErrorBag(['end_date', 'end_time']);
+        }
     }
 
     public function mount($id = null)
@@ -90,7 +137,25 @@ class Form extends Component
 
             $this->checklistId = $checklist->id;
             $this->isEdit = true;
-            $this->check_date = $checklist->check_date ? $checklist->check_date->format('Y-m-d') : Carbon::now()->format('Y-m-d');
+            $this->check_date = $checklist->check_date ? $checklist->check_date->format('Y-m-d') : Carbon::now('Asia/Jakarta')->format('Y-m-d');
+            $this->is_ongoing = (bool) $checklist->is_ongoing;
+
+            if ($checklist->start_at) {
+                $this->start_date = $checklist->start_at->format('Y-m-d');
+                $this->start_time = $checklist->start_at->format('H:i');
+            } else {
+                $this->start_date = $this->check_date;
+                $this->start_time = $checklist->start_time ?: '';
+            }
+
+            if ($checklist->end_at) {
+                $this->end_date = $checklist->end_at->format('Y-m-d');
+                $this->end_time = $checklist->end_at->format('H:i');
+            } else {
+                $this->end_date = $this->start_date;
+                $this->end_time = $checklist->end_time ?: '';
+            }
+
             $this->mould_id = $checklist->mould_id;
             $this->mould_no = $checklist->mould_no;
             $this->part_no = $checklist->part_no;
@@ -99,10 +164,13 @@ class Form extends Component
             $this->customer = $checklist->customer;
             $this->machine_number = $checklist->machine_number;
             $this->technician_name = $checklist->technician_name;
-            $this->start_time = $checklist->start_time;
-            $this->end_time = $checklist->end_time;
             $this->doc_number = $checklist->doc_number;
             $this->revision = $checklist->revision;
+
+            $this->isManualMould = empty($checklist->mould_id);
+            if (! $this->isManualMould) {
+                $this->mould_search = $checklist->mould_no . ' - ' . $checklist->part_no;
+            }
 
             // Populate items from details
             $this->items = [];
@@ -117,10 +185,14 @@ class Form extends Component
             }
         } else {
             // New checklist defaults
-            $this->check_date = Carbon::now('Asia/Jakarta')->subHours(7)->subMinutes(30)->format('Y-m-d');
+            $now = Carbon::now('Asia/Jakarta');
+            $this->start_date = $now->format('Y-m-d');
+            $this->check_date = $this->start_date;
+            $this->start_time = $now->format('H:i');
+            $this->end_date = $this->start_date;
+            $this->end_time = $now->copy()->addHours(2)->format('H:i');
+            $this->is_ongoing = false;
             $this->technician_name = auth()->user()?->name ?: '';
-            $this->start_time = Carbon::now('Asia/Jakarta')->format('H:i');
-            $this->end_time = Carbon::now('Asia/Jakarta')->addHours(2)->format('H:i');
 
             if (auth()->user()?->hasRole('MOULD-MAINTENANCE-LEADER')) {
                 $this->auto_sign_check_by = true;
@@ -191,6 +263,7 @@ class Form extends Component
 
     public function enableManualMould()
     {
+        $this->mould_id = null;
         $this->isManualMould = true;
         $this->showMouldDropdown = false;
         $this->mould_search = '';
@@ -204,19 +277,36 @@ class Form extends Component
     public function validateStep(int $step)
     {
         if ($step === 1) {
-            $this->validate([
+            $isManual = (bool) $this->isManualMould;
+            $isOngoing = (bool) $this->is_ongoing;
+
+            $rules = [
                 'check_date' => 'required|date',
+                'start_date' => 'required|date',
+                'start_time' => 'required|string|max:10',
+                'end_date' => $isOngoing ? 'nullable|date' : 'required|date|after_or_equal:start_date',
+                'end_time' => $isOngoing ? 'nullable|string|max:10' : 'required|string|max:10',
                 'mould_no' => 'required|string|max:100',
                 'part_no' => 'required|string|max:100',
-                'part_name' => 'required|string|max:255',
-                'customer' => 'required|string|max:150',
+                'part_name' => $isManual ? 'nullable|string|max:255' : 'required|string|max:255',
+                'customer' => $isManual ? 'nullable|string|max:150' : 'required|string|max:150',
+                'model' => 'nullable|string|max:100',
                 'technician_name' => 'required|string|max:255',
                 'machine_number' => 'nullable|string|max:100',
-                'start_time' => 'nullable|string|max:10',
-                'end_time' => 'nullable|string|max:10',
-            ], $this->messages());
+            ];
+
+            $this->validate($rules, $this->messages());
+
+            if (! $isOngoing && $this->start_date && $this->end_date && $this->start_date === $this->end_date) {
+                if ($this->start_time && $this->end_time && $this->end_time <= $this->start_time) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'end_time' => 'Jam selesai harus setelah jam mulai untuk tanggal pengerjaan yang sama.'
+                    ]);
+                }
+            }
         } elseif ($step === 2) {
             $this->validate([
+                'items.*.point_check' => 'required|string|max:255',
                 'items.*.cleaning_status' => 'required|in:OK,NG,-',
                 'items.*.lubricate_status' => 'required|in:OK,NG,-',
                 'items.*.remark' => 'nullable|string|max:255',
@@ -286,8 +376,19 @@ class Form extends Component
     {
         try {
             $this->validate();
+
+            if (! $this->is_ongoing && $this->start_date && $this->end_date && $this->start_date === $this->end_date) {
+                if ($this->start_time && $this->end_time && $this->end_time <= $this->start_time) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'end_time' => 'Jam selesai harus setelah jam mulai untuk tanggal pengerjaan yang sama.'
+                    ]);
+                }
+            }
         } catch (\Illuminate\Validation\ValidationException $e) {
-            $step1Fields = ['check_date', 'mould_no', 'part_no', 'part_name', 'customer', 'technician_name', 'machine_number', 'start_time', 'end_time'];
+            $step1Fields = [
+                'check_date', 'start_date', 'start_time', 'end_date', 'end_time',
+                'mould_no', 'part_no', 'part_name', 'customer', 'technician_name', 'machine_number'
+            ];
             foreach ($step1Fields as $f) {
                 if ($e->validator->errors()->has($f)) {
                     $this->currentStep = 1;
@@ -313,6 +414,11 @@ class Form extends Component
 
     public function submitAndSign()
     {
+        if ($this->is_ongoing) {
+            session()->flash('error', 'Pekerjaan yang masih berlangsung (Ongoing) hanya dapat disimpan sebagai Draft. Harap selesaikan pekerjaan dan tentukan waktu selesai sebelum submit & tanda tangan.');
+            return;
+        }
+
         $this->validateWithStepRouting();
 
         $user = auth()->user();
@@ -353,20 +459,58 @@ class Form extends Component
                 }
             }
 
+            $startDate = $this->start_date ?: $this->check_date;
+            $startAt = null;
+            if ($startDate && $this->start_time) {
+                try {
+                    $startAt = Carbon::parse($startDate . ' ' . $this->start_time, 'Asia/Jakarta');
+                } catch (\Throwable $e) {
+                    $startAt = null;
+                }
+            }
+
+            $endAt = null;
+            $endTime = null;
+            if (! $this->is_ongoing) {
+                $endDate = $this->end_date ?: $startDate;
+                if ($endDate && $this->end_time) {
+                    try {
+                        $endAt = Carbon::parse($endDate . ' ' . $this->end_time, 'Asia/Jakarta');
+                        $endTime = $this->end_time;
+                    } catch (\Throwable $e) {
+                        $endAt = null;
+                    }
+                }
+            }
+
+            // Normalization & fallback for customer
+            $customerVal = trim($this->customer);
+            if (empty($customerVal) || in_array(strtolower($customerVal), ['-', '0', 'n/a', 'na'])) {
+                $customerVal = 'N/A';
+            }
+
+            $partNameVal = trim($this->part_name);
+            if ($this->isManualMould && empty($partNameVal)) {
+                $partNameVal = trim($this->part_no) ?: 'N/A';
+            }
+
             $data = [
                 'doc_number' => $this->doc_number,
                 'revision' => $this->revision,
-                'check_date' => $this->check_date,
-                'mould_id' => $this->mould_id,
+                'check_date' => $startDate,
+                'start_at' => $startAt,
+                'end_at' => $endAt,
+                'is_ongoing' => (bool) $this->is_ongoing,
+                'mould_id' => $this->isManualMould ? null : $this->mould_id,
                 'mould_no' => mb_strtoupper(trim($this->mould_no)),
                 'part_no' => trim($this->part_no),
-                'part_name' => trim($this->part_name),
+                'part_name' => $partNameVal,
                 'model' => $this->model ? trim($this->model) : null,
-                'customer' => mb_strtoupper(trim($this->customer)),
+                'customer' => mb_strtoupper($customerVal),
                 'machine_number' => $this->machine_number ? trim($this->machine_number) : null,
                 'technician_name' => trim($this->technician_name),
                 'start_time' => $this->start_time ?: null,
-                'end_time' => $this->end_time ?: null,
+                'end_time' => $endTime,
                 'status' => $status,
             ];
 
@@ -424,7 +568,11 @@ class Form extends Component
                 ->get();
         }
 
-        $machines = User::where('role_id', 4)->orderBy('name')->pluck('name');
+        $machines = MasterMachine::active()->orderBy('sort_order')->orderBy('name')->pluck('name');
+        if ($machines->isEmpty()) {
+            $machines = User::where('role_id', 4)->orderBy('name')->pluck('name');
+        }
+        $machines = $machines->filter()->values();
 
         return view('livewire.maintenance.mould-checklist.form', [
             'mouldSearchResults' => $mouldSearchResults,

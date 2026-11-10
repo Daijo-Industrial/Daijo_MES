@@ -67,7 +67,7 @@ class MouldChecklistExport implements FromCollection, WithHeadings, ShouldAutoSi
                 'Customer' => $c->customer,
                 'Machine No' => $c->machine_number ?: '-',
                 'Teknisi' => $c->technician_name,
-                'Jam Kerja' => ($c->start_time && $c->end_time) ? ($c->start_time . ' - ' . $c->end_time) : '-',
+                'Jam Kerja' => $c->work_schedule_formatted,
                 'NG Items' => $ngItems,
                 'Status' => $c->status,
                 'Issued By' => $c->issued_name ?: ($c->issuedBy?->name ?: '-'),

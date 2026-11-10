@@ -13,19 +13,25 @@
                     <h1 class="text-xl font-bold text-slate-900">Check Sheet #{{ $checklist->id }}</h1>
                     @if ($checklist->status === 'APPROVED')
                         <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
-                            ✓ APPROVED
+                            APPROVED
                         </span>
                     @elseif ($checklist->status === 'SUBMITTED')
                         <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800">
-                            ⏳ MENUNGGU VERIFIKASI LEADER
+                            MENUNGGU VERIFIKASI LEADER
                         </span>
                     @elseif ($checklist->status === 'REJECTED')
                         <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-rose-100 text-rose-800">
-                            ⛔ REJECTED
+                            REJECTED
                         </span>
                     @else
                         <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-slate-100 text-slate-600">
                             DRAFT
+                        </span>
+                    @endif
+
+                    @if ($checklist->is_ongoing)
+                        <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-800">
+                            ONGOING
                         </span>
                     @endif
                 </div>
@@ -86,7 +92,7 @@
     @if ($checklist->status === 'REJECTED' && $checklist->rejection_note)
         <div class="no-print p-4 bg-rose-50 border-l-4 border-rose-500 rounded-r-xl text-rose-900 text-sm">
             <p class="font-bold flex items-center gap-1">
-                <span>⛔ Catatan Penolakan (Rejection Note):</span>
+                <span>Catatan Penolakan (Rejection Note):</span>
             </p>
             <p class="mt-1 text-rose-800">{{ $checklist->rejection_note }}</p>
         </div>
@@ -170,7 +176,13 @@
             </div>
             <div>
                 <span class="font-bold text-slate-700">TANGGAL :</span>
-                <span class="font-semibold text-slate-900 ml-1">{{ $checklist->check_date ? $checklist->check_date->format('d/m/Y') : '-' }}</span>
+                <span class="font-semibold text-slate-900 ml-1">
+                    @if ($checklist->start_at && $checklist->end_at && ! $checklist->start_at->isSameDay($checklist->end_at))
+                        {{ $checklist->start_at->format('d/m/Y') }} - {{ $checklist->end_at->format('d/m/Y') }}
+                    @else
+                        {{ $checklist->start_at ? $checklist->start_at->format('d/m/Y') : ($checklist->check_date ? $checklist->check_date->format('d/m/Y') : '-') }}
+                    @endif
+                </span>
             </div>
             <div>
                 <span class="font-bold text-slate-700">PART NO :</span>
@@ -209,7 +221,29 @@
                 @foreach ($checklist->details as $d)
                     <tr class="hover:bg-slate-50">
                         <td class="border border-slate-900 py-1 px-2 text-center font-mono font-bold">{{ $d->item_no }}</td>
-                        <td class="border border-slate-900 py-1 px-3 font-semibold text-slate-900">{{ $d->point_check }}</td>
+                        <td class="border border-slate-900 py-1 px-3 font-semibold text-slate-900">
+                            @php
+                                $masterName = \App\Models\MouldChecklist::STANDARD_CHECK_POINTS[$d->item_no]['name'] ?? '';
+                                $hasSlash = str_contains($masterName, ' / ');
+                                $parts = $hasSlash ? array_map('trim', explode(' / ', $masterName)) : [];
+                            @endphp
+                            @if ($hasSlash && in_array($d->point_check, $parts))
+                                <span class="inline-flex flex-wrap items-center gap-1 font-semibold">
+                                    @foreach ($parts as $idx => $part)
+                                        @if ($idx > 0)
+                                            <span class="text-slate-400 font-normal select-none">/</span>
+                                        @endif
+                                        @if ($part === $d->point_check)
+                                            <span class="font-bold text-slate-900">{{ $part }}</span>
+                                        @else
+                                            <span class="line-through text-slate-400 decoration-slate-500 decoration-1">{{ $part }}</span>
+                                        @endif
+                                    @endforeach
+                                </span>
+                            @else
+                                {{ $d->point_check }}
+                            @endif
+                        </td>
                         <td class="border border-slate-900 py-1 px-2 text-center font-bold {{ $d->cleaning_status === 'NG' ? 'text-rose-700 bg-rose-50' : ($d->cleaning_status === 'OK' ? 'text-emerald-700' : 'text-slate-400') }}">
                             {{ $d->cleaning_status }}
                         </td>
@@ -225,9 +259,9 @@
         <!-- Bottom Document Footnote & Doc Code -->
         <div class="mt-3 flex items-center justify-between text-[11px] font-mono border-t border-slate-900 pt-2 text-slate-700">
             <div>
-                <span class="font-bold">JAM PENGERJAAN:</span>
+                <span class="font-bold">WAKTU PENGERJAAN:</span>
                 <span class="font-semibold text-slate-900 ml-1">
-                    {{ ($checklist->start_time && $checklist->end_time) ? ($checklist->start_time . ' s/d ' . $checklist->end_time) : '-' }}
+                    {{ $checklist->work_schedule_formatted }}
                 </span>
             </div>
             <div class="flex items-center gap-4">

@@ -13,8 +13,8 @@
     <!-- Top Nav / Back Link & Document Meta -->
     <div class="flex items-center justify-between">
         <a href="{{ route('mould-checklist.index') }}" wire:navigate
-            class="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900">
-            ← Kembali ke Daftar Checklist
+            class="inline-flex items-center text-sm font-semibold text-slate-600 hover:text-slate-900">
+            Kembali ke Daftar Checklist
         </a>
         <span class="text-xs font-mono text-slate-500 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
             Doc: {{ $doc_number }} | Rev: {{ $revision }}
@@ -46,7 +46,7 @@
             :class="step === 1 ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20' : (step > 1 ? 'bg-emerald-50/50 border-emerald-300' : 'bg-slate-50 border-slate-200 opacity-75')">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-sm shrink-0"
                 :class="step === 1 ? 'bg-indigo-600 text-white' : (step > 1 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600')">
-                <span x-text="step > 1 ? '✓' : '1'"></span>
+                <span>1</span>
             </div>
             <span class="text-sm sm:text-base font-bold truncate"
                 :class="step === 1 ? 'text-indigo-950 font-extrabold' : (step > 1 ? 'text-emerald-950' : 'text-slate-700')">
@@ -76,7 +76,7 @@
         <!-- LANGKAH 1: INFORMASI MOULD & OPERASIONAL   -->
         <!-- ========================================== -->
         <div x-show="step === 1"
-             x-data="{ showParams: {{ ($errors->has('check_date') || $errors->has('technician_name') || $errors->has('start_time') || $errors->has('end_time') || empty($technician_name)) ? 'true' : 'false' }} }"
+             x-data="{ showParams: {{ ($errors->has('check_date') || $errors->has('start_date') || $errors->has('start_time') || $errors->has('end_date') || $errors->has('end_time') || $errors->has('technician_name') || empty($technician_name)) ? 'true' : 'false' }} }"
              class="space-y-4">
             <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4 sm:p-6 space-y-5">
                 <!-- Header -->
@@ -126,13 +126,15 @@
                                 </h4>
                                 <button type="button" wire:click="disableManualMould"
                                     class="text-sm font-bold text-indigo-700 hover:text-indigo-900 underline">
-                                    ← Kembali
+                                    Kembali
                                 </button>
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Customer *</label>
+                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">
+                                        Customer <span class="text-xs font-normal text-slate-400 normal-case">(opsional)</span>
+                                    </label>
                                     <input type="text" wire:model="customer" placeholder="Customer..."
                                         class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
                                     @error('customer') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
@@ -150,13 +152,17 @@
                                     @error('part_no') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Model</label>
+                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">
+                                        Model <span class="text-xs font-normal text-slate-400 normal-case">(opsional)</span>
+                                    </label>
                                     <input type="text" wire:model="model" placeholder="Model / Proyek..."
                                         class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
                                 </div>
                                 <div class="sm:col-span-2 lg:col-span-4">
-                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Part Name *</label>
-                                    <input type="text" wire:model="part_name" placeholder="Nama part lengkap..."
+                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">
+                                        Part Name <span class="text-xs font-normal text-slate-400 normal-case">(opsional)</span>
+                                    </label>
+                                    <input type="text" wire:model="part_name" placeholder="Nama part..."
                                         class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white font-semibold">
                                     @error('part_name') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                                 </div>
@@ -212,92 +218,171 @@
                             @endif
 
                             @error('mould_no')
-                                <p class="text-xs sm:text-sm text-rose-500 font-medium">⚠️ Silakan pilih mould atau gunakan input manual.</p>
+                                <p class="text-xs sm:text-sm text-rose-500 font-medium">Silakan pilih mould atau gunakan input manual.</p>
                             @enderror
                         </div>
                     @endif
                 </div>
 
-                <!-- Operational Parameters (Minimized by default when values are inserted) -->
-                <div>
-                    <!-- Minimized Bar View -->
-                    <div x-show="!showParams" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-sm sm:text-base">
-                        <div class="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-slate-700">
-                            <span class="inline-flex items-center gap-1.5">
-                                <span class="text-slate-500 font-medium">Tanggal:</span>
-                                <strong class="text-slate-900 font-bold">{{ rescue(fn() => \Carbon\Carbon::parse($check_date)->format('d/m/Y'), $check_date ?: '-') }}</strong>
-                            </span>
-                            <span class="text-slate-300">|</span>
-                            <span class="inline-flex items-center gap-1.5">
-                                <span class="text-slate-500 font-medium">PIC:</span>
-                                <strong class="text-slate-900 font-bold">{{ $technician_name ?: '-' }}</strong>
-                            </span>
-                            <span class="text-slate-300">|</span>
-                            <span class="inline-flex items-center gap-1.5">
-                                <span class="text-slate-500 font-medium">Jam:</span>
-                                <strong class="font-mono text-slate-900 font-bold">{{ $start_time ?: '-' }} - {{ $end_time ?: '-' }}</strong>
-                            </span>
-                            @if ($machine_number)
-                                <span class="text-slate-300">|</span>
-                                <span class="inline-flex items-center gap-1.5">
-                                    <span class="text-slate-500 font-medium">Mesin:</span>
-                                    <strong class="text-slate-900 font-bold">{{ $machine_number }}</strong>
-                                </span>
-                            @endif
-                        </div>
-                        <button type="button" @click="showParams = true"
-                            class="text-sm font-bold text-indigo-700 hover:text-indigo-900 underline self-start sm:self-auto shrink-0">
-                            Ubah
-                        </button>
-                    </div>
-
-                    <!-- Expanded Inputs Grid View -->
-                    <div x-show="showParams" class="space-y-3.5 bg-slate-50/70 border border-slate-200 rounded-xl p-4 sm:p-5">
-                        <div class="flex items-center justify-between pb-2 border-b border-slate-200">
-                            <span class="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-wide"></span>
-                            <button type="button" @click="showParams = false"
-                                class="text-sm font-bold text-slate-600 hover:text-slate-900 underline">
-                                Selesai / Sembunyikan
-                            </button>
+                <!-- Parameter Operasional: PIC, Mesin, dan Jam Kerja -->
+                <div class="pt-2 border-t border-slate-200">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                         x-data="{ showDates: {{ ($start_date !== $end_date || $errors->has('start_date') || $errors->has('end_date')) ? 'true' : 'false' }} }">
+                        
+                        {{-- PIC --}}
+                        <div>
+                            <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Teknisi (PIC) *</label>
+                            <input type="text" wire:model="technician_name" placeholder="Nama teknisi..."
+                                class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
+                            @error('technician_name') <span class="text-xs text-rose-500 font-semibold block mt-1">{{ $message }}</span> @enderror
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
-                            <div>
-                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Tanggal *</label>
-                                <input type="date" wire:model="check_date"
-                                    class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
-                                @error('check_date') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
+                        {{-- Mesin Injection --}}
+                        <div x-data="{
+                                open: false,
+                                search: '',
+                                machines: @js($machines),
+                                init() {
+                                    this.search = $wire.get('machine_number') || '';
+                                    $watch('$wire.machine_number', val => {
+                                        this.search = val || '';
+                                    });
+                                },
+                                get filteredMachines() {
+                                    if (!this.search || !this.search.toString().trim()) return this.machines;
+                                    const q = this.search.toString().toLowerCase().trim();
+                                    return this.machines.filter(m => m && m.toLowerCase().includes(q));
+                                },
+                                selectMachine(name) {
+                                    this.search = name;
+                                    $wire.set('machine_number', name);
+                                    this.open = false;
+                                },
+                                clear() {
+                                    this.search = '';
+                                    $wire.set('machine_number', '');
+                                    this.open = false;
+                                }
+                            }"
+                            class="relative"
+                            @click.outside="open = false"
+                            @keydown.escape="open = false"
+                        >
+                            <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">
+                                Mesin Injection
+                            </label>
+
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    x-model="search"
+                                    @focus="open = true"
+                                    @input="open = true"
+                                    @blur="$wire.set('machine_number', search)"
+                                    placeholder="Contoh: 1300T..."
+                                    class="w-full px-3.5 py-2.5 pr-14 border border-slate-300 rounded-xl text-base bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none uppercase font-mono"
+                                >
+
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-2 gap-0.5">
+                                    <template x-if="search">
+                                        <button type="button" @click="clear()" 
+                                            class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                            title="Hapus">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </template>
+                                    <button type="button" @click="open = !open" 
+                                        class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors">
+                                        <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Mesin Injection</label>
-                                <input type="text" list="machineList" wire:model="machine_number" placeholder="Contoh: 1300T..."
-                                    class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
-                                <datalist id="machineList">
-                                    @foreach ($machines as $mName)
-                                        <option value="{{ $mName }}"></option>
-                                    @endforeach
-                                </datalist>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Teknisi (PIC) *</label>
-                                <input type="text" wire:model="technician_name" placeholder="Nama teknisi..."
-                                    class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
-                                @error('technician_name') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Jam Kerja</label>
-                                <div class="flex items-center gap-2">
-                                    <input type="time" wire:model="start_time"
-                                        class="w-1/2 px-2.5 py-2.5 border border-slate-300 rounded-xl text-base font-mono text-center bg-white">
-                                    <span class="text-sm text-slate-400 font-bold">-</span>
-                                    <input type="time" wire:model="end_time"
-                                        class="w-1/2 px-2.5 py-2.5 border border-slate-300 rounded-xl text-base font-mono text-center bg-white">
+                            <div 
+                                x-show="open" 
+                                class="absolute left-0 right-0 z-40 mt-1 max-h-56 overflow-y-auto bg-white rounded-xl shadow-xl border border-slate-200 divide-y divide-slate-100"
+                                style="display: none;"
+                            >
+                                <template x-for="m in filteredMachines" :key="m">
+                                    <button 
+                                        type="button" 
+                                        @click="selectMachine(m)"
+                                        class="w-full text-left px-3.5 py-2.5 text-sm sm:text-base font-mono font-bold text-slate-800 hover:bg-indigo-50 hover:text-indigo-700 transition flex items-center justify-between cursor-pointer"
+                                    >
+                                        <span x-text="m"></span>
+                                        <span x-show="search === m" class="text-xs font-sans font-bold text-indigo-600">Pilihan</span>
+                                    </button>
+                                </template>
+                                <div x-show="filteredMachines.length === 0" class="p-3 text-center text-xs text-slate-400 font-sans">
+                                    Tidak ada mesin yang cocok. Nilai custom akan tersimpan.
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Jam Kerja (dengan Tanggal Minimized Mode & Default Value) --}}
+                        <div class="md:col-span-2 lg:col-span-1 space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-sm font-bold text-slate-800 uppercase">Jam Kerja *</label>
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer select-none">
+                                    <input type="checkbox" wire:model.live="is_ongoing" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                                    <span>Ongoing</span>
+                                </label>
+                            </div>
+
+                            {{-- Minimized Mode Date Display & Ubah Toggle --}}
+                            <div class="flex items-center justify-between text-xs text-slate-600 pb-0.5">
+                                <span>
+                                    Tanggal: <strong class="text-slate-900">{{ rescue(fn() => \Carbon\Carbon::parse($start_date)->format('d/m/Y'), $start_date) }}</strong>
+                                    @if (! empty($end_date) && $start_date !== $end_date && ! $is_ongoing)
+                                        - <strong class="text-slate-900">{{ rescue(fn() => \Carbon\Carbon::parse($end_date)->format('d/m/Y'), $end_date) }}</strong>
+                                    @endif
+                                </span>
+                                <button type="button" @click="showDates = !showDates" class="text-indigo-700 hover:text-indigo-900 font-bold underline cursor-pointer">
+                                    <span x-text="showDates ? 'Tutup Tanggal' : 'Ubah Tanggal'">Ubah Tanggal</span>
+                                </button>
+                            </div>
+
+                            {{-- Expanded Date Row (Only visible when user toggles 'Ubah Tanggal') --}}
+                            <div x-show="showDates" class="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl mb-1.5">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Mulai</label>
+                                    <input type="date" wire:model.live="start_date"
+                                        class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white">
+                                    @error('start_date') <span class="text-[10px] text-rose-500 font-semibold block mt-0.5">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Selesai</label>
+                                    <input type="date" wire:model.live="end_date" @disabled($is_ongoing) :disabled="$wire.is_ongoing"
+                                        class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                                    @error('end_date') <span class="text-[10px] text-rose-500 font-semibold block mt-0.5">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+
+                            {{-- Direct Time Inputs --}}
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <input type="time" wire:model="start_time" placeholder="Mulai"
+                                        class="w-full px-3 py-2 border border-slate-300 rounded-xl text-base font-mono text-center bg-white">
+                                    @error('start_time') <span class="text-xs text-rose-500 font-semibold block mt-0.5">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    @if ($is_ongoing)
+                                        <div class="w-full px-3 py-2 border border-dashed border-amber-300 bg-amber-50 rounded-xl text-xs font-semibold text-amber-800 text-center flex items-center justify-center min-h-[42px]">
+                                            Ongoing
+                                        </div>
+                                    @else
+                                        <input type="time" wire:model="end_time" placeholder="Selesai"
+                                            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-base font-mono text-center bg-white">
+                                        @error('end_time') <span class="text-xs text-rose-500 font-semibold block mt-0.5">{{ $message }}</span> @enderror
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -311,7 +396,7 @@
                 <div class="flex items-center gap-2.5">
                     <button type="button" wire:click="nextStep"
                         class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm sm:text-base font-bold shadow-xs transition-colors">
-                        Lanjut ke Step 2 →
+                        Lanjut ke Step 2
                     </button>
                 </div>
             </div>
@@ -326,11 +411,15 @@
                 <div class="flex flex-wrap items-center gap-2 font-mono">
                     <span class="font-bold text-indigo-300">{{ $mould_no ?: '-' }}</span>
                     <span class="text-slate-400">|</span>
-                    <span class="text-white font-sans font-bold">{{ $part_name ?: '-' }}</span>
-                    <span class="text-slate-400 font-sans">({{ $customer ?: '-' }})</span>
+                    <span class="text-white font-sans font-bold">{{ $part_name ?: ($part_no ?: '-') }}</span>
+                    <span class="text-slate-400 font-sans">({{ $customer ?: 'N/A' }})</span>
                     @if ($machine_number)
                         <span class="text-slate-400">|</span>
                         <span class="text-slate-300 font-sans">MC: {{ $machine_number }}</span>
+                    @endif
+                    @if ($is_ongoing)
+                        <span class="text-slate-400">|</span>
+                        <span class="px-2 py-0.5 rounded bg-slate-800 text-amber-300 text-xs font-bold font-sans">Ongoing</span>
                     @endif
                 </div>
                 <button type="button" @click="goTo(1)" class="text-xs text-indigo-300 hover:text-white underline shrink-0 ml-2">
@@ -374,7 +463,40 @@
                                 <tr class="{{ $item['cleaning_status'] === 'NG' || $item['lubricate_status'] === 'NG' ? 'bg-rose-50/60' : 'hover:bg-slate-50/60' }}">
                                     <td class="px-2.5 py-2 text-center font-mono font-bold text-slate-500">{{ $no }}</td>
                                     <td class="px-3 py-2 font-semibold text-slate-900">
-                                        {{ $item['point_check'] }}
+                                        @php
+                                            $masterName = \App\Models\MouldChecklist::STANDARD_CHECK_POINTS[$no]['name'] ?? '';
+                                             $hasSlash = str_contains($masterName, ' / ');
+                                            $parts = $hasSlash ? array_map('trim', explode(' / ', $masterName)) : [$item['point_check']];
+                                            $isPartSelected = in_array($item['point_check'], $parts);
+                                        @endphp
+                                        @if ($hasSlash)
+                                            <div class="space-y-1">
+                                                <div class="inline-flex flex-wrap items-center gap-1.5 text-xs sm:text-sm">
+                                                    @foreach ($parts as $idx => $part)
+                                                        @if ($idx > 0)
+                                                            <span class="text-slate-300 font-bold select-none">/</span>
+                                                        @endif
+                                                        @php
+                                                            $isSelected = ($item['point_check'] === $part);
+                                                            $isStruck = ($isPartSelected && ! $isSelected);
+                                                        @endphp
+                                                        <button type="button"
+                                                            wire:click="$set('items.{{ $no }}.point_check', '{{ $isSelected ? $masterName : $part }}')"
+                                                            class="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer select-none inline-flex items-center gap-1
+                                                                {{ $isSelected 
+                                                                    ? 'bg-indigo-600 text-white shadow-xs font-bold ring-2 ring-indigo-300' 
+                                                                    : ($isStruck 
+                                                                        ? 'line-through text-slate-400 bg-slate-100 decoration-slate-400 decoration-2 opacity-60 hover:opacity-100' 
+                                                                        : 'text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200') }}"
+                                                            title="{{ $isSelected ? 'Batal memilih' : 'Pilih ' . $part }}">
+                                                            <span>{{ $part }}</span>
+                                                        </button>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @else
+                                            <span>{{ $item['point_check'] }}</span>
+                                        @endif
                                     </td>
 
                                     <!-- Cleaning Status -->
@@ -428,9 +550,16 @@
 
             <!-- Tanda Tangan & Persetujuan -->
             <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-3">
-                <h4 class="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-wide">
-                    Tanda Tangan & Persetujuan
-                </h4>
+                <div class="flex items-center justify-between">
+                    <h4 class="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-wide">
+                        Tanda Tangan & Persetujuan
+                    </h4>
+                    @if ($is_ongoing)
+                        <span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-100 text-amber-800">
+                            Ongoing: Simpan Draft
+                        </span>
+                    @endif
+                </div>
 
                 <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div class="text-sm sm:text-base">
@@ -438,7 +567,7 @@
                         <strong class="text-slate-900 ml-1 font-bold">{{ auth()->user()?->name }}</strong>
                     </div>
 
-                    @if (auth()->user()?->hasRole('MOULD-MAINTENANCE-LEADER'))
+                    @if (auth()->user()?->hasRole('MOULD-MAINTENANCE-LEADER') && ! $is_ongoing)
                         <label class="inline-flex items-center gap-2.5 font-bold text-sm text-indigo-950 bg-indigo-50 border border-indigo-200 px-3.5 py-2 rounded-xl cursor-pointer hover:bg-indigo-100/70 transition-colors">
                             <input type="checkbox" wire:model.live="auto_sign_check_by" class="rounded border-indigo-300 text-indigo-600 w-5 h-5">
                             <span>Otomatis tandatangani <strong>Check By</strong></span>
@@ -451,17 +580,24 @@
             <div class="bg-white rounded-xl p-3.5 border border-slate-200 flex items-center justify-between gap-3 shadow-xs">
                 <button type="button" @click="goTo(1)"
                     class="px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-                    ← Kembali ke Step 1
+                    Kembali ke Step 1
                 </button>
                 <div class="flex items-center gap-2.5">
-                    <button type="button" wire:click="saveDraft"
-                        class="px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-                        Simpan Draft
-                    </button>
-                    <button type="submit"
-                        class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm sm:text-base font-bold shadow-xs hover:shadow transition-all">
-                        Submit
-                    </button>
+                    @if ($is_ongoing)
+                        <button type="button" wire:click="saveDraft"
+                            class="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm sm:text-base font-bold shadow-xs hover:shadow transition-all">
+                            Simpan Draft
+                        </button>
+                    @else
+                        <button type="button" wire:click="saveDraft"
+                            class="px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                            Simpan Draft
+                        </button>
+                        <button type="submit"
+                            class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm sm:text-base font-bold shadow-xs hover:shadow transition-all">
+                            Submit
+                        </button>
+                    @endif
                 </div>
             </div>
         </div>
