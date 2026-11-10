@@ -458,64 +458,271 @@
         @endif
     </div>
 
-    {{-- MODAL DETAIL MATERIAL (LIST FG YANG MENGGUNAKAN MATERIAL INI) --}}
+    {{-- MODAL DETAIL MATERIAL (LIST FG & TIMELINE TANGGAL DELIVERY) --}}
     @if($activeMaterialDetail)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-gray-100 overflow-hidden">
-                <div class="p-5 border-b border-gray-100 flex items-start justify-between bg-gray-50">
+            <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]"
+                 x-data="{ modalTab: 'timeline', expandedFg: null }">
+                
+                {{-- Modal Header --}}
+                <div class="p-5 border-b border-gray-100 flex items-start justify-between bg-gradient-to-r from-slate-50 to-sky-50/40">
                     <div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <span class="font-mono text-base font-black text-gray-900">{{ $activeMaterialDetail['item_code'] }}</span>
                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border {{ $activeMaterialDetail['category']['badge'] ?? 'bg-gray-100 text-gray-800' }}">
                                 <span>{{ $activeMaterialDetail['category']['icon'] ?? '🧩' }}</span>
                                 <span>{{ $activeMaterialDetail['category']['label'] ?? 'Material' }}</span>
                             </span>
                         </div>
-                        <div class="text-xs font-bold text-gray-600 mt-1">{{ $activeMaterialDetail['description'] }}</div>
-                        <div class="text-xs text-gray-500 mt-2">
-                            Total Kebutuhan ({{ $activeView === 'net' ? 'Net: Delivery - Stok' : 'Gross: Total Delivery' }}):
-                            <strong class="font-mono text-sm text-gray-900">{{ number_format($activeMaterialDetail['total_needed_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}</strong>
+                        <div class="text-xs font-bold text-gray-700 mt-1">{{ $activeMaterialDetail['description'] }}</div>
+
+                        {{-- Quick Stats / Badges --}}
+                        <div class="flex items-center gap-3 mt-3 flex-wrap text-xs">
+                            <div class="px-3 py-1 rounded-lg bg-white border border-amber-200 shadow-xs flex items-center gap-1.5">
+                                <span class="text-gray-500 font-medium">Total Kebutuhan ({{ $activeView === 'net' ? 'Net Deficit' : 'Gross Total' }}):</span>
+                                <strong class="font-mono font-black text-amber-700 text-sm">
+                                    {{ number_format($activeMaterialDetail['total_needed_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}
+                                </strong>
+                            </div>
+                            <div class="px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 font-semibold flex items-center gap-1">
+                                <span>📅</span>
+                                <span>{{ count($activeMaterialDetail['daily_timeline'] ?? []) }} Hari Pengiriman</span>
+                            </div>
+                            <div class="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800 font-semibold flex items-center gap-1">
+                                <span>🏭</span>
+                                <span>{{ count($activeMaterialDetail['used_by_fgs'] ?? []) }} Part FG</span>
+                            </div>
+                            @if(count($activeMaterialDetail['daily_timeline'] ?? []) > 0)
+                                <div class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium text-[11px] flex items-center gap-1">
+                                    <span>📊</span>
+                                    <span>Rata-rata ~{{ number_format($activeMaterialDetail['total_needed_qty'] / count($activeMaterialDetail['daily_timeline']), 1) }} {{ $activeMaterialDetail['uom'] }} / hari</span>
+                                </div>
+                            @endif
                         </div>
                     </div>
-                    <button type="button" wire:click="closeMaterialDetail" class="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer">
+                    <button type="button" wire:click="closeMaterialDetail" class="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer p-1">
                         ✕
                     </button>
                 </div>
 
-                <div class="p-5 max-h-96 overflow-y-auto">
-                    <h4 class="text-xs font-black uppercase text-gray-500 mb-3 tracking-wider">
-                        Daftar Finish Good yang Membutuhkan Material Ini ({{ count($activeMaterialDetail['used_by_fgs'] ?? []) }} FG)
-                    </h4>
-                    <table class="w-full text-xs text-left">
-                        <thead>
-                            <tr class="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-100">
-                                <th class="py-2 px-3">Kode FG</th>
-                                <th class="py-2 px-3">Nama Part</th>
-                                <th class="py-2 px-3 text-right">Target FG (Pcs)</th>
-                                <th class="py-2 px-3 text-right">Unit Qty BOM</th>
-                                <th class="py-2 px-3 text-right">Kebutuhan Material</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            @foreach($activeMaterialDetail['used_by_fgs'] ?? [] as $f)
-                                <tr>
-                                    <td class="py-2.5 px-3 font-mono font-bold text-gray-900">{{ $f['fg_code'] }}</td>
-                                    <td class="py-2.5 px-3 text-gray-700">{{ $f['fg_name'] }}</td>
-                                    <td class="py-2.5 px-3 text-right font-mono font-bold text-gray-800">
-                                        {{ number_format($activeView === 'net' ? ($f['fg_net_needed'] ?? 0) : ($f['fg_delivery_qty'] ?? 0)) }}
-                                    </td>
-                                    <td class="py-2.5 px-3 text-right font-mono text-gray-500">{{ $f['unit_qty'] }}</td>
-                                    <td class="py-2.5 px-3 text-right font-mono font-black text-amber-600">
-                                        {{ number_format($f['material_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                {{-- Modal Sub-Tab Navigation --}}
+                <div class="px-5 pt-2.5 pb-0 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                                @click="modalTab = 'timeline'"
+                                :class="modalTab === 'timeline' ? 'bg-white text-sky-700 font-black border-t-2 border-l border-r border-t-sky-600 border-gray-200 shadow-xs' : 'text-gray-500 hover:text-gray-800 font-semibold'"
+                                class="px-4 py-2 text-xs rounded-t-lg transition flex items-center gap-1.5 cursor-pointer">
+                            <span>📅</span>
+                            <span>Timeline per Tanggal Delivery</span>
+                            <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-sky-100 text-sky-800 font-mono">
+                                {{ count($activeMaterialDetail['daily_timeline'] ?? []) }}
+                            </span>
+                        </button>
+                        <button type="button"
+                                @click="modalTab = 'fgs'"
+                                :class="modalTab === 'fgs' ? 'bg-white text-indigo-700 font-black border-t-2 border-l border-r border-t-indigo-600 border-gray-200 shadow-xs' : 'text-gray-500 hover:text-gray-800 font-semibold'"
+                                class="px-4 py-2 text-xs rounded-t-lg transition flex items-center gap-1.5 cursor-pointer">
+                            <span>🏭</span>
+                            <span>Rincian per Finish Good (FG)</span>
+                            <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-100 text-indigo-800 font-mono">
+                                {{ count($activeMaterialDetail['used_by_fgs'] ?? []) }}
+                            </span>
+                        </button>
+                    </div>
+                    <div class="text-[11px] text-gray-500 hidden sm:block">
+                        Mode Hitung: <span class="font-bold text-gray-800">{{ $activeView === 'net' ? 'Net (Delivery - Stok FG)' : 'Gross (Total Delivery Sched)' }}</span>
+                    </div>
                 </div>
 
-                <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-                    <button type="button" wire:click="closeMaterialDetail" class="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 cursor-pointer">
+                {{-- Modal Body --}}
+                <div class="p-5 overflow-y-auto flex-1">
+                    {{-- TAB 1: TIMELINE PER TANGGAL DELIVERY --}}
+                    <div x-show="modalTab === 'timeline'" x-cloak>
+                        <div class="mb-3 flex items-center justify-between">
+                            <h4 class="text-xs font-black uppercase text-gray-600 tracking-wider flex items-center gap-1.5">
+                                <span>📅</span>
+                                <span>Jadwal Harian Kebutuhan Material (Urut Tanggal Delivery)</span>
+                            </h4>
+                            <span class="text-[11px] text-gray-400">
+                                Menjelaskan rincian tanggal kirim mengapa kebutuhan total mencapai {{ number_format($activeMaterialDetail['total_needed_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}
+                            </span>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+                            <table class="w-full text-xs text-left">
+                                <thead>
+                                    <tr class="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-200">
+                                        <th class="py-2.5 px-3 text-center w-12">No</th>
+                                        <th class="py-2.5 px-3">Tanggal Delivery</th>
+                                        <th class="py-2.5 px-3">Part FG yang Dikirim pada Tanggal Ini</th>
+                                        <th class="py-2.5 px-3 text-right">Kebutuhan Hari Ini</th>
+                                        <th class="py-2.5 px-3 text-right">Akumulasi Kebutuhan</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @php
+                                        $runningTotal = 0.0;
+                                    @endphp
+                                    @forelse($activeMaterialDetail['daily_timeline'] ?? [] as $tIdx => $tRow)
+                                        @php
+                                            $runningTotal += $tRow['total_material_qty'];
+                                            $dCarbon = \Carbon\Carbon::parse($tRow['date']);
+                                        @endphp
+                                        <tr class="hover:bg-sky-50/30 transition">
+                                            <td class="py-2.5 px-3 text-center font-mono text-gray-400">
+                                                {{ $tIdx + 1 }}
+                                            </td>
+                                            <td class="py-2.5 px-3">
+                                                <div class="font-mono font-bold text-gray-900">{{ $tRow['date'] }}</div>
+                                                <div class="text-[11px] text-gray-400 font-medium">
+                                                    {{ $dCarbon->locale('id')->isoFormat('dddd, D MMMM Y') }}
+                                                </div>
+                                            </td>
+                                            <td class="py-2.5 px-3">
+                                                <div class="flex flex-wrap gap-1.5">
+                                                    @foreach($tRow['fgs_summary'] ?? [] as $fgItem)
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-slate-100 text-slate-800 border border-slate-200">
+                                                            <strong class="font-mono">{{ $fgItem['fg_code'] }}</strong>:
+                                                            <span class="font-bold text-sky-700">{{ number_format($fgItem['fg_qty']) }} FG</span>
+                                                            <span class="text-gray-400">→</span>
+                                                            <span class="font-bold text-amber-700 font-mono">{{ number_format($fgItem['material_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}</span>
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            </td>
+                                            <td class="py-2.5 px-3 text-right font-mono font-black text-amber-700 text-sm">
+                                                {{ number_format($tRow['total_material_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}
+                                            </td>
+                                            <td class="py-2.5 px-3 text-right font-mono font-bold text-gray-600">
+                                                {{ number_format($runningTotal, 2) }} {{ $activeMaterialDetail['uom'] }}
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="py-8 text-center text-gray-400">
+                                                Tidak ada rincian tanggal pengiriman.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                                @if(count($activeMaterialDetail['daily_timeline'] ?? []) > 0)
+                                    <tfoot>
+                                        <tr class="bg-gray-100/80 font-bold border-t-2 border-gray-300 text-gray-900">
+                                            <td colspan="3" class="py-2.5 px-3 text-right uppercase text-[10px] tracking-wider">
+                                                TOTAL KEBUTUHAN SELURUH TANGGAL:
+                                            </td>
+                                            <td class="py-2.5 px-3 text-right font-mono font-black text-amber-800 text-sm">
+                                                {{ number_format($runningTotal, 2) }} {{ $activeMaterialDetail['uom'] }}
+                                            </td>
+                                            <td class="py-2.5 px-3 text-right font-mono text-xs text-gray-500">
+                                                100% Terjadwal
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                @endif
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- TAB 2: RINCIAN PER FINISH GOOD --}}
+                    <div x-show="modalTab === 'fgs'" x-cloak>
+                        <div class="mb-3 flex items-center justify-between">
+                            <h4 class="text-xs font-black uppercase text-gray-600 tracking-wider flex items-center gap-1.5">
+                                <span>🏭</span>
+                                <span>Rincian per Finish Good & Jadwal Kirimnya ({{ count($activeMaterialDetail['used_by_fgs'] ?? []) }} FG)</span>
+                            </h4>
+                            <span class="text-[11px] text-gray-400">
+                                Klik tombol ▾ untuk membuka tanggal delivery per masing-masing FG
+                            </span>
+                        </div>
+
+                        <div class="space-y-3">
+                            @foreach($activeMaterialDetail['used_by_fgs'] ?? [] as $fgIdx => $f)
+                                <div class="border border-gray-200 rounded-xl overflow-hidden shadow-xs bg-white">
+                                    {{-- FG Summary Bar --}}
+                                    <div class="p-3.5 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-100/60 transition"
+                                         @click="expandedFg = expandedFg === {{ $fgIdx }} ? null : {{ $fgIdx }}">
+                                        <div class="flex items-center gap-3">
+                                            <span class="font-mono font-black text-gray-900 text-sm">{{ $f['fg_code'] }}</span>
+                                            <div>
+                                                <div class="font-bold text-gray-800 text-xs">{{ $f['fg_name'] }}</div>
+                                                <div class="text-[11px] text-gray-400">{{ $f['customer_name'] ?? '—' }}</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-4 text-xs">
+                                            <div class="text-right">
+                                                <div class="text-[10px] uppercase text-gray-400 font-bold">Target FG</div>
+                                                <div class="font-mono font-bold text-gray-800">
+                                                    {{ number_format($activeView === 'net' ? ($f['fg_net_needed'] ?? 0) : ($f['fg_delivery_qty'] ?? 0)) }} pcs
+                                                    <span class="text-[10px] text-gray-400 font-normal">({{ $f['delivery_count'] ?? count($f['schedules'] ?? []) }}x kirim)</span>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-[10px] uppercase text-gray-400 font-bold">Unit BOM</div>
+                                                <div class="font-mono text-gray-600">{{ $f['unit_qty'] }}</div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-[10px] uppercase text-amber-600 font-bold">Kebutuhan Material</div>
+                                                <div class="font-mono font-black text-amber-700 text-sm">
+                                                    {{ number_format($f['material_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}
+                                                </div>
+                                            </div>
+                                            <button type="button"
+                                                    class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition">
+                                                <span x-text="expandedFg === {{ $fgIdx }} ? '▲' : '▼'"></span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {{-- FG Specific Schedule Accordion --}}
+                                    <div x-show="expandedFg === {{ $fgIdx }}" x-collapse x-cloak class="p-3 bg-white">
+                                        <div class="text-[11px] font-bold text-gray-500 mb-2 uppercase tracking-wide">
+                                            📅 Jadwal Delivery Harian untuk Part FG {{ $f['fg_code'] }}:
+                                        </div>
+                                        <table class="w-full text-xs text-left">
+                                            <thead>
+                                                <tr class="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-100">
+                                                    <th class="py-1.5 px-2.5 text-center w-10">No</th>
+                                                    <th class="py-1.5 px-2.5">Tanggal Delivery</th>
+                                                    <th class="py-1.5 px-2.5">No SO / Dokumen</th>
+                                                    <th class="py-1.5 px-2.5 text-right">Target FG (Pcs)</th>
+                                                    <th class="py-1.5 px-2.5 text-right">Kebutuhan Material</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100">
+                                                @forelse($f['schedules'] ?? [] as $sIdx => $sc)
+                                                    <tr class="hover:bg-amber-50/20">
+                                                        <td class="py-1.5 px-2.5 text-center font-mono text-gray-400">{{ $sIdx + 1 }}</td>
+                                                        <td class="py-1.5 px-2.5 font-mono font-bold text-gray-900">{{ $sc['delivery_date'] }}</td>
+                                                        <td class="py-1.5 px-2.5 font-mono text-gray-600">{{ $sc['so_number'] ?: '—' }}</td>
+                                                        <td class="py-1.5 px-2.5 text-right font-mono font-bold text-sky-700">
+                                                            {{ number_format($sc['delivery_qty']) }}
+                                                        </td>
+                                                        <td class="py-1.5 px-2.5 text-right font-mono font-black text-amber-700">
+                                                            {{ number_format($sc['material_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="5" class="py-3 text-center text-gray-400">Tidak ada rincian tanggal kirim.</td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Modal Footer --}}
+                <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                    <span class="text-xs text-gray-400">
+                        Tekan tombol Tutup untuk kembali ke daftar rekap material.
+                    </span>
+                    <button type="button" wire:click="closeMaterialDetail" class="px-5 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 cursor-pointer shadow-xs">
                         Tutup
                     </button>
                 </div>
@@ -523,76 +730,169 @@
         </div>
     @endif
 
-    {{-- MODAL DETAIL FG (BREAKDOWN BOM MATERIAL UNTUK FG INI) --}}
+    {{-- MODAL DETAIL FG (BREAKDOWN BOM MATERIAL & JADWAL DELIVERY FG) --}}
     @if($activeFgDetail)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-gray-100 overflow-hidden">
-                <div class="p-5 border-b border-gray-100 flex items-start justify-between bg-gray-50">
+            <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]"
+                 x-data="{ fgModalTab: 'bom' }">
+                
+                {{-- Header --}}
+                <div class="p-5 border-b border-gray-100 flex items-start justify-between bg-gradient-to-r from-slate-50 to-indigo-50/40">
                     <div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <span class="font-mono text-base font-black text-gray-900">{{ $activeFgDetail['item_code'] }}</span>
                             <span class="text-xs font-bold text-gray-500">| {{ $activeFgDetail['customer_name'] }}</span>
                         </div>
                         <div class="text-xs font-bold text-gray-700 mt-1">{{ $activeFgDetail['item_name'] }}</div>
-                        <div class="flex items-center gap-4 mt-2 text-xs font-mono">
-                            <span>Delivery: <strong>{{ number_format($activeFgDetail['delivery_qty']) }}</strong></span>
-                            <span>Stok FG: <strong class="text-indigo-600">{{ number_format($activeFgDetail['stock_actual']) }}</strong></span>
-                            <span>Kekurangan (Net): <strong class="text-amber-600">{{ number_format($activeFgDetail['net_deficit']) }}</strong></span>
+                        <div class="flex items-center gap-3 mt-3 flex-wrap text-xs font-mono">
+                            <span class="px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 font-semibold">
+                                Delivery Sched: <strong>{{ number_format($activeFgDetail['delivery_qty']) }}</strong> pcs ({{ $activeFgDetail['delivery_count'] ?? count($activeFgDetail['daily_schedules'] ?? []) }}x)
+                            </span>
+                            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800 font-semibold">
+                                Stok FG Aktual: <strong>{{ number_format($activeFgDetail['stock_actual']) }}</strong> pcs
+                            </span>
+                            <span class="px-2.5 py-1 rounded-lg border {{ $activeFgDetail['net_deficit'] > 0 ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800' }} font-bold">
+                                Kekurangan (Net): <strong>{{ number_format($activeFgDetail['net_deficit']) }}</strong> pcs
+                            </span>
                         </div>
                     </div>
-                    <button type="button" wire:click="closeFgDetail" class="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer">
+                    <button type="button" wire:click="closeFgDetail" class="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer p-1">
                         ✕
                     </button>
                 </div>
 
-                <div class="p-5 max-h-96 overflow-y-auto">
-                    <h4 class="text-xs font-black uppercase text-gray-500 mb-3 tracking-wider">
-                        Komponen & Material Dibutuhkan (Mode: {{ $activeView === 'net' ? 'Net Deficit' : 'Gross Delivery' }})
-                    </h4>
-                    @php
-                        $explodedList = $activeView === 'net' ? ($activeFgDetail['exploded_net'] ?? []) : ($activeFgDetail['exploded_gross'] ?? []);
-                    @endphp
-                    <table class="w-full text-xs text-left">
-                        <thead>
-                            <tr class="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-100">
-                                <th class="py-2 px-3">Kode Material</th>
-                                <th class="py-2 px-3">Deskripsi</th>
-                                <th class="py-2 px-3">Kategori</th>
-                                <th class="py-2 px-3 text-right">Unit Qty BOM</th>
-                                <th class="py-2 px-3 text-right">Kebutuhan Qty</th>
-                                <th class="py-2 px-3 text-center">UoM</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            @forelse($explodedList as $c)
-                                <tr>
-                                    <td class="py-2.5 px-3 font-mono font-bold text-gray-900">{{ $c['item_code'] }}</td>
-                                    <td class="py-2.5 px-3 text-gray-700">{{ $c['description'] }}</td>
-                                    <td class="py-2.5 px-3">
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border {{ $c['category']['badge'] ?? 'bg-gray-100 text-gray-800' }}">
-                                            <span>{{ $c['category']['icon'] ?? '🧩' }}</span>
-                                            <span>{{ $c['category']['label'] ?? 'Material' }}</span>
-                                        </span>
-                                    </td>
-                                    <td class="py-2.5 px-3 text-right font-mono text-gray-500">{{ $c['unit_qty'] }}</td>
-                                    <td class="py-2.5 px-3 text-right font-mono font-black text-gray-900">
-                                        {{ number_format($c['needed_qty'], 2) }}
-                                    </td>
-                                    <td class="py-2.5 px-3 text-center font-mono font-bold text-gray-400">{{ $c['uom'] }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="py-8 text-center text-gray-400">
-                                        Tidak ada kebutuhan material (stok FG mencukupi).
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                {{-- Sub-Tab Navigation --}}
+                <div class="px-5 pt-2.5 pb-0 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                                @click="fgModalTab = 'bom'"
+                                :class="fgModalTab === 'bom' ? 'bg-white text-indigo-700 font-black border-t-2 border-l border-r border-t-indigo-600 border-gray-200 shadow-xs' : 'text-gray-500 hover:text-gray-800 font-semibold'"
+                                class="px-4 py-2 text-xs rounded-t-lg transition flex items-center gap-1.5 cursor-pointer">
+                            <span>🧩</span>
+                            <span>Komponen & Material BOM</span>
+                        </button>
+                        <button type="button"
+                                @click="fgModalTab = 'schedules'"
+                                :class="fgModalTab === 'schedules' ? 'bg-white text-sky-700 font-black border-t-2 border-l border-r border-t-sky-600 border-gray-200 shadow-xs' : 'text-gray-500 hover:text-gray-800 font-semibold'"
+                                class="px-4 py-2 text-xs rounded-t-lg transition flex items-center gap-1.5 cursor-pointer">
+                            <span>📅</span>
+                            <span>Jadwal Delivery Harian</span>
+                            <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-sky-100 text-sky-800 font-mono">
+                                {{ count($activeFgDetail['daily_schedules'] ?? []) }}
+                            </span>
+                        </button>
+                    </div>
+                    <div class="text-[11px] text-gray-500 hidden sm:block">
+                        Mode Hitung: <strong class="text-gray-800">{{ $activeView === 'net' ? 'Net Deficit' : 'Gross Delivery' }}</strong>
+                    </div>
                 </div>
 
+                {{-- Body --}}
+                <div class="p-5 overflow-y-auto flex-1">
+                    {{-- TAB 1: BOM --}}
+                    <div x-show="fgModalTab === 'bom'" x-cloak>
+                        <h4 class="text-xs font-black uppercase text-gray-500 mb-3 tracking-wider">
+                            Rincian Kebutuhan Material (BOM Explosion)
+                        </h4>
+                        @php
+                            $explodedList = $activeView === 'net' ? ($activeFgDetail['exploded_net'] ?? []) : ($activeFgDetail['exploded_gross'] ?? []);
+                        @endphp
+                        <div class="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+                            <table class="w-full text-xs text-left">
+                                <thead>
+                                    <tr class="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-200">
+                                        <th class="py-2.5 px-3">Kode Material</th>
+                                        <th class="py-2.5 px-3">Deskripsi</th>
+                                        <th class="py-2.5 px-3">Kategori</th>
+                                        <th class="py-2.5 px-3 text-right">Unit Qty BOM</th>
+                                        <th class="py-2.5 px-3 text-right">Kebutuhan Total</th>
+                                        <th class="py-2.5 px-3 text-center">UoM</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @forelse($explodedList as $c)
+                                        <tr class="hover:bg-indigo-50/20">
+                                            <td class="py-2.5 px-3 font-mono font-bold text-gray-900">{{ $c['item_code'] }}</td>
+                                            <td class="py-2.5 px-3 text-gray-700">{{ $c['description'] }}</td>
+                                            <td class="py-2.5 px-3">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border {{ $c['category']['badge'] ?? 'bg-gray-100 text-gray-800' }}">
+                                                    <span>{{ $c['category']['icon'] ?? '🧩' }}</span>
+                                                    <span>{{ $c['category']['label'] ?? 'Material' }}</span>
+                                                </span>
+                                            </td>
+                                            <td class="py-2.5 px-3 text-right font-mono text-gray-500">{{ $c['unit_qty'] }}</td>
+                                            <td class="py-2.5 px-3 text-right font-mono font-black text-amber-700">
+                                                {{ number_format($c['needed_qty'], 2) }}
+                                            </td>
+                                            <td class="py-2.5 px-3 text-center font-mono font-bold text-gray-400">{{ $c['uom'] }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="6" class="py-8 text-center text-gray-400">
+                                                Tidak ada kebutuhan material (stok FG mencukupi).
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- TAB 2: SCHEDULES --}}
+                    <div x-show="fgModalTab === 'schedules'" x-cloak>
+                        <h4 class="text-xs font-black uppercase text-gray-500 mb-3 tracking-wider">
+                            Rincian Tanggal Delivery Harian Part Ini ({{ count($activeFgDetail['daily_schedules'] ?? []) }} Tanggal)
+                        </h4>
+                        <div class="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+                            <table class="w-full text-xs text-left">
+                                <thead>
+                                    <tr class="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-200">
+                                        <th class="py-2.5 px-3 text-center w-12">No</th>
+                                        <th class="py-2.5 px-3">Tanggal Delivery</th>
+                                        <th class="py-2.5 px-3">No SO / Dokumen</th>
+                                        <th class="py-2.5 px-3 text-right">Target Delivery Qty (Pcs)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @php $totSched = 0; @endphp
+                                    @forelse($activeFgDetail['daily_schedules'] ?? [] as $sIdx => $ds)
+                                        @php
+                                            $totSched += $ds['delivery_qty'];
+                                            $dCarbon = \Carbon\Carbon::parse($ds['delivery_date']);
+                                        @endphp
+                                        <tr class="hover:bg-sky-50/20">
+                                            <td class="py-2.5 px-3 text-center font-mono text-gray-400">{{ $sIdx + 1 }}</td>
+                                            <td class="py-2.5 px-3">
+                                                <span class="font-mono font-bold text-gray-900">{{ $ds['delivery_date'] }}</span>
+                                                <span class="text-[11px] text-gray-400 block">
+                                                    {{ $dCarbon->locale('id')->isoFormat('dddd, D MMMM Y') }}
+                                                </span>
+                                            </td>
+                                            <td class="py-2.5 px-3 font-mono text-gray-600">{{ $ds['so_number'] ?: '—' }}</td>
+                                            <td class="py-2.5 px-3 text-right font-mono font-black text-sky-700">
+                                                {{ number_format($ds['delivery_qty']) }} pcs
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="py-8 text-center text-gray-400">Tidak ada jadwal delivery harian.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                                <tfoot>
+                                    <tr class="bg-gray-100/80 font-bold border-t-2 border-gray-300">
+                                        <td colspan="3" class="py-2.5 px-3 text-right uppercase text-[10px] tracking-wider">Total Delivery Sched:</td>
+                                        <td class="py-2.5 px-3 text-right font-mono font-black text-sky-800">{{ number_format($totSched) }} pcs</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
                 <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-                    <button type="button" wire:click="closeFgDetail" class="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 cursor-pointer">
+                    <button type="button" wire:click="closeFgDetail" class="px-5 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 cursor-pointer shadow-xs">
                         Tutup
                     </button>
                 </div>
