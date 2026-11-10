@@ -42,6 +42,9 @@ class MouldChecklist extends Model
         'customer',
         'machine_number',
         'technician_name',
+        'start_at',
+        'end_at',
+        'is_ongoing',
         'start_time',
         'end_time',
         'status',
@@ -57,9 +60,37 @@ class MouldChecklist extends Model
 
     protected $casts = [
         'check_date' => 'date',
+        'start_at' => 'datetime',
+        'end_at' => 'datetime',
+        'is_ongoing' => 'boolean',
         'issued_at' => 'datetime',
         'checked_at' => 'datetime',
     ];
+
+    public function getWorkScheduleFormattedAttribute(): string
+    {
+        if ($this->is_ongoing) {
+            $startStr = $this->start_at 
+                ? $this->start_at->translatedFormat('d M Y, H:i') 
+                : ($this->check_date ? $this->check_date->format('d/m/Y') . ' ' . ($this->start_time ?: '') : '-');
+            return "Mulai: {$startStr} (Ongoing)";
+        }
+
+        if ($this->start_at && $this->end_at) {
+            if ($this->start_at->isSameDay($this->end_at)) {
+                return $this->start_at->translatedFormat('d M Y') . ' (' . $this->start_at->format('H:i') . ' - ' . $this->end_at->format('H:i') . ')';
+            }
+            $diffDays = (int) $this->start_at->startOfDay()->diffInDays($this->end_at->startOfDay());
+            $diffStr = $diffDays > 0 ? " (+{$diffDays} hari)" : '';
+            return $this->start_at->translatedFormat('d M Y H:i') . ' s/d ' . $this->end_at->translatedFormat('d M Y H:i') . $diffStr;
+        }
+
+        if ($this->start_time && $this->end_time) {
+            return ($this->check_date ? $this->check_date->format('d/m/Y') . ' ' : '') . "{$this->start_time} - {$this->end_time}";
+        }
+
+        return $this->check_date ? $this->check_date->format('d/m/Y') : '-';
+    }
 
     public function details()
     {
