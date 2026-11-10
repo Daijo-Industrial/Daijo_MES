@@ -33,6 +33,26 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
 3. **KPI Summary Cards UI Consistency**:
    - Kartu ringkasan metrik (KPI cards) harus difokuskan sebagai penyaji data ringkas (label, nominal, persentase) tanpa menumpuk tautan aksi/filter inline yang redundan dengan toolbar filter utama.
 
+## Shop-Floor UI & Datatable Presentation Invariant
+1. **Clean, Direct & No-Emoji**:
+   - DILARANG menggunakan emoji dekoratif (seperti `✓`, `⏳`, `⛔`, `📋`, `📝`, `🔧`), simbol panah teks (`→`, `←`), atau subjudul/paragraf instruksi bertele-tele pada view formulir dan tabel MES.
+   - Gunakan badge status berteks tegas dan langsung (`Approved`, `Reject`, `Menunggu`, `Ongoing`, `Draft`).
+2. **Progressive Disclosure for Default Parameters**:
+   - Parameter formulir yang memiliki default umum (misal tanggal hari ini) harus ditampilkan dalam mode ringkas (minimized) dengan toggle pembuka `[Ubah Tanggal]`, agar operator dapat langsung fokus mengisi data primer harian (jam pengerjaan).
+3. **Zero Horizontal Scroll on Desktop Datatables**:
+   - Tabel desktop (layar `>= xl`) yang berada di dalam layout bersidebar (`lg:pl-64` / 256px) tidak boleh memiliki horizontal scrollbar pada resolusi standar (1280px / 1366px).
+   - JANGAN menggunakan batas minimum paksa seperti `min-w-[1000px]`.
+   - Gunakan `<table class="w-full table-fixed ...">` dengan persentase lebar kolom yang terukur pas (total 100%) dan padding sel kompak (`px-2 py-3` / `px-1.5`).
+
+## Database Migrations & Livewire Reactivity Invariant
+1. **Dedicated Alter Migrations**:
+   - JANGAN PERNAH mengedit file migrasi pembuatan tabel yang sudah ada (`create_*_tables.php`) ketika menambah kolom atau mengubah atribut kolom.
+   - Selalu buat migrasi alter baru (`add_*_to_*_table.php`) dengan pengecekan `Schema::hasColumn` pada `up()` dan rollback yang lengkap pada `down()`.
+2. **Livewire Live Binding for Summary-Affecting Inputs**:
+   - Jika suatu input formulir mempengaruhi teks ringkasan, indikator rentang (misal tanggal mulai - selesai), atau badge status di bagian lain view, input tersebut WAJIB menggunakan `wire:model.live`. Penggunaan binding biasa (deferred) akan menyebabkan UI tidak reaktif hingga event lain terpicu.
+3. **No Unfinished Placeholder Logic**:
+   - Dilarang meninggalkan string placeholder atau potongan logika setengah jadi (seperti string mentah `+hari`). Seluruh logika kalkulasi interval waktu, selisih hari, dan rentang tanggal wajib diimplementasikan tuntas dan teruji.
+
 ---
 
 # Daijo MES: App Context & Architecture
