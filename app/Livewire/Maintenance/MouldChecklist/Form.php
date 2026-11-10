@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Maintenance\MouldChecklist;
 
+use App\Models\MasterMachine;
 use App\Models\MasterMould;
 use App\Models\MouldChecklist;
 use App\Models\MouldChecklistDetail;
@@ -424,7 +425,11 @@ class Form extends Component
                 ->get();
         }
 
-        $machines = User::where('role_id', 4)->orderBy('name')->pluck('name');
+        $machines = MasterMachine::active()->orderBy('sort_order')->orderBy('name')->pluck('name');
+        if ($machines->isEmpty()) {
+            $machines = User::where('role_id', 4)->orderBy('name')->pluck('name');
+        }
+        $machines = $machines->filter()->values();
 
         return view('livewire.maintenance.mould-checklist.form', [
             'mouldSearchResults' => $mouldSearchResults,

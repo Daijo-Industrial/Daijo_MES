@@ -212,7 +212,7 @@
                             @endif
 
                             @error('mould_no')
-                                <p class="text-xs sm:text-sm text-rose-500 font-medium">⚠️ Silakan pilih mould atau gunakan input manual.</p>
+                                <p class="text-xs sm:text-sm text-rose-500 font-medium">Silakan pilih mould atau gunakan input manual.</p>
                             @enderror
                         </div>
                     @endif
@@ -269,15 +269,99 @@
                                 @error('check_date') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Mesin Injection</label>
-                                <input type="text" list="machineList" wire:model="machine_number" placeholder="Contoh: 1300T..."
-                                    class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
-                                <datalist id="machineList">
-                                    @foreach ($machines as $mName)
-                                        <option value="{{ $mName }}"></option>
-                                    @endforeach
-                                </datalist>
+                            {{-- Mesin Injection (Searchable Combobox) --}}
+                            <div x-data="{
+                                    open: false,
+                                    search: '',
+                                    machines: @js($machines),
+                                    init() {
+                                        this.search = $wire.get('machine_number') || '';
+                                        $watch('$wire.machine_number', val => {
+                                            this.search = val || '';
+                                        });
+                                    },
+                                    get filteredMachines() {
+                                        if (!this.search || !this.search.toString().trim()) return this.machines;
+                                        const q = this.search.toString().toLowerCase().trim();
+                                        return this.machines.filter(m => m && m.toLowerCase().includes(q));
+                                    },
+                                    selectMachine(name) {
+                                        this.search = name;
+                                        $wire.set('machine_number', name);
+                                        this.open = false;
+                                    },
+                                    clear() {
+                                        this.search = '';
+                                        $wire.set('machine_number', '');
+                                        this.open = false;
+                                    }
+                                }"
+                                class="relative"
+                                @click.outside="open = false"
+                                @keydown.escape="open = false"
+                            >
+                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5 flex items-center justify-between">
+                                    <span>Mesin Injection</span>
+                                    <span class="text-[11px] text-slate-400 font-normal lowercase">pilih / ketik</span>
+                                </label>
+
+                                <div class="relative">
+                                    <input 
+                                        type="text" 
+                                        x-model="search"
+                                        @focus="open = true"
+                                        @input="open = true"
+                                        @blur="$wire.set('machine_number', search)"
+                                        placeholder="Contoh: 1300T..."
+                                        class="w-full px-3.5 py-2.5 pr-14 border border-slate-300 rounded-xl text-base bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none uppercase font-mono"
+                                    >
+
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 gap-0.5">
+                                        <template x-if="search">
+                                            <button type="button" @click="clear()" 
+                                                class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                                title="Hapus">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </template>
+                                        <button type="button" @click="open = !open" 
+                                            class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                            title="Buka daftar mesin">
+                                            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- Floating Dropdown Menu --}}
+                                <div 
+                                    x-show="open" 
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-100"
+                                    x-transition:leave-start="opacity-100 scale-100"
+                                    x-transition:leave-end="opacity-0 scale-95"
+                                    class="absolute left-0 right-0 z-40 mt-1 max-h-56 overflow-y-auto bg-white rounded-xl shadow-xl border border-slate-200 divide-y divide-slate-100"
+                                    style="display: none;"
+                                >
+                                    <template x-for="m in filteredMachines" :key="m">
+                                        <button 
+                                            type="button" 
+                                            @click="selectMachine(m)"
+                                            class="w-full text-left px-3.5 py-2.5 text-sm sm:text-base font-mono font-bold text-slate-800 hover:bg-indigo-50 hover:text-indigo-700 transition flex items-center justify-between cursor-pointer"
+                                        >
+                                            <span x-text="m"></span>
+                                            <span x-show="search === m" class="text-xs font-sans font-bold text-indigo-600">✓ Terpilih</span>
+                                        </button>
+                                    </template>
+                                    <div x-show="filteredMachines.length === 0" class="p-3 text-center text-xs text-slate-400 font-sans">
+                                        Tidak ada mesin yang cocok. Nilai custom akan tersimpan.
+                                    </div>
+                                </div>
                             </div>
 
                             <div>
