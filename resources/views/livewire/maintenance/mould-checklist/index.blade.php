@@ -393,14 +393,14 @@
                                     </span>
                                 @else
                                     <span class="inline-flex items-center gap-0.5 px-2.5 py-1 text-xs font-bold bg-emerald-100 text-emerald-700 rounded-full">
-                                        ✓ OK
+                                        OK
                                     </span>
                                 @endif
                             </td>
                             <td class="px-3 py-3.5 text-center">
                                 @if ($c->status === 'APPROVED')
                                     <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 whitespace-nowrap">
-                                        ✓ Approved
+                                        Approved
                                     </span>
                                 @elseif ($c->status === 'SUBMITTED')
                                     <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800 whitespace-nowrap" title="Menunggu Approval">

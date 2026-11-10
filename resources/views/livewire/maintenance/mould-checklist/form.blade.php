@@ -81,12 +81,9 @@
             <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4 sm:p-6 space-y-5">
                 <!-- Header -->
                 <div class="border-b border-slate-200 pb-3.5 flex items-center justify-between gap-2">
-                    <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 uppercase tracking-tight">
-                        Form List Check Sheet Mould Maintenance
+                    <h2 class="text-lg sm:text-xl text-slate-900 tracking-tight">
+                        <span class="text-indigo-700 font-semibold">{{ $isEdit ? 'Edit' : 'Buat' }}</span> Form List Check Sheet Mould Maintenance
                     </h2>
-                    <span class="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-bold rounded-lg border border-indigo-200 font-mono">
-                        {{ $isEdit ? 'EDIT' : 'BARU' }}
-                    </span>
                 </div>
 
                 <!-- Mould Selection Section -->
@@ -174,7 +171,7 @@
                                 </label>
                                 <button type="button" wire:click="enableManualMould"
                                     class="text-sm font-bold text-indigo-600 hover:text-indigo-800 underline">
-                                    Mould belum terdaftar? Input Manual
+                                    Mould belum terdaftar? Input manual
                                 </button>
                             </div>
 
