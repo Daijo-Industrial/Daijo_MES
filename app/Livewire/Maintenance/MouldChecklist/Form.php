@@ -35,7 +35,7 @@ class Form extends Component
 
     // Wizard Step Navigation
     public $currentStep = 1;
-    public $totalSteps = 3;
+    public $totalSteps = 2;
 
     // 16 Check items array: [item_no => ['point_check', 'cleaning_status', 'lubricate_status', 'remark']]
     public $items = [];

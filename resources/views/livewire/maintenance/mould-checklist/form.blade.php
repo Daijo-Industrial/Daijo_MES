@@ -38,47 +38,33 @@
         </div>
     @endif
 
-    <!-- Wizard Stepper Navigation -->
-    <div class="grid grid-cols-3 gap-2">
+    <!-- Wizard Stepper Navigation (2 Steps) -->
+    <div class="grid grid-cols-2 gap-3">
         <!-- Step 1 Tab -->
         <button type="button" @click="goTo(1)"
-            class="flex items-center justify-center sm:justify-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border transition-all text-left"
+            class="flex items-center justify-center sm:justify-start gap-2.5 sm:gap-3.5 p-3 rounded-xl border transition-all text-left"
             :class="step === 1 ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20' : (step > 1 ? 'bg-emerald-50/50 border-emerald-300' : 'bg-slate-50 border-slate-200 opacity-75')">
-            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm shrink-0"
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-sm shrink-0"
                 :class="step === 1 ? 'bg-indigo-600 text-white' : (step > 1 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600')">
                 <span x-text="step > 1 ? '✓' : '1'"></span>
             </div>
-            <span class="text-xs sm:text-sm font-bold truncate"
+            <span class="text-sm sm:text-base font-bold truncate"
                 :class="step === 1 ? 'text-indigo-950 font-extrabold' : (step > 1 ? 'text-emerald-950' : 'text-slate-700')">
-                1. Mould & PIC
+                Mould & PIC
             </span>
         </button>
 
         <!-- Step 2 Tab -->
         <button type="button" @click="goTo(2)"
-            class="flex items-center justify-center sm:justify-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border transition-all text-left"
-            :class="step === 2 ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20' : (step > 2 ? 'bg-emerald-50/50 border-emerald-300' : 'bg-slate-50 border-slate-200 opacity-75')">
-            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm shrink-0"
-                :class="step === 2 ? 'bg-indigo-600 text-white' : (step > 2 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600')">
-                <span x-text="step > 2 ? '✓' : '2'"></span>
+            class="flex items-center justify-center sm:justify-start gap-2.5 sm:gap-3.5 p-3 rounded-xl border transition-all text-left"
+            :class="step === 2 ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-slate-50 border-slate-200 opacity-75'">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-sm shrink-0"
+                :class="step === 2 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'">
+                2
             </div>
-            <span class="text-xs sm:text-sm font-bold truncate"
-                :class="step === 2 ? 'text-indigo-950 font-extrabold' : (step > 2 ? 'text-emerald-950' : 'text-slate-700')">
-                16 Check Points
-            </span>
-        </button>
-
-        <!-- Step 3 Tab -->
-        <button type="button" @click="goTo(3)"
-            class="flex items-center justify-center sm:justify-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border transition-all text-left"
-            :class="step === 3 ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-slate-50 border-slate-200 opacity-75'">
-            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm shrink-0"
-                :class="step === 3 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600')">
-                3
-            </div>
-            <span class="text-xs sm:text-sm font-bold truncate"
-                :class="step === 3 ? 'text-indigo-950 font-extrabold' : 'text-slate-700')">
-                Review & Submit
+            <span class="text-sm sm:text-base font-bold truncate"
+                :class="step === 2 ? 'text-indigo-950 font-extrabold' : 'text-slate-700'">
+                16 Check Points & Submit
             </span>
         </button>
     </div>
@@ -92,13 +78,13 @@
         <div x-show="step === 1"
              x-data="{ showParams: {{ ($errors->has('check_date') || $errors->has('technician_name') || $errors->has('start_time') || $errors->has('end_time') || empty($technician_name)) ? 'true' : 'false' }} }"
              class="space-y-4">
-            <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4 sm:p-5 space-y-4">
+            <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4 sm:p-6 space-y-5">
                 <!-- Header -->
-                <div class="border-b border-slate-200 pb-3 flex items-center justify-between gap-2">
-                    <h2 class="text-base sm:text-lg font-bold text-slate-900 uppercase tracking-tight">
+                <div class="border-b border-slate-200 pb-3.5 flex items-center justify-between gap-2">
+                    <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 uppercase tracking-tight">
                         Form List Check Sheet Mould Maintenance
                     </h2>
-                    <span class="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-md border border-indigo-200">
+                    <span class="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-bold rounded-lg border border-indigo-200 font-mono">
                         {{ $isEdit ? 'EDIT' : 'BARU' }}
                     </span>
                 </div>
@@ -107,120 +93,120 @@
                 <div>
                     @if ($mould_no && ! $isManualMould)
                         {{-- Selected Mould Card --}}
-                        <div class="bg-indigo-50/70 border border-indigo-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div class="space-y-1">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="px-2.5 py-0.5 bg-indigo-600 text-white text-xs font-semibold rounded">
+                        <div class="bg-indigo-50/70 border border-indigo-200 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5">
+                            <div class="space-y-1.5">
+                                <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                                    <span class="px-3 py-1 bg-indigo-600 text-white text-sm sm:text-base font-extrabold rounded-lg">
                                         {{ $mould_no }}
                                     </span>
-                                    <span class="px-2 py-0.5 text-xs font-bold bg-blue-100 text-blue-800 rounded">
+                                    <span class="px-2.5 py-1 text-xs sm:text-sm font-bold bg-blue-100 text-blue-900 rounded-lg">
                                         {{ $customer }}
                                     </span>
                                     @if ($model)
-                                        <span class="px-2 py-0.5 text-xs font-semibold bg-white text-slate-700 rounded border border-slate-200">
+                                        <span class="px-2.5 py-1 text-xs sm:text-sm font-semibold bg-white text-slate-700 rounded-lg border border-slate-200">
                                             Model: {{ $model }}
                                         </span>
                                     @endif
                                 </div>
-                                <div class="text-xs">
-                                    <span class="font-mono font-bold text-slate-600">{{ $part_no }}</span>
-                                    <span class="text-slate-400 mx-1">•</span>
-                                    <span class="font-bold text-slate-900">{{ $part_name }}</span>
+                                <div class="text-sm sm:text-base">
+                                    <span class="font-mono font-bold text-slate-700">{{ $part_no }}</span>
+                                    <span class="text-slate-400 mx-1.5">•</span>
+                                    <span class="font-extrabold text-slate-900 text-base sm:text-lg">{{ $part_name }}</span>
                                 </div>
                             </div>
 
                             <button type="button" wire:click="clearSelectedMould"
-                                class="self-start sm:self-auto px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg border border-slate-300">
+                                class="self-start sm:self-auto px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-xl border border-slate-300 shadow-2xs transition-colors">
                                 Ganti Mould
                             </button>
                         </div>
                     @elseif ($isManualMould)
                         {{-- Manual Input Mode --}}
-                        <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-4 space-y-3">
+                        <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-4 sm:p-5 space-y-3.5">
                             <div class="flex items-center justify-between pb-2 border-b border-amber-200">
-                                <h4 class="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                                <h4 class="text-sm sm:text-base font-bold text-amber-900 uppercase tracking-wide">
                                     Mode Input Manual (Mould Belum Terdaftar)
                                 </h4>
                                 <button type="button" wire:click="disableManualMould"
-                                    class="text-xs font-semibold text-indigo-700 hover:text-indigo-900 underline">
+                                    class="text-sm font-bold text-indigo-700 hover:text-indigo-900 underline">
                                     ← Kembali
                                 </button>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Customer *</label>
+                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Customer *</label>
                                     <input type="text" wire:model="customer" placeholder="Customer..."
-                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-                                    @error('customer') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                                        class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
+                                    @error('customer') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mould Number *</label>
+                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Mould Number *</label>
                                     <input type="text" wire:model="mould_no" placeholder="Contoh: IK-MM-005-010"
-                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white font-bold text-indigo-800">
-                                    @error('mould_no') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                                        class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white font-bold text-indigo-800">
+                                    @error('mould_no') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Part Number *</label>
+                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Part Number *</label>
                                     <input type="text" wire:model="part_no" placeholder="Contoh: 401-76934B001P"
-                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white font-mono">
-                                    @error('part_no') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                                        class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white font-mono">
+                                    @error('part_no') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Model</label>
+                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Model</label>
                                     <input type="text" wire:model="model" placeholder="Model / Proyek..."
-                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+                                        class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
                                 </div>
                                 <div class="sm:col-span-2 lg:col-span-4">
-                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Part Name *</label>
+                                    <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Part Name *</label>
                                     <input type="text" wire:model="part_name" placeholder="Nama part lengkap..."
-                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-                                    @error('part_name') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                                        class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white font-semibold">
+                                    @error('part_name') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                         </div>
                     @else
                         {{-- Search Mould Bar --}}
-                        <div class="relative bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                        <div class="relative bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-5 space-y-2.5">
                             <div class="flex items-center justify-between">
-                                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                                    Cari & Pilih Mould dari Master Mould *
+                                <label class="block text-sm sm:text-base font-bold text-slate-900 uppercase tracking-wide">
+                                    Pilih Mould dari Master Mould *
                                 </label>
                                 <button type="button" wire:click="enableManualMould"
-                                    class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline">
-                                    Mould belum terdaftar?
+                                    class="text-sm font-bold text-indigo-600 hover:text-indigo-800 underline">
+                                    Mould belum terdaftar? Input Manual
                                 </button>
                             </div>
 
                             <input type="text" wire:model.live.debounce.250ms="mould_search"
                                 wire:focus="$set('showMouldDropdown', true)"
                                 placeholder="Ketik Mould No atau Part No..."
-                                class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-base font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none">
 
                             <!-- Dropdown Results -->
                             @if ($showMouldDropdown && $mouldSearchResults->count() > 0)
-                                <div class="absolute left-3.5 right-3.5 z-30 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-64 overflow-y-auto divide-y divide-slate-100">
+                                <div class="absolute left-4 right-4 z-30 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-64 overflow-y-auto divide-y divide-slate-100">
                                     @foreach ($mouldSearchResults as $result)
                                         <button type="button" wire:click="selectMould({{ $result->id }})"
-                                            class="w-full p-2.5 text-left hover:bg-indigo-50 flex items-center justify-between">
+                                            class="w-full p-3 text-left hover:bg-indigo-50 flex items-center justify-between transition-colors">
                                             <div>
                                                 <div class="flex items-center gap-2">
-                                                    <span class="font-bold text-sm text-indigo-700">{{ $result->mould_no }}</span>
-                                                    <span class="font-mono text-xs text-slate-500">({{ $result->part_no }})</span>
+                                                    <span class="font-extrabold text-base text-indigo-700">{{ $result->mould_no }}</span>
+                                                    <span class="font-mono text-sm text-slate-500">({{ $result->part_no }})</span>
                                                     @if ($result->machine_number)
-                                                        <span class="text-[11px] font-mono bg-slate-100 px-1 rounded">{{ $result->machine_number }}</span>
+                                                        <span class="text-xs font-mono bg-slate-100 px-1.5 py-0.5 rounded">{{ $result->machine_number }}</span>
                                                     @endif
                                                 </div>
-                                                <p class="text-xs text-slate-800 line-clamp-1">{{ $result->part_name }}</p>
+                                                <p class="text-sm font-bold text-slate-900 line-clamp-1">{{ $result->part_name }}</p>
                                             </div>
-                                            <span class="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-bold rounded">
+                                            <span class="px-2.5 py-1 bg-slate-100 text-slate-800 text-xs sm:text-sm font-bold rounded-lg">
                                                 {{ $result->customer }}
                                             </span>
                                         </button>
                                     @endforeach
                                 </div>
                             @elseif ($showMouldDropdown && strlen($mould_search) >= 2)
-                                <div class="absolute left-3.5 right-3.5 z-30 mt-1 bg-white rounded-xl shadow-lg border border-slate-200 p-3 text-center text-xs text-slate-500">
+                                <div class="absolute left-4 right-4 z-30 mt-1 bg-white rounded-xl shadow-lg border border-slate-200 p-3 text-center text-sm text-slate-500">
                                     Tidak ada data untuk "{{ $mould_search }}".
                                     <button type="button" wire:click="enableManualMould" class="ml-1 text-indigo-600 font-bold underline">
                                         Input Manual
@@ -229,7 +215,7 @@
                             @endif
 
                             @error('mould_no')
-                                <p class="text-xs text-rose-500 font-medium">⚠️ Silakan pilih mould atau gunakan input manual.</p>
+                                <p class="text-xs sm:text-sm text-rose-500 font-medium">⚠️ Silakan pilih mould atau gunakan input manual.</p>
                             @enderror
                         </div>
                     @endif
@@ -238,58 +224,58 @@
                 <!-- Operational Parameters (Minimized by default when values are inserted) -->
                 <div>
                     <!-- Minimized Bar View -->
-                    <div x-show="!showParams" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-700">
-                            <span class="inline-flex items-center gap-1">
-                                <span class="text-slate-400 font-semibold">Tanggal:</span>
-                                <strong class="text-slate-900">{{ rescue(fn() => \Carbon\Carbon::parse($check_date)->format('d/m/Y'), $check_date ?: '-') }}</strong>
+                    <div x-show="!showParams" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-sm sm:text-base">
+                        <div class="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-slate-700">
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="text-slate-500 font-medium">Tanggal:</span>
+                                <strong class="text-slate-900 font-bold">{{ rescue(fn() => \Carbon\Carbon::parse($check_date)->format('d/m/Y'), $check_date ?: '-') }}</strong>
                             </span>
                             <span class="text-slate-300">|</span>
-                            <span class="inline-flex items-center gap-1">
-                                <span class="text-slate-400 font-semibold">PIC:</span>
-                                <strong class="text-slate-900">{{ $technician_name ?: '-' }}</strong>
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="text-slate-500 font-medium">PIC:</span>
+                                <strong class="text-slate-900 font-bold">{{ $technician_name ?: '-' }}</strong>
                             </span>
                             <span class="text-slate-300">|</span>
-                            <span class="inline-flex items-center gap-1">
-                                <span class="text-slate-400 font-semibold">Jam:</span>
-                                <strong class="font-mono text-slate-900">{{ $start_time ?: '-' }} - {{ $end_time ?: '-' }}</strong>
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="text-slate-500 font-medium">Jam:</span>
+                                <strong class="font-mono text-slate-900 font-bold">{{ $start_time ?: '-' }} - {{ $end_time ?: '-' }}</strong>
                             </span>
                             @if ($machine_number)
                                 <span class="text-slate-300">|</span>
-                                <span class="inline-flex items-center gap-1">
-                                    <span class="text-slate-400 font-semibold">Mesin:</span>
-                                    <strong class="text-slate-900">{{ $machine_number }}</strong>
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="text-slate-500 font-medium">Mesin:</span>
+                                    <strong class="text-slate-900 font-bold">{{ $machine_number }}</strong>
                                 </span>
                             @endif
                         </div>
                         <button type="button" @click="showParams = true"
-                            class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline self-start sm:self-auto shrink-0">
+                            class="text-sm font-bold text-indigo-700 hover:text-indigo-900 underline self-start sm:self-auto shrink-0">
                             Ubah
                         </button>
                     </div>
 
                     <!-- Expanded Inputs Grid View -->
-                    <div x-show="showParams" class="space-y-3 bg-slate-50/70 border border-slate-200 rounded-xl p-3.5">
-                        <div class="flex items-center justify-between pb-1 border-b border-slate-200">
-                            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Parameter Operasional</span>
+                    <div x-show="showParams" class="space-y-3.5 bg-slate-50/70 border border-slate-200 rounded-xl p-4 sm:p-5">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                            <span class="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-wide"></span>
                             <button type="button" @click="showParams = false"
-                                class="text-xs font-bold text-slate-500 hover:text-slate-800 underline">
+                                class="text-sm font-bold text-slate-600 hover:text-slate-900 underline">
                                 Selesai / Sembunyikan
                             </button>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tanggal *</label>
+                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Tanggal *</label>
                                 <input type="date" wire:model="check_date"
-                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-                                @error('check_date') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                                    class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
+                                @error('check_date') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mesin Injection</label>
+                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Mesin Injection</label>
                                 <input type="text" list="machineList" wire:model="machine_number" placeholder="Contoh: 1300T..."
-                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+                                    class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
                                 <datalist id="machineList">
                                     @foreach ($machines as $mName)
                                         <option value="{{ $mName }}"></option>
@@ -298,20 +284,20 @@
                             </div>
 
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Teknisi (PIC) *</label>
+                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Teknisi (PIC) *</label>
                                 <input type="text" wire:model="technician_name" placeholder="Nama teknisi..."
-                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-                                @error('technician_name') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                                    class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base bg-white">
+                                @error('technician_name') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Jam Kerja</label>
-                                <div class="flex items-center gap-1.5">
+                                <label class="block text-sm font-bold text-slate-800 uppercase mb-1.5">Jam Kerja</label>
+                                <div class="flex items-center gap-2">
                                     <input type="time" wire:model="start_time"
-                                        class="w-1/2 px-2 py-2 border border-slate-300 rounded-lg text-sm font-mono text-center bg-white">
-                                    <span class="text-xs text-slate-400 font-bold">-</span>
+                                        class="w-1/2 px-2.5 py-2.5 border border-slate-300 rounded-xl text-base font-mono text-center bg-white">
+                                    <span class="text-sm text-slate-400 font-bold">-</span>
                                     <input type="time" wire:model="end_time"
-                                        class="w-1/2 px-2 py-2 border border-slate-300 rounded-lg text-sm font-mono text-center bg-white">
+                                        class="w-1/2 px-2.5 py-2.5 border border-slate-300 rounded-xl text-base font-mono text-center bg-white">
                                 </div>
                             </div>
                         </div>
@@ -320,18 +306,14 @@
             </div>
 
             <!-- Step 1 Bottom Bar -->
-            <div class="bg-white rounded-xl p-3 border border-slate-200 flex items-center justify-between gap-2">
+            <div class="bg-white rounded-xl p-3.5 border border-slate-200 flex items-center justify-between gap-3 shadow-xs">
                 <a href="{{ route('mould-checklist.index') }}" wire:navigate
-                    class="px-3.5 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    class="px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
                     Batal
                 </a>
-                <div class="flex items-center gap-2">
-                    <button type="button" wire:click="saveDraft"
-                        class="px-3.5 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                        Simpan Draft
-                    </button>
+                <div class="flex items-center gap-2.5">
                     <button type="button" wire:click="nextStep"
-                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs sm:text-sm font-bold shadow-xs">
+                        class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm sm:text-base font-bold shadow-xs transition-colors">
                         Lanjut ke Step 2 →
                     </button>
                 </div>
@@ -447,186 +429,41 @@
                 </div>
             </div>
 
-            <!-- Step 2 Bottom Bar -->
-            <div class="bg-white rounded-xl p-3 border border-slate-200 flex items-center justify-between gap-2">
-                <button type="button" @click="goTo(1)"
-                    class="px-3.5 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    ← Kembali ke Step 1
-                </button>
-                <div class="flex items-center gap-2">
-                    <button type="button" wire:click="saveDraft"
-                        class="px-3.5 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                        Simpan Draft
-                    </button>
-                    <button type="button" wire:click="nextStep"
-                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs sm:text-sm font-bold shadow-xs">
-                        Lanjut ke Step 3 →
-                    </button>
-                </div>
-            </div>
-        </div>
+            <!-- Tanda Tangan & Persetujuan -->
+            <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-3">
+                <h4 class="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-wide">
+                    Tanda Tangan & Persetujuan
+                </h4>
 
-        <!-- ========================================== -->
-        <!-- LANGKAH 3: REVIEW HASIL & TANDA TANGAN     -->
-        <!-- ========================================== -->
-        <div x-show="step === 3" class="space-y-4">
-            <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4 sm:p-5 space-y-4">
-                <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
-                    <h2 class="text-base sm:text-lg font-bold text-slate-900 uppercase tracking-tight">
-                        Review & Tanda Tangan
-                    </h2>
-                    <span class="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-md border border-indigo-200">
-                        {{ $isEdit ? 'EDIT' : 'BARU' }}
-                    </span>
-                </div>
-
-                <!-- 1. Ringkasan Mould & PIC -->
-                <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-slate-700 uppercase">Ringkasan Mould & PIC</span>
-                        <button type="button" @click="goTo(1)" class="text-xs text-indigo-600 font-bold underline">
-                            Ubah Data
-                        </button>
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="text-sm sm:text-base">
+                        <span class="text-slate-500 font-medium">Issued By (Teknisi):</span>
+                        <strong class="text-slate-900 ml-1 font-bold">{{ auth()->user()?->name }}</strong>
                     </div>
 
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                        <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                            <span class="text-[10px] text-slate-500 uppercase block font-semibold">Mould No</span>
-                            <span class="font-bold text-indigo-900 block">{{ $mould_no ?: '-' }}</span>
-                            <span class="text-[11px] text-slate-600">{{ $customer ?: '-' }}</span>
-                        </div>
-                        <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                            <span class="text-[10px] text-slate-500 uppercase block font-semibold">Part No & Model</span>
-                            <span class="font-mono font-bold text-slate-800 block">{{ $part_no ?: '-' }}</span>
-                            <span class="text-[11px] text-slate-600">Model: {{ $model ?: '-' }}</span>
-                        </div>
-                        <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                            <span class="text-[10px] text-slate-500 uppercase block font-semibold">Part Name</span>
-                            <span class="font-bold text-slate-900 block truncate">{{ $part_name ?: '-' }}</span>
-                        </div>
-                        <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                            <span class="text-[10px] text-slate-500 uppercase block font-semibold">Tanggal & Jam</span>
-                            <span class="font-bold text-slate-900 block">{{ rescue(fn() => \Carbon\Carbon::parse($check_date)->translatedFormat('d M Y'), $check_date ?: '-') }}</span>
-                            <span class="text-[11px] font-mono text-slate-600">{{ $start_time ?: '-' }} - {{ $end_time ?: '-' }}</span>
-                        </div>
-                        <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                            <span class="text-[10px] text-slate-500 uppercase block font-semibold">Mesin</span>
-                            <span class="font-bold text-slate-900 block">{{ $machine_number ?: '-' }}</span>
-                        </div>
-                        <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                            <span class="text-[10px] text-slate-500 uppercase block font-semibold">Teknisi (PIC)</span>
-                            <span class="font-bold text-slate-900 block">{{ $technician_name ?: '-' }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. Ringkasan 16 Poin -->
-                <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-slate-700 uppercase">Hasil 16 Poin Pemeriksaan</span>
-                        <button type="button" @click="goTo(2)" class="text-xs text-indigo-600 font-bold underline">
-                            Ubah Checklist
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-4 gap-2 text-xs text-center font-bold">
-                        <div class="bg-white p-2 rounded-lg border border-slate-200">
-                            <span class="text-[10px] text-slate-500 uppercase font-semibold block">Total</span>
-                            <span class="text-base text-slate-900">16</span>
-                        </div>
-                        <div class="bg-emerald-50 p-2 rounded-lg border border-emerald-200 text-emerald-800">
-                            <span class="text-[10px] uppercase font-semibold block">OK</span>
-                            <span class="text-base text-emerald-700">{{ $this->okCount }}</span>
-                        </div>
-                        <div class="{{ $this->ngCount > 0 ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-white border-slate-200 text-slate-700' }} p-2 rounded-lg border">
-                            <span class="text-[10px] uppercase font-semibold block">NG</span>
-                            <span class="text-base {{ $this->ngCount > 0 ? 'text-rose-600' : 'text-slate-700' }}">{{ $this->ngCount }}</span>
-                        </div>
-                        <div class="bg-white p-2 rounded-lg border border-slate-200 text-slate-600">
-                            <span class="text-[10px] uppercase font-semibold block">-</span>
-                            <span class="text-base">{{ $this->naCount }}</span>
-                        </div>
-                    </div>
-
-                    @if ($this->ngCount === 0)
-                        <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-semibold text-emerald-800">
-                            ✓ Semua 16 poin checklist normal OK.
-                        </div>
-                    @else
-                        <div class="space-y-1.5 pt-1">
-                            <span class="text-xs font-bold text-rose-700 block">Ditemukan {{ $this->ngCount }} Poin NG:</span>
-                            <div class="rounded-lg border border-rose-200 overflow-hidden bg-white">
-                                <table class="min-w-full divide-y divide-rose-100 text-xs">
-                                    <thead class="bg-rose-50 text-rose-900 font-bold">
-                                        <tr>
-                                            <th class="w-8 px-2 py-1.5 text-center">NO</th>
-                                            <th class="px-2 py-1.5 text-left">POINT CHECK</th>
-                                            <th class="w-20 px-2 py-1.5 text-center">CLEAN</th>
-                                            <th class="w-20 px-2 py-1.5 text-center">LUBRIC</th>
-                                            <th class="px-2 py-1.5 text-left">CATATAN / TINDAKAN</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-rose-50">
-                                        @foreach ($this->ngItems as $no => $ngItem)
-                                            <tr>
-                                                <td class="px-2 py-1.5 text-center font-mono font-bold">{{ $no }}</td>
-                                                <td class="px-2 py-1.5 font-bold">{{ $ngItem['point_check'] }}</td>
-                                                <td class="px-2 py-1.5 text-center">
-                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold {{ $ngItem['cleaning_status'] === 'NG' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600' }}">
-                                                        {{ $ngItem['cleaning_status'] }}
-                                                    </span>
-                                                </td>
-                                                <td class="px-2 py-1.5 text-center">
-                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold {{ $ngItem['lubricate_status'] === 'NG' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600' }}">
-                                                        {{ $ngItem['lubricate_status'] }}
-                                                    </span>
-                                                </td>
-                                                <td class="px-2 py-1.5">
-                                                    {{ $ngItem['remark'] ?: '⚠️ Belum ada catatan tindakan' }}
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    @if (auth()->user()?->hasRole('MOULD-MAINTENANCE-LEADER'))
+                        <label class="inline-flex items-center gap-2.5 font-bold text-sm text-indigo-950 bg-indigo-50 border border-indigo-200 px-3.5 py-2 rounded-xl cursor-pointer hover:bg-indigo-100/70 transition-colors">
+                            <input type="checkbox" wire:model.live="auto_sign_check_by" class="rounded border-indigo-300 text-indigo-600 w-5 h-5">
+                            <span>Otomatis tandatangani <strong>Check By</strong></span>
+                        </label>
                     @endif
                 </div>
-
-                <!-- 3. Tanda Tangan Digital -->
-                <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2 text-xs">
-                    <span class="font-bold text-slate-700 uppercase block">Tanda Tangan & Persetujuan</span>
-
-                    <div class="bg-white p-3 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <div>
-                            <span class="text-slate-500">Issued By (Teknisi):</span>
-                            <span class="font-bold text-slate-900 ml-1">{{ auth()->user()?->name }}</span>
-                        </div>
-
-                        @if (auth()->user()?->hasRole('MOULD-MAINTENANCE-LEADER'))
-                            <label class="inline-flex items-center gap-2 font-semibold text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg cursor-pointer">
-                                <input type="checkbox" wire:model.live="auto_sign_check_by" class="rounded border-indigo-300 text-indigo-600 w-4 h-4">
-                                <span>Otomatis tandatangani <strong>Check By</strong> & setujui (Status: APPROVED)</span>
-                            </label>
-                        @endif
-                    </div>
-                </div>
             </div>
 
-            <!-- Step 3 Bottom Bar -->
-            <div class="bg-white rounded-xl p-3 border border-slate-200 flex items-center justify-between gap-2">
-                <button type="button" @click="goTo(2)"
-                    class="px-3.5 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    ← Kembali ke Step 2
+            <!-- Step 2 Bottom Bar -->
+            <div class="bg-white rounded-xl p-3.5 border border-slate-200 flex items-center justify-between gap-3 shadow-xs">
+                <button type="button" @click="goTo(1)"
+                    class="px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                    ← Kembali ke Step 1
                 </button>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2.5">
                     <button type="button" wire:click="saveDraft"
-                        class="px-3.5 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        class="px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
                         Simpan Draft
                     </button>
                     <button type="submit"
-                        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-bold shadow-xs">
-                        Submit & Tanda Tangan
+                        class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm sm:text-base font-bold shadow-xs hover:shadow transition-all">
+                        Submit
                     </button>
                 </div>
             </div>
