@@ -209,7 +209,29 @@
                 @foreach ($checklist->details as $d)
                     <tr class="hover:bg-slate-50">
                         <td class="border border-slate-900 py-1 px-2 text-center font-mono font-bold">{{ $d->item_no }}</td>
-                        <td class="border border-slate-900 py-1 px-3 font-semibold text-slate-900">{{ $d->point_check }}</td>
+                        <td class="border border-slate-900 py-1 px-3 font-semibold text-slate-900">
+                            @php
+                                $masterName = \App\Models\MouldChecklist::STANDARD_CHECK_POINTS[$d->item_no]['name'] ?? '';
+                                $hasSlash = str_contains($masterName, ' / ');
+                                $parts = $hasSlash ? array_map('trim', explode(' / ', $masterName)) : [];
+                            @endphp
+                            @if ($hasSlash && in_array($d->point_check, $parts))
+                                <span class="inline-flex flex-wrap items-center gap-1 font-semibold">
+                                    @foreach ($parts as $idx => $part)
+                                        @if ($idx > 0)
+                                            <span class="text-slate-400 font-normal select-none">/</span>
+                                        @endif
+                                        @if ($part === $d->point_check)
+                                            <span class="font-bold text-slate-900">{{ $part }}</span>
+                                        @else
+                                            <span class="line-through text-slate-400 decoration-slate-500 decoration-1">{{ $part }}</span>
+                                        @endif
+                                    @endforeach
+                                </span>
+                            @else
+                                {{ $d->point_check }}
+                            @endif
+                        </td>
                         <td class="border border-slate-900 py-1 px-2 text-center font-bold {{ $d->cleaning_status === 'NG' ? 'text-rose-700 bg-rose-50' : ($d->cleaning_status === 'OK' ? 'text-emerald-700' : 'text-slate-400') }}">
                             {{ $d->cleaning_status }}
                         </td>

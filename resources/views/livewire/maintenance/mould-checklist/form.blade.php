@@ -459,24 +459,38 @@
                                     <td class="px-2.5 py-2 text-center font-mono font-bold text-slate-500">{{ $no }}</td>
                                     <td class="px-3 py-2 font-semibold text-slate-900">
                                         @php
-                                            $options = \App\Models\MouldChecklist::getPointCheckOptions($no);
-                                            if (! in_array($item['point_check'], $options) && ! empty($item['point_check'])) {
-                                                $options[] = $item['point_check'];
-                                            }
+                                            $masterName = \App\Models\MouldChecklist::STANDARD_CHECK_POINTS[$no]['name'] ?? '';
+                                            $hasSlash = str_contains($masterName, ' / ');
+                                            $parts = $hasSlash ? array_map('trim', explode(' / ', $masterName)) : [$item['point_check']];
+                                            $isPartSelected = in_array($item['point_check'], $parts);
                                         @endphp
-                                        @if (count($options) > 1)
+                                        @if ($hasSlash)
                                             <div class="space-y-1">
-                                                <select wire:model="items.{{ $no }}.point_check"
-                                                    class="w-full max-w-xs px-2.5 py-1 text-xs sm:text-sm font-semibold text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                                                    @foreach ($options as $opt)
-                                                        <option value="{{ $opt }}">{{ $opt }}</option>
+                                                <div class="inline-flex flex-wrap items-center gap-1.5 text-xs sm:text-sm">
+                                                    @foreach ($parts as $idx => $part)
+                                                        @if ($idx > 0)
+                                                            <span class="text-slate-300 font-bold select-none">/</span>
+                                                        @endif
+                                                        @php
+                                                            $isSelected = ($item['point_check'] === $part);
+                                                            $isStruck = ($isPartSelected && ! $isSelected);
+                                                        @endphp
+                                                        <button type="button"
+                                                            wire:click="$set('items.{{ $no }}.point_check', '{{ $isSelected ? $masterName : $part }}')"
+                                                            class="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer select-none inline-flex items-center gap-1
+                                                                {{ $isSelected 
+                                                                    ? 'bg-indigo-600 text-white shadow-xs font-bold ring-2 ring-indigo-300' 
+                                                                    : ($isStruck 
+                                                                        ? 'line-through text-slate-400 bg-slate-100 decoration-slate-400 decoration-2 opacity-60 hover:opacity-100' 
+                                                                        : 'text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200') }}"
+                                                            title="{{ $isSelected ? 'Klik untuk batal memilih (kembalikan semua opsi)' : 'Klik untuk pilih ' . $part . ' (coret opsi lainnya)' }}">
+                                                            <span>{{ $part }}</span>
+                                                            @if ($isSelected)
+                                                                <span class="text-[10px] font-bold">✓</span>
+                                                            @endif
+                                                        </button>
                                                     @endforeach
-                                                </select>
-                                                @if ($item['point_check'] !== \App\Models\MouldChecklist::STANDARD_CHECK_POINTS[$no]['name'])
-                                                    <span class="inline-block text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                                                        Pilihan: {{ $item['point_check'] }}
-                                                    </span>
-                                                @endif
+                                                </div>
                                             </div>
                                         @else
                                             <span>{{ $item['point_check'] }}</span>
