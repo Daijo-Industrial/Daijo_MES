@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\SapTimeoutAlertMail;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -86,6 +87,10 @@ class ReceiptProductionService extends BaseSapService
                 continue;
             }
 
+            $docDate = ! empty($summary->created_date)
+                ? Carbon::parse($summary->created_date)->format('Y-m-d')
+                : (! empty($summary->created_at) ? Carbon::parse($summary->created_at)->format('Y-m-d') : now()->format('Y-m-d'));
+
             $payload = [
                 [
                     'summary_id' => $summary->id,
@@ -94,6 +99,8 @@ class ReceiptProductionService extends BaseSapService
                     'warehouse' => $summary->warehouse,
                     'quantity' => $summary->total_quantity,
                     'label' => (string) $summary->id,
+                    'DocDate' => $docDate,
+                    'doc_date' => $docDate,
                     'remarks' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
                     'remark' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
                     'comments' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
@@ -223,6 +230,10 @@ class ReceiptProductionService extends BaseSapService
         }
 
         try {
+            $docDate = ! empty($summary->created_date)
+                ? Carbon::parse($summary->created_date)->format('Y-m-d')
+                : (! empty($summary->created_at) ? Carbon::parse($summary->created_at)->format('Y-m-d') : now()->format('Y-m-d'));
+
             $payload = [
                 [
                     'summary_id' => $summary->id,
@@ -231,6 +242,8 @@ class ReceiptProductionService extends BaseSapService
                     'warehouse' => $summary->warehouse,
                     'quantity' => $summary->total_quantity,
                     'label' => (string) $summary->id,
+                    'DocDate' => $docDate,
+                    'doc_date' => $docDate,
                     'remarks' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
                     'remark' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",
                     'comments' => "Created from SPK {$summary->spk_code} - MES ID: {$summary->id}",

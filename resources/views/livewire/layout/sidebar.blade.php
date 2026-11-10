@@ -171,6 +171,7 @@ new class extends Component {
                         ['name' => 'mwh.master-list.index', 'label' => 'Master List Material'],
                         ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping'],
                         ['name' => 'mwh.daily-audit', 'label' => 'Audit Harian Material'],
+                        ['name' => 'mwh.requests', 'label' => 'Permintaan Produksi (Requests)'],
                         ['name' => 'mwh.incoming.create', 'label' => 'Penerimaan Material (Incoming)'],
                         ['name' => 'mwh.outgoing.create', 'label' => 'Pengambilan Material (Outgoing)'],
                         ['name' => 'mwh.outgoing.history', 'label' => 'Riwayat Outgoing Material'],
@@ -186,6 +187,7 @@ new class extends Component {
                     ['name' => 'delivery-schedule.form', 'label' => 'Delivery Schedule Input (BARU)'],
                     ['name' => 'delivery-schedule.calendar', 'label' => 'Kalender Delivery Schedule'],
                     ['name' => 'delivery.analysis', 'label' => 'Delivery Schedule Terbaru'],
+                    ['name' => 'delivery.po-reminder', 'label' => 'PO Reminder (Kebutuhan Material)'],
                     ['name' => 'production.forecast.index', 'label' => 'Forecast Production'],
                     ['name' => 'management.delivery.index', 'label' => 'Delivery Data Delete'],
                     ['name' => 'indexds', 'label' => 'Delivery Schedule Data (Old)'],
@@ -253,6 +255,9 @@ new class extends Component {
 
                     <livewire:sidebar-link href="{{ route('delivery.analysis') }}" label="Delivery Schedule Terbaru"
                         :active="request()->routeIs('delivery.analysis')" wire:navigate />
+
+                    <livewire:sidebar-link href="{{ route('delivery.po-reminder') }}" label="PO Reminder (Kebutuhan Material)"
+                        :active="request()->routeIs('delivery.po-reminder')" wire:navigate />
                 @endif
 
 
@@ -385,6 +390,7 @@ new class extends Component {
                         ['name' => 'mwh.master-list.index', 'label' => 'Master List Material'],
                         ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping'],
                         ['name' => 'mwh.daily-audit', 'label' => 'Audit Harian Material'],
+                        ['name' => 'mwh.requests', 'label' => 'Permintaan Produksi (Requests)'],
                         ['name' => 'mwh.incoming.create', 'label' => 'Penerimaan Material (Incoming)'],
                         ['name' => 'mwh.outgoing.create', 'label' => 'Pengambilan Material (Outgoing)'],
                         ['name' => 'mwh.outgoing.history', 'label' => 'Riwayat Outgoing Material'],

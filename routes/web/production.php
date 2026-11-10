@@ -244,6 +244,7 @@ Route::middleware('auth')->group(function () {
     Route::get('delsched/start4', [DeliveryScheduleController::class, 'step4'])->name('deslsched.step4');
     Route::get('delsched/wip/step2', [DeliveryScheduleController::class, 'step2wip'])->name('delschedwip.step2');
     Route::get('/delivery-analysis', DeliveryAnalysis::class)->name('delivery.analysis');
+    Route::get('/po-reminder', \App\Livewire\PoReminderIndex::class)->name('delivery.po-reminder');
     Route::get('/delivery-schedule-create', DeliveryScheduleForm::class)->name('delivery-schedule.form');
     Route::get('/delivery-schedule/calendar', DeliveryScheduleCalendar::class)->name('delivery-schedule.calendar');
     Route::get('new-delivery-schedule', [DeliveryScheduleController::class, 'deliveryScheduleNewIndex'])->name('testnewdelivery');
