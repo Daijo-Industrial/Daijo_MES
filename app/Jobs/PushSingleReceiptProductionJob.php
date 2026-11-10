@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -33,10 +34,21 @@ class PushSingleReceiptProductionJob implements ShouldQueue
     {
         Log::channel('single')->info("[JOB] PushSingleReceiptProductionJob STARTED for Summary ID: {$this->summaryId} at " . now());
 
+        $atomicLock = Cache::lock("sap_receipt_push_job_{$this->summaryId}", 60);
+        if (! $atomicLock->get()) {
+            Log::channel('single')->warning("[JOB] Summary ID {$this->summaryId} skipped: Concurrent execution lock held by another worker.");
+
+            return;
+        }
+
         try {
             $summary = DB::table('production_summary')
                 ->where('id', $this->summaryId)
                 ->first();
+
+            if (! $summary) {
+                return;
+            }
 
             if ($summary->sap_sent == 1) {
                 Log::channel('single')->info("[JOB] Summary ID {$this->summaryId} skipped: Already successfully sent to SAP (sap_sent = 1).");
@@ -97,6 +109,8 @@ class PushSingleReceiptProductionJob implements ShouldQueue
                 ->update(['sap_sent' => 3, 'updated_at' => now()]);
 
             throw $e;
+        } finally {
+            optional($atomicLock)->release();
         }
     }
 }

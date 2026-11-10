@@ -35,6 +35,7 @@ use App\Livewire\MasterBomView;
 use App\Livewire\MasterListItemView;
 use App\Livewire\MasterMachineManager;
 use App\Livewire\Ppic\PpicListUpMachine;
+use App\Livewire\Production\ProductionMaterialStation;
 use App\Livewire\ProductionDashboard;
 use App\Livewire\ProductionStoreHandoverIndex;
 use App\Livewire\ProductionSummaryMonitor;
@@ -67,9 +68,11 @@ Route::get('/monitoring-spk', [MonitoringController::class, 'index'])->name('mon
 Route::get('/monitoring-spkdetail/{spk}', [MonitoringController::class, 'show'])->name('monitoring.spk.detail');
 
 // ROUTE UNTUK PERBANDINGAN & LOG PERUBAHAN SPK (SPK CHANGE TRACKING)
-Route::get('/spk-changes', [SpkChangeLogController::class, 'index'])->name('spk.changes.index');
-Route::post('/spk-changes/sync', [SpkChangeLogController::class, 'triggerSync'])->name('spk.changes.sync');
-Route::get('/spk-changes/history/{spk}', [SpkChangeLogController::class, 'getHistory'])->name('spk.changes.history');
+Route::middleware(['auth', 'can:view-production-links'])->group(function () {
+    Route::get('/spk-changes', [SpkChangeLogController::class, 'index'])->name('spk.changes.index');
+    Route::post('/spk-changes/sync', [SpkChangeLogController::class, 'triggerSync'])->name('spk.changes.sync');
+    Route::get('/spk-changes/history/{spk}', [SpkChangeLogController::class, 'getHistory'])->name('spk.changes.history');
+});
 
 // ROUTE UNTUK SPK BOM CHANGES (INTEGRASI SPK & FORMULA BOM NON-WIP)
 Route::get('/spk-bom-changes', SpkBomChangesView::class)->name('spk.bom-changes.index');
@@ -118,6 +121,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/production-summary-monitor', ProductionSummaryMonitor::class)->name('production-summary-monitor');
     Route::get('/receipt-production-logs', ReceiptProductionLogs::class)->name('receipt-production-logs');
+    Route::get('/production-material-station', ProductionMaterialStation::class)->name('production.material-station');
     Route::get('/sap-verification', SapMesVerification::class)->name('sap.verification');
     Route::get('/qc-stock-transfer', QcStockTransfer::class)->name('qc-stock-transfer');
     Route::get('/qc-stock-transfer-kbn', QcStockTransferKbn::class)->name('qc-stock-transfer-kbn');

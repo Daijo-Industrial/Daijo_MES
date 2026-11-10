@@ -23,11 +23,17 @@ class MwhOutgoing extends Model
         'outgoing_date',
         'issued_to',
         'remarks',
+        'received_status',
+        'received_by',
+        'received_by_name',
+        'received_at',
+        'received_notes',
     ];
 
     protected $casts = [
         'qty_taken' => 'decimal:2',
         'outgoing_date' => 'date',
+        'received_at' => 'datetime',
     ];
 
     public function warehouse()
@@ -48,5 +54,15 @@ class MwhOutgoing extends Model
     public function material()
     {
         return $this->belongsTo(MasterListMaterial::class, 'item_code', 'item_code');
+    }
+
+    public function usages()
+    {
+        return $this->hasMany(ProductionMaterialUsage::class, 'outgoing_id');
+    }
+
+    public function receiver()
+    {
+        return $this->belongsTo(User::class, 'received_by');
     }
 }
