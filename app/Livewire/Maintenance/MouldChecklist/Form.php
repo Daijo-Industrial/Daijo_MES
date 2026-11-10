@@ -59,6 +59,7 @@ class Form extends Component
             'machine_number' => 'nullable|string|max:100',
             'start_time' => 'nullable|string|max:10',
             'end_time' => 'nullable|string|max:10',
+            'items.*.point_check' => 'required|string|max:255',
             'items.*.cleaning_status' => 'required|in:OK,NG,-',
             'items.*.lubricate_status' => 'required|in:OK,NG,-',
             'items.*.remark' => 'nullable|string|max:255',
@@ -225,6 +226,7 @@ class Form extends Component
             ], $this->messages());
         } elseif ($step === 2) {
             $this->validate([
+                'items.*.point_check' => 'required|string|max:255',
                 'items.*.cleaning_status' => 'required|in:OK,NG,-',
                 'items.*.lubricate_status' => 'required|in:OK,NG,-',
                 'items.*.remark' => 'nullable|string|max:255',

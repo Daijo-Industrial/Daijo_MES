@@ -458,7 +458,29 @@
                                 <tr class="{{ $item['cleaning_status'] === 'NG' || $item['lubricate_status'] === 'NG' ? 'bg-rose-50/60' : 'hover:bg-slate-50/60' }}">
                                     <td class="px-2.5 py-2 text-center font-mono font-bold text-slate-500">{{ $no }}</td>
                                     <td class="px-3 py-2 font-semibold text-slate-900">
-                                        {{ $item['point_check'] }}
+                                        @php
+                                            $options = \App\Models\MouldChecklist::getPointCheckOptions($no);
+                                            if (! in_array($item['point_check'], $options) && ! empty($item['point_check'])) {
+                                                $options[] = $item['point_check'];
+                                            }
+                                        @endphp
+                                        @if (count($options) > 1)
+                                            <div class="space-y-1">
+                                                <select wire:model="items.{{ $no }}.point_check"
+                                                    class="w-full max-w-xs px-2.5 py-1 text-xs sm:text-sm font-semibold text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                                    @foreach ($options as $opt)
+                                                        <option value="{{ $opt }}">{{ $opt }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @if ($item['point_check'] !== \App\Models\MouldChecklist::STANDARD_CHECK_POINTS[$no]['name'])
+                                                    <span class="inline-block text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                                        Pilihan: {{ $item['point_check'] }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <span>{{ $item['point_check'] }}</span>
+                                        @endif
                                     </td>
 
                                     <!-- Cleaning Status -->

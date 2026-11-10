@@ -18,7 +18,7 @@ class MouldChecklist extends Model
         4 => ['name' => 'SLIDER', 'cleaning' => '-', 'lubricate' => '-'],
         5 => ['name' => 'ANGULAR PIN / ANGULAR CAMS', 'cleaning' => '-', 'lubricate' => '-'],
         6 => ['name' => 'LIFTER', 'cleaning' => '-', 'lubricate' => '-'],
-        7 => ['name' => 'GAS SPRING / SPRING / SLIDER', 'cleaning' => '-', 'lubricate' => '-'],
+        7 => ['name' => 'GAS SPRING / SPRING / CORE PULL', 'cleaning' => '-', 'lubricate' => '-'],
         8 => ['name' => 'AIR VENT', 'cleaning' => '-', 'lubricate' => '-'],
         9 => ['name' => 'LIMIT SWITCH / SENSOR', 'cleaning' => '-', 'lubricate' => '-'],
         10 => ['name' => 'EJECTOR LEADER PIN', 'cleaning' => '-', 'lubricate' => '-'],
@@ -84,5 +84,22 @@ class MouldChecklist extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public static function getPointCheckOptions(int $no): array
+    {
+        $item = self::STANDARD_CHECK_POINTS[$no] ?? null;
+        if (! $item) {
+            return [];
+        }
+
+        $name = $item['name'];
+        if (! str_contains($name, ' / ')) {
+            return [$name];
+        }
+
+        $parts = array_map('trim', explode(' / ', $name));
+
+        return array_values(array_unique(array_merge([$name], $parts)));
     }
 }

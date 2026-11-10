@@ -182,6 +182,58 @@ class MouldChecklistTest extends TestCase
         // Verify specific point check name
         $coolingDetail = $checklist->details()->where('item_no', 1)->first();
         $this->assertEquals('COOLING CIRCULATION', $coolingDetail->point_check);
+
+        $point7Detail = $checklist->details()->where('item_no', 7)->first();
+        $this->assertEquals('GAS SPRING / SPRING / CORE PULL', $point7Detail->point_check);
+    }
+
+    public function test_technician_can_select_custom_point_check_options_for_slash_items(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        $mould = MasterMould::create([
+            'mould_no' => 'MLD-SLASH-01',
+            'part_no' => 'PART-SLASH-01',
+            'part_name' => 'Test Slash Part',
+            'customer' => 'PT SLASH',
+        ]);
+
+        Livewire::test(MouldChecklistForm::class)
+            ->call('selectMould', $mould->id)
+            ->set('technician_name', 'Teknisi Option')
+            ->set('items.5.point_check', 'ANGULAR PIN')
+            ->set('items.7.point_check', 'CORE PULL')
+            ->set('items.9.point_check', 'LIMIT SWITCH')
+            ->set('items.13.point_check', 'STOP BOLTS')
+            ->call('saveDraft')
+            ->assertHasNoErrors();
+
+        $checklist = MouldChecklist::where('mould_no', 'MLD-SLASH-01')->first();
+        $this->assertNotNull($checklist);
+
+        $detail5 = $checklist->details()->where('item_no', 5)->first();
+        $this->assertEquals('ANGULAR PIN', $detail5->point_check);
+
+        $detail7 = $checklist->details()->where('item_no', 7)->first();
+        $this->assertEquals('CORE PULL', $detail7->point_check);
+
+        $detail9 = $checklist->details()->where('item_no', 9)->first();
+        $this->assertEquals('LIMIT SWITCH', $detail9->point_check);
+
+        $detail13 = $checklist->details()->where('item_no', 13)->first();
+        $this->assertEquals('STOP BOLTS', $detail13->point_check);
+    }
+
+    public function test_get_point_check_options_helper(): void
+    {
+        $opts5 = MouldChecklist::getPointCheckOptions(5);
+        $this->assertEquals(['ANGULAR PIN / ANGULAR CAMS', 'ANGULAR PIN', 'ANGULAR CAMS'], $opts5);
+
+        $opts7 = MouldChecklist::getPointCheckOptions(7);
+        $this->assertEquals(['GAS SPRING / SPRING / CORE PULL', 'GAS SPRING', 'SPRING', 'CORE PULL'], $opts7);
+
+        $opts1 = MouldChecklist::getPointCheckOptions(1);
+        $this->assertEquals(['COOLING CIRCULATION'], $opts1);
     }
 
     public function test_technician_can_submit_and_sign_issued_by(): void
