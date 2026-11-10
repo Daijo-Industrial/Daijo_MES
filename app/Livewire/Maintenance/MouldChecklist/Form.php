@@ -8,10 +8,12 @@ use App\Models\MouldChecklistDetail;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class Form extends Component
 {
+    #[Locked]
     public $checklistId = null;
     public $isEdit = false;
 
@@ -30,6 +32,10 @@ class Form extends Component
     public $end_time = '';
     public $doc_number = 'DI-F-P/PD/05/MTM-043';
     public $revision = '00';
+
+    // Wizard Step Navigation
+    public $currentStep = 1;
+    public $totalSteps = 2;
 
     // 16 Check items array: [item_no => ['point_check', 'cleaning_status', 'lubricate_status', 'remark']]
     public $items = [];
@@ -54,6 +60,20 @@ class Form extends Component
             'items.*.cleaning_status' => 'required|in:OK,NG,-',
             'items.*.lubricate_status' => 'required|in:OK,NG,-',
             'items.*.remark' => 'nullable|string|max:255',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'mould_no.required' => 'Silakan pilih mould dari Master Mould atau gunakan mode Input Manual.',
+            'part_no.required' => 'Part number wajib diisi.',
+            'part_name.required' => 'Part name wajib diisi.',
+            'customer.required' => 'Customer wajib diisi.',
+            'technician_name.required' => 'Nama teknisi (PIC) wajib diisi.',
+            'check_date.required' => 'Tanggal pengerjaan wajib diisi.',
+            'items.*.cleaning_status.required' => 'Status cleaning wajib dipilih.',
+            'items.*.lubricate_status.required' => 'Status lubricate wajib dipilih.',
         ];
     }
 
@@ -181,9 +201,109 @@ class Form extends Component
         $this->clearSelectedMould();
     }
 
+    public function validateStep(int $step)
+    {
+        if ($step === 1) {
+            $this->validate([
+                'check_date' => 'required|date',
+                'mould_no' => 'required|string|max:100',
+                'part_no' => 'required|string|max:100',
+                'part_name' => 'required|string|max:255',
+                'customer' => 'required|string|max:150',
+                'technician_name' => 'required|string|max:255',
+                'machine_number' => 'nullable|string|max:100',
+                'start_time' => 'nullable|string|max:10',
+                'end_time' => 'nullable|string|max:10',
+            ], $this->messages());
+        } elseif ($step === 2) {
+            $this->validate([
+                'items.*.cleaning_status' => 'required|in:OK,NG,-',
+                'items.*.lubricate_status' => 'required|in:OK,NG,-',
+                'items.*.remark' => 'nullable|string|max:255',
+            ], $this->messages());
+        }
+    }
+
+    public function nextStep()
+    {
+        $this->validateStep($this->currentStep);
+        if ($this->currentStep < $this->totalSteps) {
+            $this->currentStep++;
+        }
+    }
+
+    public function prevStep()
+    {
+        if ($this->currentStep > 1) {
+            $this->currentStep--;
+        }
+    }
+
+    public function setStep($step)
+    {
+        $step = (int) $step;
+        if ($step < 1 || $step > $this->totalSteps) {
+            return;
+        }
+
+        // Validate all preceding steps when moving to a later step
+        if ($step > 1) {
+            for ($i = 1; $i < $step; $i++) {
+                $this->validateStep($i);
+            }
+        }
+
+        $this->currentStep = $step;
+    }
+
+    public function getNgItemsProperty()
+    {
+        return collect($this->items)->filter(function ($item) {
+            return ($item['cleaning_status'] ?? '') === 'NG' || ($item['lubricate_status'] ?? '') === 'NG';
+        });
+    }
+
+    public function getNgCountProperty(): int
+    {
+        return $this->ngItems->count();
+    }
+
+    public function getOkCountProperty(): int
+    {
+        return collect($this->items)->filter(function ($item) {
+            return ($item['cleaning_status'] ?? '') === 'OK' && ($item['lubricate_status'] ?? '') === 'OK';
+        })->count();
+    }
+
+    public function getNaCountProperty(): int
+    {
+        return collect($this->items)->filter(function ($item) {
+            return ($item['cleaning_status'] ?? '') === '-' && ($item['lubricate_status'] ?? '') === '-';
+        })->count();
+    }
+
+    protected function validateWithStepRouting()
+    {
+        try {
+            $this->validate();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $step1Fields = ['check_date', 'mould_no', 'part_no', 'part_name', 'customer', 'technician_name', 'machine_number', 'start_time', 'end_time'];
+            foreach ($step1Fields as $f) {
+                if ($e->validator->errors()->has($f)) {
+                    $this->currentStep = 1;
+                    throw $e;
+                }
+            }
+            if ($e->validator->errors()->has('items.*')) {
+                $this->currentStep = 2;
+            }
+            throw $e;
+        }
+    }
+
     public function saveDraft()
     {
-        $this->validate();
+        $this->validateWithStepRouting();
 
         $checklist = $this->persistChecklist('DRAFT');
 
@@ -193,7 +313,7 @@ class Form extends Component
 
     public function submitAndSign()
     {
-        $this->validate();
+        $this->validateWithStepRouting();
 
         $user = auth()->user();
         if (! $user) {
@@ -225,6 +345,13 @@ class Form extends Component
     {
         return DB::transaction(function () use ($status, $signIssued, $signChecked) {
             $user = auth()->user();
+
+            if ($this->checklistId) {
+                $existing = MouldChecklist::find($this->checklistId);
+                if ($existing && ! in_array($existing->status, ['DRAFT', 'REJECTED']) && ! ($user?->hasRole('SUPER-ADMIN') || $user?->hasRole('ADMIN'))) {
+                    throw new \RuntimeException("Dokumen sudah berstatus {$existing->status} dan tidak dapat diubah lagi.");
+                }
+            }
 
             $data = [
                 'doc_number' => $this->doc_number,

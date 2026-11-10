@@ -12,22 +12,22 @@ class MouldChecklist extends Model
     protected $table = 'mould_checklists';
 
     public const STANDARD_CHECK_POINTS = [
-        1 => ['name' => 'COOLING CIRCULATION', 'cleaning' => 'OK', 'lubricate' => '-'],
-        2 => ['name' => 'EJECTOR PIN', 'cleaning' => 'OK', 'lubricate' => 'OK'],
-        3 => ['name' => 'EJECTOR BLOCK', 'cleaning' => 'OK', 'lubricate' => 'OK'],
-        4 => ['name' => 'SLIDER', 'cleaning' => 'OK', 'lubricate' => 'OK'],
-        5 => ['name' => 'ANGULAR PIN / ANGULAR CAMS', 'cleaning' => 'OK', 'lubricate' => 'OK'],
+        1 => ['name' => 'COOLING CIRCULATION', 'cleaning' => '-', 'lubricate' => '-'],
+        2 => ['name' => 'EJECTOR PIN', 'cleaning' => '-', 'lubricate' => '-'],
+        3 => ['name' => 'EJECTOR BLOCK', 'cleaning' => '-', 'lubricate' => '-'],
+        4 => ['name' => 'SLIDER', 'cleaning' => '-', 'lubricate' => '-'],
+        5 => ['name' => 'ANGULAR PIN / ANGULAR CAMS', 'cleaning' => '-', 'lubricate' => '-'],
         6 => ['name' => 'LIFTER', 'cleaning' => '-', 'lubricate' => '-'],
-        7 => ['name' => 'GAS SPRING / SPRING / SLIDER', 'cleaning' => 'OK', 'lubricate' => '-'],
-        8 => ['name' => 'AIR VENT', 'cleaning' => 'OK', 'lubricate' => '-'],
+        7 => ['name' => 'GAS SPRING / SPRING / SLIDER', 'cleaning' => '-', 'lubricate' => '-'],
+        8 => ['name' => 'AIR VENT', 'cleaning' => '-', 'lubricate' => '-'],
         9 => ['name' => 'LIMIT SWITCH / SENSOR', 'cleaning' => '-', 'lubricate' => '-'],
-        10 => ['name' => 'EJECTOR LEADER PIN', 'cleaning' => 'OK', 'lubricate' => 'OK'],
-        11 => ['name' => 'SUPPORT PIN', 'cleaning' => 'OK', 'lubricate' => 'OK'],
-        12 => ['name' => 'LEADER PIN', 'cleaning' => 'OK', 'lubricate' => 'OK'],
+        10 => ['name' => 'EJECTOR LEADER PIN', 'cleaning' => '-', 'lubricate' => '-'],
+        11 => ['name' => 'SUPPORT PIN', 'cleaning' => '-', 'lubricate' => '-'],
+        12 => ['name' => 'LEADER PIN', 'cleaning' => '-', 'lubricate' => '-'],
         13 => ['name' => 'PULLER BOLTS / STOP BOLTS', 'cleaning' => '-', 'lubricate' => '-'],
-        14 => ['name' => 'GUIDE RAIL', 'cleaning' => 'OK', 'lubricate' => 'OK'],
-        15 => ['name' => 'CEK VISUAL CORE DAN CAVITY', 'cleaning' => 'OK', 'lubricate' => '-'],
-        16 => ['name' => 'PEMBERIAN ANTI RUST CORE DAN CAVITY', 'cleaning' => 'OK', 'lubricate' => '-'],
+        14 => ['name' => 'GUIDE RAIL', 'cleaning' => '-', 'lubricate' => '-'],
+        15 => ['name' => 'CEK VISUAL CORE DAN CAVITY', 'cleaning' => '-', 'lubricate' => '-'],
+        16 => ['name' => 'PEMBERIAN ANTI RUST CORE DAN CAVITY', 'cleaning' => '-', 'lubricate' => '-'],
     ];
 
     protected $fillable = [
