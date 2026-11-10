@@ -474,4 +474,80 @@ class MouldChecklistTest extends TestCase
         $this->assertEquals($this->mouldLeaderUser->name, $checklist->checked_name);
         $this->assertNotNull($checklist->checked_at);
     }
+
+    public function test_user_can_delete_draft_checklist(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        $checklist = MouldChecklist::create([
+            'check_date' => now()->format('Y-m-d'),
+            'mould_no' => 'IK-MM-005-010',
+            'part_no' => '401-76934B001P',
+            'part_name' => 'GARNISH RR PLR RH 5H45',
+            'customer' => 'IKUYO',
+            'technician_name' => 'Teknisi A',
+            'status' => 'DRAFT',
+            'created_by' => $this->operatorUser->id,
+        ]);
+
+        $checklist->details()->create([
+            'item_no' => 1,
+            'point_check' => 'COOLING CIRCULATION',
+            'cleaning_status' => 'OK',
+            'lubricate_status' => 'OK',
+        ]);
+
+        Livewire::test(MouldChecklistShow::class, ['id' => $checklist->id])
+            ->call('deleteChecklist')
+            ->assertRedirect(route('mould-checklist.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('mould_checklists', ['id' => $checklist->id]);
+        $this->assertDatabaseMissing('mould_checklist_details', ['mould_checklist_id' => $checklist->id]);
+    }
+
+    public function test_non_admin_cannot_delete_submitted_or_approved_checklist(): void
+    {
+        $this->actingAs($this->operatorUser);
+
+        $checklist = MouldChecklist::create([
+            'check_date' => now()->format('Y-m-d'),
+            'mould_no' => 'IK-MM-005-010',
+            'part_no' => '401-76934B001P',
+            'part_name' => 'GARNISH RR PLR RH 5H45',
+            'customer' => 'IKUYO',
+            'technician_name' => 'Teknisi A',
+            'status' => 'SUBMITTED',
+            'created_by' => $this->operatorUser->id,
+        ]);
+
+        Livewire::test(MouldChecklistShow::class, ['id' => $checklist->id])
+            ->call('deleteChecklist')
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('mould_checklists', ['id' => $checklist->id]);
+    }
+
+    public function test_admin_can_delete_checklist_in_any_status(): void
+    {
+        $this->actingAs($this->adminUser);
+
+        $checklist = MouldChecklist::create([
+            'check_date' => now()->format('Y-m-d'),
+            'mould_no' => 'IK-MM-005-010',
+            'part_no' => '401-76934B001P',
+            'part_name' => 'GARNISH RR PLR RH 5H45',
+            'customer' => 'IKUYO',
+            'technician_name' => 'Teknisi A',
+            'status' => 'APPROVED',
+            'created_by' => $this->operatorUser->id,
+        ]);
+
+        Livewire::test(MouldChecklistShow::class, ['id' => $checklist->id])
+            ->call('deleteChecklist')
+            ->assertRedirect(route('mould-checklist.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('mould_checklists', ['id' => $checklist->id]);
+    }
 }

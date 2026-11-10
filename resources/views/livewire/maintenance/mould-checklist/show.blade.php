@@ -37,33 +37,47 @@
 
         <!-- Action Buttons -->
         <div class="flex flex-wrap items-center gap-2">
-            @if ($checklist->status === 'DRAFT' || $checklist->status === 'REJECTED')
+            @if ($checklist->status === 'DRAFT' || $checklist->status === 'REJECTED' || (auth()->user()?->hasRole('SUPER-ADMIN') || auth()->user()?->hasRole('ADMIN')))
                 <a href="{{ route('mould-checklist.edit', $checklist->id) }}" wire:navigate
-                    class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-colors">
-                    Edit Checklist
+                    class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-bold rounded-xl transition-colors inline-flex items-center gap-1.5 min-h-[40px] shadow-2xs">
+                    <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <span>Edit Checklist</span>
                 </a>
+            @endif
+
+            @if ($checklist->status === 'DRAFT' || auth()->user()?->hasRole('SUPER-ADMIN') || auth()->user()?->hasRole('ADMIN'))
+                <button type="button" wire:click="deleteChecklist"
+                    wire:confirm="Apakah Anda yakin ingin menghapus check sheet #{{ $checklist->id }} ini?"
+                    class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition-colors inline-flex items-center gap-1.5 min-h-[40px] shadow-2xs">
+                    <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Hapus</span>
+                </button>
             @endif
 
             @if ($checklist->status === 'SUBMITTED' && auth()->user()?->canSign('mould_checklist', 'checked_by'))
                 <button type="button" wire:click="openRejectModal"
-                    class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-colors">
+                    class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition-colors min-h-[40px]">
                     Reject / Kembalikan
                 </button>
                 <button type="button" wire:click="approveAndSign"
-                    class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors flex items-center gap-1.5">
+                    class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md transition-colors flex items-center gap-1.5 min-h-[40px]">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
-                    Approve & Tanda Tangan (Check By)
+                    <span>Approve & Tanda Tangan (Check By)</span>
                 </button>
             @endif
 
             <button type="button" onclick="window.print()"
-                class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center gap-1.5">
+                class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-colors flex items-center gap-1.5 min-h-[40px]">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                Print Check Sheet
+                <span>Print Check Sheet</span>
             </button>
         </div>
     </div>

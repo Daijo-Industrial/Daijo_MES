@@ -90,6 +90,25 @@ class Show extends Component
         session()->flash('info', 'Check sheet mould ditolak (REJECTED) dan dikembalikan ke Teknisi untuk perbaikan.');
     }
 
+    public function deleteChecklist()
+    {
+        $checklist = $this->checklist;
+
+        $user = auth()->user();
+        $canDelete = $user && ($user->hasRole('SUPER-ADMIN') || $user->hasRole('ADMIN') || $checklist->status === 'DRAFT');
+
+        if (! $canDelete) {
+            session()->flash('error', 'Hanya dokumen berstatus DRAFT atau Admin yang dapat dihapus.');
+            return;
+        }
+
+        $id = $checklist->id;
+        $checklist->delete();
+        session()->flash('success', 'Check sheet mould #' . $id . ' berhasil dihapus.');
+
+        return $this->redirect(route('mould-checklist.index'), navigate: true);
+    }
+
     public function render()
     {
         return view('livewire.maintenance.mould-checklist.show', [
