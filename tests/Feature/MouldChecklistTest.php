@@ -51,16 +51,21 @@ class MouldChecklistTest extends TestCase
 
     public function test_master_mould_can_be_created_and_managed(): void
     {
-        // 1. Non-superadmin cannot see upload/add buttons and is forbidden from calling modals
+        // 1. Non-superadmin cannot see upload/add buttons and is forbidden from calling modals or mutating moulds
         $this->actingAs($this->adminUser);
         Livewire::test(MasterMouldIndex::class)
             ->assertDontSee('Upload Excel')
             ->assertDontSee('Tambah Mould')
+            ->assertDontSee('Aksi')
             ->call('openAddModal')
             ->assertForbidden();
 
         Livewire::test(MasterMouldIndex::class)
             ->call('openUploadModal')
+            ->assertForbidden();
+
+        Livewire::test(MasterMouldIndex::class)
+            ->call('saveMould')
             ->assertForbidden();
 
         // 2. Super-admin can see buttons, create, and manage mould
@@ -170,6 +175,8 @@ class MouldChecklistTest extends TestCase
 
         $checklist = MouldChecklist::where('mould_no', 'MAN-001')->first();
         $this->assertNotNull($checklist);
+        $this->assertNull($checklist->mould_id);
+        $this->assertDatabaseMissing('master_moulds', ['mould_no' => 'MAN-001']);
         $this->assertEquals(16, $checklist->details()->count());
 
         // Verify specific point check name

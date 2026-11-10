@@ -49,6 +49,7 @@ class Form extends Component
     protected function rules()
     {
         return [
+            'mould_id' => 'nullable|exists:master_moulds,id',
             'check_date' => 'required|date',
             'mould_no' => 'required|string|max:100',
             'part_no' => 'required|string|max:100',
@@ -104,6 +105,11 @@ class Form extends Component
             $this->end_time = $checklist->end_time;
             $this->doc_number = $checklist->doc_number;
             $this->revision = $checklist->revision;
+
+            $this->isManualMould = empty($checklist->mould_id);
+            if (! $this->isManualMould) {
+                $this->mould_search = $checklist->mould_no . ' - ' . $checklist->part_no;
+            }
 
             // Populate items from details
             $this->items = [];
@@ -192,6 +198,7 @@ class Form extends Component
 
     public function enableManualMould()
     {
+        $this->mould_id = null;
         $this->isManualMould = true;
         $this->showMouldDropdown = false;
         $this->mould_search = '';
@@ -358,7 +365,7 @@ class Form extends Component
                 'doc_number' => $this->doc_number,
                 'revision' => $this->revision,
                 'check_date' => $this->check_date,
-                'mould_id' => $this->mould_id,
+                'mould_id' => $this->isManualMould ? null : $this->mould_id,
                 'mould_no' => mb_strtoupper(trim($this->mould_no)),
                 'part_no' => trim($this->part_no),
                 'part_name' => trim($this->part_name),
