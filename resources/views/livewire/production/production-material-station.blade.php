@@ -46,10 +46,21 @@
             <span>2. Input Pemakaian Mesin</span>
         </button>
 
+        <button type="button" wire:click="switchTab('request')"
+                class="flex-1 min-w-[200px] py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 {{ $activeTab === 'request' ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20' : 'text-gray-600 hover:bg-gray-50' }}">
+            <span>📋</span>
+            <span>3. Request Material ke Store</span>
+            @if($pendingRequestCount > 0)
+                <span class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono {{ $activeTab === 'request' ? 'bg-white text-sky-700 font-bold' : 'bg-sky-100 text-sky-800' }}">
+                    {{ $pendingRequestCount }}
+                </span>
+            @endif
+        </button>
+
         <button type="button" wire:click="switchTab('stock')"
                 class="flex-1 min-w-[200px] py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 {{ $activeTab === 'stock' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20' : 'text-gray-600 hover:bg-gray-50' }}">
             <span>📊</span>
-            <span>3. Stok & Riwayat Pemakaian</span>
+            <span>4. Stok & Riwayat Pemakaian</span>
         </button>
     </div>
 
@@ -150,8 +161,15 @@
                                 <tr class="hover:bg-amber-50/20 transition-colors {{ $out->received_status === 'PENDING' ? 'bg-amber-50/10' : '' }}">
                                     {{-- Tanggal Outgoing --}}
                                     <td class="py-3 px-4">
-                                        <div class="font-bold text-gray-800">{{ $out->created_at ? $out->created_at->format('d M Y') : $out->outgoing_date->format('d M Y') }}</div>
-                                        <div class="text-[10px] text-gray-400 font-mono">{{ $out->created_at ? $out->created_at->format('H:i') . ' WIB' : '-' }}</div>
+                                        @php
+                                            $storeTime = $out->created_at ?: ($out->outgoing_date ? \Illuminate\Support\Carbon::parse($out->outgoing_date) : null);
+                                        @endphp
+                                        <div class="font-bold text-gray-800">
+                                            {{ $storeTime ? $storeTime->copy()->timezone('Asia/Jakarta')->format('d M Y') : ($out->outgoing_date ? $out->outgoing_date->format('d M Y') : '-') }}
+                                        </div>
+                                        <div class="text-[10px] text-gray-400 font-mono">
+                                            {{ $storeTime ? $storeTime->copy()->timezone('Asia/Jakarta')->format('H:i') . ' WIB' : '-' }}
+                                        </div>
                                     </td>
 
                                     {{-- Outgoing Code --}}
@@ -196,7 +214,7 @@
                                     <td class="py-3 px-4">
                                         @if($out->received_status === 'RECEIVED')
                                             <div class="font-bold text-gray-800">{{ $out->received_by_name ?: '-' }}</div>
-                                            <div class="text-[10px] text-gray-400">{{ $out->received_at ? $out->received_at->format('d/m H:i') : '-' }}</div>
+                                            <div class="text-[10px] text-gray-400">{{ $out->received_at ? $out->received_at->copy()->timezone('Asia/Jakarta')->format('d/m H:i') . ' WIB' : '-' }}</div>
                                             @if($out->received_notes)
                                                 <div class="text-[10px] text-gray-500 italic truncate max-w-xs mt-0.5">"{{ $out->received_notes }}"</div>
                                             @endif
@@ -602,7 +620,557 @@
     @endif
 
     {{-- ======================================================== --}}
-    {{-- TAB 3: STOK LANTAI PRODUKSI & RIWAYAT PEMAKAIAN          --}}
+    {{-- TAB 3: REQUEST MATERIAL KE GUDANG STORE                  --}}
+    {{-- ======================================================== --}}
+    @if($activeTab === 'request')
+        <div class="space-y-6">
+            {{-- Form Buat Permintaan --}}
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+                <div class="border-b border-gray-100 pb-4">
+                    <h2 class="text-base font-black text-gray-900 flex items-center gap-2">
+                        <span>📋</span>
+                        <span>Buat Permintaan Material ke Gudang Store</span>
+                    </h2>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        Pilih jenis material dan cek ketersediaan stok aktual di rak Store sebelum mengirimkan permintaan agar perhitungan kebutuhan tepat.
+                    </p>
+                </div>
+
+                <form wire:submit.prevent="saveMaterialRequest" class="space-y-4">
+                    {{-- 1. Pilih Material (Searchable Combobox) --}}
+                    <div x-data="{
+                        open: false,
+                        search: '',
+                        highlightIndex: 0,
+                        selectedCode: @entangle('reqItemCode').live,
+                        materials: @js($materialsList),
+                        get filteredMaterials() {
+                            if (!this.search || this.search.trim() === '') {
+                                return this.materials.slice(0, 30);
+                            }
+                            const term = this.search.toLowerCase().trim();
+                            return this.materials.filter(m => {
+                                const c = (m.item_code || '').toLowerCase();
+                                const d = (m.item_description || '').toLowerCase();
+                                return c.includes(term) || d.includes(term);
+                            }).slice(0, 30);
+                        },
+                        selectMaterial(m) {
+                            if (!m) return;
+                            this.selectedCode = m.item_code;
+                            this.search = '[' + m.item_code + '] ' + (m.item_description || '');
+                            this.open = false;
+                            $wire.selectMaterialForRequest(m.item_code);
+                        },
+                        clear() {
+                            this.selectedCode = '';
+                            this.search = '';
+                            this.open = true;
+                            $wire.set('reqItemCode', '');
+                            $wire.set('selectedMaterialStoreStock', null);
+                            this.$nextTick(() => { this.$refs.matInput.focus(); });
+                        },
+                        init() {
+                            if (this.selectedCode) {
+                                const found = this.materials.find(m => m.item_code === this.selectedCode);
+                                if (found) {
+                                    this.search = '[' + found.item_code + '] ' + (found.item_description || '');
+                                }
+                            }
+                        }
+                    }"
+                    class="relative"
+                    @click.outside="open = false"
+                    @keydown.escape="open = false">
+                        <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider flex items-center justify-between">
+                            <span>Pilih Material yang Ingin Diminta <span class="text-rose-500">*</span></span>
+                            <span class="text-[10px] text-gray-400 font-normal normal-case">Ketik kode atau nama material</span>
+                        </label>
+
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-sm">
+                                🔍
+                            </div>
+                            <input type="text"
+                                   x-ref="matInput"
+                                   x-model="search"
+                                   @focus="open = true; $refs.matInput.select()"
+                                   @input="open = true; highlightIndex = 0"
+                                   @keydown.down.prevent="open = true; highlightIndex = Math.min(highlightIndex + 1, Math.max(0, filteredMaterials.length - 1))"
+                                   @keydown.up.prevent="open = true; highlightIndex = Math.max(highlightIndex - 1, 0)"
+                                   @keydown.enter.prevent="if (open && filteredMaterials.length > 0) { selectMaterial(filteredMaterials[highlightIndex]); }"
+                                   placeholder="Ketik untuk mencari material (cth: ABS, PP, POM, 401-...)"
+                                   autocomplete="off"
+                                   class="w-full text-xs font-bold py-2.5 pl-9 pr-16 border rounded-xl transition shadow-xs focus:ring-2 focus:ring-sky-500/20 outline-none"
+                                   :class="selectedCode ? 'border-sky-300 bg-sky-50/20 text-sky-950 font-mono' : 'border-gray-200 bg-white text-gray-900'">
+
+                            <div class="absolute inset-y-0 right-0 pr-2 flex items-center gap-1">
+                                <button type="button"
+                                        x-show="search.length > 0 || selectedCode"
+                                        @click="clear()"
+                                        class="p-1 text-gray-400 hover:text-rose-500 rounded-md transition text-xs font-bold"
+                                        title="Hapus pilihan">
+                                    ✕
+                                </button>
+                                <button type="button"
+                                        @click="open = !open"
+                                        class="p-1 text-gray-400 hover:text-sky-600 rounded-md transition text-xs">
+                                    <span :class="open ? 'rotate-180' : ''" class="inline-block transition-transform duration-200">▾</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Floating Dropdown List --}}
+                        <div x-show="open"
+                             x-transition
+                             class="absolute z-50 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-200 divide-y divide-gray-100">
+                            <template x-for="(m, idx) in filteredMaterials" :key="m.item_code">
+                                <button type="button"
+                                        @click="selectMaterial(m)"
+                                        @mouseenter="highlightIndex = idx"
+                                        class="w-full text-left px-3.5 py-2.5 transition flex items-center justify-between gap-3 cursor-pointer group"
+                                        :class="{
+                                            'bg-sky-600 text-white': highlightIndex === idx,
+                                            'bg-sky-50/50': selectedCode === m.item_code && highlightIndex !== idx,
+                                            'hover:bg-sky-50/60': highlightIndex !== idx
+                                        }">
+                                    <div class="truncate">
+                                        <div class="font-mono font-black text-xs"
+                                              :class="highlightIndex === idx ? 'text-white' : 'text-sky-950 group-hover:text-sky-700'"
+                                              x-text="'[' + m.item_code + ']'"></div>
+                                        <div class="text-xs truncate font-medium mt-0.5"
+                                              :class="highlightIndex === idx ? 'text-sky-100' : 'text-gray-700'"
+                                              x-text="m.item_description || '-'"></div>
+                                    </div>
+                                    <span class="text-[10px] font-bold shrink-0"
+                                          :class="highlightIndex === idx ? 'text-sky-200' : 'text-gray-400 group-hover:text-sky-600'">
+                                        Pilih ↵
+                                    </span>
+                                </button>
+                            </template>
+                            <div x-show="filteredMaterials.length === 0" class="p-4 text-center text-gray-400 text-xs">
+                                Tidak ada material yang cocok dengan pencarian.
+                            </div>
+                        </div>
+                        @error('reqItemCode') <span class="text-rose-500 text-[11px] mt-1 block font-bold">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- Informasi Stok Aktual di Store & Lantai Produksi --}}
+                    @if($selectedMaterialStoreStock)
+                        <div class="bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50 p-4 rounded-2xl border border-sky-200 space-y-3">
+                            <div class="flex items-center justify-between border-b border-sky-100 pb-2">
+                                <span class="text-xs font-black text-sky-950 flex items-center gap-1.5">
+                                    <span>🔍</span>
+                                    <span>Status Ketersediaan Aktual Material:</span>
+                                    <span class="font-mono text-sky-700 font-bold">[{{ $selectedMaterialStoreStock['item_code'] }}]</span>
+                                </span>
+                                <span class="text-[11px] text-gray-500 truncate max-w-sm font-semibold">
+                                    {{ $selectedMaterialStoreStock['item_name'] }}
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {{-- Card 1: Stok di Gudang Store --}}
+                                <div class="bg-white p-3.5 rounded-xl border {{ $selectedMaterialStoreStock['store_available_qty'] > 0 ? 'border-sky-200' : 'border-rose-300 bg-rose-50/20' }} shadow-xs">
+                                    <div class="flex items-center justify-between">
+                                        <div class="text-[11px] font-bold text-gray-600 flex items-center gap-1">
+                                            <span>📦</span>
+                                            <span>Stok Aktual di Gudang Store</span>
+                                        </div>
+                                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full {{ $selectedMaterialStoreStock['store_available_qty'] > 0 ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800' }}">
+                                            {{ $selectedMaterialStoreStock['store_pallet_count'] }} Pallet di Rak
+                                        </span>
+                                    </div>
+                                    <div class="mt-2 flex items-baseline gap-1">
+                                        <span class="text-2xl font-mono font-black {{ $selectedMaterialStoreStock['store_available_qty'] > 0 ? 'text-sky-700' : 'text-rose-600' }}">
+                                            {{ number_format($selectedMaterialStoreStock['store_available_qty'], 2) }}
+                                        </span>
+                                        <span class="text-xs font-bold text-gray-500">KG</span>
+                                    </div>
+                                    @if($selectedMaterialStoreStock['store_available_qty'] <= 0)
+                                        <div class="text-[10px] text-rose-600 font-bold mt-1">
+                                            ⚠️ Stok saat ini KOSONG di Gudang Store. Koordinasikan dengan Purchasing.
+                                        </div>
+                                    @endif
+                                </div>
+
+                                {{-- Card 2: Stok di Lantai Produksi --}}
+                                <div class="bg-white p-3.5 rounded-xl border border-indigo-200 shadow-xs">
+                                    <div class="flex items-center justify-between">
+                                        <div class="text-[11px] font-bold text-gray-600 flex items-center gap-1">
+                                            <span>🏭</span>
+                                            <span>Sisa Stok di Lantai Produksi</span>
+                                        </div>
+                                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                                            Floor Stock
+                                        </span>
+                                    </div>
+                                    <div class="mt-2 flex items-baseline gap-1">
+                                        <span class="text-2xl font-mono font-black text-indigo-700">
+                                            {{ number_format($selectedMaterialStoreStock['production_floor_stock'], 2) }}
+                                        </span>
+                                        <span class="text-xs font-bold text-gray-500">KG</span>
+                                    </div>
+                                    <div class="text-[10px] text-gray-400 mt-1">
+                                        Sisa dari batch material yang sudah diverifikasi di produksi.
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if($selectedMaterialStoreStock['store_available_qty'] <= 0)
+                                <div class="p-3 bg-rose-100/90 border border-rose-300 rounded-xl flex items-start gap-2.5 text-rose-800">
+                                    <span class="text-lg">⛔</span>
+                                    <div class="text-xs">
+                                        <span class="font-bold block">Stok Gudang Store Kosong (0.00 KG)</span>
+                                        <span class="text-[11px] text-rose-700">Material ini sedang tidak memiliki stok aktif di Gudang Store. Permintaan material tidak dapat diajukan ke Store sampai ada penerimaan (Incoming) baru.</span>
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Pallet Location Preview --}}
+                            @if(!empty($selectedMaterialStoreStock['pallets']))
+                                <div x-data="{ showPallets: false }" class="pt-1">
+                                    <button type="button" @click="showPallets = !showPallets"
+                                            class="text-[11px] text-sky-700 hover:text-sky-900 font-bold flex items-center gap-1">
+                                        <span :class="showPallets ? 'rotate-90' : ''" class="inline-block transition-transform">▶</span>
+                                        <span>Rincian Lokasi Pallet di Store ({{ count($selectedMaterialStoreStock['pallets']) }} Pallet)</span>
+                                    </button>
+                                    <div x-show="showPallets" class="mt-2 bg-white/80 rounded-xl p-2.5 border border-sky-100 max-h-36 overflow-y-auto text-xs space-y-1.5">
+                                        @foreach($selectedMaterialStoreStock['pallets'] as $p)
+                                            <div class="flex items-center justify-between text-[11px] border-b border-gray-100 last:border-b-0 pb-1">
+                                                <div class="font-mono">
+                                                    <span class="font-bold text-gray-800">{{ $p['pallet_id'] }}</span>
+                                                    <span class="text-gray-400 ml-1">({{ $p['location'] }})</span>
+                                                </div>
+                                                <div class="font-mono font-bold text-sky-700">
+                                                    {{ number_format($p['current_qty'], 2) }} KG
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- 2. Input Kuantitas, Mesin, SPK, Urgensi --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {{-- Qty Request --}}
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">
+                                Kuantitas Request (KG) <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input type="number"
+                                       step="0.01"
+                                       wire:model="reqQty"
+                                       @if(!empty($selectedMaterialStoreStock) && $selectedMaterialStoreStock['store_available_qty'] <= 0) disabled @endif
+                                       placeholder="Jumlah (kg)..."
+                                       class="w-full text-sm font-mono font-black py-2.5 pl-3 pr-10 border border-gray-200 rounded-xl bg-white focus:border-sky-500 transition disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
+                                <span class="absolute right-3 top-3 text-xs font-bold text-gray-400">KG</span>
+                            </div>
+                            @error('reqQty') <span class="text-rose-500 text-[11px] mt-1 block font-bold">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Target Nomor Mesin --}}
+                        <div x-data="{
+                            open: false,
+                            machines: @js($machines),
+                            get filteredMachines() {
+                                const term = ($wire.reqMachineNo || '').toLowerCase().trim();
+                                if (!term) return this.machines;
+                                return this.machines.filter(m => m.toLowerCase().includes(term));
+                            },
+                            select(m) {
+                                $wire.set('reqMachineNo', m);
+                                this.open = false;
+                            }
+                        }"
+                        class="relative"
+                        @click.outside="open = false"
+                        @keydown.escape="open = false">
+                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">
+                                Target Nomor Mesin <span class="text-gray-400 font-normal">(Opsional)</span>
+                            </label>
+                            <div class="relative">
+                                <input type="text"
+                                       wire:model="reqMachineNo"
+                                       @focus="open = true"
+                                       @input="open = true"
+                                       placeholder="Cth: M-05..."
+                                       class="w-full text-xs font-bold py-2.5 pl-3 pr-8 border border-gray-200 rounded-xl bg-white focus:border-sky-500 transition uppercase font-mono">
+                                <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 text-xs">
+                                    <span :class="open ? 'rotate-180' : ''" class="inline-block transition-transform duration-200">▾</span>
+                                </button>
+                            </div>
+                            <div x-show="open && filteredMachines.length > 0"
+                                 class="absolute z-40 left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-200 divide-y divide-gray-100">
+                                <template x-for="m in filteredMachines" :key="m">
+                                    <button type="button"
+                                            @click="select(m)"
+                                            class="w-full text-left px-3 py-2 text-xs font-mono font-bold text-gray-800 hover:bg-sky-50 hover:text-sky-700 transition flex items-center justify-between cursor-pointer">
+                                        <span x-text="m"></span>
+                                        <span class="text-[10px] text-gray-400 font-sans">Pilih ↵</span>
+                                    </button>
+                                </template>
+                            </div>
+                            @error('reqMachineNo') <span class="text-rose-500 text-[11px] mt-1 block font-bold">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Nomor SPK --}}
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">
+                                Nomor SPK <span class="text-gray-400 font-normal">(Opsional)</span>
+                            </label>
+                            <input type="text"
+                                   wire:model="reqSpkCode"
+                                   placeholder="Cth: 26034536..."
+                                   class="w-full text-xs font-mono font-bold py-2.5 px-3 border border-gray-200 rounded-xl bg-white focus:border-sky-500 transition">
+                            @error('reqSpkCode') <span class="text-rose-500 text-[11px] mt-1 block font-bold">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Tingkat Urgensi --}}
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">
+                                Urgensi Permintaan <span class="text-rose-500">*</span>
+                            </label>
+                            <select wire:model="reqUrgency"
+                                    class="w-full text-xs font-bold py-2.5 px-3 border border-gray-200 rounded-xl bg-white focus:border-sky-500 transition">
+                                <option value="NORMAL">⚪ Standar (Normal Flow)</option>
+                                <option value="URGENT">🔴 Mendesak (Urgent / Line Stop)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Waktu Dibutuhkan & Catatan --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">
+                                Perkiraan Waktu Dibutuhkan
+                            </label>
+                            <input type="datetime-local"
+                                   wire:model="reqNeededAt"
+                                   class="w-full text-xs font-mono font-bold py-2.5 px-3 border border-gray-200 rounded-xl bg-white focus:border-sky-500 transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">
+                                Catatan / Keterangan Tambahan
+                            </label>
+                            <input type="text"
+                                   wire:model="reqNotes"
+                                   placeholder="Catatan untuk orang store (cth: untuk persiapan shift 2)..."
+                                   class="w-full text-xs py-2.5 px-3 border border-gray-200 rounded-xl bg-white focus:border-sky-500 transition">
+                        </div>
+                    </div>
+
+                    @php
+                        $isStoreEmpty = !empty($selectedMaterialStoreStock) && ($selectedMaterialStoreStock['store_available_qty'] <= 0);
+                    @endphp
+                    <div class="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-3 pt-2">
+                        <div>
+                            @if($isStoreEmpty)
+                                <div class="text-xs text-rose-600 font-bold flex items-center gap-1.5 bg-rose-50 px-3.5 py-2 rounded-xl border border-rose-200">
+                                    <span>⛔</span>
+                                    <span>Stok Store Kosong (0 KG). Permintaan tidak dapat dibuat.</span>
+                                </div>
+                            @endif
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button type="submit"
+                                    @if($isStoreEmpty || empty($reqItemCode)) disabled @endif
+                                    class="px-6 py-2.5 text-xs font-black text-white rounded-xl transition shadow-md flex items-center gap-2 {{ ($isStoreEmpty || empty($reqItemCode)) ? 'bg-gray-400 cursor-not-allowed opacity-60 shadow-none' : 'bg-sky-600 hover:bg-sky-700 shadow-sky-600/20' }}">
+                                @if($isStoreEmpty)
+                                    <span>⛔</span>
+                                    <span>Stok Store Kosong (Tidak Bisa Request)</span>
+                                @else
+                                    <span>🚀</span>
+                                    <span>Kirim Permintaan ke Store</span>
+                                @endif
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            {{-- Daftar Riwayat Permintaan Material --}}
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden space-y-4 p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                    <div>
+                        <h3 class="text-sm font-black text-gray-900 flex items-center gap-2">
+                            <span>📋</span>
+                            <span>Riwayat Permintaan Material ke Store</span>
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Pantau status tanggapan gudang store: apakah sudah disetujui/diproses atau ditolak.</p>
+                    </div>
+
+                    {{-- Filter Status & Search --}}
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <select wire:model.live="requestStatusFilter"
+                                class="text-xs py-1.5 px-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white font-bold text-gray-700">
+                            <option value="ALL">Semua Status</option>
+                            <option value="PENDING">🟡 Menunggu Tanggapan</option>
+                            <option value="PROCESSED">🟢 Disetujui / Diproses</option>
+                            <option value="REJECTED">🔴 Ditolak Store</option>
+                            <option value="CANCELLED">⚪ Dibatalkan</option>
+                        </select>
+
+                        <div class="relative w-48">
+                            <input type="text"
+                                   wire:model.live.debounce.250ms="requestSearch"
+                                   placeholder="Cari No Req, SPK, Item..."
+                                   class="w-full text-xs py-1.5 pl-7 pr-3 border border-gray-200 rounded-xl bg-gray-50">
+                            <span class="absolute left-2.5 top-2 text-gray-400 text-xs">🔍</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Table of Requests --}}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-gray-600">
+                        <thead class="bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100">
+                            <tr>
+                                <th class="py-3 px-4">No. Request & Waktu</th>
+                                <th class="py-3 px-4">Material (Kode & Nama)</th>
+                                <th class="py-3 px-4 text-center">Mesin / SPK</th>
+                                <th class="py-3 px-4 text-right">Qty Diminta</th>
+                                <th class="py-3 px-4 text-center">Urgensi</th>
+                                <th class="py-3 px-4 text-center">Status</th>
+                                <th class="py-3 px-4">Tanggapan / Outgoing Ref</th>
+                                <th class="py-3 px-4 text-center w-24">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @forelse($materialRequests as $req)
+                                <tr class="hover:bg-gray-50/50 transition">
+                                    {{-- Request Code & Time --}}
+                                    <td class="py-3 px-4 font-mono">
+                                        <div class="font-bold text-gray-900">{{ $req->request_code }}</div>
+                                        <div class="text-[10px] text-gray-400">
+                                            {{ $req->created_at ? $req->created_at->copy()->timezone('Asia/Jakarta')->format('d/m/Y H:i') . ' WIB' : '-' }}
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 font-sans">Oleh: {{ $req->requested_by_name ?: '-' }}</div>
+                                    </td>
+
+                                    {{-- Material --}}
+                                    <td class="py-3 px-4">
+                                        <div class="font-mono font-bold text-gray-900">{{ $req->item_code }}</div>
+                                        <div class="text-[11px] text-gray-500 truncate max-w-xs">{{ $req->item_name ?: ($req->material?->item_description ?: '-') }}</div>
+                                    </td>
+
+                                    {{-- Mesin & SPK --}}
+                                    <td class="py-3 px-4 text-center font-mono">
+                                        <div class="font-bold text-indigo-700">{{ $req->machine_no ?: '-' }}</div>
+                                        @if($req->spk_code)
+                                            <div class="text-[10px] text-gray-400">SPK: {{ $req->spk_code }}</div>
+                                        @endif
+                                    </td>
+
+                                    {{-- Qty Requested --}}
+                                    <td class="py-3 px-4 text-right font-mono font-black text-sm text-gray-900">
+                                        {{ number_format($req->qty_requested, 2) }} <span class="text-[10px] text-gray-400 font-normal">KG</span>
+                                    </td>
+
+                                    {{-- Urgensi --}}
+                                    <td class="py-3 px-4 text-center">
+                                        @if($req->urgency === 'URGENT')
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 animate-pulse">
+                                                <span>🔴</span>
+                                                <span>URGENT</span>
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600">
+                                                Normal
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    {{-- Status --}}
+                                    <td class="py-3 px-4 text-center">
+                                        @if($req->status === 'PENDING')
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                                                <span>⏳</span>
+                                                <span>Menunggu Store</span>
+                                            </span>
+                                        @elseif($req->status === 'PROCESSED')
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                <span>✓</span>
+                                                <span>Diproses Store</span>
+                                            </span>
+                                        @elseif($req->status === 'REJECTED')
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                                <span>✕</span>
+                                                <span>Ditolak Store</span>
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
+                                                Dibatalkan
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    {{-- Tanggapan Store / Detail --}}
+                                    <td class="py-3 px-4">
+                                        @if($req->status === 'PROCESSED')
+                                            <div class="font-mono text-emerald-700 font-bold">
+                                                Ref: {{ $req->outgoing_code ?: '-' }}
+                                            </div>
+                                            <div class="text-[10px] text-gray-400">
+                                                Oleh: {{ $req->processed_by_name ?: 'Store' }} &bull; {{ $req->processed_at ? $req->processed_at->copy()->timezone('Asia/Jakarta')->format('d/m H:i') : '' }}
+                                            </div>
+                                        @elseif($req->status === 'REJECTED')
+                                            <div class="bg-rose-50 text-rose-800 p-2 rounded-lg border border-rose-200 text-[11px] max-w-xs">
+                                                <div class="font-bold">Alasan Ditolak:</div>
+                                                <div class="italic">"{{ $req->reject_reason }}"</div>
+                                                <div class="text-[9px] text-rose-500 mt-1 font-mono">
+                                                    Oleh: {{ $req->rejected_by_name ?: 'Store' }} ({{ $req->rejected_at ? $req->rejected_at->copy()->timezone('Asia/Jakarta')->format('d/m H:i') : '' }})
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="text-[11px] text-gray-400 italic">
+                                                {{ $req->notes ? '"' . $req->notes . '"' : 'Belum ada tanggapan' }}
+                                            </div>
+                                        @endif
+                                    </td>
+
+                                    {{-- Actions --}}
+                                    <td class="py-3 px-4 text-center">
+                                        @if($req->status === 'PENDING')
+                                            <button type="button"
+                                                    wire:click="cancelRequest({{ $req->id }})"
+                                                    wire:confirm="Yakin ingin membatalkan permintaan material ini?"
+                                                    class="px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition"
+                                                    title="Batalkan permintaan">
+                                                Batal
+                                            </button>
+                                        @else
+                                            <span class="text-gray-300 font-mono text-xs">—</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="text-center py-10 text-gray-400">
+                                        <div class="text-2xl mb-1">📭</div>
+                                        <div class="font-bold text-xs">Belum ada data permintaan material ke store.</div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                @if($materialRequests->hasPages())
+                    <div class="pt-3 border-t border-gray-100">
+                        {{ $materialRequests->links() }}
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    {{-- ======================================================== --}}
+    {{-- TAB 4: STOK LANTAI PRODUKSI & RIWAYAT PEMAKAIAN          --}}
     {{-- ======================================================== --}}
     @if($activeTab === 'stock')
         <div class="space-y-6">
@@ -764,8 +1332,11 @@
                             @forelse($usageHistory as $uh)
                                 <tr class="hover:bg-gray-50/50 transition">
                                     <td class="py-2.5 px-4 font-mono">
-                                        <div class="font-bold text-gray-800">{{ $uh->used_at ? $uh->used_at->format('d/m/Y') : '-' }}</div>
-                                        <div class="text-[10px] text-gray-400">{{ $uh->used_at ? $uh->used_at->format('H:i') : '' }}</div>
+                                        @php
+                                            $uTime = $uh->used_at ? $uh->used_at->copy()->timezone('Asia/Jakarta') : null;
+                                        @endphp
+                                        <div class="font-bold text-gray-800">{{ $uTime ? $uTime->format('d/m/Y') : '-' }}</div>
+                                        <div class="text-[10px] text-gray-400">{{ $uTime ? $uTime->format('H:i') . ' WIB' : '' }}</div>
                                     </td>
                                     <td class="py-2.5 px-4 text-center">
                                         <span class="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold font-mono text-[11px]">

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\MasterListMaterial;
 use App\Models\MwhOutgoing;
+use App\Models\MwhPallet;
+use App\Models\ProductionMaterialRequest;
 use App\Models\ProductionMaterialUsage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -92,7 +94,8 @@ class ProductionMaterialService
             })->where('received_status', 'RECEIVED')->first();
 
             if ($alreadyReceived) {
-                throw new InvalidArgumentException("Material ({$alreadyReceived->outgoing_code} / {$alreadyReceived->pallet_id}) SUDAH diverifikasi sebelumnya oleh {$alreadyReceived->received_by_name} pada {$alreadyReceived->received_at->format('d/m/Y H:i')}.");
+                $rAt = $alreadyReceived->received_at ? $alreadyReceived->received_at->copy()->timezone('Asia/Jakarta')->format('d/m/Y H:i') . ' WIB' : '-';
+                throw new InvalidArgumentException("Material ({$alreadyReceived->outgoing_code} / {$alreadyReceived->pallet_id}) SUDAH diverifikasi sebelumnya oleh {$alreadyReceived->received_by_name} pada {$rAt}.");
             }
 
             throw new InvalidArgumentException("Data material dengan kode/pallet '{$code}' tidak ditemukan dalam daftar kiriman pending dari store.");
@@ -176,7 +179,7 @@ class ProductionMaterialService
                 'qty_used' => $qtyUsed,
                 'uom' => $data['uom'] ?? ($outgoing->uom ?? 'KG'),
                 'purpose' => $data['purpose'] ?? 'PRODUKSI',
-                'used_at' => ! empty($data['used_at']) ? Carbon::parse($data['used_at']) : now(),
+                'used_at' => ! empty($data['used_at']) ? ($data['used_at'] instanceof Carbon ? $data['used_at'] : Carbon::parse($data['used_at'], 'Asia/Jakarta')->setTimezone('UTC')) : now(),
                 'used_by' => $userId,
                 'used_by_name' => $userName,
                 'remarks' => $data['remarks'] ?? null,
@@ -219,7 +222,7 @@ class ProductionMaterialService
                     'qty_used' => $totalUsed,
                     'remaining_qty' => $remaining,
                     'uom' => $out->uom ?? 'KG',
-                    'received_at' => $out->received_at ? $out->received_at->format('d/m/Y H:i') : '-',
+                    'received_at' => $out->received_at ? $out->received_at->copy()->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-',
                 ];
             }
         }
@@ -285,6 +288,236 @@ class ProductionMaterialService
         usort($summary, fn ($a, $b) => $b['current_stock'] <=> $a['current_stock']);
 
         return $summary;
+    }
+
+    /**
+     * Dapatkan informasi stok aktual material di gudang Store (MwhPallet) dan lantai produksi
+     */
+    public function getActualStoreStock(string $itemCode): array
+    {
+        $itemCode = trim($itemCode);
+        if ($itemCode === '') {
+            return [
+                'item_code' => '',
+                'item_name' => '',
+                'store_available_qty' => 0.0,
+                'store_pallet_count' => 0,
+                'pallets' => [],
+                'production_floor_stock' => 0.0,
+            ];
+        }
+
+        $material = MasterListMaterial::where('item_code', $itemCode)->first();
+
+        // 1. Query pallet aktif di gudang store (current_qty > 0 dan tidak di-QC hold)
+        $pallets = MwhPallet::with(['position.rack.warehouse', 'incomingHeader'])
+            ->where('item_code', $itemCode)
+            ->where('current_qty', '>', 0)
+            ->where('is_qc_hold', false)
+            ->whereIn('status', ['STORED', 'PARTIAL'])
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $storeQty = (float) $pallets->sum('current_qty');
+
+        $palletsDetail = $pallets->map(function ($p) {
+            $rackName = $p->position?->rack?->rack_code ?: '-';
+            $slotCode = $p->position?->position_code ?: '-';
+            $whseName = $p->position?->rack?->warehouse?->whse_name ?: '-';
+
+            return [
+                'pallet_id' => $p->pallet_id,
+                'lot_no' => $p->lot_no ?: '-',
+                'current_qty' => (float) $p->current_qty,
+                'uom' => $p->uom ?: 'KG',
+                'status' => $p->status,
+                'location' => "{$whseName} / Rak {$rackName} ({$slotCode})",
+                'arrival_date' => $p->incomingHeader?->arrival_date ?: $p->created_at?->format('Y-m-d'),
+            ];
+        })->toArray();
+
+        // 2. Query sisa stok di lantai produksi
+        $receivedQty = (float) MwhOutgoing::where('item_code', $itemCode)
+            ->where('received_status', 'RECEIVED')
+            ->sum('qty_taken');
+
+        $usedQty = (float) ProductionMaterialUsage::where('item_code', $itemCode)->sum('qty_used');
+        $floorStock = max(0, $receivedQty - $usedQty);
+
+        return [
+            'item_code' => $itemCode,
+            'item_name' => $material?->item_description ?: $itemCode,
+            'store_available_qty' => $storeQty,
+            'store_pallet_count' => count($palletsDetail),
+            'pallets' => $palletsDetail,
+            'production_floor_stock' => $floorStock,
+        ];
+    }
+
+    /**
+     * Buat Permintaan Material Baru dari Produksi ke Gudang Store
+     */
+    public function createMaterialRequest(array $data, int $userId, string $userName): ProductionMaterialRequest
+    {
+        $itemCode = trim($data['item_code'] ?? '');
+        $qty = (float) ($data['qty_requested'] ?? 0);
+
+        if ($itemCode === '') {
+            throw new InvalidArgumentException('Kode material wajib dipilih.');
+        }
+
+        if ($qty <= 0) {
+            throw new InvalidArgumentException('Kuantitas permintaan material minimal 0.01 KG.');
+        }
+
+        // Validasi stok aktual di Store: tidak boleh request jika stok kosong atau melebihi stok yang ada
+        $storeStock = $this->getActualStoreStock($itemCode);
+        $availableStoreStock = (float) ($storeStock['store_available_qty'] ?? 0);
+
+        if ($availableStoreStock <= 0) {
+            throw new InvalidArgumentException("Stok material [{$itemCode}] di Gudang Store saat ini KOSONG (0 KG). Permintaan tidak dapat dibuat.");
+        }
+
+        if ($qty > $availableStoreStock) {
+            throw new InvalidArgumentException("Kuantitas permintaan (" . number_format($qty, 2) . " KG) melebihi stok aktual yang tersedia di Gudang Store (" . number_format($availableStoreStock, 2) . " KG).");
+        }
+
+        $material = MasterListMaterial::where('item_code', $itemCode)->first();
+        $dateStr = now('Asia/Jakarta')->format('Ymd');
+
+        // Generate unique request_code: REQ-YYYYMMDD-XXXX
+        $latest = ProductionMaterialRequest::whereDate('created_at', now('Asia/Jakarta')->toDateString())
+            ->latest('id')
+            ->first();
+        $seq = $latest ? (((int) substr($latest->request_code, -4)) + 1) : 1;
+        $requestCode = sprintf('REQ-%s-%04d', $dateStr, $seq);
+
+        return ProductionMaterialRequest::create([
+            'request_code' => $requestCode,
+            'item_code' => $itemCode,
+            'item_name' => $material?->item_description ?: ($data['item_name'] ?? $itemCode),
+            'qty_requested' => $qty,
+            'uom' => $data['uom'] ?? 'KG',
+            'machine_no' => ! empty($data['machine_no']) ? strtoupper(trim($data['machine_no'])) : null,
+            'spk_code' => ! empty($data['spk_code']) ? trim($data['spk_code']) : null,
+            'urgency' => in_array($data['urgency'] ?? '', ['NORMAL', 'URGENT']) ? $data['urgency'] : 'NORMAL',
+            'needed_at' => ! empty($data['needed_at']) ? Carbon::parse($data['needed_at'], 'Asia/Jakarta')->setTimezone('UTC') : null,
+            'notes' => $data['notes'] ?? null,
+            'status' => 'PENDING',
+            'requested_by' => $userId,
+            'requested_by_name' => $userName,
+        ]);
+    }
+
+    /**
+     * Batalkan Permintaan Material oleh Orang Produksi (hanya jika masih PENDING)
+     */
+    public function cancelMaterialRequest(int $requestId, int $userId): ProductionMaterialRequest
+    {
+        $request = ProductionMaterialRequest::findOrFail($requestId);
+
+        if ($request->status !== 'PENDING') {
+            throw new InvalidArgumentException("Permintaan {$request->request_code} tidak dapat dibatalkan karena statusnya sudah {$request->status}.");
+        }
+
+        $request->update([
+            'status' => 'CANCELLED',
+        ]);
+
+        return $request;
+    }
+
+    /**
+     * Ambil data Permintaan Material (bisa difilter status, search, rentang tanggal)
+     */
+    public function getMaterialRequests(
+        string $status = 'ALL',
+        string $search = '',
+        ?string $startDate = null,
+        ?string $endDate = null
+    ) {
+        return ProductionMaterialRequest::query()
+            ->with(['material', 'outgoing', 'requester', 'processor', 'rejector'])
+            ->when($status !== 'ALL', fn ($q) => $q->where('status', $status))
+            ->when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('created_at', [
+                    Carbon::parse($startDate, 'Asia/Jakarta')->startOfDay()->setTimezone('UTC'),
+                    Carbon::parse($endDate, 'Asia/Jakarta')->endOfDay()->setTimezone('UTC'),
+                ]);
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('request_code', 'LIKE', "%{$search}%")
+                        ->orWhere('item_code', 'LIKE', "%{$search}%")
+                        ->orWhere('item_name', 'LIKE', "%{$search}%")
+                        ->orWhere('machine_no', 'LIKE', "%{$search}%")
+                        ->orWhere('spk_code', 'LIKE', "%{$search}%")
+                        ->orWhere('outgoing_code', 'LIKE', "%{$search}%");
+                });
+            })
+            ->orderByRaw("CASE WHEN status = 'PENDING' THEN 0 WHEN status = 'PROCESSED' THEN 1 ELSE 2 END")
+            ->orderByDesc('id');
+    }
+
+    /**
+     * Tanggapi / Selesaikan Request oleh Store via Outgoing
+     */
+    public function processMaterialRequest(
+        int $requestId,
+        int $outgoingId,
+        int $userId,
+        string $userName
+    ): ProductionMaterialRequest {
+        return DB::transaction(function () use ($requestId, $outgoingId, $userId, $userName) {
+            $request = ProductionMaterialRequest::lockForUpdate()->findOrFail($requestId);
+            $outgoing = MwhOutgoing::findOrFail($outgoingId);
+
+            if ($request->status !== 'PENDING') {
+                throw new InvalidArgumentException("Permintaan {$request->request_code} sudah berstatus {$request->status}.");
+            }
+
+            $request->update([
+                'status' => 'PROCESSED',
+                'processed_by' => $userId,
+                'processed_by_name' => $userName,
+                'processed_at' => now(),
+                'outgoing_id' => $outgoing->id,
+                'outgoing_code' => $outgoing->outgoing_code,
+            ]);
+
+            return $request;
+        });
+    }
+
+    /**
+     * Tolak Permintaan Material oleh Orang Store (dengan Alasan Penolakan)
+     */
+    public function rejectMaterialRequest(
+        int $requestId,
+        string $reason,
+        int $userId,
+        string $userName
+    ): ProductionMaterialRequest {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new InvalidArgumentException('Alasan penolakan wajib diisi agar tim produksi mengetahui kendalanya.');
+        }
+
+        $request = ProductionMaterialRequest::findOrFail($requestId);
+
+        if ($request->status !== 'PENDING') {
+            throw new InvalidArgumentException("Permintaan {$request->request_code} tidak dapat ditolak karena sudah berstatus {$request->status}.");
+        }
+
+        $request->update([
+            'status' => 'REJECTED',
+            'rejected_by' => $userId,
+            'rejected_by_name' => $userName,
+            'rejected_at' => now(),
+            'reject_reason' => $reason,
+        ]);
+
+        return $request;
     }
 }
 

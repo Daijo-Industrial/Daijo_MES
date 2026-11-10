@@ -296,5 +296,18 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
 
         // Verifikasi di database langsung jadi sap_sent = 1
         $this->assertEquals(1, DB::table('production_summary')->where('id', $summaryId)->value('sap_sent'));
+
+        Http::assertSent(function ($request) {
+            if (str_contains($request->url(), '/api/receipt_production/create')) {
+                $data = $request->data();
+                return isset($data[0]['DocDate'])
+                    && $data[0]['DocDate'] === now()->toDateString()
+                    && isset($data[0]['doc_date'])
+                    && $data[0]['doc_date'] === now()->toDateString()
+                    && isset($data[0]['remarks'])
+                    && str_contains($data[0]['remarks'], 'Created from SPK');
+            }
+            return true;
+        });
     }
 }

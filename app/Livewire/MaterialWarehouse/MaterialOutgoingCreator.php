@@ -39,7 +39,11 @@ class MaterialOutgoingCreator extends Component
 
     public array $fifoRecommendations = [];
 
-    protected $queryString = ['selected_item_code', 'whse_id'];
+    // Production Material Request Integration
+    public ?int $request_id = null;
+    public ?\App\Models\ProductionMaterialRequest $activeRequest = null;
+
+    protected $queryString = ['selected_item_code', 'whse_id', 'request_id'];
 
     public function mount(): void
     {
@@ -55,6 +59,17 @@ class MaterialOutgoingCreator extends Component
         }
 
         $this->outgoing_date = now()->format('Y-m-d');
+
+        if ($this->request_id) {
+            $req = \App\Models\ProductionMaterialRequest::find($this->request_id);
+            if ($req && $req->status === 'PENDING') {
+                $this->activeRequest = $req;
+                $this->selected_item_code = $req->item_code;
+                $this->qty_taken = (string) $req->qty_requested;
+                $this->issued_to = 'Produksi';
+                $this->remarks = "Fulfill Request #{$req->request_code}" . ($req->machine_no ? " (Mesin {$req->machine_no})" : '');
+            }
+        }
 
         if ($this->selected_item_code) {
             $this->selectMaterial($this->selected_item_code);
@@ -162,6 +177,23 @@ class MaterialOutgoingCreator extends Component
                 trim($this->issued_to) ?: null,
                 trim($this->remarks) ?: null
             );
+
+            // Jika pengeluaran ini untuk memenuhi Permintaan Produksi (ProductionMaterialRequest)
+            if ($this->request_id) {
+                try {
+                    $prodService = app(\App\Services\ProductionMaterialService::class);
+                    $prodService->processMaterialRequest(
+                        $this->request_id,
+                        $outgoing->id,
+                        auth()->id() ?? 1,
+                        auth()->user()?->name ?? 'Store'
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Gagal update status request material: ' . $e->getMessage());
+                }
+                $this->request_id = null;
+                $this->activeRequest = null;
+            }
 
             session()->flash('success', "Material {$outgoing->qty_taken} KG berhasil diambil dari Pallet {$outgoing->pallet_id}. Kode Outgoing: {$outgoing->outgoing_code}");
 
