@@ -10,6 +10,7 @@ use App\Livewire\MaterialWarehouse\MaterialOutgoingCreator;
 use App\Livewire\MaterialWarehouse\MaterialOutgoingHistory;
 use App\Livewire\MaterialWarehouse\MaterialPalletIndex;
 use App\Livewire\MaterialWarehouse\MaterialQrLookup;
+use App\Livewire\MaterialWarehouse\MaterialRequestManager;
 use App\Livewire\MaterialWarehouse\MaterialStockCard;
 use App\Livewire\MaterialWarehouse\PublicRackMapping;
 use App\Livewire\MaterialWarehouse\RackMapping as MwhRackMapping;
@@ -115,6 +116,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/incoming/create', MaterialIncomingCreator::class)->name('incoming.create');
             Route::get('/pallets', MaterialPalletIndex::class)->name('pallets.index');
             Route::get('/daily-audit', MaterialDailyAudit::class)->name('daily-audit');
+            Route::get('/requests', MaterialRequestManager::class)->name('requests');
             Route::get('/outgoing/create', MaterialOutgoingCreator::class)->name('outgoing.create');
             Route::get('/outgoing/history', MaterialOutgoingHistory::class)->name('outgoing.history');
             Route::get('/stock-card', MaterialStockCard::class)->name('stock-card.index');

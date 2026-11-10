@@ -33,12 +33,50 @@
             </div>
 
             <div class="flex items-center space-x-3">
+                <a href="{{ route('mwh.requests') }}" class="px-4 py-2.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-xl font-bold text-xs shadow-xs transition flex items-center space-x-1.5">
+                    <span>📋</span>
+                    <span>Permintaan dari Produksi</span>
+                </a>
                 <a href="{{ route('mwh.qr-lookup') }}" class="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-bold text-xs shadow-md transition flex items-center space-x-2">
                     <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
                     <span>Scan QR Camera</span>
                 </a>
             </div>
         </div>
+
+        @if ($activeRequest)
+            <div class="p-4 bg-sky-50 border-2 border-sky-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">📋</span>
+                    <div>
+                        <div class="text-xs font-black text-sky-950 uppercase tracking-wider flex items-center gap-2">
+                            <span>Memproses Permintaan Material dari Produksi</span>
+                            <span class="px-2 py-0.5 rounded-full bg-sky-600 text-white font-mono text-[10px]">{{ $activeRequest->request_code }}</span>
+                            @if($activeRequest->urgency === 'URGENT')
+                                <span class="px-2 py-0.5 rounded-full bg-rose-600 text-white font-bold text-[10px] animate-pulse">🔴 URGENT</span>
+                            @endif
+                        </div>
+                        <div class="text-xs text-sky-800 mt-0.5">
+                            Diminta: <strong class="font-mono">{{ number_format($activeRequest->qty_requested, 2) }} KG</strong> &bull;
+                            Mesin: <strong>{{ $activeRequest->machine_no ?: '-' }}</strong> &bull;
+                            SPK: <strong>{{ $activeRequest->spk_code ?: '-' }}</strong> &bull;
+                            Oleh: <strong>{{ $activeRequest->requested_by_name ?: '-' }}</strong>
+                            @if($activeRequest->notes)
+                                &bull; Catatan: <em>"{{ $activeRequest->notes }}"</em>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a href="{{ route('mwh.requests') }}" class="px-3 py-1.5 text-xs font-bold text-sky-700 hover:text-sky-900 bg-white border border-sky-200 rounded-xl transition">
+                        Daftar Request
+                    </a>
+                    <a href="{{ route('mwh.outgoing.create') }}" class="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-xl transition">
+                        ✕ Batal Link
+                    </a>
+                </div>
+            </div>
+        @endif
 
         <!-- Branch / Warehouse Switcher Bar -->
         <div class="bg-white p-3.5 rounded-2xl shadow-xs border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

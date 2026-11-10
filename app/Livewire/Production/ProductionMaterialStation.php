@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Production;
 
+use App\Models\MasterListMaterial;
 use App\Models\MasterMachine;
+use App\Models\ProductionMaterialRequest;
 use App\Models\ProductionMaterialUsage;
 use App\Services\ProductionMaterialService;
 use Carbon\Carbon;
@@ -14,7 +16,7 @@ class ProductionMaterialStation extends Component
 {
     use WithPagination;
 
-    public string $activeTab = 'receive'; // 'receive', 'usage', 'stock'
+    public string $activeTab = 'receive'; // 'receive', 'usage', 'request', 'stock'
 
     // Tab 1: Penerimaan Material Store
     public string $barcodeInput = '';
@@ -43,6 +45,18 @@ class ProductionMaterialStation extends Component
     public string $historyStartDate = '';
     public string $historyEndDate = '';
 
+    // Tab 4: Permintaan Material ke Store (Request)
+    public string $reqItemCode = '';
+    public ?float $reqQty = null;
+    public string $reqMachineNo = '';
+    public string $reqSpkCode = '';
+    public string $reqUrgency = 'NORMAL';
+    public string $reqNeededAt = '';
+    public string $reqNotes = '';
+    public string $requestStatusFilter = 'ALL';
+    public string $requestSearch = '';
+    public ?array $selectedMaterialStoreStock = null;
+
     protected function getService(): ProductionMaterialService
     {
         return app(ProductionMaterialService::class);
@@ -51,6 +65,7 @@ class ProductionMaterialStation extends Component
     public function mount(): void
     {
         $this->usedAt = now('Asia/Jakarta')->format('Y-m-d\TH:i');
+        $this->reqNeededAt = now('Asia/Jakarta')->addHours(2)->format('Y-m-d\TH:i');
         $this->startDateIncoming = now('Asia/Jakarta')->subDays(7)->toDateString();
         $this->endDateIncoming = now('Asia/Jakarta')->toDateString();
         $this->historyStartDate = now('Asia/Jakarta')->startOfMonth()->toDateString();
@@ -59,7 +74,7 @@ class ProductionMaterialStation extends Component
 
     public function switchTab(string $tab): void
     {
-        if (in_array($tab, ['receive', 'usage', 'stock'])) {
+        if (in_array($tab, ['receive', 'usage', 'request', 'stock'])) {
             $this->activeTab = $tab;
             $this->resetPage();
         }
@@ -298,7 +313,7 @@ class ProductionMaterialStation extends Component
             foreach ($usages as $u) {
                 fputcsv($handle, [
                     $u->id,
-                    $u->used_at ? $u->used_at->format('Y-m-d H:i') : '-',
+                    $u->used_at ? $u->used_at->copy()->timezone('Asia/Jakarta')->format('Y-m-d H:i') : '-',
                     $u->machine_no ?: '-',
                     $u->spk_code ?: '-',
                     $u->item_code,
@@ -315,6 +330,105 @@ class ProductionMaterialStation extends Component
         };
 
         return Response::stream($callback, 200, $headers);
+    }
+
+    // ==========================================
+    // TAB 4 ACTIONS: REQUEST MATERIAL KE STORE
+    // ==========================================
+
+    public function selectMaterialForRequest(string $itemCode): void
+    {
+        $this->reqItemCode = $itemCode;
+        $this->selectedMaterialStoreStock = $this->getService()->getActualStoreStock($itemCode);
+    }
+
+    public function updatedReqItemCode(string $value): void
+    {
+        if (! empty($value)) {
+            $this->selectMaterialForRequest($value);
+        } else {
+            $this->selectedMaterialStoreStock = null;
+        }
+    }
+
+    public function saveMaterialRequest(): void
+    {
+        $this->validate([
+            'reqItemCode' => 'required|string',
+            'reqQty' => 'required|numeric|min:0.01',
+            'reqMachineNo' => 'nullable|string|max:50',
+            'reqUrgency' => 'required|in:NORMAL,URGENT',
+        ], [
+            'reqItemCode.required' => 'Wajib memilih material yang akan diminta.',
+            'reqQty.required' => 'Kuantitas permintaan wajib diisi.',
+            'reqQty.min' => 'Kuantitas permintaan minimal 0.01 KG.',
+        ]);
+
+        $service = $this->getService();
+        $storeStock = $service->getActualStoreStock($this->reqItemCode);
+        $availableStoreStock = (float) ($storeStock['store_available_qty'] ?? 0);
+
+        if ($availableStoreStock <= 0) {
+            $this->addError('reqItemCode', "Stok material {$this->reqItemCode} di Gudang Store saat ini KOSONG (0 KG). Permintaan tidak dapat dibuat.");
+            $this->dispatch('push-notification', [
+                'status' => 'error',
+                'message' => "Stok material {$this->reqItemCode} di Gudang Store kosong (0 KG). Permintaan tidak dapat dibuat.",
+            ]);
+            return;
+        }
+
+        if ((float) $this->reqQty > $availableStoreStock) {
+            $this->addError('reqQty', 'Jumlah permintaan (' . number_format((float) $this->reqQty, 2) . ' KG) melebihi stok yang tersedia di Store (' . number_format($availableStoreStock, 2) . ' KG).');
+            $this->dispatch('push-notification', [
+                'status' => 'error',
+                'message' => 'Jumlah permintaan melebihi stok yang tersedia di Store (' . number_format($availableStoreStock, 2) . ' KG).',
+            ]);
+            return;
+        }
+
+        try {
+            $req = $service->createMaterialRequest([
+                'item_code' => $this->reqItemCode,
+                'qty_requested' => $this->reqQty,
+                'machine_no' => $this->reqMachineNo,
+                'spk_code' => $this->reqSpkCode,
+                'urgency' => $this->reqUrgency,
+                'needed_at' => $this->reqNeededAt,
+                'notes' => $this->reqNotes,
+            ], auth()->id() ?? 1, auth()->user()?->name ?? 'Produksi');
+
+            $this->reset(['reqItemCode', 'reqQty', 'reqMachineNo', 'reqSpkCode', 'reqNotes', 'selectedMaterialStoreStock']);
+            $this->reqUrgency = 'NORMAL';
+            $this->reqNeededAt = now('Asia/Jakarta')->addHours(2)->format('Y-m-d\TH:i');
+
+            $this->dispatch('push-notification', [
+                'status' => 'success',
+                'message' => "✓ Berhasil mengirim permintaan material {$req->request_code} ({$req->item_code} - {$req->qty_requested} KG) ke Gudang Store.",
+            ]);
+        } catch (\Throwable $e) {
+            $this->dispatch('push-notification', [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function cancelRequest(int $id): void
+    {
+        try {
+            $service = $this->getService();
+            $service->cancelMaterialRequest($id, auth()->id() ?? 1);
+
+            $this->dispatch('push-notification', [
+                'status' => 'info',
+                'message' => 'Permintaan material berhasil dibatalkan.',
+            ]);
+        } catch (\Throwable $e) {
+            $this->dispatch('push-notification', [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function render()
@@ -358,6 +472,18 @@ class ProductionMaterialStation extends Component
             ->orderByDesc('used_at')
             ->paginate(15, ['*'], 'history_page');
 
+        // 4. Data Tab 4 (Permintaan Material ke Store)
+        $materialRequests = $service->getMaterialRequests(
+            $this->requestStatusFilter,
+            $this->requestSearch
+        )->paginate(15, ['*'], 'req_page');
+
+        // Master List Material untuk selector request
+        $materialsList = MasterListMaterial::query()
+            ->orderBy('item_code')
+            ->get(['item_code', 'item_description'])
+            ->toArray();
+
         // Mesin aktif untuk dropdown
         $machines = MasterMachine::active()->orderBy('sort_order')->orderBy('name')->pluck('name');
 
@@ -366,6 +492,7 @@ class ProductionMaterialStation extends Component
         $totalUsedKg = collect($floorStockSummary)->sum('total_used');
         $currentFloorStockKg = collect($floorStockSummary)->sum('current_stock');
         $pendingStoreCount = $service->getIncomingStoreRequests('', 'PENDING')->count();
+        $pendingRequestCount = ProductionMaterialRequest::where('status', 'PENDING')->count();
 
         return view('livewire.production.production-material-station', [
             'incomingRequests' => $incomingRequests,
@@ -373,11 +500,14 @@ class ProductionMaterialStation extends Component
             'selectedBatchInfo' => $selectedBatchInfo,
             'floorStockSummary' => $floorStockSummary,
             'usageHistory' => $usageHistory,
+            'materialRequests' => $materialRequests,
+            'materialsList' => $materialsList,
             'machines' => $machines,
             'totalReceivedKg' => $totalReceivedKg,
             'totalUsedKg' => $totalUsedKg,
             'currentFloorStockKg' => $currentFloorStockKg,
             'pendingStoreCount' => $pendingStoreCount,
+            'pendingRequestCount' => $pendingRequestCount,
         ]);
     }
 }
