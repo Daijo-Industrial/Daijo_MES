@@ -158,10 +158,15 @@ class PoReminderTest extends TestCase
         $this->assertNotNull($grossResin);
         $this->assertEquals(145.0, $grossResin['total_needed_qty']);
         $this->assertEquals(2, $grossResin['fgs_count']);
+        // Verifikasi timeline dan jadwal delivery per tanggal
+        $this->assertNotEmpty($grossResin['daily_timeline']);
+        $this->assertCount(3, $grossResin['daily_timeline']); // 2026-11-05 (Part-A), 2026-11-15 (Part-B), 2026-11-20 (Part-A)
+        $this->assertNotEmpty($grossResin['used_by_fgs'][0]['schedules']);
 
         $grossBox = collect($result['view1_materials'])->firstWhere('item_code', '600-BOX-01');
         $this->assertNotNull($grossBox);
         $this->assertEquals(12.5, $grossBox['total_needed_qty']);
+        $this->assertNotEmpty($grossBox['daily_timeline']);
 
         // ── VERIFIKASI VIEW 2 (NET DEFICIT REQUIREMENT) ──
         // Mengikutsertakan stok FG:
@@ -270,6 +275,8 @@ class PoReminderTest extends TestCase
             ->assertSet('displayMode', 'fgs')
             ->call('showMaterialDetail', '401-ABS-TEST')
             ->assertSet('activeMaterialDetail.item_code', '401-ABS-TEST')
+            ->assertSee('Timeline per Tanggal Delivery')
+            ->assertSee('Rincian per Finish Good (FG)')
             ->call('closeMaterialDetail')
             ->assertSet('activeMaterialDetail', null);
     }

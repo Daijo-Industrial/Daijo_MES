@@ -53,6 +53,28 @@ class PoReminderService
             ];
         }
 
+        // 1b. Ambil rincian jadwal delivery per tanggal untuk breakdown tanggal kirim
+        $dailyScheds = DB::table('sap_delsched')
+            ->whereBetween('delivery_date', [$startDate, $endDate])
+            ->select('item_code', 'delivery_date', 'delivery_qty', 'so_number')
+            ->orderBy('delivery_date', 'asc')
+            ->get();
+
+        $dailyByItem = [];
+        foreach ($dailyScheds as $ds) {
+            $c = $ds->item_code;
+            $cClean = rtrim($c, '.');
+            $row = [
+                'delivery_date' => $ds->delivery_date,
+                'delivery_qty' => (float) $ds->delivery_qty,
+                'so_number' => $ds->so_number ?: '—',
+            ];
+            $dailyByItem[$c][] = $row;
+            if ($cClean !== $c) {
+                $dailyByItem[$cClean][] = $row;
+            }
+        }
+
         $allItemCodes = $schedules->pluck('item_code')->unique()->values()->toArray();
 
         // Siapkan variant kode (dengan titik & tanpa titik di belakang)
@@ -185,6 +207,9 @@ class PoReminderService
             // Explode View 2 (Net: multiplier = netDeficit)
             $explodedNet = $explodeBom($code, $netDeficit);
 
+            $itemDailySchedules = $dailyByItem[$code] ?? $dailyByItem[$cleanCode] ?? [];
+            $netRatio = $deliveryQty > 0 ? ($netDeficit / $deliveryQty) : 0;
+
             // Agregasi View 1 (Gross) per Material
             foreach ($explodedGross as $m) {
                 $matCode = $m['item_code'];
@@ -198,16 +223,52 @@ class PoReminderService
                         'total_needed_qty' => 0.0,
                         'fgs_count' => 0,
                         'used_by_fgs' => [],
+                        'daily_timeline' => [],
                     ];
                 }
                 $view1MaterialMap[$matCode]['total_needed_qty'] += $m['needed_qty'];
-                $view1MaterialMap[$matCode]['used_by_fgs'][$code] = [
-                    'fg_code' => $code,
-                    'fg_name' => $itemName,
-                    'fg_delivery_qty' => $deliveryQty,
-                    'unit_qty' => $m['unit_qty'],
-                    'material_qty' => ($view1MaterialMap[$matCode]['used_by_fgs'][$code]['material_qty'] ?? 0) + $m['needed_qty'],
-                ];
+
+                if (! isset($view1MaterialMap[$matCode]['used_by_fgs'][$code])) {
+                    $schedulesBreakdown = [];
+                    foreach ($itemDailySchedules as $ds) {
+                        $matQtyForDate = $ds['delivery_qty'] * $m['unit_qty'];
+                        $schedulesBreakdown[] = [
+                            'delivery_date' => $ds['delivery_date'],
+                            'delivery_qty' => $ds['delivery_qty'],
+                            'material_qty' => $matQtyForDate,
+                            'so_number' => $ds['so_number'],
+                        ];
+
+                        $dDate = $ds['delivery_date'];
+                        if (! isset($view1MaterialMap[$matCode]['daily_timeline'][$dDate])) {
+                            $view1MaterialMap[$matCode]['daily_timeline'][$dDate] = [
+                                'date' => $dDate,
+                                'total_material_qty' => 0.0,
+                                'fgs_summary' => [],
+                            ];
+                        }
+                        $view1MaterialMap[$matCode]['daily_timeline'][$dDate]['total_material_qty'] += $matQtyForDate;
+                        $view1MaterialMap[$matCode]['daily_timeline'][$dDate]['fgs_summary'][$code] = [
+                            'fg_code' => $code,
+                            'fg_name' => $itemName,
+                            'fg_qty' => $ds['delivery_qty'],
+                            'material_qty' => ($view1MaterialMap[$matCode]['daily_timeline'][$dDate]['fgs_summary'][$code]['material_qty'] ?? 0) + $matQtyForDate,
+                        ];
+                    }
+
+                    $view1MaterialMap[$matCode]['used_by_fgs'][$code] = [
+                        'fg_code' => $code,
+                        'fg_name' => $itemName,
+                        'customer_name' => $customerName,
+                        'fg_delivery_qty' => $deliveryQty,
+                        'unit_qty' => $m['unit_qty'],
+                        'material_qty' => $m['needed_qty'],
+                        'delivery_count' => count($itemDailySchedules),
+                        'schedules' => $schedulesBreakdown,
+                    ];
+                } else {
+                    $view1MaterialMap[$matCode]['used_by_fgs'][$code]['material_qty'] += $m['needed_qty'];
+                }
             }
 
             // Agregasi View 2 (Net) per Material
@@ -223,16 +284,53 @@ class PoReminderService
                         'total_needed_qty' => 0.0,
                         'fgs_count' => 0,
                         'used_by_fgs' => [],
+                        'daily_timeline' => [],
                     ];
                 }
                 $view2MaterialMap[$matCode]['total_needed_qty'] += $m['needed_qty'];
-                $view2MaterialMap[$matCode]['used_by_fgs'][$code] = [
-                    'fg_code' => $code,
-                    'fg_name' => $itemName,
-                    'fg_net_needed' => $netDeficit,
-                    'unit_qty' => $m['unit_qty'],
-                    'material_qty' => ($view2MaterialMap[$matCode]['used_by_fgs'][$code]['material_qty'] ?? 0) + $m['needed_qty'],
-                ];
+
+                if (! isset($view2MaterialMap[$matCode]['used_by_fgs'][$code])) {
+                    $netSchedulesBreakdown = [];
+                    foreach ($itemDailySchedules as $ds) {
+                        $netMatQty = $ds['delivery_qty'] * $netRatio * $m['unit_qty'];
+                        $netSchedulesBreakdown[] = [
+                            'delivery_date' => $ds['delivery_date'],
+                            'delivery_qty' => $ds['delivery_qty'],
+                            'material_qty' => $netMatQty,
+                            'so_number' => $ds['so_number'],
+                        ];
+
+                        $dDate = $ds['delivery_date'];
+                        if (! isset($view2MaterialMap[$matCode]['daily_timeline'][$dDate])) {
+                            $view2MaterialMap[$matCode]['daily_timeline'][$dDate] = [
+                                'date' => $dDate,
+                                'total_material_qty' => 0.0,
+                                'fgs_summary' => [],
+                            ];
+                        }
+                        $view2MaterialMap[$matCode]['daily_timeline'][$dDate]['total_material_qty'] += $netMatQty;
+                        $view2MaterialMap[$matCode]['daily_timeline'][$dDate]['fgs_summary'][$code] = [
+                            'fg_code' => $code,
+                            'fg_name' => $itemName,
+                            'fg_qty' => $ds['delivery_qty'],
+                            'material_qty' => ($view2MaterialMap[$matCode]['daily_timeline'][$dDate]['fgs_summary'][$code]['material_qty'] ?? 0) + $netMatQty,
+                        ];
+                    }
+
+                    $view2MaterialMap[$matCode]['used_by_fgs'][$code] = [
+                        'fg_code' => $code,
+                        'fg_name' => $itemName,
+                        'customer_name' => $customerName,
+                        'fg_net_needed' => $netDeficit,
+                        'fg_delivery_qty' => $deliveryQty,
+                        'unit_qty' => $m['unit_qty'],
+                        'material_qty' => $m['needed_qty'],
+                        'delivery_count' => count($itemDailySchedules),
+                        'schedules' => $netSchedulesBreakdown,
+                    ];
+                } else {
+                    $view2MaterialMap[$matCode]['used_by_fgs'][$code]['material_qty'] += $m['needed_qty'];
+                }
             }
 
             $fgItems[] = [
@@ -248,21 +346,36 @@ class PoReminderService
                 'last_delivery' => $sched->last_delivery_date,
                 'so_numbers' => $sched->so_numbers,
                 'has_bom' => $hasBom,
+                'daily_schedules' => $itemDailySchedules,
                 'exploded_gross' => $explodedGross,
                 'exploded_net' => $explodedNet,
             ];
         }
 
-        // Hitung fgs_count untuk tiap material
+        // Hitung fgs_count & susun daily_timeline berurutan per tanggal
         foreach ($view1MaterialMap as &$m) {
             $m['fgs_count'] = count($m['used_by_fgs']);
             $m['used_by_fgs'] = array_values($m['used_by_fgs']);
+            $timeline = array_values($m['daily_timeline'] ?? []);
+            foreach ($timeline as &$tl) {
+                $tl['fgs_summary'] = array_values($tl['fgs_summary'] ?? []);
+            }
+            unset($tl);
+            usort($timeline, fn ($a, $b) => strcmp($a['date'], $b['date']));
+            $m['daily_timeline'] = $timeline;
         }
         unset($m);
 
         foreach ($view2MaterialMap as &$m) {
             $m['fgs_count'] = count($m['used_by_fgs']);
             $m['used_by_fgs'] = array_values($m['used_by_fgs']);
+            $timeline = array_values($m['daily_timeline'] ?? []);
+            foreach ($timeline as &$tl) {
+                $tl['fgs_summary'] = array_values($tl['fgs_summary'] ?? []);
+            }
+            unset($tl);
+            usort($timeline, fn ($a, $b) => strcmp($a['date'], $b['date']));
+            $m['daily_timeline'] = $timeline;
         }
         unset($m);
 
