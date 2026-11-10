@@ -75,6 +75,10 @@ class Index extends Component
 
     public function openEditModal($id)
     {
+        if (! auth()->user()?->hasRole('SUPER-ADMIN')) {
+            abort(403, 'Aksi ini hanya dapat dilakukan oleh Super-Admin.');
+        }
+
         $mould = MasterMould::findOrFail($id);
         $this->mouldId = $mould->id;
         $this->mould_no = $mould->mould_no;
@@ -112,8 +116,8 @@ class Index extends Component
 
     public function saveMould()
     {
-        if (! $this->isEdit && ! auth()->user()?->hasRole('SUPER-ADMIN')) {
-            abort(403, 'Tambah mould baru hanya dapat dilakukan oleh Super-Admin.');
+        if (! auth()->user()?->hasRole('SUPER-ADMIN')) {
+            abort(403, 'Kelola data master mould hanya dapat dilakukan oleh Super-Admin.');
         }
 
         $this->validate();
@@ -138,6 +142,10 @@ class Index extends Component
 
     public function deleteMould($id)
     {
+        if (! auth()->user()?->hasRole('SUPER-ADMIN')) {
+            abort(403, 'Hapus mould hanya dapat dilakukan oleh Super-Admin.');
+        }
+
         $mould = MasterMould::findOrFail($id);
         $mould->delete();
         session()->flash('success', 'Mould berhasil dihapus!');
