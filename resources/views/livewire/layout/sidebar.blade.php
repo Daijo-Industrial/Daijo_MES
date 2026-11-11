@@ -205,8 +205,7 @@ new class extends Component {
                 'can' => ['view-quality-links', 'execute-qc-inspections'],
                 'initiallyOpen' => request()->routeIs('inspection-reports.*'),
                 'children' => [
-                    ['name' => 'inspection-reports.index', 'label' => 'All Inspection Reports'],
-                    ['name' => 'inspection-reports.create', 'label' => 'Create Inspection Report'],
+                    ['name' => 'inspection-reports.index', 'label' => 'Plastic Injection IPQC Reports'],
                     ['name' => 'inspection-reports.dashboard', 'label' => 'Inspection Dashboard'],
                 ],
             ],

@@ -6,7 +6,7 @@ use App\Livewire\Inspection\InspectionIndex;
 use App\Livewire\Inspection\InspectionShow;
 use Illuminate\Support\Facades\Route;
 
-// Molding IPQC Inspection Reports Routes
+// IPQC Inspection Reports Routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/inspection-reports', InspectionIndex::class)->name('inspection-reports.index');
     Route::get('/inspection-report/create', InspectionForm::class)->name('inspection-reports.create');

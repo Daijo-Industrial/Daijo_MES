@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
             <div class="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                <a href="{{ route('inspection-reports.index') }}" class="hover:text-gray-900 transition">IPQC Molding</a>
+                <a href="{{ route('inspection-reports.index') }}" class="hover:text-gray-900 transition">IPQC Plastic Injection</a>
                 <span>&bull;</span>
                 <span class="text-gray-900 font-medium">Quality Analytics Dashboard</span>
             </div>
@@ -11,7 +11,7 @@
                 <svg class="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                 </svg>
-                Molding IPQC Quality Dashboard
+                Plastic Injection IPQC Quality Dashboard
             </h1>
         </div>
 
