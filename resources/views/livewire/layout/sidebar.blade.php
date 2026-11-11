@@ -1,9 +1,10 @@
 <?php
 
 use App\Livewire\Actions\Logout;
-use Livewire\Volt\Component;
-use App\Models\User;
 use App\Models\MachineJob;
+use App\Models\User;
+use App\Services\PlantContextService;
+use Livewire\Volt\Component;
 
 new class extends Component {
     public function logout(Logout $logout): void
@@ -20,6 +21,291 @@ new class extends Component {
         $logout();
 
         $this->redirect('/login', navigate: true);
+    }
+
+    /**
+     * Determine if current user can access a menu item or group.
+     */
+    protected function userCanAccess(?User $user, array $item): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if (isset($item['when'])) {
+            $condition = is_callable($item['when']) ? $item['when']($user) : (bool) $item['when'];
+            if (!$condition) {
+                return false;
+            }
+        }
+
+        if (isset($item['roles'])) {
+            $userRole = strtoupper($user->role?->name ?? '');
+            $allowedRoles = array_map('strtoupper', (array) $item['roles']);
+            if (in_array($userRole, $allowedRoles, true)) {
+                return true;
+            }
+        }
+
+        if (!isset($item['can'])) {
+            return !isset($item['roles']);
+        }
+
+        $abilities = (array) $item['can'];
+        foreach ($abilities as $ability) {
+            if ($user->can($ability)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get filtered navigation menu groups for current authenticated user.
+     */
+    public function getMenuGroups(): array
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return [];
+        }
+
+        $groups = $this->navigationSchema();
+        $filtered = [];
+
+        foreach ($groups as $group) {
+            if (isset($group['when'])) {
+                $condition = is_callable($group['when']) ? $group['when']($user) : (bool) $group['when'];
+                if (!$condition) {
+                    continue;
+                }
+            }
+
+            if (isset($group['can']) || isset($group['roles'])) {
+                if (!$this->userCanAccess($user, $group)) {
+                    continue;
+                }
+            }
+
+            $visibleChildren = [];
+            foreach ($group['children'] ?? [] as $child) {
+                if ($this->userCanAccess($user, $child)) {
+                    $visibleChildren[] = [
+                        'name' => $child['name'],
+                        'label' => $child['label'],
+                        'params' => $child['params'] ?? [],
+                    ];
+                }
+            }
+
+            if (!empty($visibleChildren)) {
+                $filtered[] = [
+                    'label' => $group['label'],
+                    'initiallyOpen' => $group['initiallyOpen'] ?? false,
+                    'children' => $visibleChildren,
+                ];
+            }
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * Single Source of Truth Navigation Schema.
+     */
+    protected function navigationSchema(): array
+    {
+        return [
+            // 1. Dashboard All
+            [
+                'label' => 'Dashboard All',
+                'children' => [
+                    ['name' => 'delschedfinal.dashboard', 'label' => 'Dashboard Delivery Schedule', 'can' => ['view-business-links', 'view-warehouse-links']],
+                    ['name' => 'workshop.summary.dashboard', 'label' => 'Dashboard Proses Moulding', 'can' => ['view-workshop-links', 'view-warehouse-links']],
+                    ['name' => 'dashboard.moulding.tv', 'label' => 'Dashboard Project Moulding', 'can' => ['view-workshop-links', 'view-warehouse-links']],
+                    ['name' => 'report.machine-active-hours', 'label' => 'Machine Active Hours', 'can' => ['view-production-links']],
+                    ['name' => 'summaryDashboard', 'label' => 'Packaging Dashboard', 'can' => ['view-store-links']],
+                ],
+            ],
+
+            // 2. Master Data & Setting
+            [
+                'label' => 'Master Data & Setting',
+                'children' => [
+                    ['name' => 'setting.holiday-schedule.index', 'label' => 'Holiday Schedule', 'can' => ['view-ppic-links']],
+                    ['name' => 'admin.master-list-manager', 'label' => 'Master List Manager', 'can' => ['manage-users-roles']],
+                    ['name' => 'admin.business-partner-manager', 'label' => 'Master Business Partner', 'can' => ['view-admin-links']],
+                    ['name' => 'admin.customer-delivery-manager', 'label' => 'Master Customer Delivery', 'can' => ['view-admin-links']],
+                    ['name' => 'inventory.mtr', 'label' => 'Master MTR', 'can' => ['view-warehouse-links']],
+                    ['name' => 'inventory.fg', 'label' => 'Master FG', 'can' => ['view-store-links']],
+                    ['name' => 'master-list-item', 'label' => 'Master List Item', 'can' => ['view-ppic-links']],
+                    ['name' => 'master-item.index', 'label' => 'Master Item', 'can' => ['view-pe-links']],
+                    ['name' => 'master-bom.index', 'label' => 'Master BOM (SAP)', 'can' => ['view-pe-links']],
+                    ['name' => 'barcode.box_master.index', 'label' => 'Master Box Data', 'can' => ['view-store-links']],
+                    ['name' => 'barcode.box_detail.index', 'label' => 'Master Box Detail', 'can' => ['view-store-links']],
+                    ['name' => 'wms.mapping', 'label' => 'Warehouse Mapping', 'can' => ['view-store-links', 'view-warehouse-links']],
+                    ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping', 'can' => ['view-store-links', 'view-warehouse-links']],
+                    ['name' => 'mwh.master-list.index', 'label' => 'Master List Material', 'can' => ['view-store-links', 'view-warehouse-links']],
+                    ['name' => 'master-machine.index', 'label' => 'Master Mesin (Dashboard)', 'can' => ['view-production-links']],
+                    ['name' => 'customer.add', 'label' => 'Manage Barcode Customer', 'can' => ['view-store-links']],
+                ],
+            ],
+
+            // 3. Production & Moulding
+            [
+                'label' => 'Production & Moulding',
+                'children' => [
+                    ['name' => 'wms.production-scan-crosscheck', 'label' => 'Crosscheck Scan Produksi', 'can' => ['view-production-links', 'view-store-links']],
+                    ['name' => 'production.store-handover', 'label' => 'Kontrol Produksi - Store', 'can' => ['view-production-links', 'view-store-links']],
+                    ['name' => 'production.material-station', 'label' => 'Station Material Produksi', 'can' => ['view-production-links']],
+                    ['name' => 'production.bom.index', 'label' => 'Production BOM', 'can' => ['view-production-links', 'view-warehouse-links']],
+                    ['name' => 'daily-item-code.index', 'label' => 'Daily Production Plan', 'can' => ['view-production-links', 'view-ppic-links']],
+                    ['name' => 'ppic.listup.index', 'label' => 'PPIC List Up Mesin', 'can' => ['view-ppic-links']],
+                    ['name' => 'ppic.machine-daily-report', 'label' => 'Laporan Produksi Mesin', 'can' => ['view-production-links', 'view-ppic-links']],
+                    ['name' => 'spk.changes.index', 'label' => 'Audit Log SPK (SAP Sync)', 'can' => ['view-production-links', 'view-ppic-links']],
+                    ['name' => 'spk.bom-changes.index', 'label' => 'SPK BOM Changes', 'can' => ['view-production-links', 'view-ppic-links', 'view-pe-links']],
+                    ['name' => 'capacityforecastindex', 'label' => 'Capacity By Forecast', 'can' => ['view-production-links', 'view-ppic-links']],
+                    ['name' => 'waiting_purchase_orders.index', 'label' => 'Waiting Purchase Orders', 'can' => ['view-production-links', 'view-warehouse-links']],
+                    ['name' => 'notification_recipients.index', 'label' => 'Notification Recipients', 'can' => ['view-production-links', 'view-warehouse-links']],
+                    ['name' => 'invlinelist', 'label' => 'Machine List', 'can' => ['view-production-links']],
+                ],
+            ],
+
+            // 4. Maintenance & Machine
+            [
+                'label' => 'Maintenance & Machine',
+                'can' => ['view-maintenance-links'],
+                'children' => [
+                    ['name' => 'mould-checklist.index', 'label' => 'Mould Maintenance Checklist'],
+                    ['name' => 'master-mould.index', 'label' => 'Master Mould Directory'],
+                    ['name' => 'maintenance.checklist-report', 'label' => 'Laporan Predictive Maintenance Mesin'],
+                ],
+            ],
+
+            // 5. Second Process
+            [
+                'label' => 'Second Process',
+                'when' => fn() => app(PlantContextService::class)->supportsSecondProcess(),
+                'children' => [
+                    ['name' => 'sp-work-orders.index', 'label' => 'Work Orders', 'can' => ['second-process-work-orders', 'view-admin-links']],
+                    ['name' => 'first-piece-inspections.index', 'label' => 'First Piece Inspections', 'can' => ['second-process-first-piece', 'view-admin-links']],
+                    ['name' => 'ipqc-inspections.index', 'label' => 'IPQC Inspections', 'can' => ['second-process-ipqc', 'view-admin-links']],
+                    ['name' => 'second-process.dashboard', 'label' => 'Floor Overview Dashboard', 'can' => ['second-process-dashboard', 'view-admin-links']],
+                    ['name' => 'sp-approvals.index', 'label' => 'Production Approvals', 'can' => ['second-process-approvals', 'view-admin-links']],
+                    ['name' => 'second-process.report-analytics', 'label' => 'Daily Report Analytics', 'can' => ['second-process-analytics', 'view-admin-links']],
+                    ['name' => 'second-process.defect-manager', 'label' => 'Defect Catalog & Aliases', 'can' => ['second-process-reports', 'view-admin-links']],
+                    ['name' => 'second-process-reports.index', 'label' => 'Second Process Daily Report', 'can' => ['second-process-reports', 'view-admin-links']],
+                ],
+            ],
+
+            // 6. Plastic Injection IPQC
+            [
+                'label' => 'Plastic Injection IPQC',
+                'can' => ['view-quality-links', 'execute-qc-inspections'],
+                'initiallyOpen' => request()->routeIs('inspection-reports.*'),
+                'children' => [
+                    ['name' => 'inspection-reports.index', 'label' => 'All Inspection Reports'],
+                    ['name' => 'inspection-reports.create', 'label' => 'Create Inspection Report'],
+                    ['name' => 'inspection-reports.dashboard', 'label' => 'Inspection Dashboard'],
+                ],
+            ],
+
+            // 7. WMS & Warehouse
+            [
+                'label' => 'WMS & Warehouse',
+                'can' => ['view-store-links', 'view-warehouse-links'],
+                'roles' => ['ADMIN', 'SUPER-ADMIN', 'STORE', 'WAREHOUSE'],
+                'children' => [
+                    ['name' => 'wms.dashboard', 'label' => 'WMS Rack Availability Dashboard'],
+                    ['name' => 'wms.production-scan-crosscheck', 'label' => 'Crosscheck Scan Produksi'],
+                    ['name' => 'production.store-handover', 'label' => 'Kontrol Serah Terima Produksi'],
+                    ['name' => 'wms.pallet-form.create-delivery', 'label' => 'Scan Delivery FG (Program Warehouse)'],
+                    ['name' => 'wms.pallet-form.daily-recap', 'label' => 'Rekap Harian Delivery FG'],
+                    ['name' => 'wms.pallet-form.index', 'label' => 'Assign Slot & Riwayat Pallet'],
+                    ['name' => 'wms.pallet-form.lookup', 'label' => 'Pallet Detail Check'],
+                    ['name' => 'wms.pallet-form.sorting', 'label' => 'Pallet Sorting and Consolidation'],
+                    ['name' => 'wms.pallet-form.picking-guide', 'label' => 'Delivery Picking Guide (FIFO)'],
+                    ['name' => 'wms.mapping', 'label' => 'Warehouse Mapping (FG)'],
+                    ['name' => 'wms.logs', 'label' => 'Audit Trail Logs'],
+                    ['name' => 'updated.barcode.item.position', 'label' => 'Detailed Item List'],
+                ],
+            ],
+
+            // 8. Material Warehouse
+            [
+                'label' => 'Material Warehouse',
+                'can' => ['view-store-links', 'view-warehouse-links'],
+                'roles' => ['ADMIN', 'SUPER-ADMIN', 'STORE', 'WAREHOUSE'],
+                'children' => [
+                    ['name' => 'mwh.master-list.index', 'label' => 'Master List Material'],
+                    ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping'],
+                    ['name' => 'mwh.daily-audit', 'label' => 'Audit Harian Material'],
+                    ['name' => 'mwh.requests', 'label' => 'Permintaan Produksi (Requests)'],
+                    ['name' => 'mwh.incoming.create', 'label' => 'Penerimaan Material (Incoming)'],
+                    ['name' => 'mwh.outgoing.create', 'label' => 'Pengambilan Material (Outgoing)'],
+                    ['name' => 'mwh.outgoing.history', 'label' => 'Riwayat Outgoing Material'],
+                    ['name' => 'mwh.stock-card.index', 'label' => 'Kartu Stok Material (Stock Card)'],
+                    ['name' => 'mwh.fifo-dashboard', 'label' => 'Director FIFO Dashboard (Live)'],
+                    ['name' => 'mwh.pallets.index', 'label' => 'Stock & Pallet Material'],
+                    ['name' => 'mwh.qr-lookup', 'label' => 'Scan QR Material'],
+                ],
+            ],
+
+            // 9. Delivery & Business
+            [
+                'label' => 'Delivery & Business',
+                'can' => ['view-business-links'],
+                'children' => [
+                    ['name' => 'delivery-schedule.form', 'label' => 'Delivery Schedule Input (BARU)', 'can' => ['view-business-links']],
+                    ['name' => 'delivery-schedule.calendar', 'label' => 'Kalender Delivery Schedule', 'can' => ['view-business-links']],
+                    ['name' => 'delivery.analysis', 'label' => 'Delivery Schedule Terbaru', 'can' => ['view-business-links']],
+                    ['name' => 'delivery.po-reminder', 'label' => 'PO Reminder (Kebutuhan Material)', 'can' => ['view-business-links']],
+                    ['name' => 'production.forecast.index', 'label' => 'Forecast Production', 'can' => ['view-business-links']],
+                    ['name' => 'management.delivery.index', 'label' => 'Delivery Data Delete', 'can' => ['view-admin-links']],
+                    ['name' => 'indexds', 'label' => 'Delivery Schedule Data (Old)', 'can' => ['view-admin-links']],
+                ],
+            ],
+
+            // 10. Sales Order & DO
+            [
+                'label' => 'Sales Order & DO',
+                'can' => ['view-store-links', 'view-business-links'],
+                'children' => [
+                    ['name' => 'so.index', 'label' => 'DATA SO / DO Index'],
+                    ['name' => 'so.dashboard', 'label' => 'SO Dashboard'],
+                    ['name' => 'pegawai.scan', 'label' => 'Scan SO'],
+                    ['name' => 'so.tracking', 'label' => 'Tracking SPK & Label DO'],
+                ],
+            ],
+
+            // 11. Packaging Menu
+            [
+                'label' => 'Packaging Menu',
+                'can' => ['view-store-links'],
+                'children' => [
+                    ['name' => 'summaryDashboard', 'label' => 'Dashboard & Saldo Kemasan'],
+                    ['name' => 'inandout.index', 'label' => 'Scan Barcode (In/Out)'],
+                    ['name' => 'barcodeindex', 'label' => 'Cetak Barcode & Riwayat'],
+                    ['name' => 'barcode.box_master.index', 'label' => 'Master Data Kemasan'],
+                ],
+            ],
+
+            // 12. SAP Monitor
+            [
+                'label' => 'SAP Monitor',
+                'can' => ['view-production-links', 'view-ppic-links', 'view-store-links', 'view-quality-links'],
+                'children' => [
+                    ['name' => 'sap.verification', 'label' => 'Verifikasi Data SAP vs MES', 'can' => ['view-admin-links']],
+                    ['name' => 'receipt-production-logs', 'label' => 'Cek Data Masuk ke SAP', 'can' => ['view-production-links', 'view-ppic-links', 'view-store-links']],
+                    ['name' => 'production-summary-monitor', 'label' => 'Cek Stock Program ke SAP', 'can' => ['view-production-links', 'view-store-links']],
+                    ['name' => 'wms.sap-sync-monitor-delivery', 'label' => 'SAP Sync Monitor', 'can' => ['view-production-links', 'view-store-links']],
+                    ['name' => 'qc-stock-transfer', 'label' => 'QC Stock Transfer (Karawang)', 'can' => ['view-quality-links']],
+                    ['name' => 'qc-stock-transfer-kbn', 'label' => 'QC Stock Transfer (KBN)', 'can' => ['view-quality-links']],
+                    ['name' => 'api.dashboard', 'label' => 'API Log Dashboard', 'can' => ['view-production-links']],
+                ],
+            ],
+        ];
     }
 }; ?>
 
@@ -59,408 +345,40 @@ new class extends Component {
 
         <!-- Navigation Links -->
         <div class="space-y-2 mt-4">
-            @if (auth()->user()?->can('view-admin-links'))
-                <!-- Admin Dashboard Link -->
-                <livewire:sidebar-link href="{{ route('dashboard') }}" label="Dashboard Home" :active="request()->routeIs('dashboard')"
-                    wire:navigate />
-
-                @if (auth()->user()?->can('manage-users-roles'))
-                    <livewire:sidebar-link href="{{ route('admin.user-role-manager') }}" label="User & Role Management"
-                        :active="request()->routeIs('admin.user-role-manager')" wire:navigate />
-                    <livewire:sidebar-link href="{{ route('admin.activity-logs') }}" label="User Activity & Audit Logs"
-                        :active="request()->routeIs('admin.activity-logs')" wire:navigate />
-                @endif
-
-                @if (auth()->user()?->can('manage-branches-departments'))
-                    <livewire:sidebar-link href="{{ route('admin.branches-departments') }}" label="Branches & Departments"
-                        :active="request()->routeIs('admin.branches-departments') && !request()->routeIs('admin.plant-departments')" wire:navigate />
-                    <livewire:sidebar-link href="{{ route('admin.plant-departments') }}" label="Plant Departments"
-                        :active="request()->routeIs('admin.plant-departments')" wire:navigate />
-                @endif
-
-                <!-- 1. Dropdown: Dashboard All -->
-                <livewire:parent-dropdown label="Dashboard All" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'delschedfinal.dashboard', 'label' => 'Dashboard Delivery Schedule'],
-                    ['name' => 'workshop.summary.dashboard', 'label' => 'Dashboard Proses Moulding'],
-                    ['name' => 'dashboard.moulding.tv', 'label' => 'Dashboard Project Moulding'],
-                    ['name' => 'report.machine-active-hours', 'label' => 'Machine Active Hours'],
-                    ['name' => 'summaryDashboard', 'label' => 'Packaging Dashboard'],
-                ]" />
-
-                <!-- 2. Dropdown: Master Data & Setting -->
-                <livewire:parent-dropdown label="Master Data & Setting" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'setting.holiday-schedule.index', 'label' => 'Holiday Schedule'],
-                    ['name' => 'admin.master-list-manager', 'label' => 'Master List Manager'],
-                    ['name' => 'admin.business-partner-manager', 'label' => 'Master Business Partner'],
-                    ['name' => 'admin.customer-delivery-manager', 'label' => 'Master Customer Delivery'],
-                    ['name' => 'inventory.mtr', 'label' => 'Master MTR'],
-                    ['name' => 'inventory.fg', 'label' => 'Master FG'],
-                    ['name' => 'master-list-item', 'label' => 'Master List Item'],
-                    ['name' => 'master-bom.index', 'label' => 'Master BOM (SAP)'],
-                    ['name' => 'barcode.box_master.index', 'label' => 'Master Box Data'],
-                    ['name' => 'barcode.box_detail.index', 'label' => 'Master Box Detail'],
-                    ['name' => 'wms.mapping', 'label' => 'Warehouse Mapping'],
-                    ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping'],
-                    ['name' => 'mwh.master-list.index', 'label' => 'Master List Material'],
-                    ['name' => 'master-machine.index', 'label' => 'Master Mesin (Dashboard)'],
-                    ['name' => 'customer.add', 'label' => 'Manage Barcode Customer'],
-                ]" />
-
-                <!-- 3. Dropdown: Production & Moulding -->
-                <livewire:parent-dropdown label="Production & Moulding" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'wms.production-scan-crosscheck', 'label' => 'Crosscheck Scan Produksi'],
-                    ['name' => 'production.store-handover', 'label' => 'Kontrol Produksi - Store'],
-                    ['name' => 'production.material-station', 'label' => 'Station Material Produksi'],
-                    ['name' => 'production.bom.index', 'label' => 'Production BOM'],
-                    ['name' => 'daily-item-code.index', 'label' => 'Daily Production Plan'],
-                    ['name' => 'ppic.machine-daily-report', 'label' => 'Laporan Produksi Mesin'],
-                    ['name' => 'spk.changes.index', 'label' => 'Audit Log SPK (SAP Sync)'],
-                    ['name' => 'spk.bom-changes.index', 'label' => 'SPK BOM Changes'],
-                    ['name' => 'capacityforecastindex', 'label' => 'Capacity By Forecast'],
-                    ['name' => 'waiting_purchase_orders.index', 'label' => 'Waiting Purchase Orders'],
-                    ['name' => 'notification_recipients.index', 'label' => 'Notification Recipients'],
-                    ['name' => 'invlinelist', 'label' => 'Machine List'],
-                ]" />
-
-                <!-- Dropdown: Maintenance & Machine -->
-                <livewire:parent-dropdown label="Maintenance & Machine" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'mould-checklist.index', 'label' => 'Mould Maintenance Checklist'],
-                    ['name' => 'master-mould.index', 'label' => 'Master Mould Directory'],
-                    ['name' => 'maintenance.checklist-report', 'label' => 'Laporan Predictive Maintenance Mesin'],
-                ]" />
-
-                @if (app(\App\Services\PlantContextService::class)->supportsSecondProcess())
-                    @php
-                        $secondProcessLinks1 = array_values(array_filter([
-                            auth()->user()?->can('second-process-work-orders') ? ['name' => 'sp-work-orders.index', 'label' => 'Work Orders'] : null,
-                            auth()->user()?->can('second-process-first-piece') ? ['name' => 'first-piece-inspections.index', 'label' => 'First Piece Inspections'] : null,
-                            auth()->user()?->can('second-process-ipqc') ? ['name' => 'ipqc-inspections.index', 'label' => 'IPQC Inspections'] : null,
-                            auth()->user()?->can('second-process-dashboard') ? ['name' => 'second-process.dashboard', 'label' => 'Floor Overview Dashboard'] : null,
-                            auth()->user()?->can('second-process-approvals') ? ['name' => 'sp-approvals.index', 'label' => 'Production Approvals'] : null,
-                            auth()->user()?->can('second-process-analytics') ? ['name' => 'second-process.report-analytics', 'label' => 'Daily Report Analytics'] : null,
-                            auth()->user()?->can('second-process-reports') ? ['name' => 'second-process.defect-manager', 'label' => 'Defect Catalog & Aliases'] : null,
-                            auth()->user()?->can('second-process-reports') ? ['name' => 'second-process-reports.index', 'label' => 'Second Process Daily Report'] : null,
-                        ]));
-                    @endphp
-
-                    @if (!empty($secondProcessLinks1))
-                        <!-- Dropdown: Second Process -->
-                        <livewire:parent-dropdown label="Second Process" :initiallyOpen="false" :childRoutes="$secondProcessLinks1" />
-                    @endif
-                @endif
-
-                @if (in_array(strtoupper(auth()->user()?->role?->name ?? ''), ['ADMIN', 'SUPER-ADMIN', 'STORE', 'WAREHOUSE']))
-                    <!-- 4. Dropdown: WMS & Warehouse -->
-                    <livewire:parent-dropdown label="WMS & Warehouse" :initiallyOpen="false" :childRoutes="[
-                        ['name' => 'wms.dashboard', 'label' => 'WMS Rack Availability Dashboard'],
-                        ['name' => 'wms.production-scan-crosscheck', 'label' => 'Crosscheck Scan Produksi'],
-                        ['name' => 'production.store-handover', 'label' => 'Kontrol Serah Terima Produksi'],
-                        ['name' => 'wms.pallet-form.create-delivery', 'label' => 'Scan Delivery FG (Program Warehouse)'],
-                        ['name' => 'wms.pallet-form.daily-recap', 'label' => 'Rekap Harian Delivery FG'],
-                        ['name' => 'wms.pallet-form.index', 'label' => 'Assign Slot & Riwayat Pallet'],
-                        ['name' => 'wms.pallet-form.lookup', 'label' => 'Pallet Detail Check'],
-                        ['name' => 'wms.pallet-form.sorting', 'label' => 'Pallet Sorting and Consolidation'],
-                        ['name' => 'wms.pallet-form.picking-guide', 'label' => 'Delivery Picking Guide (FIFO)'],
-                        ['name' => 'wms.mapping', 'label' => 'Warehouse Mapping (FG)'],
-                        ['name' => 'wms.logs', 'label' => 'Audit Trail Logs'],
-                        ['name' => 'updated.barcode.item.position', 'label' => 'Detailed Item List'],
-                    ]" />
-
-                    <!-- 5. Dropdown: Material Warehouse -->
-                    <livewire:parent-dropdown label="Material Warehouse" :initiallyOpen="false" :childRoutes="[
-                        ['name' => 'mwh.master-list.index', 'label' => 'Master List Material'],
-                        ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping'],
-                        ['name' => 'mwh.daily-audit', 'label' => 'Audit Harian Material'],
-                        ['name' => 'mwh.requests', 'label' => 'Permintaan Produksi (Requests)'],
-                        ['name' => 'mwh.incoming.create', 'label' => 'Penerimaan Material (Incoming)'],
-                        ['name' => 'mwh.outgoing.create', 'label' => 'Pengambilan Material (Outgoing)'],
-                        ['name' => 'mwh.outgoing.history', 'label' => 'Riwayat Outgoing Material'],
-                        ['name' => 'mwh.stock-card.index', 'label' => 'Kartu Stok Material (Stock Card)'],
-                        ['name' => 'mwh.fifo-dashboard', 'label' => 'Director FIFO Dashboard (Live)'],
-                        ['name' => 'mwh.pallets.index', 'label' => 'Stock & Pallet Material'],
-                        ['name' => 'mwh.qr-lookup', 'label' => 'Scan QR Material'],
-                    ]" />
-                @endif
-
-                <!-- 5. Dropdown: Delivery & Business -->
-                <livewire:parent-dropdown label="Delivery & Business" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'delivery-schedule.form', 'label' => 'Delivery Schedule Input (BARU)'],
-                    ['name' => 'delivery-schedule.calendar', 'label' => 'Kalender Delivery Schedule'],
-                    ['name' => 'delivery.analysis', 'label' => 'Delivery Schedule Terbaru'],
-                    ['name' => 'delivery.po-reminder', 'label' => 'PO Reminder (Kebutuhan Material)'],
-                    ['name' => 'production.forecast.index', 'label' => 'Forecast Production'],
-                    ['name' => 'management.delivery.index', 'label' => 'Delivery Data Delete'],
-                    ['name' => 'indexds', 'label' => 'Delivery Schedule Data (Old)'],
-                ]" />
-
-                <!-- 6. Dropdown: Sales Order & DO -->
-                <livewire:parent-dropdown label="Sales Order & DO" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'so.index', 'label' => 'DATA SO / DO Index'],
-                    ['name' => 'so.dashboard', 'label' => 'SO Dashboard'],
-                    ['name' => 'pegawai.scan', 'label' => 'Scan SO'],
-                    ['name' => 'so.tracking', 'label' => 'Tracking SPK & Label DO'],
-                ]" />
-
-                <!-- 7. Dropdown: Packaging Menu (Barcode Kemasan) -->
-                <livewire:parent-dropdown label="Packaging Menu" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'summaryDashboard', 'label' => 'Dashboard & Saldo Kemasan'],
-                    ['name' => 'inandout.index', 'label' => 'Scan Barcode (In/Out)'],
-                    ['name' => 'barcodeindex', 'label' => 'Cetak Barcode & Riwayat'],
-                    ['name' => 'barcode.box_master.index', 'label' => 'Master Data Kemasan'],
-                ]" />
-
-                <!-- 8. Dropdown: SAP Monitor -->
-                <livewire:parent-dropdown label="SAP Monitor" :initiallyOpen="false" :childRoutes="[
-                    ['name' => 'sap.verification', 'label' => 'Verifikasi Data SAP vs MES'],
-                    ['name' => 'receipt-production-logs', 'label' => 'Cek Data masuk ke SAP'],
-                    ['name' => 'production-summary-monitor', 'label' => 'Cek Stock Program ke SAP'],
-                    ['name' => 'wms.sap-sync-monitor-delivery', 'label' => 'SAP Sync Monitor'],
-                    ['name' => 'qc-stock-transfer', 'label' => 'QC Stock Transfer (FFI → FG/RJCT)'],
-                    ['name' => 'api.dashboard', 'label' => 'API Log Dashboard'],
-                ]" />
-            @else
-                <livewire:sidebar-link href="{{ route('dashboard') }}" label="Dashboard" :active="request()->routeIs('dashboard')"
-                    wire:navigate />
-
-                @if(auth()->user()?->can('view-operator-links') || auth()->user()?->hasRole('OPERATOR'))
-                    <livewire:sidebar-link href="{{ route('operator.daily-report') }}" label="Laporan Harian Mesin"
-                        :active="request()->routeIs('operator.daily-report')" wire:navigate />
-                @endif
-
-                @if (auth()->user()?->can('view-warehouse-links'))
-                    <livewire:parent-dropdown label="Moulding" :childRoutes="[
-                        ['name' => 'production.bom.index', 'label' => 'Production BOM'],
-                        ['name' => 'waiting_purchase_orders.index', 'label' => 'Waiting Purchase Orders'],
-                        ['name' => 'notification_recipients.index', 'label' => 'Notification Recipients'],
-                        ['name' => 'workshop.summary.dashboard', 'label' => 'Dashboard Proses'],
-                        ['name' => 'dashboard.moulding.tv', 'label' => 'Dashboard Project'],
-                    ]" />
-
-                    <livewire:sidebar-link href="{{ route('production.bom.index') }}" label="Production BOM"
-                        :active="request()->routeIs('production.bom.index')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('waiting_purchase_orders.index') }}"
-                        label="Waiting Purchase Orders" :active="request()->routeIs('waiting_purchase_orders.index')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('notification_recipients.index') }}"
-                        label="Notification Recipients" :active="request()->routeIs('notification_recipients.index')" wire:navigate />
-                @endif
-
-                @if (auth()->user()?->can('view-business-links'))
-                    <livewire:sidebar-link href="{{ route('delivery-schedule.form') }}"
-                        label="Delivery Schedule Input (BARU)" :active="request()->routeIs('delivery-schedule.form')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('delivery-schedule.calendar') }}"
-                        label="Kalender Delivery Schedule" :active="request()->routeIs('delivery-schedule.calendar')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('delivery.analysis') }}" label="Delivery Schedule Terbaru"
-                        :active="request()->routeIs('delivery.analysis')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('delivery.po-reminder') }}" label="PO Reminder (Kebutuhan Material)"
-                        :active="request()->routeIs('delivery.po-reminder')" wire:navigate />
-                @endif
-
-
-                <!-- PE Links -->
-                @if (auth()->user()?->can('view-pe-links'))
-                    <livewire:sidebar-link href="{{ route('master-item.index') }}" label="Master Item"
-                        :active="request()->routeIs('master-item.index')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('master-bom.index') }}" label="Master List BOM"
-                        :active="request()->routeIs('master-bom.index')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('spk.bom-changes.index') }}" label="SPK BOM Changes"
-                        :active="request()->routeIs('spk.bom-changes.*')" wire:navigate />
-                @endif
-
-
-                @if (auth()->user()?->can('view-production-links'))
-                    <livewire:sidebar-link href="{{ route('wms.production-scan-crosscheck') }}" label="Crosscheck Scan Produksi"
-                        :active="request()->routeIs('wms.production-scan-crosscheck')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('production.store-handover') }}" label="Kontrol Produksi - Store"
-                        :active="request()->routeIs('production.store-handover')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('production.material-station') }}" label="Station Material Produksi"
-                        :active="request()->routeIs('production.material-station')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('receipt-production-logs') }}" label="Cek Data masuk ke SAP"
-                        :active="request()->routeIs('receipt-production-logs')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('production-summary-monitor') }}"
-                        label="Cek stock dari Program ke SAP" :active="request()->routeIs('production-summary-monitor')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.sap-sync-monitor-delivery') }}" label="SAP Sync Monitor"
-                        :active="request()->routeIs('wms.sap-sync-monitor*')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('spk.changes.index') }}" label="Log Perubahan SPK"
-                        :active="request()->routeIs('spk.changes.*')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('api.dashboard') }}" label="API Log Dashboard"
-                        :active="request()->routeIs('api.dashboard')" wire:navigate />
-                @endif
-
-
-                <!-- PPIC Links -->
-                @if (auth()->user()?->can('view-ppic-links'))
-                    <livewire:sidebar-link href="{{ route('daily-item-code.index') }}" label="Daily Production Plan"
-                        :active="request()->routeIs('daily-item-code.index')" wire:navigate />
-                    <livewire:sidebar-link href="{{ route('ppic.listup.index') }}" label="PPIC List Up Mesin"
-                        :active="request()->routeIs('ppic.listup.*')" wire:navigate />
-                    <livewire:sidebar-link href="{{ route('ppic.machine-daily-report') }}"
-                        label="Laporan Produksi Mesin" :active="request()->routeIs('ppic.machine-daily-report')" wire:navigate />
-                    <livewire:sidebar-link href="{{ route('spk.changes.index') }}" label="Audit Log SPK (SAP Sync)"
-                        :active="request()->routeIs('spk.changes.index')" wire:navigate />
-                    <livewire:sidebar-link href="{{ route('spk.bom-changes.index') }}" label="SPK BOM Changes"
-                        :active="request()->routeIs('spk.bom-changes.*')" wire:navigate />
-                    <livewire:sidebar-link href="{{ route('master-list-item') }}" label="Master List Item"
-                        :active="request()->routeIs('master-list-item')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('receipt-production-logs') }}" label="Cek Data SPK ke SAP"
-                        :active="request()->routeIs('receipt-production-logs')" wire:navigate />
-
-                    @if (app(\App\Services\PlantContextService::class)->supportsSecondProcess() && auth()->user()?->can('view-second-process-reports'))
-                        <!-- Second Process — Reports & Analytics for PPIC -->
-                        <livewire:parent-dropdown label="Second Process — Reports & Analytics" :initiallyOpen="false" :childRoutes="[
-                            ['name' => 'second-process.report-analytics', 'label' => 'Daily Report Analytics'],
-                            ['name' => 'second-process-reports.index', 'label' => 'Second Process Daily Report'],
-                        ]" />
-                    @endif
-                @endif
-
-                <!-- Store Links -->
-                @if (auth()->user()?->can('view-store-links'))
-                    {{-- Consolidated Packaging Menu --}}
-                    <livewire:parent-dropdown label="Packaging Menu" :initiallyOpen="false" :childRoutes="[
-                        ['name' => 'summaryDashboard', 'label' => 'Dashboard & Saldo Kemasan'],
-                        ['name' => 'inandout.index', 'label' => 'Scan Barcode (In/Out)'],
-                        ['name' => 'barcodeindex', 'label' => 'Cetak Barcode & Riwayat'],
-                        ['name' => 'barcode.box_master.index', 'label' => 'Master Data Kemasan'],
-                    ]" />
-
-                    <livewire:sidebar-link href="{{ route('customer.add') }}" label="Manage Customer"
-                        :active="request()->routeIs('customer.add')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('so.dashboard') }}" label="SO DASHBOARD" :active="request()->routeIs('so.dashboard')"
-                        wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('so.index') }}" label="DATA SO" :active="request()->routeIs('so.index')"
-                        wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('pegawai.scan') }}" label="SCAN SO" :active="request()->routeIs('pegawai.scan')"
-                        wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('so.tracking') }}" label="TRACKING SPK & LABEL" :active="request()->routeIs('so.tracking')"
-                        wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('production-summary-monitor') }}"
-                        label="Cek stock Program ke SAP" :active="request()->routeIs('production-summary-monitor')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('receipt-production-logs') }}" label="Cek Data masuk ke SAP"
-                        :active="request()->routeIs('receipt-production-logs')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.dashboard') }}"
-                        label="WMS Rack Availability Dashboard" :active="request()->routeIs('wms.dashboard')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.pallet-form.create-delivery') }}"
-                        label="Scan Delivery FG" :active="request()->routeIs('wms.pallet-form.create-delivery')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.pallet-form.daily-recap') }}"
-                        label="Rekap Harian Delivery" :active="request()->routeIs('wms.pallet-form.daily-recap')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.production-scan-crosscheck') }}"
-                        label="Crosscheck Scan Produksi" :active="request()->routeIs('wms.production-scan-crosscheck')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('production.store-handover') }}"
-                        label="Kontrol Serah Terima Produksi" :active="request()->routeIs('production.store-handover')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.pallet-form.index') }}"
-                        label="Assign Slot & Riwayat Pallet" :active="request()->routeIs('wms.pallet-form.index')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.pallet-form.lookup') }}" label="Pallet Detail Check"
-                        :active="request()->routeIs('wms.pallet-form.lookup')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.logs') }}" label="Audit Trail Logs" :active="request()->routeIs('wms.logs')"
-                        wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.mapping') }}" label="Warehouse Mapping"
-                        :active="request()->routeIs('wms.mapping')" wire:navigate />
-
-                    <livewire:parent-dropdown label="Gudang Material (MWH)" :initiallyOpen="false" :childRoutes="[
-                        ['name' => 'mwh.master-list.index', 'label' => 'Master List Material'],
-                        ['name' => 'mwh.mapping', 'label' => 'Material Warehouse Mapping'],
-                        ['name' => 'mwh.daily-audit', 'label' => 'Audit Harian Material'],
-                        ['name' => 'mwh.requests', 'label' => 'Permintaan Produksi (Requests)'],
-                        ['name' => 'mwh.incoming.create', 'label' => 'Penerimaan Material (Incoming)'],
-                        ['name' => 'mwh.outgoing.create', 'label' => 'Pengambilan Material (Outgoing)'],
-                        ['name' => 'mwh.outgoing.history', 'label' => 'Riwayat Outgoing Material'],
-                        ['name' => 'mwh.stock-card.index', 'label' => 'Kartu Stok Material (Stock Card)'],
-                        ['name' => 'mwh.fifo-dashboard', 'label' => 'Director FIFO Dashboard (Live)'],
-                        ['name' => 'mwh.pallets.index', 'label' => 'Stock & Pallet Material'],
-                        ['name' => 'mwh.qr-lookup', 'label' => 'Scan QR Material'],
-                    ]" />
-
-                    <livewire:sidebar-link href="{{ route('wms.pallet-form.sorting') }}"
-                        label="Pallet Sorting and Consolidation" :active="request()->routeIs('wms.pallet-form.sorting')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.pallet-form.picking-guide') }}"
-                        label="Delivery Picking Guide (FIFO)" :active="request()->routeIs('wms.pallet-form.picking-guide')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('wms.sap-sync-monitor-delivery') }}"
-                        label="SAP Sync Monitor" :active="request()->routeIs('wms.sap-sync-monitor*')" wire:navigate />
-                @endif
-
-                <hr>
-
-                <!-- Maintenance Links -->
-                @if (auth()->user()?->can('view-maintenance-links'))
-                    <livewire:sidebar-link href="{{ route('mould-checklist.index') }}" label="Checklist Mould"
-                        :active="request()->routeIs('mould-checklist.*')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('master-mould.index') }}" label="Master Mould"
-                        :active="request()->routeIs('master-mould.*')" wire:navigate />
-
-                    <livewire:sidebar-link href="{{ route('maintenance.checklist-report') }}" label="Laporan Predictive Maintenance Mesin"
-                        :active="request()->routeIs('maintenance.checklist-report')" wire:navigate />
-                @endif
-
-                <!-- Second Process Links (Departmental) -->
-                @if (app(\App\Services\PlantContextService::class)->supportsSecondProcess() && !auth()->user()?->can('view-quality-links'))
-                    @php
-                        $secondProcessLinks2 = array_values(array_filter([
-                            auth()->user()?->can('second-process-work-orders') ? ['name' => 'sp-work-orders.index', 'label' => 'Work Orders'] : null,
-                            auth()->user()?->can('second-process-first-piece') ? ['name' => 'first-piece-inspections.index', 'label' => 'First Piece Inspections'] : null,
-                            auth()->user()?->can('second-process-ipqc') ? ['name' => 'ipqc-inspections.index', 'label' => 'IPQC Inspections'] : null,
-                            auth()->user()?->can('second-process-dashboard') ? ['name' => 'second-process.dashboard', 'label' => 'Floor Overview Dashboard'] : null,
-                            auth()->user()?->can('second-process-approvals') ? ['name' => 'sp-approvals.index', 'label' => 'Production Approvals'] : null,
-                            auth()->user()?->can('second-process-analytics') ? ['name' => 'second-process.report-analytics', 'label' => 'Daily Report Analytics'] : null,
-                            auth()->user()?->can('second-process-reports') ? ['name' => 'second-process.defect-manager', 'label' => 'Defect Catalog & Aliases'] : null,
-                            auth()->user()?->can('second-process-reports') ? ['name' => 'second-process-reports.index', 'label' => 'Second Process Daily Report'] : null,
-                        ]));
-                    @endphp
-
-                    @if (!empty($secondProcessLinks2))
-                        <!-- Dropdown: Second Process -->
-                        <livewire:parent-dropdown label="Second Process" :initiallyOpen="false" :childRoutes="$secondProcessLinks2" />
-                    @endif
-                @endif
-
-                @if (auth()->user()?->can('view-quality-links'))
-                    <livewire:sidebar-link href="{{ route('qc-stock-transfer') }}" label="QC Transfer (Karawang)"
-                        :active="request()->routeIs('qc-stock-transfer')" wire:navigate />
-                    <livewire:sidebar-link href="{{ route('qc-stock-transfer-kbn') }}" label="QC Transfer (KBN)"
-                        :active="request()->routeIs('qc-stock-transfer-kbn')" wire:navigate />
-                    @if (app(\App\Services\PlantContextService::class)->supportsSecondProcess())
-                        <livewire:sidebar-link href="{{ route('ipqc-inspections.index') }}" label="IPQC Inspections"
-                            :active="request()->routeIs('ipqc-inspections.*')" wire:navigate />
-                    @endif
-                    <livewire:parent-dropdown label="Plastic Injection IPQC" :initiallyOpen="request()->routeIs('inspection-reports.*')" :childRoutes="[
-                        ['name' => 'inspection-reports.index', 'label' => 'All Inspection Reports'],
-                        ['name' => 'inspection-reports.create', 'label' => 'Create Inspection Report'],
-                        ['name' => 'inspection-reports.dashboard', 'label' => 'Inspection Dashboard'],
-                    ]" />
-                @endif
+            <!-- Core Dashboard Link -->
+            <livewire:sidebar-link href="{{ route('dashboard') }}" label="Dashboard"
+                :active="request()->routeIs('dashboard')" wire:navigate />
+
+            <!-- Operator Daily Report (Shop floor machine operator interface) -->
+            @if (auth()->user()?->can('view-operator-links') || auth()->user()?->hasRole('OPERATOR'))
+                <livewire:sidebar-link href="{{ route('operator.daily-report') }}" label="Laporan Harian Mesin"
+                    :active="request()->routeIs('operator.daily-report')" wire:navigate />
             @endif
+
+            <!-- High-level System Administration Links -->
+            @if (auth()->user()?->can('manage-users-roles'))
+                <livewire:sidebar-link href="{{ route('admin.user-role-manager') }}" label="User & Role Management"
+                    :active="request()->routeIs('admin.user-role-manager')" wire:navigate />
+                <livewire:sidebar-link href="{{ route('admin.activity-logs') }}" label="User Activity & Audit Logs"
+                    :active="request()->routeIs('admin.activity-logs')" wire:navigate />
+            @endif
+
+            @if (auth()->user()?->can('manage-branches-departments'))
+                <livewire:sidebar-link href="{{ route('admin.branches-departments') }}" label="Branches & Departments"
+                    :active="request()->routeIs('admin.branches-departments') && !request()->routeIs('admin.plant-departments')" wire:navigate />
+                <livewire:sidebar-link href="{{ route('admin.plant-departments') }}" label="Plant Departments"
+                    :active="request()->routeIs('admin.plant-departments')" wire:navigate />
+            @endif
+
+            <!-- Grouped Dropdown Navigation (Domain-driven & single source of truth) -->
+            @foreach ($this->getMenuGroups() as $group)
+                <livewire:parent-dropdown
+                    :key="$group['label']"
+                    :label="$group['label']"
+                    :initiallyOpen="$group['initiallyOpen'] ?? false"
+                    :childRoutes="$group['children']"
+                />
+            @endforeach
         </div>
     </div>
 
