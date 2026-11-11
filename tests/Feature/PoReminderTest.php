@@ -77,6 +77,20 @@ class PoReminderTest extends TestCase
             });
         }
 
+        if (! Schema::hasTable('spk_masters')) {
+            Schema::create('spk_masters', function (Blueprint $table) {
+                $table->id();
+                $table->string('spk_number')->unique();
+                $table->date('post_date')->nullable();
+                $table->date('due_date')->nullable();
+                $table->string('production_status')->default('R');
+                $table->string('item_code');
+                $table->integer('planned_quantity')->default(0);
+                $table->integer('completed_quantity')->default(0);
+                $table->string('warehouse')->nullable();
+            });
+        }
+
         $role = Role::firstOrCreate(['name' => 'SUPER-ADMIN']);
         $this->user = User::factory()->create([
             'role_id' => $role->id,
@@ -308,6 +322,96 @@ class PoReminderTest extends TestCase
             ->set('endDate', '2026-11-30')
             ->call('exportExcel')
             ->assertFileDownloaded();
+    }
+
+    public function test_service_maps_spk_availability_and_links_to_spk_changes(): void
+    {
+        // 1. Setup Finish Good 1 with 2 SPKs (1 Released, 1 Planned)
+        DB::table('sap_delsched')->insert([
+            ['item_code' => 'FG-SPK-01', 'delivery_date' => '2026-11-10', 'delivery_qty' => 1000, 'so_number' => 'SO-SPK-01'],
+            ['item_code' => 'FG-NO-SPK', 'delivery_date' => '2026-11-10', 'delivery_qty' => 500, 'so_number' => 'SO-SPK-02'],
+        ]);
+
+        MasterBom::create([
+            'parent_item' => 'FG-SPK-01',
+            'component_item' => '401-SHARED-WIP',
+            'component_description' => 'SHARED WIP MATERIAL',
+            'quantity' => 1,
+            'uom' => 'PCS',
+            'is_active' => true,
+        ]);
+        MasterBom::create([
+            'parent_item' => 'FG-NO-SPK',
+            'component_item' => '401-SHARED-WIP',
+            'component_description' => 'SHARED WIP MATERIAL',
+            'quantity' => 2,
+            'uom' => 'PCS',
+            'is_active' => true,
+        ]);
+
+        // Insert SPKs for FG-SPK-01:
+        // SPK 1: planned 400, completed 100 -> available 300
+        // SPK 2: planned 200, completed 0 -> available 200
+        // Total available = 500
+        DB::table('spk_masters')->insert([
+            [
+                'spk_number' => '26039901',
+                'item_code' => 'FG-SPK-01',
+                'production_status' => 'R',
+                'planned_quantity' => 400,
+                'completed_quantity' => 100,
+                'warehouse' => 'FFI',
+                'post_date' => '2026-11-01',
+                'due_date' => '2026-11-20',
+            ],
+            [
+                'spk_number' => '26039902',
+                'item_code' => 'FG-SPK-01',
+                'production_status' => 'P',
+                'planned_quantity' => 200,
+                'completed_quantity' => 0,
+                'warehouse' => 'FFI',
+                'post_date' => '2026-11-05',
+                'due_date' => '2026-11-25',
+            ],
+        ]);
+
+        $service = app(PoReminderService::class);
+        $result = $service->calculate('2026-11-01', '2026-11-30');
+
+        $fg1 = collect($result['fg_items'])->firstWhere('item_code', 'FG-SPK-01');
+        $this->assertNotNull($fg1);
+        $this->assertTrue($fg1['spk_info']['has_spk']);
+        $this->assertEquals(2, $fg1['spk_info']['spk_count']);
+        $this->assertEquals(500, $fg1['spk_info']['available_qty']);
+        $this->assertContains('26039901', $fg1['spk_info']['spk_numbers']);
+
+        $fg2 = collect($result['fg_items'])->firstWhere('item_code', 'FG-NO-SPK');
+        $this->assertNotNull($fg2);
+        $this->assertFalse($fg2['spk_info']['has_spk']);
+        $this->assertEquals(0, $fg2['spk_info']['available_qty']);
+
+        // Verifikasi dalam modal detail material
+        $mat = collect($result['view1_materials'])->firstWhere('item_code', '401-SHARED-WIP');
+        $this->assertNotNull($mat);
+        $fgInMat = collect($mat['used_by_fgs'])->firstWhere('fg_code', 'FG-SPK-01');
+        $this->assertNotNull($fgInMat);
+        $this->assertTrue($fgInMat['spk_info']['has_spk']);
+        $this->assertEquals(500, $fgInMat['spk_info']['available_qty']);
+
+        // Verifikasi rendering Livewire
+        Livewire::actingAs($this->user)
+            ->test(PoReminderIndex::class)
+            ->set('startDate', '2026-11-01')
+            ->set('endDate', '2026-11-30')
+            ->set('displayMode', 'fgs')
+            ->assertSee('2 SPK')
+            ->assertSee('500 avail')
+            ->assertSee('Belum Ada SPK')
+            ->call('showMaterialDetail', '401-SHARED-WIP')
+            ->assertSee('26039901')
+            ->assertSee('26039902')
+            ->assertSee('500 pcs');
     }
 }
 
