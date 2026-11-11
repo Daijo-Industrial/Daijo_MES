@@ -300,10 +300,10 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
         Http::assertSent(function ($request) {
             if (str_contains($request->url(), '/api/receipt_production/create')) {
                 $data = $request->data();
-                return isset($data[0]['DocDate'])
-                    && $data[0]['DocDate'] === now()->toDateString()
-                    && isset($data[0]['doc_date'])
-                    && $data[0]['doc_date'] === now()->toDateString()
+                return isset($data[0]['PostingDate'])
+                    && $data[0]['PostingDate'] === now()->toDateString()
+                    && isset($data[0]['posting_date'])
+                    && $data[0]['posting_date'] === now()->toDateString()
                     && isset($data[0]['remarks'])
                     && str_contains($data[0]['remarks'], 'Created from SPK');
             }
