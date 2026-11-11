@@ -46,7 +46,7 @@ class InspectionFormTest extends TestCase
     {
         $response = $this->actingAs($this->user)->get(route('inspection-reports.create'));
         $response->assertOk();
-        $response->assertSee('Form Input Molding IPQC');
+        $response->assertSee('Form Input Plastic Injection IPQC');
         $response->assertSee('Header & Part Info');
     }
 

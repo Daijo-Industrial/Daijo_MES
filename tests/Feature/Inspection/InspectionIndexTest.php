@@ -37,7 +37,7 @@ class InspectionIndexTest extends TestCase
     {
         $response = $this->actingAs($this->user)->get(route('inspection-reports.index'));
         $response->assertOk();
-        $response->assertSee('Molding IPQC Inspection Reports');
+        $response->assertSee('Plastic Injection IPQC Inspection Reports');
     }
 
     public function test_displays_inspection_reports_in_table(): void

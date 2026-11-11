@@ -117,7 +117,7 @@ class InspectionDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->user)->get(route('inspection-reports.dashboard'));
         $response->assertOk();
-        $response->assertSee('Molding IPQC Quality Dashboard');
+        $response->assertSee('Plastic Injection IPQC Quality Dashboard');
         $response->assertSee('Total Laporan');
     }
 

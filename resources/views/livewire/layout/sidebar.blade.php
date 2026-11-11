@@ -205,8 +205,7 @@ new class extends Component {
                 'can' => ['view-quality-links', 'execute-qc-inspections'],
                 'initiallyOpen' => request()->routeIs('inspection-reports.*'),
                 'children' => [
-                    ['name' => 'inspection-reports.index', 'label' => 'All Inspection Reports'],
-                    ['name' => 'inspection-reports.create', 'label' => 'Create Inspection Report'],
+                    ['name' => 'inspection-reports.index', 'label' => 'Plastic Injection IPQC Reports'],
                     ['name' => 'inspection-reports.dashboard', 'label' => 'Inspection Dashboard'],
                 ],
             ],
@@ -365,9 +364,7 @@ new class extends Component {
 
             @if (auth()->user()?->can('manage-branches-departments'))
                 <livewire:sidebar-link href="{{ route('admin.branches-departments') }}" label="Branches & Departments"
-                    :active="request()->routeIs('admin.branches-departments') && !request()->routeIs('admin.plant-departments')" wire:navigate />
-                <livewire:sidebar-link href="{{ route('admin.plant-departments') }}" label="Plant Departments"
-                    :active="request()->routeIs('admin.plant-departments')" wire:navigate />
+                    :active="request()->routeIs('admin.branches-departments') || request()->routeIs('admin.plant-departments')" wire:navigate />
             @endif
 
             <!-- Grouped Dropdown Navigation (Domain-driven & single source of truth) -->

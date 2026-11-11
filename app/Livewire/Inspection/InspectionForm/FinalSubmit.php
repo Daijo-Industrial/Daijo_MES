@@ -293,7 +293,7 @@ class FinalSubmit extends Component
             'lastStepVisited',
         ]);
 
-        session()->flash('success', 'Laporan Molding IPQC berhasil disimpan ke sistem MES!');
+        session()->flash('success', 'Laporan IPQC berhasil disimpan ke sistem MES!');
         return redirect()->route('inspection-reports.index');
     }
 
