@@ -20,6 +20,13 @@ class RoleManager extends Component
 
     public string $editingRoleName = '';
 
+    // View Mode Properties ('table' or 'matrix')
+    public string $viewMode = 'table';
+
+    public string $matrixSearch = '';
+
+    public string $matrixGroupFilter = '';
+
     // Permission Management Properties
     public ?int $managingPermissionsRoleId = null;
 
@@ -37,13 +44,25 @@ class RoleManager extends Component
 
     protected $queryString = [
         'search' => ['except' => ''],
+        'viewMode' => ['except' => 'table', 'as' => 'view'],
+        'matrixSearch' => ['except' => ''],
+        'matrixGroupFilter' => ['except' => ''],
     ];
 
-    public function mount(): void
+    public function mount(string $initialViewMode = 'table'): void
     {
         if (Gate::denies('manage-users-roles')) {
             abort(403, 'Unauthorized Action.');
         }
+
+        if ($initialViewMode === 'matrix' || request()->query('tab') === 'matrix') {
+            $this->viewMode = 'matrix';
+        }
+    }
+
+    public function setViewMode(string $mode): void
+    {
+        $this->viewMode = in_array($mode, ['table', 'matrix'], true) ? $mode : 'table';
     }
 
     public function updatingSearch(): void
@@ -247,6 +266,7 @@ class RoleManager extends Component
 
     public function render()
     {
+        // 1. Roles query for Table view (paginated)
         $query = Role::with(['permissions'])->withCount([
             'users as active_users_count' => function ($q) {
                 $q->withoutTrashed()->where('is_active', true);
@@ -262,6 +282,7 @@ class RoleManager extends Component
 
         $roles = $query->orderBy('name')->paginate(10);
 
+        // 2. Permissions for Manage Permissions Modal
         $permissionsQuery = Permission::orderBy('group')->orderBy('label');
         if (! empty(trim($this->permissionSearch))) {
             $term = '%' . trim($this->permissionSearch) . '%';
@@ -275,6 +296,56 @@ class RoleManager extends Component
         $groupedPermissions = $permissionsQuery->get()->groupBy('group');
         $totalAvailablePermissionsCount = Permission::count();
 
-        return view('livewire.admin.role-manager', compact('roles', 'groupedPermissions', 'totalAvailablePermissionsCount'));
+        // 3. Matrix View Data
+        $matrixRoles = Role::with('permissions')->orderBy('name')->get();
+        $availableGroups = Permission::select('group')->distinct()->orderBy('group')->pluck('group')->toArray();
+
+        $matrixPermsQuery = Permission::orderBy('group')->orderBy('label');
+        if (! empty(trim($this->matrixSearch))) {
+            $term = '%' . trim($this->matrixSearch) . '%';
+            $matrixPermsQuery->where(function ($q) use ($term) {
+                $q->where('name', 'like', $term)
+                    ->orWhere('label', 'like', $term)
+                    ->orWhere('group', 'like', $term)
+                    ->orWhere('description', 'like', $term);
+            });
+        }
+        if (! empty(trim($this->matrixGroupFilter))) {
+            $matrixPermsQuery->where('group', $this->matrixGroupFilter);
+        }
+        $matrixGroupedPermissions = $matrixPermsQuery->get()->groupBy('group');
+
+        // Pre-compute matrix lookup array: [role_id => [permission_id => bool]]
+        // and role counts: [role_id => count]
+        $allPermsFlat = Permission::all();
+        $matrixState = [];
+        $rolePermissionCounts = [];
+
+        foreach ($matrixRoles as $r) {
+            $rId = $r->id;
+            $isSuper = strtoupper(trim($r->name)) === 'SUPER-ADMIN';
+            $count = 0;
+            $matrixState[$rId] = [];
+
+            foreach ($allPermsFlat as $p) {
+                $has = $isSuper || $r->hasPermission($p->name);
+                $matrixState[$rId][$p->id] = $has;
+                if ($has) {
+                    $count++;
+                }
+            }
+            $rolePermissionCounts[$rId] = $count;
+        }
+
+        return view('livewire.admin.role-manager', compact(
+            'roles',
+            'groupedPermissions',
+            'totalAvailablePermissionsCount',
+            'matrixRoles',
+            'matrixGroupedPermissions',
+            'matrixState',
+            'rolePermissionCounts',
+            'availableGroups'
+        ));
     }
 }

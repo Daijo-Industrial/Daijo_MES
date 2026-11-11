@@ -238,6 +238,8 @@ class UserRoleManager extends Component
 
         $zones = MasterZone::select('*', 'zone_name as name')->orderBy('zone_name')->get();
 
-        return view('livewire.admin.user-role-manager', compact('users', 'roles', 'zones', 'branches', 'departments'));
+        $trashedCount = User::onlyTrashed()->count();
+
+        return view('livewire.admin.user-role-manager', compact('users', 'roles', 'zones', 'branches', 'departments', 'trashedCount'));
     }
 }
