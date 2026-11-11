@@ -17,6 +17,8 @@ class SpProductionApprovalController extends Controller
      */
     public function index(Request $request)
     {
+        Gate::authorize('second-process-approvals');
+
         $tab = $request->get('tab', 'pending');
         $search = $request->get('search');
         $line = $request->get('unit_line');
@@ -109,6 +111,8 @@ class SpProductionApprovalController extends Controller
      */
     public function show(SpProductionSession $session, SecondProcessReportSyncBridge $bridge)
     {
+        Gate::authorize('second-process-approvals');
+
         // Abort if not completed and not approved
         if ($session->status !== 'completed' && is_null($session->approved_at)) {
             abort(404, 'Only completed or approved sessions can be reviewed.');
@@ -199,9 +203,7 @@ class SpProductionApprovalController extends Controller
      */
     public function approve(Request $request, SpProductionSession $session, SecondProcessReportSyncBridge $bridge)
     {
-        if (Gate::allows('approve-sp-sessions') === false && ! Auth::user()?->hasRole('SUPER-ADMIN')) {
-            abort(403, 'Unauthorized action. Only Supervisors and Admins can approve production sessions.');
-        }
+        Gate::authorize('second-process-approvals');
 
         if ($session->status !== 'completed' || $session->approved_at !== null) {
             return redirect()->back()->with('error', 'Session cannot be approved.');
@@ -226,9 +228,7 @@ class SpProductionApprovalController extends Controller
      */
     public function reject(Request $request, SpProductionSession $session, SecondProcessReportSyncBridge $bridge)
     {
-        if (Gate::allows('approve-sp-sessions') === false && ! Auth::user()?->hasRole('SUPER-ADMIN')) {
-            abort(403, 'Unauthorized action. Only Supervisors and Admins can return production sessions.');
-        }
+        Gate::authorize('second-process-approvals');
 
         if ($session->status !== 'completed') {
             return redirect()->back()->with('error', 'Session cannot be returned.');

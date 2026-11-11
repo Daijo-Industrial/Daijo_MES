@@ -15,6 +15,8 @@ class SecondProcessReportAnalyticsController extends Controller
 {
     public function index(Request $request)
     {
+        \Illuminate\Support\Facades\Gate::authorize('second-process-analytics');
+
         $now = Carbon::now('Asia/Jakarta');
         $today = $now->toDateString();
         $yesterday = $now->copy()->subDay()->toDateString();
@@ -790,6 +792,8 @@ class SecondProcessReportAnalyticsController extends Controller
      */
     public function partCycle(Request $request)
     {
+        \Illuminate\Support\Facades\Gate::authorize('second-process-analytics');
+
         $selectedPart = trim((string) $request->input('part_number', ''));
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');

@@ -9,11 +9,14 @@ use App\Models\SpWorkOrder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class SpProductionSessionController extends Controller
 {
     public function start(Request $request, $workOrderId)
     {
+        Gate::authorize('second-process-sessions');
+
         $workOrder = SpWorkOrder::findOrFail($workOrderId);
 
         if (in_array($workOrder->status, ['completed', 'cancelled'])) {
@@ -695,6 +698,8 @@ class SpProductionSessionController extends Controller
      */
     public function lineGateway(Request $request, string $lineSlug)
     {
+        Gate::authorize('second-process-sessions');
+
         // Resolve slug -> display name from config
         $spLines = config('mes.sp_lines', []);
 

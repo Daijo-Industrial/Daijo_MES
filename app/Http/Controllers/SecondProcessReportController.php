@@ -20,6 +20,8 @@ class SecondProcessReportController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('viewAny', SecondProcessReport::class);
+
         $today = now('Asia/Jakarta')->toDateString();
         $yesterday = now('Asia/Jakarta')->subDay()->toDateString();
         $thisWeekStart = now('Asia/Jakarta')->startOfWeek()->toDateString();
@@ -200,6 +202,8 @@ class SecondProcessReportController extends Controller
 
     public function create(Request $request)
     {
+        $this->authorize('create', SecondProcessReport::class);
+
         $report = new SecondProcessReport;
 
         // Auto-fill from dashboard parameters
@@ -217,6 +221,8 @@ class SecondProcessReportController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', SecondProcessReport::class);
+
         $report = new SecondProcessReport;
         $this->saveReport($request, $report);
 
@@ -233,6 +239,8 @@ class SecondProcessReportController extends Controller
             'ngRecords.hourlyDetails',
             'troubles',
         ])->findOrFail($id);
+
+        $this->authorize('view', $report);
 
         $firstPiece = FirstPieceInspection::where('part_number', $report->part_number)
             ->whereDate('date', $report->date)
@@ -856,6 +864,8 @@ class SecondProcessReportController extends Controller
 
     public function searchItems(Request $request)
     {
+        $this->authorize('viewAny', SecondProcessReport::class);
+
         $query = trim((string) ($request->get('query') ?: $request->get('q')));
         if ($query === '') {
             return response()->json([]);
@@ -906,6 +916,8 @@ class SecondProcessReportController extends Controller
 
     public function searchCustomers(Request $request)
     {
+        $this->authorize('viewAny', SecondProcessReport::class);
+
         $query = trim((string) $request->get('query', ''));
         if ($query === '') {
             return response()->json([]);
