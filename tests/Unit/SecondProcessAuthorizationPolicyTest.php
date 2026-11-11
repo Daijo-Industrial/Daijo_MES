@@ -129,5 +129,35 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
         $this->assertTrue($policy->update($reportUser, $draftReport)->allowed());
         $this->assertTrue($policy->update($unauthorizedUser, $draftReport)->denied());
     }
+
+    public function test_standardized_roles_fallback_permissions()
+    {
+        $checker = new Role(['name' => 'CHECKER']);
+        $this->assertTrue($checker->defaultPermissionFallback('second-process-reports'));
+        $this->assertTrue($checker->defaultPermissionFallback('second-process-dashboard'));
+        $this->assertFalse($checker->defaultPermissionFallback('second-process-work-orders'));
+
+        $leader = new Role(['name' => 'LEADER']);
+        $this->assertTrue($leader->defaultPermissionFallback('second-process-reports'));
+        $this->assertTrue($leader->defaultPermissionFallback('second-process-work-orders'));
+        $this->assertTrue($leader->defaultPermissionFallback('second-process-approvals'));
+        $this->assertTrue($leader->defaultPermissionFallback('second-process-sessions'));
+        $this->assertTrue($leader->defaultPermissionFallback('second-process-analytics'));
+        $this->assertFalse($leader->defaultPermissionFallback('second-process-delete'));
+
+        $supervisor = new Role(['name' => 'SUPERVISOR']);
+        $this->assertTrue($supervisor->defaultPermissionFallback('second-process-reports'));
+        $this->assertTrue($supervisor->defaultPermissionFallback('second-process-work-orders'));
+        $this->assertTrue($supervisor->defaultPermissionFallback('second-process-delete'));
+
+        $quality = new Role(['name' => 'QUALITY']);
+        $this->assertTrue($quality->defaultPermissionFallback('second-process-first-piece'));
+        $this->assertTrue($quality->defaultPermissionFallback('second-process-ipqc'));
+        $this->assertTrue($quality->defaultPermissionFallback('second-process-reports'));
+
+        $production = new Role(['name' => 'PRODUCTION']);
+        $this->assertTrue($production->defaultPermissionFallback('second-process-reports'));
+        $this->assertTrue($production->defaultPermissionFallback('second-process-sessions'));
+    }
 }
 
