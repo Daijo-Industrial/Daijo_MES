@@ -37,9 +37,19 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
 1. **Clean, Direct & No-Emoji**:
    - DILARANG menggunakan emoji dekoratif (seperti `✓`, `⏳`, `⛔`, `📋`, `📝`, `🔧`), simbol panah teks (`→`, `←`), atau subjudul/paragraf instruksi bertele-tele pada view formulir dan tabel MES.
    - Gunakan badge status berteks tegas dan langsung (`Approved`, `Reject`, `Menunggu`, `Ongoing`, `Draft`).
-2. **Progressive Disclosure for Default Parameters**:
-   - Parameter formulir yang memiliki default umum (misal tanggal hari ini) harus ditampilkan dalam mode ringkas (minimized) dengan toggle pembuka `[Ubah Tanggal]`, agar operator dapat langsung fokus mengisi data primer harian (jam pengerjaan).
-3. **Zero Horizontal Scroll on Desktop Datatables**:
+2. **Zero Redundant Icon/Text Glyphs**:
+   - DILARANG menduplikasi simbol ikon ke dalam label teks tombol aksi.
+   - Jika tombol sudah memiliki ikon SVG plus (`+`), label teks TIDAK BOLEH diawali tanda `+` (misal gunakan `<svg>...</svg> <span>New Report</span>`, BUKAN `<span>+ New Report</span>`).
+   - Pilih salah satu: gunakan ikon SVG dengan label bersih atau gunakan teks bersimbol tanpa ikon SVG.
+3. **Index Filter Bar Architecture (Progressive Disclosure & Batch Apply)**:
+   - **Minimized Mode by Default**: Bilah filter pada halaman index MES harus tampil dalam mode ringkas (minimized) yang hanya menampilkan filter yang sedang aktif (misalnya preset default "This Month" atau parameter aktif lainnya) bersama tombol toggle pembuka `[Ubah Filter]` / `[Tutup Filter]`.
+   - **Single Batch Submission**: Seluruh filter lanjutan/ekspansi (pencarian, dropdown sektor, customer, line, status) harus diterapkan melalui tombol aksi eksplisit `[Apply Filter]` dan `[Reset]`. Jangan melakukan auto-request pada setiap interaksi dropdown individu agar tidak memicu lonjakan request ke backend dan layout jumping saat operator memilih beberapa filter sekaligus.
+   - **Stateless by Default**: Jangan menyimpan state buka/tutup filter atau draft filter di `localStorage` kecuali secara eksplisit diminta, untuk menjaga perilaku formulir tetap bersih, konsisten, dan mudah diprediksi.
+4. **Filter Preset Pills & SSR/Alpine Class Integrity**:
+   - Tombol pill preset (seperti `Today`, `Yesterday`, `This Month`, `Custom Range`, `All Dates`) WAJIB merender class status aktif/inaktif awal secara langsung di server Blade (`class="{{ $active ? $activeClass : $inactiveClass }}"`) untuk mencegah flash of unstyled content (FOUC) saat halaman pertama kali dimuat.
+   - **No Conflicting Class Merging**: Hindari mencampur static utility class (`bg-slate-50`) dengan Alpine `:class` yang menambahkan kelas bertentangan (`bg-blue-600`), karena Alpine v3 tidak menghapus kelas yang sudah didefinisikan pada atribut static `class`.
+   - Gunakan fungsi JavaScript terpusat (`setDatePreset(preset)`) dengan selektor `data-preset` untuk memanipulasi class DOM (`classList.add`/`classList.remove`) secara deterministik saat tombol preset diklik.
+5. **Zero Horizontal Scroll on Desktop Datatables**:
    - Tabel desktop (layar `>= xl`) yang berada di dalam layout bersidebar (`lg:pl-64` / 256px) tidak boleh memiliki horizontal scrollbar pada resolusi standar (1280px / 1366px).
    - JANGAN menggunakan batas minimum paksa seperti `min-w-[1000px]`.
    - Gunakan `<table class="w-full table-fixed ...">` dengan persentase lebar kolom yang terukur pas (total 100%) dan padding sel kompak (`px-2 py-3` / `px-1.5`).
