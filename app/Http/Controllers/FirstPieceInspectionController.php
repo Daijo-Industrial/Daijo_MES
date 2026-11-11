@@ -22,6 +22,8 @@ class FirstPieceInspectionController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', FirstPieceInspection::class);
+
         $query = FirstPieceInspection::query();
 
         if ($request->filled('date_from')) {
@@ -49,6 +51,8 @@ class FirstPieceInspectionController extends Controller
 
     public function create(Request $request)
     {
+        $this->authorize('create', FirstPieceInspection::class);
+
         $inspection = new FirstPieceInspection([
             'date' => $request->get('date', date('Y-m-d')),
             'part_number' => $request->get('part_number', ''),
@@ -67,6 +71,8 @@ class FirstPieceInspectionController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', FirstPieceInspection::class);
+
         $validated = $this->validateInspection($request);
 
         if ($request->boolean('auto_approve')) {
@@ -92,6 +98,7 @@ class FirstPieceInspectionController extends Controller
     public function show($id)
     {
         $inspection = FirstPieceInspection::with('attachments')->findOrFail($id);
+        $this->authorize('view', $inspection);
 
         return view('first_piece.show', compact('inspection'));
     }
@@ -99,6 +106,7 @@ class FirstPieceInspectionController extends Controller
     public function edit($id)
     {
         $inspection = FirstPieceInspection::with(['attachments', 'workOrder'])->findOrFail($id);
+        $this->authorize('update', $inspection);
 
         if ($inspection->checked_at !== null) {
             return redirect()->route('first-piece-inspections.show', $id)
@@ -117,6 +125,7 @@ class FirstPieceInspectionController extends Controller
     public function update(Request $request, $id)
     {
         $inspection = FirstPieceInspection::findOrFail($id);
+        $this->authorize('update', $inspection);
 
         if ($inspection->checked_at !== null) {
             return redirect()->route('first-piece-inspections.show', $id)
@@ -150,6 +159,7 @@ class FirstPieceInspectionController extends Controller
     public function destroy($id)
     {
         $inspection = FirstPieceInspection::with('attachments')->findOrFail($id);
+        $this->authorize('delete', $inspection);
 
         if ($inspection->checked_at !== null) {
             return redirect()->route('first-piece-inspections.show', $id)
@@ -169,6 +179,8 @@ class FirstPieceInspectionController extends Controller
     public function sign(Request $request, $id, $role)
     {
         $inspection = FirstPieceInspection::findOrFail($id);
+        $this->authorize('sign', [$inspection, $role]);
+
         $user = auth()->user();
 
         switch ($role) {
@@ -206,6 +218,8 @@ class FirstPieceInspectionController extends Controller
 
     public function checkApproval(Request $request)
     {
+        $this->authorize('viewAny', FirstPieceInspection::class);
+
         $partNumber = $request->get('part_number');
         $date = $request->get('date');
 

@@ -10,6 +10,8 @@ class SpWorkOrderController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('viewAny', SpWorkOrder::class);
+
         $query = SpWorkOrder::with(['creator', 'sessions.operator']);
 
         if ($request->filled('date_from')) {
@@ -53,6 +55,8 @@ class SpWorkOrderController extends Controller
 
     public function create()
     {
+        $this->authorize('create', SpWorkOrder::class);
+
         $woNumber = SpWorkOrder::generateWoNumber();
         $lines = array_values(config('mes.sp_lines', []));
         $processes = ['Assembly', 'Painting', 'Buffing', 'Amplas', 'Trimming', 'Printing', 'Packing', 'Rework', 'Repair'];
@@ -62,6 +66,8 @@ class SpWorkOrderController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', SpWorkOrder::class);
+
         $isDraft = $request->input('action') === 'draft';
 
         if ($isDraft) {
@@ -117,6 +123,7 @@ class SpWorkOrderController extends Controller
     public function show($id)
     {
         $workOrder = SpWorkOrder::with(['creator', 'sessions.operator', 'sessions.productionEntries', 'sessions.rejectEntries', 'sessions.downtimeEntries', 'sessions.manpowerEntries'])->findOrFail($id);
+        $this->authorize('view', $workOrder);
 
         $firstPiece = $workOrder->latestFirstPieceInspection
             ?? FirstPieceInspection::where('part_number', $workOrder->part_number)
@@ -133,6 +140,7 @@ class SpWorkOrderController extends Controller
     public function edit($id)
     {
         $workOrder = SpWorkOrder::findOrFail($id);
+        $this->authorize('update', $workOrder);
 
         if ($workOrder->status !== 'draft') {
             return redirect()->route('sp-work-orders.show', $id)
@@ -148,6 +156,7 @@ class SpWorkOrderController extends Controller
     public function update(Request $request, $id)
     {
         $workOrder = SpWorkOrder::findOrFail($id);
+        $this->authorize('update', $workOrder);
 
         if ($workOrder->status !== 'draft') {
             return redirect()->route('sp-work-orders.show', $id)
@@ -198,6 +207,7 @@ class SpWorkOrderController extends Controller
     public function release($id)
     {
         $workOrder = SpWorkOrder::findOrFail($id);
+        $this->authorize('release', $workOrder);
 
         if ($workOrder->status !== 'draft') {
             return redirect()->route('sp-work-orders.show', $id)
@@ -227,6 +237,7 @@ class SpWorkOrderController extends Controller
     public function revertToDraft($id)
     {
         $workOrder = SpWorkOrder::with('sessions')->findOrFail($id);
+        $this->authorize('revertToDraft', $workOrder);
 
         if ($workOrder->status !== 'planned') {
             return redirect()->route('sp-work-orders.show', $id)
@@ -247,6 +258,7 @@ class SpWorkOrderController extends Controller
     public function destroy($id)
     {
         $workOrder = SpWorkOrder::findOrFail($id);
+        $this->authorize('delete', $workOrder);
 
         if (! in_array($workOrder->status, ['draft', 'planned'])) {
             return redirect()->back()

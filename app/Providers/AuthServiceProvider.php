@@ -14,7 +14,10 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        // 'App\Models\Model' => 'App\Policies\ModelPolicy',
+        \App\Models\SpWorkOrder::class => \App\Policies\SpWorkOrderPolicy::class,
+        \App\Models\FirstPieceInspection::class => \App\Policies\FirstPieceInspectionPolicy::class,
+        \App\Models\IpqcInspection::class => \App\Policies\IpqcInspectionPolicy::class,
+        \App\Models\SecondProcessReport::class => \App\Policies\SecondProcessReportPolicy::class,
     ];
 
     /**
@@ -74,70 +77,20 @@ class AuthServiceProvider extends ServiceProvider
             return $user->hasPermission('view-maintenance-links');
         });
 
-        // Second Process Domain (Consolidated 1-Permission per Feature)
-        Gate::define('second-process-work-orders', function ($user) {
-            return $user->hasPermission('second-process-work-orders')
-                || $user->hasPermission('manage-sp-work-orders')
-                || $user->hasPermission('view-second-process-work-orders');
-        });
-        Gate::define('view-second-process-work-orders', fn ($user) => Gate::forUser($user)->allows('second-process-work-orders'));
-        Gate::define('manage-sp-work-orders', fn ($user) => Gate::forUser($user)->allows('second-process-work-orders'));
-
-        Gate::define('second-process-first-piece', function ($user) {
-            return $user->hasPermission('second-process-first-piece')
-                || $user->hasPermission('view-second-process-first-piece');
-        });
-        Gate::define('view-second-process-first-piece', fn ($user) => Gate::forUser($user)->allows('second-process-first-piece'));
-
-        Gate::define('second-process-ipqc', function ($user) {
-            return $user->hasPermission('second-process-ipqc')
-                || $user->hasPermission('view-second-process-ipqc');
-        });
-        Gate::define('view-second-process-ipqc', fn ($user) => Gate::forUser($user)->allows('second-process-ipqc'));
-
-        Gate::define('second-process-dashboard', function ($user) {
-            return $user->hasPermission('second-process-dashboard')
-                || $user->hasPermission('view-second-process-dashboard');
-        });
-        Gate::define('view-second-process-dashboard', fn ($user) => Gate::forUser($user)->allows('second-process-dashboard'));
-
-        Gate::define('second-process-sessions', function ($user) {
-            return $user->hasPermission('second-process-sessions')
-                || $user->hasPermission('view-second-process-sessions');
-        });
-        Gate::define('view-second-process-sessions', fn ($user) => Gate::forUser($user)->allows('second-process-sessions'));
-
-        Gate::define('second-process-approvals', function ($user) {
-            return $user->hasPermission('second-process-approvals')
-                || $user->hasPermission('approve-sp-sessions')
-                || $user->hasPermission('view-second-process-approvals');
-        });
-        Gate::define('view-second-process-approvals', fn ($user) => Gate::forUser($user)->allows('second-process-approvals'));
-        Gate::define('approve-sp-sessions', fn ($user) => Gate::forUser($user)->allows('second-process-approvals'));
-
-        Gate::define('second-process-reports', function ($user) {
-            return $user->hasPermission('second-process-reports')
-                || $user->hasPermission('manage-second-process-reports')
-                || $user->hasPermission('view-second-process-reports');
-        });
-        Gate::define('view-second-process-reports', fn ($user) => Gate::forUser($user)->allows('second-process-reports'));
-        Gate::define('manage-second-process-reports', fn ($user) => Gate::forUser($user)->allows('second-process-reports'));
-
-        Gate::define('second-process-analytics', function ($user) {
-            return $user->hasPermission('second-process-analytics')
-                || $user->hasPermission('view-second-process-analytics');
-        });
-        Gate::define('view-second-process-analytics', fn ($user) => Gate::forUser($user)->allows('second-process-analytics'));
+        // Second Process Feature Gates
+        Gate::define('second-process-work-orders', fn ($user) => $user->hasPermission('second-process-work-orders'));
+        Gate::define('second-process-first-piece', fn ($user) => $user->hasPermission('second-process-first-piece'));
+        Gate::define('second-process-ipqc', fn ($user) => $user->hasPermission('second-process-ipqc'));
+        Gate::define('second-process-dashboard', fn ($user) => $user->hasPermission('second-process-dashboard'));
+        Gate::define('second-process-sessions', fn ($user) => $user->hasPermission('second-process-sessions'));
+        Gate::define('second-process-approvals', fn ($user) => $user->hasPermission('second-process-approvals'));
+        Gate::define('second-process-reports', fn ($user) => $user->hasPermission('second-process-reports'));
+        Gate::define('second-process-analytics', fn ($user) => $user->hasPermission('second-process-analytics'));
 
         // Legacy compatibility gates for Second Process
-        Gate::define('view-second-process-links', function ($user) {
-            return Gate::forUser($user)->allows('second-process-work-orders');
-        });
-
-        Gate::define('view-second-process-ops', function ($user) {
-            return Gate::forUser($user)->allows('second-process-dashboard')
-                || Gate::forUser($user)->allows('second-process-sessions');
-        });
+        Gate::define('view-second-process-links', fn ($user) => Gate::forUser($user)->allows('second-process-work-orders'));
+        Gate::define('view-second-process-ops', fn ($user) => Gate::forUser($user)->allows('second-process-dashboard') || Gate::forUser($user)->allows('second-process-sessions'));
+        Gate::define('approve-sp-sessions', fn ($user) => Gate::forUser($user)->allows('second-process-approvals'));
 
         Gate::define('execute-qc-inspections', function ($user) {
             return $user->hasPermission('execute-qc-inspections');

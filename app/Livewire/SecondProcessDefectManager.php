@@ -32,6 +32,11 @@ class SecondProcessDefectManager extends Component
         'search' => ['except' => ''],
     ];
 
+    public function mount(): void
+    {
+        \Illuminate\Support\Facades\Gate::authorize('second-process-reports');
+    }
+
     public function updatingSearch()
     {
         $this->resetPage();

@@ -14,6 +14,8 @@ class IpqcInspectionController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('viewAny', IpqcInspection::class);
+
         $query = IpqcInspection::query();
 
         if ($request->filled('date_from')) {
@@ -49,6 +51,8 @@ class IpqcInspectionController extends Controller
 
     public function create()
     {
+        $this->authorize('create', IpqcInspection::class);
+
         $inspection = new IpqcInspection;
         $ipqcCheckItems = IpqcCheckItem::active()->ordered()->get();
         $ipqcMeasurements = IpqcMeasurementConfig::active()->ordered()->get();
@@ -58,6 +62,8 @@ class IpqcInspectionController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', IpqcInspection::class);
+
         $validated = $this->validateInspection($request);
 
         return DB::transaction(function () use ($validated, $request) {
@@ -75,6 +81,7 @@ class IpqcInspectionController extends Controller
     public function show($id)
     {
         $inspection = IpqcInspection::with(['records.attachments', 'attachments', 'creator'])->findOrFail($id);
+        $this->authorize('view', $inspection);
 
         return view('ipqc.show', compact('inspection'));
     }
@@ -82,6 +89,7 @@ class IpqcInspectionController extends Controller
     public function edit($id)
     {
         $inspection = IpqcInspection::with('records.attachments')->findOrFail($id);
+        $this->authorize('update', $inspection);
 
         if ($inspection->status !== 'ongoing') {
             return redirect()->route('ipqc-inspections.show', $id)
@@ -97,6 +105,7 @@ class IpqcInspectionController extends Controller
     public function update(Request $request, $id)
     {
         $inspection = IpqcInspection::findOrFail($id);
+        $this->authorize('update', $inspection);
 
         if ($inspection->status !== 'ongoing') {
             return redirect()->route('ipqc-inspections.show', $id)
@@ -130,6 +139,8 @@ class IpqcInspectionController extends Controller
 
     public function searchItems(Request $request)
     {
+        $this->authorize('viewAny', IpqcInspection::class);
+
         $term = $request->query('q', '');
 
         $items = MasterListItem::where(function ($query) use ($term) {

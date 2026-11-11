@@ -19,6 +19,8 @@ class SecondProcessDashboardController extends Controller
      */
     public function index(Request $request)
     {
+        \Illuminate\Support\Facades\Gate::authorize('second-process-dashboard');
+
         // 1. Lock to today date and active shift
         $now = Carbon::now('Asia/Jakarta');
         $date = $now->format('Y-m-d');
@@ -108,6 +110,8 @@ class SecondProcessDashboardController extends Controller
      */
     public function lineDashboard(Request $request, string $line)
     {
+        \Illuminate\Support\Facades\Gate::authorize('second-process-dashboard');
+
         $now = Carbon::now('Asia/Jakarta');
         $preset = $request->input('preset');
 

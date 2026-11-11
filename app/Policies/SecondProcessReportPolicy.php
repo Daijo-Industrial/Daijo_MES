@@ -14,7 +14,7 @@ class SecondProcessReportPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->can('second-process-reports');
     }
 
     /**
@@ -22,7 +22,7 @@ class SecondProcessReportPolicy
      */
     public function view(User $user, SecondProcessReport $report): bool
     {
-        return true;
+        return $user->can('second-process-reports');
     }
 
     /**
@@ -30,7 +30,7 @@ class SecondProcessReportPolicy
      */
     public function create(User $user): bool
     {
-        return true;
+        return $user->can('second-process-reports');
     }
 
     /**
@@ -42,6 +42,10 @@ class SecondProcessReportPolicy
      */
     public function update(User $user, SecondProcessReport $report): Response
     {
+        if (! $user->can('second-process-reports')) {
+            return Response::deny('You do not have permission to edit Second Process daily reports.');
+        }
+
         $isAdmin = $user->hasRole('SUPER-ADMIN') || $user->hasRole('ADMIN');
         if ($isAdmin) {
             return Response::allow();
@@ -75,6 +79,10 @@ class SecondProcessReportPolicy
      */
     public function delete(User $user, SecondProcessReport $report): Response
     {
+        if (! $user->can('second-process-reports')) {
+            return Response::deny('You do not have permission to delete Second Process daily reports.');
+        }
+
         if ($user->hasRole('SUPER-ADMIN') || $user->hasRole('ADMIN') || $user->canSign('second_process', 'acknowledged')) {
             return Response::allow();
         }
