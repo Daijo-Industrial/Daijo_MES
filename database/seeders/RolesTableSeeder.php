@@ -17,18 +17,23 @@ class RolesTableSeeder extends Seeder
         Schema::disableForeignKeyConstraints();
         Role::truncate();
         Schema::enableForeignKeyConstraints();
+        Role::create(['name' => 'SUPER-ADMIN']);
         Role::create(['name' => 'ADMIN']);
         Role::create(['name' => 'WORKSHOP']);
         Role::create(['name' => 'WAREHOUSE']);
         Role::create(['name' => 'OPERATOR']);
+        Role::create(['name' => 'CHECKER']);
+        Role::create(['name' => 'LEADER']);
+        Role::create(['name' => 'SUPERVISOR']);
+        Role::create(['name' => 'QUALITY']);
         Role::create(['name' => 'PE']);
         Role::create(['name' => 'STORE']);
         Role::create(['name' => 'PPIC']);
         Role::create(['name' => 'MAINTENANCE']);
-        Role::create(['name' => 'SECONDPROCESS']);
-        Role::create(['name' => 'ASSEMBLYPROCESS']);
-        Role::create(['name' => 'BUSINESS']);
+        Role::create(['name' => 'MOULD-MAINTENANCE-LEADER']);
         Role::create(['name' => 'PRODUCTION']);
+        Role::create(['name' => 'BUSINESS']);
+        Role::create(['name' => 'ASSEMBLYPROCESS']);
 
     }
 }

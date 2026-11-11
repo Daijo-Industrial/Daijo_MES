@@ -618,15 +618,6 @@ class UsersTableSeeder extends Seeder
                 'updated_at' => $timestamp,
             ],
             [
-                'role_id' => Role::where('name', 'SECONDPROCESS')->first()->id,
-                'name' => 'secondprocess',
-                'email' => 'secondprocess@daijo.co.id',
-                'password' => Hash::make('secondprocess1234'),
-                'remember_token' => null,
-                'created_at' => $timestamp,
-                'updated_at' => $timestamp,
-            ],
-            [
                 'role_id' => Role::where('name', 'ASSEMBLYPROCESS')->first()->id,
                 'name' => 'assemblyprocess',
                 'email' => 'assemblyprocess@daijo.co.id',

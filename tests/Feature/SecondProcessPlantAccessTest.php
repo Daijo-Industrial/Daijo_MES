@@ -19,7 +19,7 @@ class SecondProcessPlantAccessTest extends TestCase
 
     protected Role $adminRole;
 
-    protected Role $spRole;
+    protected Role $leaderRole;
 
     protected Role $ppicRole;
 
@@ -41,7 +41,7 @@ class SecondProcessPlantAccessTest extends TestCase
 
         $this->superAdminRole = Role::firstOrCreate(['name' => 'SUPER-ADMIN']);
         $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
-        $this->spRole = Role::firstOrCreate(['name' => 'SECONDPROCESS']);
+        $this->leaderRole = Role::firstOrCreate(['name' => 'LEADER']);
         $this->ppicRole = Role::firstOrCreate(['name' => 'PPIC']);
         $this->prodRole = Role::firstOrCreate(['name' => 'PRODUCTION']);
 
@@ -114,12 +114,12 @@ class SecondProcessPlantAccessTest extends TestCase
     }
 
     /**
-     * Second Process staff at Jakarta Plant can access Work Orders and Reports.
+     * Second Process staff at Jakarta Plant can access Work Orders and Reports using standardized role (LEADER).
      */
     public function test_second_process_user_in_jakarta_can_access_sp_ops_and_reports(): void
     {
         $spUser = User::factory()->create([
-            'role_id' => $this->spRole->id,
+            'role_id' => $this->leaderRole->id,
             'branch_id' => $this->jakartaBranch->id,
             'department_id' => $this->spDept->id,
         ]);
@@ -173,7 +173,7 @@ class SecondProcessPlantAccessTest extends TestCase
     public function test_karawang_user_is_forbidden_from_all_sp_routes(): void
     {
         $krwUser = User::factory()->create([
-            'role_id' => $this->spRole->id, // Even if role is SP
+            'role_id' => $this->leaderRole->id, // Even with standardized SP role (LEADER)
             'branch_id' => $this->karawangBranch->id,
             'department_id' => $this->spDept->id,
         ]);
