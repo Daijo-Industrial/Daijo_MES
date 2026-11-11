@@ -357,8 +357,8 @@ new class extends Component {
 
             <!-- High-level System Administration Links -->
             @if (auth()->user()?->can('manage-users-roles'))
-                <livewire:sidebar-link href="{{ route('admin.user-role-manager') }}" label="User & Role Management"
-                    :active="request()->routeIs('admin.user-role-manager')" wire:navigate />
+                <livewire:sidebar-link href="{{ route('admin.access-management') }}" label="Access Management"
+                    :active="request()->routeIs('admin.access-management') || request()->routeIs('admin.user-role-manager')" wire:navigate />
                 <livewire:sidebar-link href="{{ route('admin.activity-logs') }}" label="User Activity & Audit Logs"
                     :active="request()->routeIs('admin.activity-logs')" wire:navigate />
             @endif

@@ -53,6 +53,15 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
    - Tabel desktop (layar `>= xl`) yang berada di dalam layout bersidebar (`lg:pl-64` / 256px) tidak boleh memiliki horizontal scrollbar pada resolusi standar (1280px / 1366px).
    - JANGAN menggunakan batas minimum paksa seperti `min-w-[1000px]`.
    - Gunakan `<table class="w-full table-fixed ...">` dengan persentase lebar kolom yang terukur pas (total 100%) dan padding sel kompak (`px-2 py-3` / `px-1.5`).
+6. **Strict Visual Anti-Pattern Bans (Enterprise Control)**:
+   - **Zero Decorative Emojis**: DILARANG keras menggunakan emoji dekoratif (seperti `✓`, `⏳`, `⛔`, `📋`, `📝`, `🔧`) atau simbol panah teks (`→`, `←`) pada header, status, atau tabel.
+   - **Zero Purple/Violet Pastels**: Hindari gradasi atau aksen ungu/violet/indigo (`violet-*`, `purple-*`, `indigo-*`). Gunakan palet industrial berkontras tinggi (monochrome zinc/slate + status aksen fungsional emerald/rose).
+   - **Zero Sparkly / Shiny Badges**: DILARANG menggunakan pill bulat pastel dengan titik indikator menyala/berkedip. Gunakan tag status berteks tegas dan rapi (`Active`, `Inactive`, `System`, `Custom`).
+7. **Simple, Plain English & Direct Copy**:
+   - Gunakan terminologi aplikasi yang standar, jelas, dan umum dikenal (`Access Management`, `Users`, `Roles`, `Permissions`, `Permission Matrix`, `Add User`, `Add Role`, `Active`, `Inactive`, `Save`, `Cancel`).
+   - DILARANG menggunakan jargon sci-fi/aerospace berlebihan (misal: "POLICY ENFORCEMENT: ACTIVE", "GATE COMMIT", "AUDIT PLANE") maupun template marketing fluff.
+8. **Single Source of Truth Navigation (No Redundant Switchers)**:
+   - Jika halaman induk sudah memiliki segmented navigation bar (seperti `tab=users`, `tab=roles`, `tab=permissions`, `tab=matrix`), komponen anak DILARANG membuat toolbar switcher sekunder yang menduplikasi navigasi tersebut.
 
 ## Database Migrations & Livewire Reactivity Invariant
 1. **Dedicated Alter Migrations**:
@@ -62,6 +71,8 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
    - Jika suatu input formulir mempengaruhi teks ringkasan, indikator rentang (misal tanggal mulai - selesai), atau badge status di bagian lain view, input tersebut WAJIB menggunakan `wire:model.live`. Penggunaan binding biasa (deferred) akan menyebabkan UI tidak reaktif hingga event lain terpicu.
 3. **No Unfinished Placeholder Logic**:
    - Dilarang meninggalkan string placeholder atau potongan logika setengah jadi (seperti string mentah `+hari`). Seluruh logika kalkulasi interval waktu, selisih hari, dan rentang tanggal wajib diimplementasikan tuntas dan teruji.
+4. **Livewire Single-Root Element Invariant**:
+   - Setiap view komponen Livewire WAJIB mempertahankan tepat 1 elemen root HTML pembungkus (tanpa ada tag `</div>` penutup prematur di dalam percabangan `@if`).
 
 ---
 
@@ -366,10 +377,24 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
       - Batch actions: `expandAll` and `collapseAll` on active page.
       - Quick filters: search (SPK no, item code, description), status (R, P, C), and BOM status (`with_bom`, `without_bom`).
 
-8. **User & Role Permissions Management (`RoleManager`, `Permission`, `Role`, `role_permissions`)**:
-   - Authorized users with `manage-users-roles` or `SUPER-ADMIN` can CRUD roles and assign/unassign granular permissions via `/user-role-manager?tab=roles`.
+8. **Access Management & RBAC Suite (`AccessManagement`, `/access-management`)**:
+   - **Route Architecture**:
+     - Canonical route: `GET /access-management` (`admin.access-management`).
+     - Legacy alias: `GET /user-role-manager` (`admin.user-role-manager`).
+   - **Four-Pillar Architecture**:
+     1. **Users (`tab=users`, `UserRoleManager`)**: User account credentials, plant/branch and department scope assignment, password reset, and active/deleted lifecycle status.
+     2. **Roles (`tab=roles`, `RoleManager`)**: System and custom roles directory, user associations, and role permission configuration via dedicated modals.
+     3. **Permissions (`tab=permissions`, `PermissionManager`)**:
+        - **Immutable Identifier (`name`)**: `permissions.name` (e.g. `second-process-reports`) is strictly read-only and cannot be edited because application gates and policies depend on it.
+        - **No Create / Delete via UI**: Permissions cannot be added or deleted by administrators via the web interface.
+        - **Editable Attributes**: Administrators can only edit human-readable `label`, `group` (module grouping), and `description`.
+     4. **Permission Matrix (`tab=matrix`, `RoleManager`)**:
+        - **Strictly Read-Only Reference Plane**: The 2D permission matrix is purely an audit and inspection reference grid.
+        - **Zero Direct Mutation**: Never place `wire:click` toggle buttons or batch grant/revoke actions directly inside the 2D matrix table cells to prevent accidental permission flips.
+        - **Deliberate Role Configuration**: Permission changes must be executed deliberately from the `Roles` directory via the role permission configuration modal (`manage-permissions-modal`) requiring an explicit commit action.
    - **Database Architecture**:
      - `permissions`: `[id, name, label, group, description]`.
+     - `roles`: `[id, name, permissions_configured]`.
      - `role_permissions`: pivot `[role_id, permission_id]`.
      - `roles.permissions_configured`: boolean flag distinguishing configured roles from legacy/unconfigured test fixtures, preserving 100% backward compatibility.
    - **Gate Evaluation**: Dynamic evaluation in `AuthServiceProvider` and `User::hasPermission()`. `SUPER-ADMIN` retains root access via `Gate::before`.

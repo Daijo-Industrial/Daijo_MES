@@ -63,7 +63,16 @@ Route::delete('/dailyitemcodesdelete/{id}', [DashboardController::class, 'delete
 // AUTHENTICATED ADMIN & SETTING ROUTES
 // ============================================
 Route::middleware('auth')->group(function () {
-    // Role, permissions, branches & departments
+    // Access Management (Users, Roles, Permissions, and Matrix)
+    Route::get('/access-management', function () {
+        if (Gate::denies('manage-users-roles')) {
+            abort(403);
+        }
+        $currentTab = request()->query('tab', 'users');
+
+        return view('admin.user_role_manager.index', compact('currentTab'));
+    })->name('admin.access-management');
+
     Route::get('/user-role-manager', function () {
         if (Gate::denies('manage-users-roles')) {
             abort(403);
