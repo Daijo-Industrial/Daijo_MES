@@ -8,7 +8,7 @@
                 </svg>
                 Tersimpan di Sesi
                 @if ($savedAt)
-                    <span class="text-emerald-700/80 font-normal">({{ \Illuminate\Support\Carbon::parse($savedAt)->format('H:i:s') }})</span>
+                    <span class="text-emerald-700/80 font-normal">({{ \Illuminate\Support\Carbon::parse($savedAt)->setTimezone('Asia/Jakarta')->format('H:i:s \W\I\B') }})</span>
                 @endif
             </span>
         @else
@@ -26,7 +26,7 @@
     </div>
 
     {{-- 1. General & Logistics Information --}}
-    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative">
         <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
             <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
@@ -85,7 +85,7 @@
     </div>
 
     {{-- 2. Part Number Search & Minimized Specification View --}}
-    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative z-20">
         <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
@@ -124,7 +124,7 @@
 
                 {{-- Dropdown Results --}}
                 @if ($show_part_dropdown && !empty($searchResults))
-                    <div class="absolute left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-xl max-h-64 overflow-y-auto z-30 divide-y divide-zinc-100"
+                    <div class="absolute left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-xl max-h-64 overflow-y-auto z-50 divide-y divide-zinc-100"
                          x-show="openPartDropdown"
                          x-transition.opacity>
                         @forelse ($searchResults as $item)
@@ -274,7 +274,7 @@
     </div>
 
     {{-- 3. Mesin & Personil (Active Standard Editable Inputs) --}}
-    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative z-10">
         <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
             <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
@@ -306,7 +306,7 @@
 
                 {{-- Machine Options Dropdown --}}
                 @if ($show_machine_dropdown && !empty($machineOptions))
-                    <div class="absolute left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-xl max-h-56 overflow-y-auto z-30 divide-y divide-zinc-100"
+                    <div class="absolute left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-xl max-h-56 overflow-y-auto z-50 divide-y divide-zinc-100"
                          x-show="openMachineDropdown"
                          x-transition.opacity>
                         @forelse ($machineOptions as $machineName)

@@ -83,6 +83,44 @@ class StepSecond extends Component
     public function updated($field): void
     {
         $this->validateOnly($field);
+        $this->autoSave();
+    }
+
+    public function updatedSkipLotSize($value): void
+    {
+        if ($value) {
+            $this->lot_size_quantity = null;
+            $this->resetValidation('lot_size_quantity');
+        }
+        $this->autoSave();
+    }
+
+    public function setSkipLotSize(bool $skip): void
+    {
+        $this->skipLotSize = $skip;
+        if ($skip) {
+            $this->lot_size_quantity = null;
+            $this->resetValidation('lot_size_quantity');
+        }
+        $this->autoSave();
+    }
+
+    public function autoSave(): void
+    {
+        if ($this->skipLotSize || (! empty($this->lot_size_quantity) && is_numeric($this->lot_size_quantity))) {
+            $data = [
+                'detail_inspection_report_document_number' => $this->detail_inspection_report_document_number,
+                'document_number' => $this->document_number,
+                'lot_size_quantity' => $this->skipLotSize ? null : $this->lot_size_quantity,
+                'skipLotSize' => $this->skipLotSize,
+            ];
+
+            session()->put("stepDetailSaved.second_inspections.{$this->periodKey}", $data);
+            $this->sessionSaved = $data;
+            $this->isSaved = true;
+            $this->secondInspectionSaved = true;
+            $this->dispatch('secondInspectionSaved')->to(StepDetail::class);
+        }
     }
 
     public function mount($detail_inspection_report_document_number = null): void

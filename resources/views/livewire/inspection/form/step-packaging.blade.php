@@ -20,8 +20,8 @@
                 <tr>
                     <th class="px-2 py-2">No</th>
                     <th class="px-3 py-2 text-left">Label Box / No Box</th>
-                    <th class="px-3 py-2">SNP (Standard Packaging Qty)</th>
-                    <th class="px-2 py-2">Judgement</th>
+                    <th class="px-3 py-2 text-center">SNP (Standard Packaging Qty)</th>
+                    <th class="px-2 py-2 text-center">Judgement</th>
                     <th class="px-3 py-2 text-left">Remarks</th>
                     <th class="px-2 py-2 w-8">Aksi</th>
                 </tr>
@@ -37,18 +37,27 @@
                                    placeholder="Contoh: BOX-01 / Lot #1"
                                    class="w-full text-xs rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 @error('packagings.'.$i.'.box_label') border-rose-300 bg-rose-50 @enderror">
                         </td>
-                        <td class="px-2 py-1.5">
-                            <input type="number"
-                                   wire:model.blur="packagings.{{ $i }}.snp"
-                                   placeholder="Qty SNP per box"
-                                   class="w-32 text-xs font-mono text-center rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 @error('packagings.'.$i.'.snp') border-rose-300 bg-rose-50 @enderror">
+                        <td class="px-2 py-1.5 text-center">
+                            <div class="flex justify-center">
+                                <input type="number"
+                                       wire:model.blur="packagings.{{ $i }}.snp"
+                                       placeholder="Qty SNP"
+                                       class="w-32 text-xs font-mono text-center rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 @error('packagings.'.$i.'.snp') border-rose-300 bg-rose-50 @enderror">
+                            </div>
                         </td>
                         <td class="px-2 py-1.5 text-center">
-                            <select wire:model.live="packagings.{{ $i }}.judgement"
-                                    class="text-xs font-bold rounded py-1.5 px-2 border-zinc-300 {{ ($row['judgement'] ?? '') === 'OK' ? 'text-emerald-800 bg-emerald-50' : 'text-rose-800 bg-rose-50' }}">
-                                <option value="OK">OK</option>
-                                <option value="NG">NG</option>
-                            </select>
+                            <div class="inline-flex rounded-md border border-zinc-300 p-0.5 bg-zinc-100 shadow-sm">
+                                <button type="button"
+                                        wire:click="setJudgement({{ $i }}, 'OK')"
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded transition {{ ($row['judgement'] ?? '') === 'OK' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                                    OK
+                                </button>
+                                <button type="button"
+                                        wire:click="setJudgement({{ $i }}, 'NG')"
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded transition {{ ($row['judgement'] ?? '') === 'NG' ? 'bg-rose-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                                    NG
+                                </button>
+                            </div>
                         </td>
                         <td class="px-2 py-1.5">
                             <input type="text"
@@ -59,8 +68,9 @@
                         <td class="px-2 py-1.5 text-center">
                             <button type="button"
                                     wire:click="removePackaging({{ $i }})"
-                                    class="text-rose-500 hover:text-rose-700 p-1 font-bold">
-                                ✕
+                                    title="Hapus baris"
+                                    class="text-rose-500 hover:text-rose-700 p-1 text-xs font-semibold">
+                                Hapus
                             </button>
                         </td>
                     </tr>

@@ -55,12 +55,25 @@ class StepFirst extends Component
     public function updated($property): void
     {
         $this->validateOnly($property);
+        $this->autoSave();
     }
 
     public function updatedAppearance($value): void
     {
         if ($value !== 'NG') {
             $this->remarks = null;
+        }
+        $this->autoSave();
+    }
+
+    public function autoSave(): void
+    {
+        if (! empty($this->appearance) && $this->weight !== null && $this->weight !== '') {
+            $data = $this->snapshot();
+            session()->put("stepDetailSaved.first_inspections.{$this->periodKey}", $data);
+            $this->sessionSaved = $data;
+            $this->isSaved = true;
+            $this->dispatch('firstInspectionSaved')->to(StepDetail::class);
         }
     }
 
