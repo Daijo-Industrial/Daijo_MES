@@ -24,6 +24,19 @@ class StepJudgement extends Component
 
     public bool $isSaved = false;
 
+    protected $listeners = [
+        'triggerSubcomponentSave' => 'handleSaveTrigger',
+    ];
+
+    public function handleSaveTrigger(?string $periodKey = null): void
+    {
+        if ($periodKey === null || $periodKey === $this->periodKey) {
+            if ($this->pass_quantity !== null && $this->reject_quantity !== null) {
+                $this->saveStep();
+            }
+        }
+    }
+
     protected $rules = [
         'detail_inspection_report_document_number' => 'required|string',
         'pass_quantity' => 'required|integer|min:0',

@@ -38,6 +38,19 @@ class StepDimension extends Component
 
     public bool $isSaved = false;
 
+    protected $listeners = [
+        'triggerSubcomponentSave' => 'handleSaveTrigger',
+    ];
+
+    public function handleSaveTrigger(?string $periodKey = null): void
+    {
+        if ($periodKey === null || $periodKey === $this->periodKey) {
+            if (! empty($this->dimensions)) {
+                $this->saveStep();
+            }
+        }
+    }
+
     protected function norm($v)
     {
         return $v === '' ? null : $v;

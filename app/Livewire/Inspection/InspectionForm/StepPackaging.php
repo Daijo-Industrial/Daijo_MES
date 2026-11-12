@@ -25,6 +25,19 @@ class StepPackaging extends Component
 
     public bool $isSaved = false;
 
+    protected $listeners = [
+        'triggerSubcomponentSave' => 'handleSaveTrigger',
+    ];
+
+    public function handleSaveTrigger(?string $periodKey = null): void
+    {
+        if ($periodKey === null || $periodKey === $this->periodKey) {
+            if (! empty($this->packagings)) {
+                $this->saveStep();
+            }
+        }
+    }
+
     protected $rules = [
         'packagings.*.second_inspection_document_number' => 'required|string',
         'packagings.*.snp' => 'required|integer|min:1',

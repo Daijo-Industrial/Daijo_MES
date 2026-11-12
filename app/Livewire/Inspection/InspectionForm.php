@@ -21,6 +21,7 @@ class InspectionForm extends Component
         'stepProblemSaved' => 'markStepFilled',
         'stepFinalSubmit' => 'markStepFilled',
         'nextStep' => 'nextStep',
+        'prevStep' => 'prevStep',
         'setStep' => 'setStep',
     ];
 
@@ -63,6 +64,14 @@ class InspectionForm extends Component
     {
         if ($this->currentStep < count($this->stepSessionKeys)) {
             $this->currentStep++;
+            session(['lastStepVisited' => $this->currentStep]);
+        }
+    }
+
+    public function prevStep(): void
+    {
+        if ($this->currentStep > 1) {
+            $this->currentStep--;
             session(['lastStepVisited' => $this->currentStep]);
         }
     }

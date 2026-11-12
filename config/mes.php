@@ -255,6 +255,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | IPQC Inspection Default Inspectors
+    |--------------------------------------------------------------------------
+    |
+    | Configurable list of qualified IPQC inspectors for plastic injection inspection.
+    |
+    */
+    'ipqc_inspectors' => [
+        'Dewi',
+        'Rini',
+        'Agus',
+        'Budi',
+        'Siti',
+        'Wahyu',
+        'Rina',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Second Process Default Target NG Rate (%)
     |--------------------------------------------------------------------------
     |

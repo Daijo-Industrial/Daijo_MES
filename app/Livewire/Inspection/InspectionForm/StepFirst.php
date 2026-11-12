@@ -30,6 +30,19 @@ class StepFirst extends Component
 
     public bool $isSaved = false;
 
+    protected $listeners = [
+        'triggerSubcomponentSave' => 'handleSaveTrigger',
+    ];
+
+    public function handleSaveTrigger(?string $periodKey = null): void
+    {
+        if ($periodKey === null || $periodKey === $this->periodKey) {
+            if (! empty($this->appearance) && ! empty($this->weight)) {
+                $this->saveStep();
+            }
+        }
+    }
+
     protected $rules = [
         'detail_inspection_report_document_number' => 'required|string',
         'appearance' => 'required|in:OK,NG',
