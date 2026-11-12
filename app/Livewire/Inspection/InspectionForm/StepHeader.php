@@ -19,6 +19,10 @@ class StepHeader extends Component
 
     public $customer;
 
+    public string $customer_search = '';
+
+    public bool $show_customer_dropdown = false;
+
     public $inspection_date;
 
     public $part_number;
@@ -184,6 +188,10 @@ class StepHeader extends Component
             $this->machine_search = $this->machine_number;
         }
 
+        if (! empty($this->customer)) {
+            $this->customer_search = $this->customer;
+        }
+
         if (! empty($this->part_number)) {
             $this->part_search = $this->part_number;
         }
@@ -191,6 +199,11 @@ class StepHeader extends Component
 
     public function updated($field): void
     {
+        if ($field === 'customer_search') {
+            $this->show_customer_dropdown = true;
+            $this->customer = trim($this->customer_search);
+        }
+
         if ($field === 'operator' && is_string($this->operator)) {
             $this->operator = strtoupper(trim($this->operator));
         }
@@ -251,6 +264,7 @@ class StepHeader extends Component
             $this->part_name = $item->item_name;
 
             $this->customer = $item->customer?->customer_name ?: ($item->businessPartner?->bp_name ?: 'N/A');
+            $this->customer_search = $this->customer;
 
             if (! empty($item->color)) {
                 $this->color = $item->color;
@@ -276,6 +290,19 @@ class StepHeader extends Component
         $this->show_part_dropdown = false;
     }
 
+    public function selectCustomer(string $name): void
+    {
+        $this->customer = $name;
+        $this->customer_search = $name;
+        $this->show_customer_dropdown = false;
+        $this->validateOnly('customer');
+    }
+
+    public function closeCustomerDropdown(): void
+    {
+        $this->show_customer_dropdown = false;
+    }
+
     public function selectMachine(string $machineName): void
     {
         $this->machine_number = strtoupper($machineName);
@@ -296,6 +323,9 @@ class StepHeader extends Component
 
     public function saveStep(): void
     {
+        if (! empty($this->customer_search) && empty($this->customer)) {
+            $this->customer = trim($this->customer_search);
+        }
         if (! empty($this->operator)) {
             $this->operator = strtoupper(trim($this->operator));
         }
@@ -338,11 +368,20 @@ class StepHeader extends Component
                 ->get();
         }
 
-        // All active business partners in CUSTOMER category
-        $customerList = MasterBusinessPartner::customers()
-            ->select('bp_code', 'bp_name')
+        // Pull distinct values of master_business_partners.bp_name
+        $distinctCustomers = MasterBusinessPartner::query()
+            ->whereNotNull('bp_name')
+            ->where('bp_name', '!=', '')
+            ->distinct()
             ->orderBy('bp_name')
-            ->get();
+            ->pluck('bp_name')
+            ->toArray();
+
+        $filteredCustomers = $distinctCustomers;
+        if (! empty(trim($this->customer_search))) {
+            $searchUpper = strtoupper(trim($this->customer_search));
+            $filteredCustomers = array_values(array_filter($distinctCustomers, fn ($c) => str_contains(strtoupper($c), $searchUpper)));
+        }
 
         // Machine list sourced from Users with role OPERATOR merged with MasterMachine
         $operatorUsers = User::whereHas('role', fn ($q) => $q->where('name', 'OPERATOR'))
@@ -380,7 +419,7 @@ class StepHeader extends Component
         }
 
         return view('livewire.inspection.form.step-header', [
-            'customerList' => $customerList,
+            'customerOptions' => $filteredCustomers,
             'searchResults' => $searchResults,
             'machineOptions' => $filteredMachines,
             'inspectorOptions' => $configuredInspectors,

@@ -1,4 +1,4 @@
-<div class="space-y-6" x-data="{ openPartDropdown: @entangle('show_part_dropdown'), openMachineDropdown: @entangle('show_machine_dropdown') }">
+<div class="space-y-6" x-data="{ openPartDropdown: @entangle('show_part_dropdown'), openCustomerDropdown: @entangle('show_customer_dropdown'), openMachineDropdown: @entangle('show_machine_dropdown') }">
     {{-- Header Status Bar --}}
     <div class="flex items-center justify-between">
         @if ($isSaved)
@@ -25,77 +25,21 @@
         </span>
     </div>
 
-    {{-- 1. General & Logistics Information --}}
-    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative">
-        <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
-            <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
-                1. General Information
-            </h2>
-            <span class="text-xs text-zinc-500">Tanggal, Customer & Shift</span>
-        </div>
-        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Tanggal Inspeksi <span class="text-rose-600">*</span>
-                </label>
-                <input type="date"
-                       wire:model.blur="inspection_date"
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('inspection_date') border-rose-300 bg-rose-50/50 @enderror">
-                @error('inspection_date')
-                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Customer (Master Business Partner) <span class="text-rose-600">*</span>
-                </label>
-                <input type="text"
-                       list="customerList"
-                       wire:model.blur="customer"
-                       placeholder="Cari atau pilih Customer..."
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('customer') border-rose-300 bg-rose-50/50 @enderror">
-                <datalist id="customerList">
-                    @foreach ($customerList as $cust)
-                        <option value="{{ $cust->bp_name }}">[{{ $cust->bp_code }}] {{ $cust->bp_name }}</option>
-                    @endforeach
-                </datalist>
-                @error('customer')
-                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Shift Produksi <span class="text-rose-600">*</span>
-                </label>
-                <select wire:model.live="shift"
-                        class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('shift') border-rose-300 bg-rose-50/50 @enderror">
-                    <option value="">-- Pilih Shift --</option>
-                    <option value="1">Shift 1 (07:30 - 15:30)</option>
-                    <option value="2">Shift 2 (15:30 - 23:30)</option>
-                    <option value="3">Shift 3 (23:30 - 07:30)</option>
-                </select>
-                @error('shift')
-                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
-    </div>
-
-    {{-- 2. Part Number Search & Minimized Specification View --}}
-    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative z-20">
+    {{-- Top Section: Prominent Part Search & Auto-Filled Specifications --}}
+    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative z-30">
         <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex flex-wrap items-center justify-between gap-2">
-            <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
-                2. Part Number & Spesifikasi
-            </h2>
+            <div>
+                <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
+                    Pilih Part & Spesifikasi
+                </h2>
+                <p class="text-xs text-zinc-500 mt-0.5">Pilih part untuk mengisi spesifikasi, customer, dan parameter secara otomatis.</p>
+            </div>
             @if (!empty($part_number))
                 <button type="button"
                         wire:click="toggleManualSpecs"
                         class="px-2.5 py-1 text-xs font-semibold text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-100 rounded-lg shadow-sm transition">
-                    {{ $showManualSpecs ? 'Kunci / Minimized View' : 'Ubah Manual' }}
+                    {{ $showManualSpecs ? 'Kunci / Minimized View' : 'Ubah Spesifikasi Manual' }}
                 </button>
             @endif
         </div>
@@ -104,7 +48,7 @@
             {{-- Prominent Searchable Part Number Input --}}
             <div class="relative" @click.away="openPartDropdown = false">
                 <label class="block text-xs font-semibold text-zinc-800 mb-1.5">
-                    Cari & Pilih Part Number (Master List Item) <span class="text-rose-600">*</span>
+                    Cari Part Number / Part Name <span class="text-rose-600">*</span>
                 </label>
                 <div class="relative">
                     <input type="text"
@@ -273,12 +217,99 @@
         </div>
     </div>
 
-    {{-- 3. Mesin & Personil (Active Standard Editable Inputs) --}}
+    {{-- 1. General & Logistics Information --}}
+    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative z-20">
+        <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
+                1. General Information
+            </h2>
+            <span class="text-xs text-zinc-500">Tanggal, Customer & Shift</span>
+        </div>
+        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div>
+                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                    Tanggal Inspeksi <span class="text-rose-600">*</span>
+                </label>
+                <input type="date"
+                       wire:model.blur="inspection_date"
+                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('inspection_date') border-rose-300 bg-rose-50/50 @enderror">
+                @error('inspection_date')
+                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- Searchable Customer Dropdown (Distinct bp_name) --}}
+            <div class="relative" @click.away="openCustomerDropdown = false">
+                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                    Customer <span class="text-rose-600">*</span>
+                </label>
+                <div class="relative">
+                    <input type="text"
+                           wire:model.live.debounce.150ms="customer_search"
+                           @focus="openCustomerDropdown = true"
+                           placeholder="Ketik atau pilih Customer..."
+                           class="w-full rounded-lg border-zinc-300 font-semibold text-sm focus:border-zinc-900 focus:ring-zinc-900 pr-9 min-h-[42px] @error('customer') border-rose-300 bg-rose-50/50 @enderror">
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-zinc-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                </div>
+
+                {{-- Hidden input keeping customer validated --}}
+                <input type="hidden" wire:model="customer">
+
+                @if ($show_customer_dropdown && !empty($customerOptions))
+                    <div class="absolute left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-xl max-h-56 overflow-y-auto z-50 divide-y divide-zinc-100"
+                         x-show="openCustomerDropdown"
+                         x-transition.opacity>
+                        @forelse ($customerOptions as $custName)
+                            <button type="button"
+                                    wire:click="selectCustomer('{{ addslashes($custName) }}')"
+                                    class="w-full px-3.5 py-2 text-left hover:bg-zinc-100 transition flex items-center justify-between text-xs font-semibold text-zinc-900">
+                                <span>{{ $custName }}</span>
+                                @if (strtoupper($customer) === strtoupper($custName))
+                                    <span class="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Terpilih</span>
+                                @endif
+                            </button>
+                        @empty
+                            <div class="p-3 text-xs text-zinc-500 text-center">
+                                Tekan Enter untuk gunakan nama customer yang diketik.
+                            </div>
+                        @endforelse
+                    </div>
+                @endif
+
+                @error('customer')
+                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                    Shift Produksi <span class="text-rose-600">*</span>
+                </label>
+                <select wire:model.live="shift"
+                        class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('shift') border-rose-300 bg-rose-50/50 @enderror">
+                    <option value="">-- Pilih Shift --</option>
+                    <option value="1">Shift 1 (07:30 - 15:30)</option>
+                    <option value="2">Shift 2 (15:30 - 23:30)</option>
+                    <option value="3">Shift 3 (23:30 - 07:30)</option>
+                </select>
+                @error('shift')
+                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+    </div>
+
+    {{-- 2. Mesin & Personil (Active Standard Editable Inputs) --}}
     <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative z-10">
         <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
             <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
-                3. Mesin & Personil
+                2. Mesin & Personil
             </h2>
             <span class="text-xs text-zinc-500">Nomor Mesin, Operator & Inspector</span>
         </div>
