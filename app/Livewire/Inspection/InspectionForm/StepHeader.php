@@ -3,8 +3,11 @@
 namespace App\Livewire\Inspection\InspectionForm;
 
 use App\Models\Inspection\InspectionReport;
+use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterListItem;
+use App\Models\MasterMachine;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -24,6 +27,8 @@ class StepHeader extends Component
 
     public bool $show_part_dropdown = false;
 
+    public bool $showManualSpecs = false;
+
     public $part_name;
 
     public $weight;
@@ -37,6 +42,10 @@ class StepHeader extends Component
     public $tool_number_or_cav_number;
 
     public $machine_number;
+
+    public string $machine_search = '';
+
+    public bool $show_machine_dropdown = false;
 
     public $shift;
 
@@ -85,8 +94,8 @@ class StepHeader extends Component
             'tool_number_or_cav_number' => $this->tool_number_or_cav_number,
             'machine_number' => $this->machine_number,
             'shift' => $this->shift,
-            'operator' => $this->operator,
-            'inspector' => $this->inspector,
+            'operator' => strtoupper(trim((string) $this->operator)),
+            'inspector' => strtoupper(trim((string) $this->inspector)),
         ];
     }
 
@@ -154,8 +163,25 @@ class StepHeader extends Component
         if (empty($this->inspector)) {
             $user = auth()->user();
             if ($user && ! empty($user->name)) {
-                $this->inspector = $user->name;
+                $this->inspector = strtoupper($user->name);
             }
+        } else {
+            $this->inspector = strtoupper(trim((string) $this->inspector));
+        }
+
+        if (! empty($this->operator)) {
+            $this->operator = strtoupper(trim((string) $this->operator));
+        }
+
+        // Detect machine from user if role is OPERATOR
+        if (empty($this->machine_number)) {
+            $user = auth()->user();
+            if ($user && $user->hasRole('OPERATOR')) {
+                $this->machine_number = strtoupper($user->name);
+                $this->machine_search = $this->machine_number;
+            }
+        } else {
+            $this->machine_search = $this->machine_number;
         }
 
         if (! empty($this->part_number)) {
@@ -165,11 +191,24 @@ class StepHeader extends Component
 
     public function updated($field): void
     {
-        $this->validateOnly($field);
+        if ($field === 'operator' && is_string($this->operator)) {
+            $this->operator = strtoupper(trim($this->operator));
+        }
+
+        if ($field === 'inspector' && is_string($this->inspector)) {
+            $this->inspector = strtoupper(trim($this->inspector));
+        }
+
+        if ($field === 'machine_search') {
+            $this->show_machine_dropdown = true;
+            $this->machine_number = strtoupper(trim($this->machine_search));
+        }
 
         if ($field === 'part_search') {
             $this->show_part_dropdown = ! empty(trim($this->part_search));
         }
+
+        $this->validateOnly($field);
 
         if ($field === 'part_number' && ! empty($this->part_number)) {
             $item = MasterListItem::with(['customer', 'businessPartner'])
@@ -227,6 +266,7 @@ class StepHeader extends Component
             }
 
             $this->show_part_dropdown = false;
+            $this->showManualSpecs = false;
             $this->resetValidation(['part_number', 'part_name', 'customer']);
         }
     }
@@ -236,8 +276,36 @@ class StepHeader extends Component
         $this->show_part_dropdown = false;
     }
 
+    public function selectMachine(string $machineName): void
+    {
+        $this->machine_number = strtoupper($machineName);
+        $this->machine_search = $this->machine_number;
+        $this->show_machine_dropdown = false;
+        $this->validateOnly('machine_number');
+    }
+
+    public function closeMachineDropdown(): void
+    {
+        $this->show_machine_dropdown = false;
+    }
+
+    public function toggleManualSpecs(): void
+    {
+        $this->showManualSpecs = ! $this->showManualSpecs;
+    }
+
     public function saveStep(): void
     {
+        if (! empty($this->operator)) {
+            $this->operator = strtoupper(trim($this->operator));
+        }
+        if (! empty($this->inspector)) {
+            $this->inspector = strtoupper(trim($this->inspector));
+        }
+        if (! empty($this->machine_search)) {
+            $this->machine_number = strtoupper(trim($this->machine_search));
+        }
+
         $this->validate();
 
         $data = $this->snapshot();
@@ -270,23 +338,51 @@ class StepHeader extends Component
                 ->get();
         }
 
-        $customerSuggestions = MasterCustomerDelivery::query()
-            ->select('customer_name')
-            ->distinct()
-            ->orderBy('customer_name')
-            ->limit(30)
-            ->pluck('customer_name')
+        // All active business partners in CUSTOMER category
+        $customerList = MasterBusinessPartner::customers()
+            ->select('bp_code', 'bp_name')
+            ->orderBy('bp_name')
+            ->get();
+
+        // Machine list sourced from Users with role OPERATOR merged with MasterMachine
+        $operatorUsers = User::whereHas('role', fn ($q) => $q->where('name', 'OPERATOR'))
+            ->orderBy('name')
+            ->pluck('name')
             ->toArray();
 
+        $masterMachines = MasterMachine::query()
+            ->when(method_exists(MasterMachine::class, 'scopeActive'), fn ($q) => $q->active(), fn ($q) => $q->where('is_active', true))
+            ->pluck('name')
+            ->toArray();
+
+        $machineList = collect(array_merge($operatorUsers, $masterMachines))
+            ->filter()
+            ->map(fn ($m) => strtoupper(trim((string) $m)))
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+
+        $filteredMachines = $machineList;
+        if (! empty(trim($this->machine_search))) {
+            $searchUpper = strtoupper(trim($this->machine_search));
+            $filteredMachines = array_values(array_filter($machineList, fn ($m) => str_contains($m, $searchUpper)));
+        }
+
         $configuredInspectors = (array) config('mes.ipqc_inspectors', ['Dewi', 'Rini', 'Agus', 'Budi', 'Siti', 'Wahyu', 'Rina']);
+        $configuredInspectors = array_map(fn ($n) => strtoupper((string) $n), $configuredInspectors);
         $user = auth()->user();
-        if ($user && ! empty($user->name) && ! in_array($user->name, $configuredInspectors, true)) {
-            array_unshift($configuredInspectors, $user->name);
+        if ($user && ! empty($user->name)) {
+            $userNameUpper = strtoupper($user->name);
+            if (! in_array($userNameUpper, $configuredInspectors, true)) {
+                array_unshift($configuredInspectors, $userNameUpper);
+            }
         }
 
         return view('livewire.inspection.form.step-header', [
-            'customerSuggestions' => $customerSuggestions,
+            'customerList' => $customerList,
             'searchResults' => $searchResults,
+            'machineOptions' => $filteredMachines,
             'inspectorOptions' => $configuredInspectors,
         ]);
     }

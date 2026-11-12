@@ -1,4 +1,4 @@
-<div class="space-y-6" x-data="{ openPartDropdown: @entangle('show_part_dropdown') }">
+<div class="space-y-6" x-data="{ openPartDropdown: @entangle('show_part_dropdown'), openMachineDropdown: @entangle('show_machine_dropdown') }">
     {{-- Header Status Bar --}}
     <div class="flex items-center justify-between">
         @if ($isSaved)
@@ -25,13 +25,14 @@
         </span>
     </div>
 
-    {{-- 1. General & Logistics --}}
+    {{-- 1. General & Logistics Information --}}
     <div class="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
             <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
                 1. General Information
             </h2>
+            <span class="text-xs text-zinc-500">Tanggal, Customer & Shift</span>
         </div>
         <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <div>
@@ -48,16 +49,16 @@
 
             <div>
                 <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Customer <span class="text-rose-600">*</span>
+                    Customer (Master Business Partner) <span class="text-rose-600">*</span>
                 </label>
                 <input type="text"
                        list="customerList"
                        wire:model.blur="customer"
-                       placeholder="Pilih atau ketik Customer..."
+                       placeholder="Cari atau pilih Customer..."
                        class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('customer') border-rose-300 bg-rose-50/50 @enderror">
                 <datalist id="customerList">
-                    @foreach ($customerSuggestions as $cust)
-                        <option value="{{ $cust }}"></option>
+                    @foreach ($customerList as $cust)
+                        <option value="{{ $cust->bp_name }}">[{{ $cust->bp_code }}] {{ $cust->bp_name }}</option>
                     @endforeach
                 </datalist>
                 @error('customer')
@@ -83,29 +84,35 @@
         </div>
     </div>
 
-    {{-- 2. Part Information & Search Dropdown --}}
+    {{-- 2. Part Number Search & Minimized Specification View --}}
     <div class="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-        <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
+        <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
-                2. Part Details & Spesifikasi
+                2. Part Number & Spesifikasi
             </h2>
-            <span class="text-xs text-zinc-500 font-mono">Pilih dari Master List Item</span>
+            @if (!empty($part_number))
+                <button type="button"
+                        wire:click="toggleManualSpecs"
+                        class="px-2.5 py-1 text-xs font-semibold text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-100 rounded-lg shadow-sm transition">
+                    {{ $showManualSpecs ? 'Kunci / Minimized View' : 'Ubah Manual' }}
+                </button>
+            @endif
         </div>
 
-        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {{-- Searchable Part Number with Auto-complete Popover --}}
-            <div class="relative sm:col-span-2 lg:col-span-1" @click.away="openPartDropdown = false">
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Cari & Pilih Part Number <span class="text-rose-600">*</span>
+        <div class="p-5 space-y-5">
+            {{-- Prominent Searchable Part Number Input --}}
+            <div class="relative" @click.away="openPartDropdown = false">
+                <label class="block text-xs font-semibold text-zinc-800 mb-1.5">
+                    Cari & Pilih Part Number (Master List Item) <span class="text-rose-600">*</span>
                 </label>
                 <div class="relative">
                     <input type="text"
                            wire:model.live.debounce.250ms="part_search"
                            @focus="openPartDropdown = true"
-                           placeholder="Ketik kode part atau nama..."
-                           class="w-full rounded-lg border-zinc-300 font-mono text-sm focus:border-zinc-900 focus:ring-zinc-900 pr-9 min-h-[42px] @error('part_number') border-rose-300 bg-rose-50/50 @enderror">
-                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-zinc-400">
+                           placeholder="Ketik kode part (misal: 12345-ABC) atau nama part..."
+                           class="w-full rounded-lg border-zinc-300 font-mono text-sm focus:border-zinc-900 focus:ring-zinc-900 pl-10 pr-9 min-h-[44px] @error('part_number') border-rose-300 bg-rose-50/50 @enderror">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-zinc-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
@@ -117,7 +124,7 @@
 
                 {{-- Dropdown Results --}}
                 @if ($show_part_dropdown && !empty($searchResults))
-                    <div class="absolute left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-xl max-h-60 overflow-y-auto z-30 divide-y divide-zinc-100"
+                    <div class="absolute left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-xl max-h-64 overflow-y-auto z-30 divide-y divide-zinc-100"
                          x-show="openPartDropdown"
                          x-transition.opacity>
                         @forelse ($searchResults as $item)
@@ -126,12 +133,12 @@
                             @endphp
                             <button type="button"
                                     wire:click="selectPartItem('{{ $item->item_code }}')"
-                                    class="w-full px-3.5 py-2.5 text-left hover:bg-zinc-100 transition flex items-center justify-between gap-2">
+                                    class="w-full px-4 py-2.5 text-left hover:bg-zinc-100 transition flex items-center justify-between gap-3">
                                 <div class="min-w-0">
                                     <span class="block text-xs font-mono font-bold text-zinc-900 truncate">{{ $item->item_code }}</span>
                                     <span class="block text-[11px] text-zinc-600 truncate">{{ $item->item_name }}</span>
                                 </div>
-                                <span class="text-[10px] font-semibold text-zinc-500 uppercase bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200 flex-shrink-0">
+                                <span class="text-[10px] font-semibold text-zinc-600 uppercase bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200 flex-shrink-0">
                                     {{ $custName }}
                                 </span>
                             </button>
@@ -148,123 +155,204 @@
                 @enderror
             </div>
 
-            <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Part Name <span class="text-rose-600">*</span>
-                </label>
-                <input type="text"
-                       wire:model.blur="part_name"
-                       placeholder="Nama komponen / part..."
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('part_name') border-rose-300 bg-rose-50/50 @enderror">
-                @error('part_name')
-                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Material <span class="text-rose-600">*</span>
-                </label>
-                <input type="text"
-                       wire:model.blur="material"
-                       placeholder="Contoh: ABS, PP, POM..."
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('material') border-rose-300 bg-rose-50/50 @enderror">
-                @error('material')
-                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Color <span class="text-rose-600">*</span>
-                </label>
-                <input type="text"
-                       wire:model.blur="color"
-                       placeholder="Contoh: BLACK, NATURAL, GREY..."
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('color') border-rose-300 bg-rose-50/50 @enderror">
-                @error('color')
-                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Berat Part (Weight) <span class="text-rose-600">*</span>
-                </label>
-                <div class="flex rounded-lg shadow-sm">
-                    <input type="number"
-                           step="any"
-                           wire:model.blur="weight"
-                           placeholder="0.00"
-                           class="flex-1 rounded-none rounded-l-lg border-zinc-300 font-mono text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('weight') border-rose-300 bg-rose-50/50 @enderror">
-                    <select wire:model.blur="weight_uom"
-                            class="inline-flex items-center rounded-none rounded-r-lg border-l-0 border-zinc-300 bg-zinc-100 text-zinc-800 text-xs font-semibold px-3 focus:border-zinc-900 focus:ring-zinc-900">
-                        <option value="g">Gram (g)</option>
-                        <option value="kg">Kilogram (kg)</option>
-                    </select>
+            {{-- Minimized Specifications Badges View (When part is chosen & not in manual edit mode) --}}
+            @if (!empty($part_number) && !$showManualSpecs)
+                <div class="bg-zinc-50 border border-zinc-200 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Spesifikasi Part Terisi Otomatis:</span>
+                        <button type="button"
+                                wire:click="toggleManualSpecs"
+                                class="text-xs font-semibold text-zinc-700 hover:text-zinc-900 underline">
+                            Ubah Spesifikasi Manual
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
+                        <div class="bg-white p-2.5 rounded-lg border border-zinc-200">
+                            <span class="text-zinc-400 block text-[10px] font-medium uppercase">Part Name</span>
+                            <span class="font-bold text-zinc-900 truncate block mt-0.5">{{ $part_name ?: '-' }}</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-lg border border-zinc-200">
+                            <span class="text-zinc-400 block text-[10px] font-medium uppercase">Material</span>
+                            <span class="font-bold text-zinc-900 block mt-0.5">{{ $material ?: '-' }}</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-lg border border-zinc-200">
+                            <span class="text-zinc-400 block text-[10px] font-medium uppercase">Color</span>
+                            <span class="font-bold text-zinc-900 block mt-0.5">{{ $color ?: '-' }}</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-lg border border-zinc-200">
+                            <span class="text-zinc-400 block text-[10px] font-medium uppercase">Weight</span>
+                            <span class="font-bold text-zinc-900 font-mono block mt-0.5">{{ $weight ? $weight . ' ' . $weight_uom : '-' }}</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-lg border border-zinc-200">
+                            <span class="text-zinc-400 block text-[10px] font-medium uppercase">Tool / Cavity</span>
+                            <span class="font-bold text-zinc-900 block mt-0.5">{{ $tool_number_or_cav_number ?: '-' }}</span>
+                        </div>
+                    </div>
                 </div>
-                @error('weight')
-                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                @enderror
-            </div>
+            @endif
 
-            <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                    Tool / Cavity Number <span class="text-rose-600">*</span>
-                </label>
-                <input type="text"
-                       wire:model.blur="tool_number_or_cav_number"
-                       placeholder="Contoh: 1, 2, Cav 1-4..."
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('tool_number_or_cav_number') border-rose-300 bg-rose-50/50 @enderror">
-                @error('tool_number_or_cav_number')
-                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                @enderror
-            </div>
+            {{-- Full Editable Specification Inputs (Shown if manual edit is toggled or part not yet selected) --}}
+            @if (empty($part_number) || $showManualSpecs)
+                <div class="pt-2 border-t border-zinc-100">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                                Part Name <span class="text-rose-600">*</span>
+                            </label>
+                            <input type="text"
+                                   wire:model.blur="part_name"
+                                   placeholder="Nama komponen / part..."
+                                   class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('part_name') border-rose-300 bg-rose-50/50 @enderror">
+                            @error('part_name')
+                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                                Material <span class="text-rose-600">*</span>
+                            </label>
+                            <input type="text"
+                                   wire:model.blur="material"
+                                   placeholder="Contoh: ABS, PP, POM..."
+                                   class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('material') border-rose-300 bg-rose-50/50 @enderror">
+                            @error('material')
+                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                                Color <span class="text-rose-600">*</span>
+                            </label>
+                            <input type="text"
+                                   wire:model.blur="color"
+                                   placeholder="Contoh: BLACK, NATURAL, GREY..."
+                                   class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('color') border-rose-300 bg-rose-50/50 @enderror">
+                            @error('color')
+                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                                Berat Part (Weight) <span class="text-rose-600">*</span>
+                            </label>
+                            <div class="flex rounded-lg shadow-sm">
+                                <input type="number"
+                                       step="any"
+                                       wire:model.blur="weight"
+                                       placeholder="0.00"
+                                       class="flex-1 rounded-none rounded-l-lg border-zinc-300 font-mono text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('weight') border-rose-300 bg-rose-50/50 @enderror">
+                                <select wire:model.blur="weight_uom"
+                                        class="inline-flex items-center rounded-none rounded-r-lg border-l-0 border-zinc-300 bg-zinc-100 text-zinc-800 text-xs font-semibold px-3 focus:border-zinc-900 focus:ring-zinc-900">
+                                    <option value="g">Gram (g)</option>
+                                    <option value="kg">Kilogram (kg)</option>
+                                </select>
+                            </div>
+                            @error('weight')
+                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                                Tool / Cavity Number <span class="text-rose-600">*</span>
+                            </label>
+                            <input type="text"
+                                   wire:model.blur="tool_number_or_cav_number"
+                                   placeholder="Contoh: 1, 2, Cav 1-4..."
+                                   class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('tool_number_or_cav_number') border-rose-300 bg-rose-50/50 @enderror">
+                            @error('tool_number_or_cav_number')
+                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 
-    {{-- 3. Machine & Manpower --}}
+    {{-- 3. Mesin & Personil (Active Standard Editable Inputs) --}}
     <div class="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-        <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200">
+        <div class="px-5 py-3.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
             <h2 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
                 3. Mesin & Personil
             </h2>
+            <span class="text-xs text-zinc-500">Nomor Mesin, Operator & Inspector</span>
         </div>
         <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <div>
+            {{-- Searchable Machine Dropdown --}}
+            <div class="relative" @click.away="openMachineDropdown = false">
                 <label class="block text-xs font-semibold text-zinc-700 mb-1">
                     Nomor Mesin (Line/Machine) <span class="text-rose-600">*</span>
                 </label>
-                <input type="text"
-                       wire:model.blur="machine_number"
-                       placeholder="Contoh: M-01, INJ-05..."
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('machine_number') border-rose-300 bg-rose-50/50 @enderror">
+                <div class="relative">
+                    <input type="text"
+                           wire:model.live.debounce.150ms="machine_search"
+                           @focus="openMachineDropdown = true"
+                           placeholder="Ketik atau pilih Mesin..."
+                           class="w-full rounded-lg border-zinc-300 uppercase font-semibold text-sm focus:border-zinc-900 focus:ring-zinc-900 pr-9 min-h-[42px] @error('machine_number') border-rose-300 bg-rose-50/50 @enderror">
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-zinc-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                </div>
+
+                {{-- Hidden input keeping machine_number validated --}}
+                <input type="hidden" wire:model="machine_number">
+
+                {{-- Machine Options Dropdown --}}
+                @if ($show_machine_dropdown && !empty($machineOptions))
+                    <div class="absolute left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-xl max-h-56 overflow-y-auto z-30 divide-y divide-zinc-100"
+                         x-show="openMachineDropdown"
+                         x-transition.opacity>
+                        @forelse ($machineOptions as $machineName)
+                            <button type="button"
+                                    wire:click="selectMachine('{{ $machineName }}')"
+                                    class="w-full px-3.5 py-2 text-left hover:bg-zinc-100 transition flex items-center justify-between text-xs font-mono font-bold text-zinc-900">
+                                <span>{{ $machineName }}</span>
+                                @if (strtoupper($machine_number) === strtoupper($machineName))
+                                    <span class="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Aktif</span>
+                                @endif
+                            </button>
+                        @empty
+                            <div class="p-3 text-xs text-zinc-500 text-center">
+                                Tekan Enter untuk gunakan nomor mesin yang diketik.
+                            </div>
+                        @endforelse
+                    </div>
+                @endif
+
                 @error('machine_number')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror
             </div>
 
+            {{-- Operator Name (Auto-Uppercase) --}}
             <div>
                 <label class="block text-xs font-semibold text-zinc-700 mb-1">
                     Nama Operator <span class="text-rose-600">*</span>
                 </label>
                 <input type="text"
                        wire:model.blur="operator"
-                       placeholder="Nama operator..."
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('operator') border-rose-300 bg-rose-50/50 @enderror">
+                       placeholder="NAMA OPERATOR..."
+                       class="w-full rounded-lg border-zinc-300 text-sm uppercase font-semibold focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('operator') border-rose-300 bg-rose-50/50 @enderror">
                 @error('operator')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror
             </div>
 
+            {{-- Inspector Name (Auto-Uppercase Dropdown) --}}
             <div>
                 <label class="block text-xs font-semibold text-zinc-700 mb-1">
                     Nama Inspector (QC) <span class="text-rose-600">*</span>
                 </label>
                 <select wire:model.blur="inspector"
-                        class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('inspector') border-rose-300 bg-rose-50/50 @enderror">
-                    <option value="">-- Pilih Inspector --</option>
+                        class="w-full rounded-lg border-zinc-300 text-sm uppercase font-semibold focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('inspector') border-rose-300 bg-rose-50/50 @enderror">
+                    <option value="">-- PILIH INSPECTOR --</option>
                     @foreach ($inspectorOptions as $name)
                         <option value="{{ $name }}">{{ $name }}</option>
                     @endforeach
