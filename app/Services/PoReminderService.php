@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\MasterBom;
 use App\Models\MasterListItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PoReminderService
 {
@@ -112,6 +113,66 @@ class PoReminderService
             $wipCodes[$b->parent_item] = true;
         }
 
+        // 4b. Preload SEMUA data SPK dari spk_masters untuk mapping ketersediaan SPK
+        $spkRows = Schema::hasTable('spk_masters')
+            ? DB::table('spk_masters')
+                ->select('spk_number', 'item_code', 'production_status', 'planned_quantity', 'completed_quantity', 'warehouse', 'post_date', 'due_date')
+                ->get()
+            : collect();
+
+        $spksByItem = [];
+        foreach ($spkRows as $spk) {
+            $rawCode = $spk->item_code;
+            $cleanCode = rtrim($rawCode, '.');
+
+            $planned = (int) $spk->planned_quantity;
+            $completed = (int) $spk->completed_quantity;
+            $avail = max(0, $planned - $completed);
+
+            $spkEntry = [
+                'spk_number' => $spk->spk_number,
+                'status' => $spk->production_status,
+                'status_label' => $spk->production_status === 'R' ? 'Released' : ($spk->production_status === 'P' ? 'Planned' : $spk->production_status),
+                'planned_qty' => $planned,
+                'completed_qty' => $completed,
+                'available_qty' => $avail,
+                'warehouse' => $spk->warehouse,
+                'post_date' => $spk->post_date,
+                'due_date' => $spk->due_date,
+            ];
+
+            $spksByItem[$rawCode][] = $spkEntry;
+            if ($cleanCode !== $rawCode) {
+                $spksByItem[$cleanCode][] = $spkEntry;
+            }
+        }
+
+        $getSpkInfo = function (string $code) use ($spksByItem): array {
+            $clean = rtrim($code, '.');
+            $rawList = $spksByItem[$code] ?? $spksByItem[$clean] ?? $spksByItem[$clean . '.'] ?? [];
+
+            // Deduplikasi berdasarkan spk_number
+            $uniqueMap = [];
+            foreach ($rawList as $s) {
+                $uniqueMap[$s['spk_number']] = $s;
+            }
+            $list = array_values($uniqueMap);
+
+            $totalPlanned = array_sum(array_column($list, 'planned_qty'));
+            $totalCompleted = array_sum(array_column($list, 'completed_qty'));
+            $totalAvail = array_sum(array_column($list, 'available_qty'));
+
+            return [
+                'has_spk' => count($list) > 0,
+                'spk_count' => count($list),
+                'total_planned_qty' => $totalPlanned,
+                'total_completed_qty' => $totalCompleted,
+                'available_qty' => $totalAvail,
+                'spk_numbers' => array_column($list, 'spk_number'),
+                'spks' => $list,
+            ];
+        };
+
         // 5. Fungsi rekursif untuk meledakkan (Explode) BOM
         $explodeBom = function (string $code, float $multiplier, array $visited = []) use (&$explodeBom, $bomMap, $wipCodes): array {
             if ($multiplier <= 0) {
@@ -209,6 +270,7 @@ class PoReminderService
 
             $itemDailySchedules = $dailyByItem[$code] ?? $dailyByItem[$cleanCode] ?? [];
             $netRatio = $deliveryQty > 0 ? ($netDeficit / $deliveryQty) : 0;
+            $fgSpkInfo = $getSpkInfo($code);
 
             // Agregasi View 1 (Gross) per Material
             foreach ($explodedGross as $m) {
@@ -265,6 +327,7 @@ class PoReminderService
                         'material_qty' => $m['needed_qty'],
                         'delivery_count' => count($itemDailySchedules),
                         'schedules' => $schedulesBreakdown,
+                        'spk_info' => $fgSpkInfo,
                     ];
                 } else {
                     $view1MaterialMap[$matCode]['used_by_fgs'][$code]['material_qty'] += $m['needed_qty'];
@@ -327,6 +390,7 @@ class PoReminderService
                         'material_qty' => $m['needed_qty'],
                         'delivery_count' => count($itemDailySchedules),
                         'schedules' => $netSchedulesBreakdown,
+                        'spk_info' => $fgSpkInfo,
                     ];
                 } else {
                     $view2MaterialMap[$matCode]['used_by_fgs'][$code]['material_qty'] += $m['needed_qty'];
@@ -347,6 +411,7 @@ class PoReminderService
                 'so_numbers' => $sched->so_numbers,
                 'has_bom' => $hasBom,
                 'daily_schedules' => $itemDailySchedules,
+                'spk_info' => $fgSpkInfo,
                 'exploded_gross' => $explodedGross,
                 'exploded_net' => $explodedNet,
             ];
@@ -355,6 +420,7 @@ class PoReminderService
         // Hitung fgs_count & susun daily_timeline berurutan per tanggal
         foreach ($view1MaterialMap as &$m) {
             $m['fgs_count'] = count($m['used_by_fgs']);
+            $m['spk_info'] = $getSpkInfo($m['item_code']);
             $m['used_by_fgs'] = array_values($m['used_by_fgs']);
             $timeline = array_values($m['daily_timeline'] ?? []);
             foreach ($timeline as &$tl) {
@@ -368,6 +434,7 @@ class PoReminderService
 
         foreach ($view2MaterialMap as &$m) {
             $m['fgs_count'] = count($m['used_by_fgs']);
+            $m['spk_info'] = $getSpkInfo($m['item_code']);
             $m['used_by_fgs'] = array_values($m['used_by_fgs']);
             $timeline = array_values($m['daily_timeline'] ?? []);
             foreach ($timeline as &$tl) {
@@ -423,6 +490,9 @@ class PoReminderService
                 'total_materials_gross' => count($view1Materials),
                 'total_materials_net' => count($view2Materials),
                 'missing_bom_count' => $missingBomCount,
+                'total_fg_with_spk' => count(array_filter($fgItems, fn ($fg) => ($fg['spk_info']['has_spk'] ?? false))),
+                'total_fg_without_spk' => count(array_filter($fgItems, fn ($fg) => ! ($fg['spk_info']['has_spk'] ?? false))),
+                'total_spk_available_qty' => array_sum(array_map(fn ($fg) => ($fg['spk_info']['available_qty'] ?? 0), $fgItems)),
             ],
             'fg_items' => $fgItems,
             'view1_materials' => $view1Materials,

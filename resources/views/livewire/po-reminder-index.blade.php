@@ -376,6 +376,7 @@
                             <th class="py-3.5 px-4 text-right">Kekurangan FG (Net)</th>
                             <th class="py-3.5 px-4 text-center">Status Stok</th>
                             <th class="py-3.5 px-4 text-center">Status BOM</th>
+                            <th class="py-3.5 px-4 text-center">Status SPK & Qty Avail</th>
                             <th class="py-3.5 px-4 text-center">Aksi</th>
                         </tr>
                     </thead>
@@ -386,7 +387,15 @@
                                     {{ $paginatedFgs->firstItem() + $idx }}
                                 </td>
                                 <td class="py-3.5 px-4 font-mono font-bold text-gray-900">
-                                    {{ $fg['item_code'] }}
+                                    <div class="flex items-center gap-1.5">
+                                        <span>{{ $fg['item_code'] }}</span>
+                                        <a href="{{ route('spk.changes.index', ['search' => $fg['item_code']]) }}" 
+                                           target="_blank" 
+                                           class="text-[10px] text-blue-500 hover:text-blue-700 font-bold hover:underline"
+                                           title="Cari di SPK Changes">
+                                            ↗
+                                        </a>
+                                    </div>
                                 </td>
                                 <td class="py-3.5 px-4 text-gray-700">
                                     <div class="font-bold text-gray-900">{{ $fg['item_name'] }}</div>
@@ -424,6 +433,34 @@
                                         <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                                             ✕ Belum Ada
                                         </span>
+                                    @endif
+                                </td>
+                                <td class="py-3.5 px-4 text-center">
+                                    @if($fg['spk_info']['has_spk'] ?? false)
+                                        <div class="inline-flex flex-col items-center gap-0.5">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                                <span>✓</span>
+                                                <span>{{ $fg['spk_info']['spk_count'] }} SPK</span>
+                                                <span class="font-mono text-emerald-700">({{ number_format($fg['spk_info']['available_qty']) }} avail)</span>
+                                            </span>
+                                            <a href="{{ route('spk.changes.index', ['search' => $fg['item_code']]) }}" 
+                                               target="_blank" 
+                                               class="text-[10px] text-blue-600 hover:text-blue-800 font-bold hover:underline flex items-center gap-0.5">
+                                                <span>SPK Changes</span>
+                                                <span>↗</span>
+                                            </a>
+                                        </div>
+                                    @else
+                                        <div class="inline-flex flex-col items-center gap-0.5">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                <span>⚠️ Belum Ada SPK</span>
+                                            </span>
+                                            <a href="{{ route('spk.changes.index', ['search' => $fg['item_code']]) }}" 
+                                               target="_blank" 
+                                               class="text-[10px] text-gray-400 hover:text-blue-600 hover:underline">
+                                                Cek SPK ↗
+                                            </a>
+                                        </div>
                                     @endif
                                 </td>
                                 <td class="py-3.5 px-4 text-center">
@@ -492,6 +529,13 @@
                                 <span>🏭</span>
                                 <span>{{ count($activeMaterialDetail['used_by_fgs'] ?? []) }} Part FG</span>
                             </div>
+                            @if($activeMaterialDetail['spk_info']['has_spk'] ?? false)
+                                <div class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold flex items-center gap-1.5">
+                                    <span>📋</span>
+                                    <span>SPK Material: <strong>{{ number_format($activeMaterialDetail['spk_info']['available_qty']) }}</strong> {{ $activeMaterialDetail['uom'] }} avail ({{ $activeMaterialDetail['spk_info']['spk_count'] }} SPK)</span>
+                                    <a href="{{ route('spk.changes.index', ['search' => $activeMaterialDetail['item_code']]) }}" target="_blank" class="text-blue-600 hover:underline font-bold text-xs" title="Cari di SPK Changes">↗</a>
+                                </div>
+                            @endif
                             @if(count($activeMaterialDetail['daily_timeline'] ?? []) > 0)
                                 <div class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium text-[11px] flex items-center gap-1">
                                     <span>📊</span>
@@ -651,6 +695,24 @@
                                         </div>
 
                                         <div class="flex items-center gap-4 text-xs">
+                                            {{-- Status SPK & Sisa Qty --}}
+                                            <div class="text-right">
+                                                <div class="text-[10px] uppercase font-bold flex items-center justify-end gap-1 {{ ($f['spk_info']['has_spk'] ?? false) ? 'text-emerald-700' : 'text-rose-600' }}">
+                                                    <span>Status SPK</span>
+                                                    <a href="{{ route('spk.changes.index', ['search' => $f['fg_code']]) }}" target="_blank" @click.stop class="hover:underline text-blue-600 font-bold" title="Cari di SPK Changes">↗</a>
+                                                </div>
+                                                @if($f['spk_info']['has_spk'] ?? false)
+                                                    <div class="font-mono font-black text-emerald-700 text-xs">
+                                                        {{ number_format($f['spk_info']['available_qty']) }} pcs
+                                                        <span class="text-[10px] text-gray-400 font-normal">({{ $f['spk_info']['spk_count'] }} SPK)</span>
+                                                    </div>
+                                                @else
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                        Belum Ada SPK
+                                                    </span>
+                                                @endif
+                                            </div>
+
                                             <div class="text-right">
                                                 <div class="text-[10px] uppercase text-gray-400 font-bold">Target FG</div>
                                                 <div class="font-mono font-bold text-gray-800">
@@ -675,41 +737,120 @@
                                         </div>
                                     </div>
 
-                                    {{-- FG Specific Schedule Accordion --}}
-                                    <div x-show="expandedFg === {{ $fgIdx }}" x-collapse x-cloak class="p-3 bg-white">
-                                        <div class="text-[11px] font-bold text-gray-500 mb-2 uppercase tracking-wide">
-                                            📅 Jadwal Delivery Harian untuk Part FG {{ $f['fg_code'] }}:
+                                    {{-- FG Specific Details Accordion --}}
+                                    <div x-show="expandedFg === {{ $fgIdx }}" x-collapse x-cloak class="p-4 bg-slate-50/50 border-t border-gray-100 space-y-4">
+                                        
+                                        {{-- 1. DAFTAR SPK AKTIF UNTUK FG INI --}}
+                                        <div class="bg-white rounded-xl p-3.5 border border-gray-200 shadow-xs">
+                                            <div class="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs font-black uppercase text-gray-700 tracking-wider flex items-center gap-1.5">
+                                                        <span>📋</span>
+                                                        <span>Ketersediaan SPK Produksi ({{ $f['fg_code'] }}):</span>
+                                                    </span>
+                                                    @if($f['spk_info']['has_spk'] ?? false)
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                                            {{ $f['spk_info']['spk_count'] }} SPK Ditemukan | Sisa Available: <strong>{{ number_format($f['spk_info']['available_qty']) }} pcs</strong>
+                                                        </span>
+                                                    @else
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                                            ⚠️ Belum Ada SPK
+                                                        </span>
+                                                    @endif
+                                                </div>
+
+                                                <a href="{{ route('spk.changes.index', ['search' => $f['fg_code']]) }}" 
+                                                   target="_blank" 
+                                                   class="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 hover:underline">
+                                                    <span>Cek Riwayat di SPK Changes</span>
+                                                    <span>↗</span>
+                                                </a>
+                                            </div>
+
+                                            @if($f['spk_info']['has_spk'] ?? false)
+                                                <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                                                    <table class="w-full text-xs text-left">
+                                                        <thead>
+                                                            <tr class="bg-gray-100 text-gray-600 uppercase font-bold text-[10px] border-b border-gray-200">
+                                                                <th class="py-1.5 px-2.5">No SPK</th>
+                                                                <th class="py-1.5 px-2.5 text-center">Status</th>
+                                                                <th class="py-1.5 px-2.5 text-right">Planned Qty</th>
+                                                                <th class="py-1.5 px-2.5 text-right">Completed Qty</th>
+                                                                <th class="py-1.5 px-2.5 text-right">Sisa (Available Qty)</th>
+                                                                <th class="py-1.5 px-2.5 text-center">Gudang</th>
+                                                                <th class="py-1.5 px-2.5 text-center">Due Date</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody class="divide-y divide-gray-100">
+                                                            @foreach($f['spk_info']['spks'] as $spk)
+                                                                <tr class="hover:bg-slate-50 transition">
+                                                                    <td class="py-1.5 px-2.5 font-mono font-bold text-blue-700">
+                                                                        <a href="{{ route('spk.changes.index', ['search' => $spk['spk_number']]) }}" target="_blank" class="hover:underline flex items-center gap-1" title="Lihat detail SPK">
+                                                                            <span>{{ $spk['spk_number'] }}</span>
+                                                                            <span class="text-[10px] text-blue-400">↗</span>
+                                                                        </a>
+                                                                    </td>
+                                                                    <td class="py-1.5 px-2.5 text-center">
+                                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ $spk['status'] === 'R' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800' }}">
+                                                                            {{ $spk['status_label'] }}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td class="py-1.5 px-2.5 text-right font-mono font-semibold">{{ number_format($spk['planned_qty']) }}</td>
+                                                                    <td class="py-1.5 px-2.5 text-right font-mono text-gray-500">{{ number_format($spk['completed_qty']) }}</td>
+                                                                    <td class="py-1.5 px-2.5 text-right font-mono font-black {{ $spk['available_qty'] > 0 ? 'text-emerald-700' : 'text-gray-400' }}">
+                                                                        {{ number_format($spk['available_qty']) }} pcs
+                                                                    </td>
+                                                                    <td class="py-1.5 px-2.5 text-center font-mono text-gray-500">{{ $spk['warehouse'] ?: '—' }}</td>
+                                                                    <td class="py-1.5 px-2.5 text-center font-mono text-gray-500">{{ $spk['due_date'] ?: '—' }}</td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            @else
+                                                <div class="p-3 text-center text-xs text-rose-700 bg-rose-50/50 rounded-lg border border-dashed border-rose-200">
+                                                    ⚠️ Belum ada SPK terdaftar di sistem untuk part ini. Silakan koordinasikan dengan PPIC / buat SPK baru.
+                                                </div>
+                                            @endif
                                         </div>
-                                        <table class="w-full text-xs text-left">
-                                            <thead>
-                                                <tr class="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-100">
-                                                    <th class="py-1.5 px-2.5 text-center w-10">No</th>
-                                                    <th class="py-1.5 px-2.5">Tanggal Delivery</th>
-                                                    <th class="py-1.5 px-2.5">No SO / Dokumen</th>
-                                                    <th class="py-1.5 px-2.5 text-right">Target FG (Pcs)</th>
-                                                    <th class="py-1.5 px-2.5 text-right">Kebutuhan Material</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-gray-100">
-                                                @forelse($f['schedules'] ?? [] as $sIdx => $sc)
-                                                    <tr class="hover:bg-amber-50/20">
-                                                        <td class="py-1.5 px-2.5 text-center font-mono text-gray-400">{{ $sIdx + 1 }}</td>
-                                                        <td class="py-1.5 px-2.5 font-mono font-bold text-gray-900">{{ $sc['delivery_date'] }}</td>
-                                                        <td class="py-1.5 px-2.5 font-mono text-gray-600">{{ $sc['so_number'] ?: '—' }}</td>
-                                                        <td class="py-1.5 px-2.5 text-right font-mono font-bold text-sky-700">
-                                                            {{ number_format($sc['delivery_qty']) }}
-                                                        </td>
-                                                        <td class="py-1.5 px-2.5 text-right font-mono font-black text-amber-700">
-                                                            {{ number_format($sc['material_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}
-                                                        </td>
+
+                                        {{-- 2. JADWAL DELIVERY HARIAN --}}
+                                        <div class="bg-white rounded-xl p-3.5 border border-gray-200 shadow-xs">
+                                            <div class="text-[11px] font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                                                <span>📅</span>
+                                                <span>Jadwal Delivery Harian untuk Part FG {{ $f['fg_code'] }}:</span>
+                                            </div>
+                                            <table class="w-full text-xs text-left">
+                                                <thead>
+                                                    <tr class="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-100">
+                                                        <th class="py-1.5 px-2.5 text-center w-10">No</th>
+                                                        <th class="py-1.5 px-2.5">Tanggal Delivery</th>
+                                                        <th class="py-1.5 px-2.5">No SO / Dokumen</th>
+                                                        <th class="py-1.5 px-2.5 text-right">Target FG (Pcs)</th>
+                                                        <th class="py-1.5 px-2.5 text-right">Kebutuhan Material</th>
                                                     </tr>
-                                                @empty
-                                                    <tr>
-                                                        <td colspan="5" class="py-3 text-center text-gray-400">Tidak ada rincian tanggal kirim.</td>
-                                                    </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-100">
+                                                    @forelse($f['schedules'] ?? [] as $sIdx => $sc)
+                                                        <tr class="hover:bg-amber-50/20">
+                                                            <td class="py-1.5 px-2.5 text-center font-mono text-gray-400">{{ $sIdx + 1 }}</td>
+                                                            <td class="py-1.5 px-2.5 font-mono font-bold text-gray-900">{{ $sc['delivery_date'] }}</td>
+                                                            <td class="py-1.5 px-2.5 font-mono text-gray-600">{{ $sc['so_number'] ?: '—' }}</td>
+                                                            <td class="py-1.5 px-2.5 text-right font-mono font-bold text-sky-700">
+                                                                {{ number_format($sc['delivery_qty']) }}
+                                                            </td>
+                                                            <td class="py-1.5 px-2.5 text-right font-mono font-black text-amber-700">
+                                                                {{ number_format($sc['material_qty'], 2) }} {{ $activeMaterialDetail['uom'] }}
+                                                            </td>
+                                                        </tr>
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="5" class="py-3 text-center text-gray-400">Tidak ada rincian tanggal kirim.</td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             @endforeach
@@ -754,6 +895,16 @@
                             <span class="px-2.5 py-1 rounded-lg border {{ $activeFgDetail['net_deficit'] > 0 ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800' }} font-bold">
                                 Kekurangan (Net): <strong>{{ number_format($activeFgDetail['net_deficit']) }}</strong> pcs
                             </span>
+                            <span class="px-2.5 py-1 rounded-lg border {{ ($activeFgDetail['spk_info']['has_spk'] ?? false) ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800' }} font-bold flex items-center gap-1">
+                                <span>📋 SPK:</span>
+                                @if($activeFgDetail['spk_info']['has_spk'] ?? false)
+                                    <strong>{{ number_format($activeFgDetail['spk_info']['available_qty']) }} pcs avail</strong>
+                                    <span class="text-[10px] text-gray-500 font-normal">({{ $activeFgDetail['spk_info']['spk_count'] }} SPK)</span>
+                                @else
+                                    <span>Belum Ada SPK</span>
+                                @endif
+                                <a href="{{ route('spk.changes.index', ['search' => $activeFgDetail['item_code']]) }}" target="_blank" class="text-blue-600 hover:underline text-[11px] font-bold" title="Cari di SPK Changes">↗</a>
+                            </span>
                         </div>
                     </div>
                     <button type="button" wire:click="closeFgDetail" class="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer p-1">
@@ -779,6 +930,16 @@
                             <span>Jadwal Delivery Harian</span>
                             <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-sky-100 text-sky-800 font-mono">
                                 {{ count($activeFgDetail['daily_schedules'] ?? []) }}
+                            </span>
+                        </button>
+                        <button type="button"
+                                @click="fgModalTab = 'spks'"
+                                :class="fgModalTab === 'spks' ? 'bg-white text-emerald-700 font-black border-t-2 border-l border-r border-t-emerald-600 border-gray-200 shadow-xs' : 'text-gray-500 hover:text-gray-800 font-semibold'"
+                                class="px-4 py-2 text-xs rounded-t-lg transition flex items-center gap-1.5 cursor-pointer">
+                            <span>📋</span>
+                            <span>Daftar SPK Tersedia</span>
+                            <span class="px-1.5 py-0.5 rounded-full text-[10px] font-mono {{ ($activeFgDetail['spk_info']['has_spk'] ?? false) ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500' }}">
+                                {{ $activeFgDetail['spk_info']['spk_count'] ?? 0 }}
                             </span>
                         </button>
                     </div>
@@ -887,6 +1048,84 @@
                                 </tfoot>
                             </table>
                         </div>
+                    </div>
+
+                    {{-- TAB 3: SPK TERSINGKRON --}}
+                    <div x-show="fgModalTab === 'spks'" x-cloak>
+                        <div class="mb-3 flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="text-xs font-black uppercase text-gray-700 tracking-wider flex items-center gap-1.5">
+                                <span>📋</span>
+                                <span>Daftar SPK Terdaftar untuk Part {{ $activeFgDetail['item_code'] }}:</span>
+                            </h4>
+                            <a href="{{ route('spk.changes.index', ['search' => $activeFgDetail['item_code']]) }}" 
+                               target="_blank" 
+                               class="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 hover:underline">
+                                <span>Buka Riwayat Perubahan di SPK Changes</span>
+                                <span>↗</span>
+                            </a>
+                        </div>
+
+                        @if($activeFgDetail['spk_info']['has_spk'] ?? false)
+                            <div class="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+                                <table class="w-full text-xs text-left">
+                                    <thead>
+                                        <tr class="bg-gray-50 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-200">
+                                            <th class="py-2.5 px-3">No SPK</th>
+                                            <th class="py-2.5 px-3 text-center">Status</th>
+                                            <th class="py-2.5 px-3 text-right">Planned Qty</th>
+                                            <th class="py-2.5 px-3 text-right">Completed Qty</th>
+                                            <th class="py-2.5 px-3 text-right">Sisa (Available Qty)</th>
+                                            <th class="py-2.5 px-3 text-center">Gudang</th>
+                                            <th class="py-2.5 px-3 text-center">Due Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        @foreach($activeFgDetail['spk_info']['spks'] as $spk)
+                                            <tr class="hover:bg-emerald-50/20">
+                                                <td class="py-2.5 px-3 font-mono font-bold text-blue-700">
+                                                    <a href="{{ route('spk.changes.index', ['search' => $spk['spk_number']]) }}" target="_blank" class="hover:underline flex items-center gap-1" title="Lihat detail SPK">
+                                                        <span>{{ $spk['spk_number'] }}</span>
+                                                        <span class="text-[10px] text-blue-400">↗</span>
+                                                    </a>
+                                                </td>
+                                                <td class="py-2.5 px-3 text-center">
+                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ $spk['status'] === 'R' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800' }}">
+                                                        {{ $spk['status_label'] }}
+                                                    </span>
+                                                </td>
+                                                <td class="py-2.5 px-3 text-right font-mono font-bold text-gray-800">{{ number_format($spk['planned_qty']) }}</td>
+                                                <td class="py-2.5 px-3 text-right font-mono text-gray-500">{{ number_format($spk['completed_qty']) }}</td>
+                                                <td class="py-2.5 px-3 text-right font-mono font-black {{ $spk['available_qty'] > 0 ? 'text-emerald-700' : 'text-gray-400' }}">
+                                                    {{ number_format($spk['available_qty']) }} pcs
+                                                </td>
+                                                <td class="py-2.5 px-3 text-center font-mono text-gray-500">{{ $spk['warehouse'] ?: '—' }}</td>
+                                                <td class="py-2.5 px-3 text-center font-mono text-gray-500">{{ $spk['due_date'] ?: '—' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="bg-gray-100/80 font-bold border-t-2 border-gray-300">
+                                            <td colspan="4" class="py-2.5 px-3 text-right uppercase text-[10px] tracking-wider">TOTAL AVAILABLE DARI SELURUH SPK:</td>
+                                            <td class="py-2.5 px-3 text-right font-mono font-black text-emerald-700 text-sm">
+                                                {{ number_format($activeFgDetail['spk_info']['available_qty']) }} pcs
+                                            </td>
+                                            <td colspan="2"></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        @else
+                            <div class="p-6 text-center text-xs text-rose-700 bg-rose-50 rounded-xl border border-rose-200">
+                                <span class="text-2xl block mb-1">⚠️</span>
+                                <div class="font-bold text-sm">Belum Ada SPK untuk Part Ini</div>
+                                <p class="text-gray-500 mt-1">Belum ditemukan SPK berstatus Released / Planned di master SPK SAP untuk item {{ $activeFgDetail['item_code'] }}.</p>
+                                <div class="mt-3">
+                                    <a href="{{ route('spk.changes.index') }}" target="_blank" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition inline-block">
+                                        Buka SPK Changes ↗
+                                    </a>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
