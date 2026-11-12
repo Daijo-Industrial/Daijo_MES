@@ -12,24 +12,25 @@
         @endif
     </div>
 
-    <div class="p-5 space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="p-5">
+        {{-- Balanced 2-Column Grid (Pairs Appearance + Weight, Fitting + Remarks) --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
             {{-- Appearance --}}
             <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                <label class="block text-xs font-semibold text-zinc-700 mb-1.5">
                     Appearance <span class="text-rose-600">*</span>
                 </label>
-                <div class="flex gap-2">
-                    <label class="flex-1 flex items-center justify-center px-3 py-2 border rounded-lg cursor-pointer text-xs font-bold transition
-                                  {{ $appearance === 'OK' ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-1 ring-emerald-500' : 'bg-zinc-50 border-zinc-300 text-zinc-700 hover:bg-zinc-100' }}">
-                        <input type="radio" wire:model.live="appearance" value="OK" class="sr-only">
-                        <span>OK</span>
-                    </label>
-                    <label class="flex-1 flex items-center justify-center px-3 py-2 border rounded-lg cursor-pointer text-xs font-bold transition
-                                  {{ $appearance === 'NG' ? 'bg-rose-50 border-rose-500 text-rose-800 ring-1 ring-rose-500' : 'bg-zinc-50 border-zinc-300 text-zinc-700 hover:bg-zinc-100' }}">
-                        <input type="radio" wire:model.live="appearance" value="NG" class="sr-only">
-                        <span>NG</span>
-                    </label>
+                <div class="inline-flex rounded-lg border border-zinc-300 p-0.5 bg-zinc-100 shadow-sm w-full">
+                    <button type="button"
+                            wire:click="$set('appearance', 'OK')"
+                            class="flex-1 py-2 text-xs font-bold rounded-md transition {{ $appearance === 'OK' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                        OK
+                    </button>
+                    <button type="button"
+                            wire:click="$set('appearance', 'NG')"
+                            class="flex-1 py-2 text-xs font-bold rounded-md transition {{ $appearance === 'NG' ? 'bg-rose-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                        NG
+                    </button>
                 </div>
                 @error('appearance')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>

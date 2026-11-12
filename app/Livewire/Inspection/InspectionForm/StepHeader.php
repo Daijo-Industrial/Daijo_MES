@@ -27,11 +27,11 @@ class StepHeader extends Component
 
     public $part_number;
 
-    public $part_search = '';
+    public string $part_search = '';
 
     public bool $show_part_dropdown = false;
 
-    public bool $showManualSpecs = false;
+    public bool $isSearchingAgain = false;
 
     public $part_name;
 
@@ -63,23 +63,91 @@ class StepHeader extends Component
 
     public bool $isSaved = false;
 
+    public function getValidCustomers(): array
+    {
+        $bpCustomers = MasterBusinessPartner::query()
+            ->whereNotNull('bp_name')
+            ->where('bp_name', '!=', '')
+            ->distinct()
+            ->pluck('bp_name')
+            ->toArray();
+
+        $deliveryCustomers = MasterCustomerDelivery::query()
+            ->whereNotNull('customer_name')
+            ->where('customer_name', '!=', '')
+            ->distinct()
+            ->pluck('customer_name')
+            ->toArray();
+
+        return collect(array_merge($bpCustomers, $deliveryCustomers))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+    }
+
+    public function getValidMachines(): array
+    {
+        $operatorUsers = User::whereHas('role', fn ($q) => $q->where('name', 'OPERATOR'))
+            ->orderBy('name')
+            ->pluck('name')
+            ->toArray();
+
+        $masterMachines = MasterMachine::query()
+            ->when(method_exists(MasterMachine::class, 'scopeActive'), fn ($q) => $q->active(), fn ($q) => $q->where('is_active', true))
+            ->pluck('name')
+            ->toArray();
+
+        $itemTipeMesin = MasterListItem::query()
+            ->whereNotNull('tipe_mesin')
+            ->where('tipe_mesin', '!=', '')
+            ->distinct()
+            ->pluck('tipe_mesin')
+            ->toArray();
+
+        return collect(array_merge($operatorUsers, $masterMachines, $itemTipeMesin))
+            ->filter()
+            ->map(fn ($m) => strtoupper(trim((string) $m)))
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+    }
+
     public function rules(): array
     {
+        $validCustomers = $this->getValidCustomers();
+        $validMachines = $this->getValidMachines();
+
         return [
             'document_number' => ['required', 'string', Rule::unique(InspectionReport::class, 'document_number')],
-            'customer' => 'required|string',
+            'customer' => ['required', 'string', Rule::in($validCustomers)],
             'inspection_date' => 'required|date',
-            'part_number' => 'required|string',
+            'part_number' => ['required', 'string', Rule::exists(MasterListItem::class, 'item_code')],
             'part_name' => 'required|string',
             'weight' => 'required|numeric|min:0',
             'weight_uom' => 'required|string',
             'material' => 'required|string',
             'color' => 'required|string',
             'tool_number_or_cav_number' => 'required|string',
-            'machine_number' => 'required|string',
+            'machine_number' => ['required', 'string', Rule::in($validMachines)],
             'shift' => 'required|integer|min:1|max:3',
             'operator' => 'required|string',
             'inspector' => 'required|string|max:255',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'customer.in' => 'Customer wajib dipilih dari opsi Master Customer resmi yang terdaftar.',
+            'customer.required' => 'Customer wajib dipilih dari daftar master customer.',
+            'machine_number.in' => 'Nomor Mesin wajib dipilih dari daftar Mesin / Operator yang terdaftar.',
+            'machine_number.required' => 'Nomor Mesin wajib dipilih.',
+            'part_number.exists' => 'Part Number wajib dipilih melalui fitur pencarian Master Part.',
+            'part_number.required' => 'Part Number wajib dipilih melalui fitur pencarian Master Part.',
+            'part_name.required' => 'Part Name wajib terisi dari data master part.',
         ];
     }
 
@@ -125,15 +193,33 @@ class StepHeader extends Component
 
     private function determineCurrentShift(): int
     {
-        $now = now()->format('H:i');
-        if ($now >= '07:30' && $now < '15:30') {
-            return 1;
-        }
-        if ($now >= '15:30' && $now < '23:30') {
-            return 2;
+        $timezone = config('mes.timezone') ?: 'Asia/Jakarta';
+        $now = now()->setTimezone($timezone);
+        $currentTime = $now->format('H:i');
+
+        $shifts = config('mes.shifts', []);
+
+        foreach ($shifts as $shiftId => $schedule) {
+            $start = $schedule['start'] ?? null;
+            $end = $schedule['end'] ?? null;
+
+            if (! $start || ! $end) {
+                continue;
+            }
+
+            if ($start > $end) {
+                // Crosses midnight (e.g. 23:30 to 07:30)
+                if ($currentTime >= $start || $currentTime < $end) {
+                    return (int) $shiftId;
+                }
+            } else {
+                if ($currentTime >= $start && $currentTime < $end) {
+                    return (int) $shiftId;
+                }
+            }
         }
 
-        return 3;
+        return 1;
     }
 
     public function mount(): void
@@ -156,20 +242,16 @@ class StepHeader extends Component
             $this->document_number = 'INSP-' . now()->format('Ymd-His') . '-' . strtoupper(Str::random(4));
         }
 
+        $timezone = config('mes.timezone') ?: 'Asia/Jakarta';
         if (! $this->inspection_date) {
-            $this->inspection_date = now()->format('Y-m-d');
+            $this->inspection_date = now()->setTimezone($timezone)->format('Y-m-d');
         }
 
         if (! $this->shift) {
             $this->shift = $this->determineCurrentShift();
         }
 
-        if (empty($this->inspector)) {
-            $user = auth()->user();
-            if ($user && ! empty($user->name)) {
-                $this->inspector = strtoupper($user->name);
-            }
-        } else {
+        if (! empty($this->inspector)) {
             $this->inspector = strtoupper(trim((string) $this->inspector));
         }
 
@@ -191,17 +273,14 @@ class StepHeader extends Component
         if (! empty($this->customer)) {
             $this->customer_search = $this->customer;
         }
-
-        if (! empty($this->part_number)) {
-            $this->part_search = $this->part_number;
-        }
     }
 
     public function updated($field): void
     {
         if ($field === 'customer_search') {
             $this->show_customer_dropdown = true;
-            $this->customer = trim($this->customer_search);
+            $matched = collect($this->getValidCustomers())->first(fn ($c) => strcasecmp($c, trim($this->customer_search)) === 0);
+            $this->customer = $matched ?: null;
         }
 
         if ($field === 'operator' && is_string($this->operator)) {
@@ -214,7 +293,8 @@ class StepHeader extends Component
 
         if ($field === 'machine_search') {
             $this->show_machine_dropdown = true;
-            $this->machine_number = strtoupper(trim($this->machine_search));
+            $matched = collect($this->getValidMachines())->first(fn ($m) => strcasecmp($m, trim($this->machine_search)) === 0);
+            $this->machine_number = $matched ? strtoupper($matched) : null;
         }
 
         if ($field === 'part_search') {
@@ -222,34 +302,6 @@ class StepHeader extends Component
         }
 
         $this->validateOnly($field);
-
-        if ($field === 'part_number' && ! empty($this->part_number)) {
-            $item = MasterListItem::with(['customer', 'businessPartner'])
-                ->where('item_code', $this->part_number)
-                ->first();
-
-            if ($item) {
-                $this->part_search = $item->item_code;
-                if (empty($this->part_name)) {
-                    $this->part_name = $item->item_name;
-                }
-                if (empty($this->customer)) {
-                    $this->customer = $item->customer?->customer_name ?: ($item->businessPartner?->bp_name ?: 'N/A');
-                }
-                if (empty($this->color) && ! empty($item->color)) {
-                    $this->color = $item->color;
-                }
-                if (empty($this->weight) && ! empty($item->part_weight)) {
-                    $this->weight = (float) $item->part_weight;
-                }
-                if (empty($this->tool_number_or_cav_number) && ! empty($item->cavity)) {
-                    $this->tool_number_or_cav_number = (string) $item->cavity;
-                }
-                if (! empty($item->standart_packaging_list)) {
-                    session(['stepHeaderSaved_default_snp' => (int) $item->standart_packaging_list]);
-                }
-            }
-        }
     }
 
     public function selectPartItem(string $itemCode): void
@@ -260,11 +312,19 @@ class StepHeader extends Component
 
         if ($item) {
             $this->part_number = $item->item_code;
-            $this->part_search = $item->item_code;
             $this->part_name = $item->item_name;
+            $this->part_search = '';
 
-            $this->customer = $item->customer?->customer_name ?: ($item->businessPartner?->bp_name ?: 'N/A');
-            $this->customer_search = $this->customer;
+            $cust = $item->customer?->customer_name ?: ($item->businessPartner?->bp_name ?: null);
+            if ($cust) {
+                $this->customer = $cust;
+                $this->customer_search = $cust;
+            }
+
+            if (! empty($item->tipe_mesin)) {
+                $this->machine_number = strtoupper(trim((string) $item->tipe_mesin));
+                $this->machine_search = $this->machine_number;
+            }
 
             if (! empty($item->color)) {
                 $this->color = $item->color;
@@ -280,9 +340,32 @@ class StepHeader extends Component
             }
 
             $this->show_part_dropdown = false;
-            $this->showManualSpecs = false;
-            $this->resetValidation(['part_number', 'part_name', 'customer']);
+            $this->isSearchingAgain = false;
+            $this->resetValidation(['part_number', 'part_name', 'customer', 'machine_number']);
         }
+    }
+
+    public function startSearchAgain(): void
+    {
+        $this->isSearchingAgain = true;
+        $this->part_search = '';
+        $this->show_part_dropdown = false;
+    }
+
+    public function cancelSearchAgain(): void
+    {
+        $this->isSearchingAgain = false;
+        $this->part_search = '';
+        $this->show_part_dropdown = false;
+    }
+
+    public function clearPartSelection(): void
+    {
+        $this->part_number = null;
+        $this->part_name = null;
+        $this->part_search = '';
+        $this->isSearchingAgain = false;
+        $this->show_part_dropdown = false;
     }
 
     public function closePartDropdown(): void
@@ -292,8 +375,11 @@ class StepHeader extends Component
 
     public function selectCustomer(string $name): void
     {
-        $this->customer = $name;
-        $this->customer_search = $name;
+        $matched = collect($this->getValidCustomers())->first(fn ($c) => strcasecmp($c, $name) === 0);
+        if ($matched) {
+            $this->customer = $matched;
+            $this->customer_search = $matched;
+        }
         $this->show_customer_dropdown = false;
         $this->validateOnly('customer');
     }
@@ -305,8 +391,11 @@ class StepHeader extends Component
 
     public function selectMachine(string $machineName): void
     {
-        $this->machine_number = strtoupper($machineName);
-        $this->machine_search = $this->machine_number;
+        $matched = collect($this->getValidMachines())->first(fn ($m) => strcasecmp($m, $machineName) === 0);
+        if ($matched) {
+            $this->machine_number = strtoupper($matched);
+            $this->machine_search = $this->machine_number;
+        }
         $this->show_machine_dropdown = false;
         $this->validateOnly('machine_number');
     }
@@ -316,15 +405,19 @@ class StepHeader extends Component
         $this->show_machine_dropdown = false;
     }
 
-    public function toggleManualSpecs(): void
-    {
-        $this->showManualSpecs = ! $this->showManualSpecs;
-    }
-
     public function saveStep(): void
     {
         if (! empty($this->customer_search) && empty($this->customer)) {
-            $this->customer = trim($this->customer_search);
+            $matched = collect($this->getValidCustomers())->first(fn ($c) => strcasecmp($c, trim($this->customer_search)) === 0);
+            if ($matched) {
+                $this->customer = $matched;
+            }
+        }
+        if (! empty($this->machine_search) && empty($this->machine_number)) {
+            $matched = collect($this->getValidMachines())->first(fn ($m) => strcasecmp($m, trim($this->machine_search)) === 0);
+            if ($matched) {
+                $this->machine_number = strtoupper($matched);
+            }
         }
         if (! empty($this->operator)) {
             $this->operator = strtoupper(trim($this->operator));
@@ -332,17 +425,15 @@ class StepHeader extends Component
         if (! empty($this->inspector)) {
             $this->inspector = strtoupper(trim($this->inspector));
         }
-        if (! empty($this->machine_search)) {
-            $this->machine_number = strtoupper(trim($this->machine_search));
-        }
 
         $this->validate();
 
         $data = $this->snapshot();
+        $timezone = config('mes.timezone') ?: 'Asia/Jakarta';
 
         session([
             'stepHeaderSaved' => $data,
-            'stepHeaderSavedAt' => now()->toIso8601String(),
+            'stepHeaderSavedAt' => now()->setTimezone($timezone)->toIso8601String(),
             'stepHeaderSavedHash' => md5(json_encode($data)),
         ]);
 
@@ -368,61 +459,62 @@ class StepHeader extends Component
                 ->get();
         }
 
-        // Pull distinct values of master_business_partners.bp_name
-        $distinctCustomers = MasterBusinessPartner::query()
-            ->whereNotNull('bp_name')
-            ->where('bp_name', '!=', '')
-            ->distinct()
-            ->orderBy('bp_name')
-            ->pluck('bp_name')
-            ->toArray();
-
+        $distinctCustomers = $this->getValidCustomers();
         $filteredCustomers = $distinctCustomers;
         if (! empty(trim($this->customer_search))) {
             $searchUpper = strtoupper(trim($this->customer_search));
             $filteredCustomers = array_values(array_filter($distinctCustomers, fn ($c) => str_contains(strtoupper($c), $searchUpper)));
         }
 
-        // Machine list sourced from Users with role OPERATOR merged with MasterMachine
-        $operatorUsers = User::whereHas('role', fn ($q) => $q->where('name', 'OPERATOR'))
-            ->orderBy('name')
-            ->pluck('name')
-            ->toArray();
-
-        $masterMachines = MasterMachine::query()
-            ->when(method_exists(MasterMachine::class, 'scopeActive'), fn ($q) => $q->active(), fn ($q) => $q->where('is_active', true))
-            ->pluck('name')
-            ->toArray();
-
-        $machineList = collect(array_merge($operatorUsers, $masterMachines))
-            ->filter()
-            ->map(fn ($m) => strtoupper(trim((string) $m)))
-            ->unique()
-            ->sort()
-            ->values()
-            ->toArray();
-
+        $machineList = $this->getValidMachines();
         $filteredMachines = $machineList;
         if (! empty(trim($this->machine_search))) {
             $searchUpper = strtoupper(trim($this->machine_search));
             $filteredMachines = array_values(array_filter($machineList, fn ($m) => str_contains($m, $searchUpper)));
         }
 
-        $configuredInspectors = (array) config('mes.ipqc_inspectors', ['Dewi', 'Rini', 'Agus', 'Budi', 'Siti', 'Wahyu', 'Rina']);
-        $configuredInspectors = array_map(fn ($n) => strtoupper((string) $n), $configuredInspectors);
+        // Inspector & Operator suggestions from distinct historical records
+        $inspectorSuggestions = InspectionReport::query()
+            ->whereNotNull('inspector')
+            ->where('inspector', '!=', '')
+            ->where('inspector', '!=', '-')
+            ->distinct()
+            ->orderBy('inspector')
+            ->pluck('inspector')
+            ->map(fn ($n) => strtoupper(trim((string) $n)))
+            ->unique()
+            ->values()
+            ->toArray();
+
         $user = auth()->user();
         if ($user && ! empty($user->name)) {
-            $userNameUpper = strtoupper($user->name);
-            if (! in_array($userNameUpper, $configuredInspectors, true)) {
-                array_unshift($configuredInspectors, $userNameUpper);
+            $userNameUpper = strtoupper(trim($user->name));
+            if (! in_array($userNameUpper, $inspectorSuggestions, true)) {
+                array_unshift($inspectorSuggestions, $userNameUpper);
             }
         }
+
+        $operatorSuggestions = InspectionReport::query()
+            ->whereNotNull('operator')
+            ->where('operator', '!=', '')
+            ->where('operator', '!=', '-')
+            ->distinct()
+            ->orderBy('operator')
+            ->pluck('operator')
+            ->map(fn ($n) => strtoupper(trim((string) $n)))
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $shiftsConfig = config('mes.shifts', []);
 
         return view('livewire.inspection.form.step-header', [
             'customerOptions' => $filteredCustomers,
             'searchResults' => $searchResults,
             'machineOptions' => $filteredMachines,
-            'inspectorOptions' => $configuredInspectors,
+            'inspectorSuggestions' => $inspectorSuggestions,
+            'operatorSuggestions' => $operatorSuggestions,
+            'shiftsConfig' => $shiftsConfig,
         ]);
     }
 }

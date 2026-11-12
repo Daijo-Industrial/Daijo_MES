@@ -114,22 +114,29 @@ class StepDetail extends Component
         $this->refreshSavedFlags();
     }
 
+    private function getShiftTimes(int $shift): array
+    {
+        $shifts = config('mes.shifts', []);
+        $shiftData = $shifts[$shift] ?? null;
+
+        if ($shiftData && ! empty($shiftData['start']) && ! empty($shiftData['end'])) {
+            return [$shiftData['start'], $shiftData['end']];
+        }
+
+        return ['07:30', '15:30'];
+    }
+
     public function updatedPeriod(): void
     {
         $shift = (int) ($this->shift ?? 1);
         $period = (int) ($this->period ?? 1);
 
-        $shiftTimes = [
-            1 => ['07:30', '15:30'],
-            2 => ['15:30', '23:30'],
-            3 => ['23:30', '07:30'],
-        ];
-
         $periodOffset = $period - 1;
-        [$shiftStart, $shiftEnd] = $shiftTimes[$shift] ?? ['07:30', '15:30'];
+        [$shiftStart, $shiftEnd] = $this->getShiftTimes($shift);
 
-        $start = Carbon::createFromTimeString($shiftStart);
-        $end = Carbon::createFromTimeString($shiftEnd);
+        $tz = config('mes.timezone', 'Asia/Jakarta');
+        $start = Carbon::createFromTimeString($shiftStart, $tz);
+        $end = Carbon::createFromTimeString($shiftEnd, $tz);
 
         if ($shift === 3 && $end->lessThan($start)) {
             $end->addDay();
@@ -217,15 +224,11 @@ class StepDetail extends Component
     public function getPeriodTimeRange(int $period): string
     {
         $shift = (int) ($this->shift ?? session('stepHeaderSaved.shift', 1));
-        $shiftTimes = [
-            1 => ['07:30', '15:30'],
-            2 => ['15:30', '23:30'],
-            3 => ['23:30', '07:30'],
-        ];
+        [$shiftStart, $shiftEnd] = $this->getShiftTimes($shift);
 
-        [$shiftStart, $shiftEnd] = $shiftTimes[$shift] ?? ['07:30', '15:30'];
-        $start = Carbon::createFromTimeString($shiftStart);
-        $end = Carbon::createFromTimeString($shiftEnd);
+        $tz = config('mes.timezone', 'Asia/Jakarta');
+        $start = Carbon::createFromTimeString($shiftStart, $tz);
+        $end = Carbon::createFromTimeString($shiftEnd, $tz);
 
         if ($shift === 3 && $end->lessThan($start)) {
             $end->addDay();
