@@ -25,6 +25,19 @@ class StepSampling extends Component
 
     public bool $isSaved = false;
 
+    protected $listeners = [
+        'triggerSubcomponentSave' => 'handleSaveTrigger',
+    ];
+
+    public function handleSaveTrigger(?string $periodKey = null): void
+    {
+        if ($periodKey === null || $periodKey === $this->periodKey) {
+            if (! empty($this->samples)) {
+                $this->saveStep();
+            }
+        }
+    }
+
     protected function rules(): array
     {
         $rules = [

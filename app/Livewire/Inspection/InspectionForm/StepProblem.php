@@ -119,6 +119,21 @@ class StepProblem extends Component
         ];
     }
 
+    public function setNoProblemPreset(): void
+    {
+        $this->problems = [
+            [
+                'row_key' => (string) Str::uuid(),
+                'inspection_report_document_number' => $this->inspection_report_document_number,
+                'time' => now()->format('H:i'),
+                'cycle_time' => 60,
+                'type' => 'NO PROBLEM',
+                'remarks' => 'Normal production / Tidak ada kendala',
+            ],
+        ];
+        $this->dispatch('toast', message: 'Preset produksi normal diterapkan.');
+    }
+
     public function removeProblem($index): void
     {
         unset($this->problems[$index]);

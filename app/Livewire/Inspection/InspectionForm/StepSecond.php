@@ -40,7 +40,17 @@ class StepSecond extends Component
         'samplingReset' => 'refreshSavedFlags',
         'packagingSaved' => 'refreshSavedFlags',
         'packagingReset' => 'refreshSavedFlags',
+        'triggerSubcomponentSave' => 'handleSaveTrigger',
     ];
+
+    public function handleSaveTrigger(?string $periodKey = null): void
+    {
+        if ($periodKey === null || $periodKey === $this->periodKey) {
+            if ($this->skipLotSize || ! empty($this->lot_size_quantity)) {
+                $this->saveStep();
+            }
+        }
+    }
 
     protected function rules(): array
     {

@@ -20,6 +20,10 @@ class StepHeader extends Component
 
     public $part_number;
 
+    public $part_search = '';
+
+    public bool $show_part_dropdown = false;
+
     public $part_name;
 
     public $weight;
@@ -106,6 +110,19 @@ class StepHeader extends Component
         return true;
     }
 
+    private function determineCurrentShift(): int
+    {
+        $now = now()->format('H:i');
+        if ($now >= '07:30' && $now < '15:30') {
+            return 1;
+        }
+        if ($now >= '15:30' && $now < '23:30') {
+            return 2;
+        }
+
+        return 3;
+    }
+
     public function mount(): void
     {
         $saved = session('stepHeaderSaved', []);
@@ -129,17 +146,43 @@ class StepHeader extends Component
         if (! $this->inspection_date) {
             $this->inspection_date = now()->format('Y-m-d');
         }
+
+        if (! $this->shift) {
+            $this->shift = $this->determineCurrentShift();
+        }
+
+        if (empty($this->inspector)) {
+            $user = auth()->user();
+            if ($user && ! empty($user->name)) {
+                $this->inspector = $user->name;
+            }
+        }
+
+        if (! empty($this->part_number)) {
+            $this->part_search = $this->part_number;
+        }
     }
 
     public function updated($field): void
     {
         $this->validateOnly($field);
 
+        if ($field === 'part_search') {
+            $this->show_part_dropdown = ! empty(trim($this->part_search));
+        }
+
         if ($field === 'part_number' && ! empty($this->part_number)) {
-            $item = MasterListItem::where('item_code', $this->part_number)->first();
+            $item = MasterListItem::with(['customer', 'businessPartner'])
+                ->where('item_code', $this->part_number)
+                ->first();
+
             if ($item) {
+                $this->part_search = $item->item_code;
                 if (empty($this->part_name)) {
                     $this->part_name = $item->item_name;
+                }
+                if (empty($this->customer)) {
+                    $this->customer = $item->customer?->customer_name ?: ($item->businessPartner?->bp_name ?: 'N/A');
                 }
                 if (empty($this->color) && ! empty($item->color)) {
                     $this->color = $item->color;
@@ -150,8 +193,47 @@ class StepHeader extends Component
                 if (empty($this->tool_number_or_cav_number) && ! empty($item->cavity)) {
                     $this->tool_number_or_cav_number = (string) $item->cavity;
                 }
+                if (! empty($item->standart_packaging_list)) {
+                    session(['stepHeaderSaved_default_snp' => (int) $item->standart_packaging_list]);
+                }
             }
         }
+    }
+
+    public function selectPartItem(string $itemCode): void
+    {
+        $item = MasterListItem::with(['customer', 'businessPartner'])
+            ->where('item_code', $itemCode)
+            ->first();
+
+        if ($item) {
+            $this->part_number = $item->item_code;
+            $this->part_search = $item->item_code;
+            $this->part_name = $item->item_name;
+
+            $this->customer = $item->customer?->customer_name ?: ($item->businessPartner?->bp_name ?: 'N/A');
+
+            if (! empty($item->color)) {
+                $this->color = $item->color;
+            }
+            if (! empty($item->part_weight)) {
+                $this->weight = (float) $item->part_weight;
+            }
+            if (! empty($item->cavity)) {
+                $this->tool_number_or_cav_number = (string) $item->cavity;
+            }
+            if (! empty($item->standart_packaging_list)) {
+                session(['stepHeaderSaved_default_snp' => (int) $item->standart_packaging_list]);
+            }
+
+            $this->show_part_dropdown = false;
+            $this->resetValidation(['part_number', 'part_name', 'customer']);
+        }
+    }
+
+    public function closePartDropdown(): void
+    {
+        $this->show_part_dropdown = false;
     }
 
     public function saveStep(): void
@@ -177,6 +259,17 @@ class StepHeader extends Component
 
     public function render(): View
     {
+        $searchResults = [];
+        if (! empty(trim($this->part_search))) {
+            $searchResults = MasterListItem::with(['customer', 'businessPartner'])
+                ->where(function ($q) {
+                    $q->where('item_code', 'like', "%{$this->part_search}%")
+                        ->orWhere('item_name', 'like', "%{$this->part_search}%");
+                })
+                ->limit(8)
+                ->get();
+        }
+
         $customerSuggestions = MasterCustomerDelivery::query()
             ->select('customer_name')
             ->distinct()
@@ -185,8 +278,16 @@ class StepHeader extends Component
             ->pluck('customer_name')
             ->toArray();
 
+        $configuredInspectors = (array) config('mes.ipqc_inspectors', ['Dewi', 'Rini', 'Agus', 'Budi', 'Siti', 'Wahyu', 'Rina']);
+        $user = auth()->user();
+        if ($user && ! empty($user->name) && ! in_array($user->name, $configuredInspectors, true)) {
+            array_unshift($configuredInspectors, $user->name);
+        }
+
         return view('livewire.inspection.form.step-header', [
             'customerSuggestions' => $customerSuggestions,
+            'searchResults' => $searchResults,
+            'inspectorOptions' => $configuredInspectors,
         ]);
     }
 }

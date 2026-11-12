@@ -212,6 +212,112 @@ class StepDetail extends Component
         $this->computeSaveFlags();
     }
 
+    public function saveCurrentPeriod(): void
+    {
+        $this->saveStep();
+        $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+        $this->computeSaveFlags();
+        $this->dispatch('stepDetailSaved');
+        $this->dispatch('toast', message: "Data Periode {$this->period} berhasil disimpan!");
+    }
+
+    public function copyFromPreviousPeriod(): void
+    {
+        if ($this->period <= 1) {
+            $this->dispatch('toast', message: 'Periode 1 adalah periode awal. Tidak ada periode sebelumnya.', type: 'warning');
+            return;
+        }
+
+        $prevPeriod = $this->period - 1;
+        $prevKey = 'p' . $prevPeriod;
+        $currentKey = $this->periodKey;
+        $bag = session('stepDetailSaved', []);
+
+        $hasPrev = ! empty(data_get($bag, "first_inspections.$prevKey"))
+            || ! empty(data_get($bag, "dimensions.$prevKey"))
+            || ! empty(data_get($bag, "second_inspections.$prevKey"))
+            || ! empty(data_get($bag, "packagings.$prevKey"));
+
+        if (! $hasPrev) {
+            $this->dispatch('toast', message: "Data Periode {$prevPeriod} belum tersedia untuk disalin.", type: 'warning');
+            return;
+        }
+
+        // 1. Copy Dimension Template (Keep Area, Lower Limit, Upper Limit, UOM; clear actual_value and judgement)
+        $prevDimensions = data_get($bag, "dimensions.$prevKey", []);
+        if (! empty($prevDimensions)) {
+            $copiedDimensions = [];
+            foreach ($prevDimensions as $dim) {
+                $copiedDimensions[] = [
+                    'row_key' => (string) Str::uuid(),
+                    'inspection_report_document_number' => $this->inspection_report_document_number,
+                    'area' => $dim['area'] ?? '',
+                    'lower_limit' => $dim['lower_limit'] ?? null,
+                    'upper_limit' => $dim['upper_limit'] ?? null,
+                    'limit_uom' => $dim['limit_uom'] ?? 'mm',
+                    'actual_value' => null,
+                    'judgement' => 'OK',
+                    'remarks' => null,
+                    'start_datetime' => $this->start_datetime,
+                    'end_datetime' => $this->end_datetime,
+                ];
+            }
+            $bag['dimensions'][$currentKey] = $copiedDimensions;
+        }
+
+        // 2. Copy Packaging Template (Keep SNP, box label; default judgement OK)
+        $prevPackagings = data_get($bag, "packagings.$prevKey", []);
+        if (! empty($prevPackagings)) {
+            $copiedPackagings = [];
+            foreach ($prevPackagings as $pack) {
+                $copiedPackagings[] = [
+                    'row_key' => (string) Str::uuid(),
+                    'second_inspection_document_number' => $this->document_number,
+                    'snp' => $pack['snp'] ?? 100,
+                    'box_label' => $pack['box_label'] ?? '',
+                    'judgement' => 'OK',
+                    'remarks' => null,
+                ];
+            }
+            $bag['packagings'][$currentKey] = $copiedPackagings;
+        }
+
+        // 3. Copy First Piece defaults (Weight & UOM)
+        $prevFirst = data_get($bag, "first_inspections.$prevKey", []);
+        if (! empty($prevFirst)) {
+            $bag['first_inspections'][$currentKey] = [
+                'detail_inspection_report_document_number' => $this->document_number,
+                'appearance' => 'OK',
+                'weight' => $prevFirst['weight'] ?? session('stepHeaderSaved.weight'),
+                'weight_uom' => $prevFirst['weight_uom'] ?? session('stepHeaderSaved.weight_uom', 'g'),
+                'fitting_test' => $prevFirst['fitting_test'] ?? null,
+                'remarks' => null,
+            ];
+        }
+
+        // 4. Copy Lot Size Setup
+        $prevSecond = data_get($bag, "second_inspections.$prevKey", []);
+        if (! empty($prevSecond)) {
+            $bag['second_inspections'][$currentKey] = [
+                'detail_inspection_report_document_number' => $this->document_number,
+                'document_number' => $this->document_number,
+                'lot_size_quantity' => $prevSecond['lot_size_quantity'] ?? null,
+                'skipLotSize' => $prevSecond['skipLotSize'] ?? false,
+            ];
+        }
+
+        session(['stepDetailSaved' => $bag]);
+        $this->reloadToken++;
+        $this->computeSaveFlags();
+        $this->dispatch('toast', message: "Struktur template Periode {$prevPeriod} berhasil disalin ke Periode {$this->period}!", type: 'success');
+    }
+
+    public function proceedToStep3(): void
+    {
+        $this->saveCurrentPeriod();
+        $this->dispatch('nextStep');
+    }
+
     public function resetStep(bool $clearOnlyCurrentPeriod = true): void
     {
         $saved = session('stepDetailSaved', []);
