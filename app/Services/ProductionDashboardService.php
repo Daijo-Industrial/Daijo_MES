@@ -1571,7 +1571,9 @@ class ProductionDashboardService
         bool|array|null $isHalfDay = null,
         ?array $preloadedHalfDayDates = null
     ): array {
-        $period = CarbonPeriod::create($startDate, $endDate);
+        $today = Carbon::today('Asia/Jakarta');
+        $effectiveChartEndDate = ($startDate->lte($today) && $endDate->gt($today)) ? $today->copy() : $endDate->copy();
+        $period = CarbonPeriod::create($startDate, $effectiveChartEndDate);
         $dateLabels = [];
         $dateStrings = [];
 
@@ -1584,6 +1586,7 @@ class ProductionDashboardService
         $shiftAdjustersMap = [];
         $allAdjusterNames = [];
         $adjusterStats = [];
+        $adjusterDailyDirectNg = [];
 
         foreach ($adjustLogsRaw as $log) {
             $pic = trim($log->pic ?? '');
@@ -1628,6 +1631,8 @@ class ProductionDashboardService
                     $typeName = $ngDetail->ngType?->ng_type ?? 'Unknown';
                     $adjusterStats[$pic]['adjuster_direct_ng'] += $qty;
                     $adjusterStats[$pic]['adjuster_ng_breakdown'][$typeName] = ($adjusterStats[$pic]['adjuster_ng_breakdown'][$typeName] ?? 0) + $qty;
+
+                    $adjusterDailyDirectNg[$pic][$prodDate] = ($adjusterDailyDirectNg[$pic][$prodDate] ?? 0) + $qty;
                 }
             }
         }
@@ -1656,23 +1661,32 @@ class ProductionDashboardService
         }
 
         // Calculate daily NG per Adjuster
-        $adjusterDailyNg = [];
+        $adjusterDailyProdNg = [];
         $adjusterDailyActual = [];
 
-        foreach ($allAdjusterNames as $adj) {
-            $adjusterDailyNg[$adj] = array_fill_keys($dateStrings, 0);
-            $adjusterDailyActual[$adj] = array_fill_keys($dateStrings, 0);
-        }
-
         foreach ($shiftProductionMap as $dStr => $shifts) {
-            if (! isset($shiftAdjustersMap[$dStr])) {
-                continue;
-            }
+            $adjustersOnDay = $shiftAdjustersMap[$dStr] ?? [];
 
             foreach ($shifts as $sNum => $prod) {
                 $shiftNg = $prod['ng'];
                 $shiftActual = $prod['actual'];
-                $adjustersInShift = $shiftAdjustersMap[$dStr][$sNum] ?? [];
+                $adjustersInShift = $adjustersOnDay[$sNum] ?? [];
+
+                // Fallback 1: If no adjuster specifically logged on this shift, check adjusters from other shifts on this day
+                if (empty($adjustersInShift) && ! empty($adjustersOnDay)) {
+                    $allDayAdjusters = array_unique(array_merge(...array_values($adjustersOnDay)));
+                    if (! empty($allDayAdjusters)) {
+                        $adjustersInShift = array_values($allDayAdjusters);
+                    }
+                }
+
+                // Fallback 2: If no adjuster logged on this date at all, fallback to previous day's shift adjusters or known adjusters
+                if (empty($adjustersInShift) && ! empty($allAdjusterNames)) {
+                    $prevDate = Carbon::parse($dStr)->subDay()->format('Y-m-d');
+                    if (! empty($shiftAdjustersMap[$prevDate][$sNum])) {
+                        $adjustersInShift = $shiftAdjustersMap[$prevDate][$sNum];
+                    }
+                }
 
                 if (! empty($adjustersInShift)) {
                     $count = count($adjustersInShift);
@@ -1686,10 +1700,8 @@ class ProductionDashboardService
                         $adjNg = $baseNg + ($idx < $remainderNg ? 1 : 0);
                         $adjActual = $baseActual + ($idx < $remainderActual ? 1 : 0);
 
-                        if (isset($adjusterDailyNg[$adj][$dStr])) {
-                            $adjusterDailyNg[$adj][$dStr] += $adjNg;
-                            $adjusterDailyActual[$adj][$dStr] += $adjActual;
-                        }
+                        $adjusterDailyProdNg[$adj][$dStr] = ($adjusterDailyProdNg[$adj][$dStr] ?? 0) + $adjNg;
+                        $adjusterDailyActual[$adj][$dStr] = ($adjusterDailyActual[$adj][$dStr] ?? 0) + $adjActual;
                     }
                 }
             }
@@ -1707,11 +1719,25 @@ class ProductionDashboardService
 
         foreach ($allAdjusterNames as $adj) {
             $color = $palette[$colorIdx % count($palette)];
-            $ngValues = array_values($adjusterDailyNg[$adj]);
-            $actualValues = array_values($adjusterDailyActual[$adj]);
 
-            $ngProduction = array_sum($ngValues);
-            $directNg = $adjusterStats[$adj]['adjuster_direct_ng'] ?? 0;
+            $prodValues = [];
+            $directValues = [];
+            $totalValues = [];
+            $actualValues = [];
+
+            foreach ($dateStrings as $dStr) {
+                $pNg = $adjusterDailyProdNg[$adj][$dStr] ?? 0;
+                $dNg = $adjusterDailyDirectNg[$adj][$dStr] ?? 0;
+                $act = $adjusterDailyActual[$adj][$dStr] ?? 0;
+
+                $prodValues[] = $pNg;
+                $directValues[] = $dNg;
+                $totalValues[] = $pNg + $dNg;
+                $actualValues[] = $act;
+            }
+
+            $ngProduction = array_sum($prodValues);
+            $directNg = $adjusterStats[$adj]['adjuster_direct_ng'] ?? array_sum($directValues);
             $totalNg = $ngProduction + $directNg; // NG Production + NG Adjuster
             $totalActual = array_sum($actualValues);
             $totalProd = $totalActual + $totalNg;
@@ -1719,7 +1745,9 @@ class ProductionDashboardService
 
             $datasets[] = [
                 'label' => $adj,
-                'data' => $ngValues,
+                'data' => $totalValues, // Combined Total NG (NG Produksi + NG Setting Adjust)
+                'prodNg' => $prodValues,
+                'directNg' => $directValues,
                 'borderColor' => $color,
                 'backgroundColor' => $color,
                 'fill' => false,
@@ -1745,7 +1773,13 @@ class ProductionDashboardService
             $colorIdx++;
         }
 
-        usort($adjusterSummaries, fn ($a, $b) => $b['total_ng'] <=> $a['total_ng']);
+        // Sort by NG rate descending (highest defect rate first for GM executive view)
+        usort($adjusterSummaries, function ($a, $b) {
+            if ($b['ng_rate'] !== $a['ng_rate']) {
+                return $b['ng_rate'] <=> $a['ng_rate'];
+            }
+            return $b['total_ng'] <=> $a['total_ng'];
+        });
 
         return [
             'labels' => $dateLabels,

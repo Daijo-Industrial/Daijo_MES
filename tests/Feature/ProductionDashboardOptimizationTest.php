@@ -995,7 +995,14 @@ class ProductionDashboardOptimizationTest extends TestCase
         $this->assertEquals(150, $data['summary']['total_ng']);
         $this->assertEquals(13.04, $data['summary']['ng_rate']);
 
-        // 3. Test Livewire blade render
+        // 3. Check Dataset contains combined total NG in daily data
+        $rudiDataset = collect($data['adjuster_ng_trend']['datasets'])->firstWhere('label', 'Rudi Siswanto');
+        $this->assertNotNull($rudiDataset);
+        $this->assertEquals([150], $rudiDataset['data']); // Combined total: 100 prod + 50 direct
+        $this->assertEquals([100], $rudiDataset['prodNg']);
+        $this->assertEquals([50], $rudiDataset['directNg']);
+
+        // 4. Test Livewire blade render
         $this->actingAs($user);
         Livewire::test(ProductionDashboard::class)
             ->set('viewType', 'daily')

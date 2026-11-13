@@ -339,6 +339,7 @@ class BarcodeController extends Controller
 
         $customers = Customer::orderBy('name')->get();
         $recentMasters = BarcodePackagingMaster::withCount('detailBarcode')
+            ->with(['detailBarcode' => fn ($q) => $q->orderBy('id', 'asc')])
             ->orderBy('created_at', 'desc')
             ->take(25)
             ->get();
