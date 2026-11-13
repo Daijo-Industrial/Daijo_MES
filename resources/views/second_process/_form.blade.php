@@ -1852,6 +1852,19 @@
                         .then(res => res.json())
                         .then(data => {
                             dropdown.innerHTML = '';
+
+                            if (inputId === 'customer') {
+                                const seenNames = new Set();
+                                data = data.filter(item => {
+                                    const bpName = (item.bp_name || item.customer_name || item.name || '').trim();
+                                    if (!bpName || seenNames.has(bpName)) {
+                                        return false;
+                                    }
+                                    seenNames.add(bpName);
+                                    return true;
+                                });
+                            }
+
                             if (data.length === 0) {
                                 const emptyDiv = document.createElement('div');
                                 emptyDiv.className = 'px-4 py-2.5 text-xs text-gray-400 italic bg-gray-50/50';
@@ -1866,7 +1879,9 @@
                                 div.className =
                                     'px-4 py-2.5 hover:bg-blue-50 cursor-pointer text-xs border-b border-gray-100 last:border-b-0 text-gray-800 transition';
 
-                                if (searchBy === 'name' || inputId === 'part_name') {
+                                if (inputId === 'customer') {
+                                    div.textContent = (item.bp_name || item.customer_name || item.name || '').trim();
+                                } else if (searchBy === 'name' || inputId === 'part_name') {
                                     div.innerHTML = `
                                         <div class="flex items-center justify-between">
                                             <span class="font-bold text-blue-700 text-xs">${escapeHtml(item.item_name || item.item_description || '-')}</span>
@@ -1951,7 +1966,7 @@
         setupAutocomplete('customer', 'customer-dropdown',
             '{{ route('second-process-reports.search-customers') }}',
             function(item) {
-                document.getElementById('customer').value = item.customer_name || item.name || '';
+                document.getElementById('customer').value = (item.bp_name || item.customer_name || item.name || '').trim();
             });
 
 

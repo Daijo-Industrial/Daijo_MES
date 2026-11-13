@@ -1,24 +1,22 @@
 <div class="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
-    {{-- Breadcrumb & Heading --}}
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <a href="{{ route('inspection-reports.index') }}"
-               class="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+    {{-- Top Navigation & Document Number Bar --}}
+    <a href="{{ route('inspection-reports.index') }}"
+       class="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Kembali ke Daftar Laporan
+    </a>
+    <div class="flex items-center justify-between gap-4">
+        {{-- Page Heading --}}
+        <h1 class="text-2xl font-bold text-zinc-900 flex items-center gap-2.5">
+            <span class="p-2 rounded-lg bg-zinc-900 text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
-                Kembali ke Daftar Laporan
-            </a>
-            <h1 class="text-2xl font-bold text-zinc-900 mt-2 flex items-center gap-2.5">
-                <span class="p-2 rounded-lg bg-zinc-900 text-white">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                </span>
-                Form Input Plastic Injection IPQC
-            </h1>
-        </div>
-
+            </span>
+            Form Input Plastic Injection IPQC
+        </h1>
         @if ($inspection_report_document_number)
             <div class="flex items-center gap-2 bg-zinc-100 border border-zinc-300 px-3.5 py-1.5 rounded-lg">
                 <span class="text-xs text-zinc-500 font-medium uppercase tracking-wider">No. Dokumen:</span>

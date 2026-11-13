@@ -19,10 +19,6 @@
                 <span>Data belum disimpan ke sesi</span>
             </span>
         @endif
-
-        <span class="text-sm font-mono text-zinc-500">
-            No Dokumen: <strong class="text-zinc-900 font-bold">{{ $document_number }}</strong>
-        </span>
     </div>
 
     {{-- Main 2-Column Split Form Container --}}

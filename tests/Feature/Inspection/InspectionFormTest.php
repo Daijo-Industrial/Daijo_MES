@@ -616,4 +616,40 @@ class InspectionFormTest extends TestCase
             ->assertOk()
             ->assertSee('Periode 1 Telah Tersimpan di Sesi');
     }
+
+    public function test_step_detail_renders_unified_period_selector_and_minimized_time(): void
+    {
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => 'INSP-TEST-UNIFIED-01',
+                'customer' => 'PT HONDA',
+                'inspection_date' => '2026-11-02',
+                'part_number' => 'PART-UNIFIED-01',
+                'part_name' => 'UNIFIED PART',
+                'shift' => 1,
+                'operator' => 'OP-UNIFIED',
+                'inspector' => 'INSP-UNIFIED',
+            ],
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(StepDetail::class)
+            ->assertOk()
+            ->assertSee('Periode 1')
+            ->assertSee('Periode 2')
+            ->assertSee('Periode 3')
+            ->assertSee('Periode 4')
+            ->assertSee('Jam Inspeksi:')
+            ->assertSee('Ubah Jam')
+            ->assertSee('Reset Periode 1')
+            ->assertDontSee('Part Sedang Berjalan')
+            ->assertDontSee('Shift dibagi menjadi 4 periode')
+            // Period 1 doesn't have previous period, so copy button should not exist
+            ->assertDontSee('Salin dari Periode 0')
+            // Switch to Period 2
+            ->call('selectPeriod', 2)
+            ->assertSet('period', 2)
+            ->assertSee('Salin dari Periode 1')
+            ->assertSee('Reset Periode 2');
+    }
 }

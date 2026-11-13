@@ -178,7 +178,16 @@ class SecondProcessReportController extends Controller
             'GENERAL' => 'General',
         ];
 
-        $industryMap = MasterBusinessPartner::pluck('industry', 'bp_name')->all();
+        $industryMap = MasterBusinessPartner::query()
+            ->jakartaBranch()
+            ->where(function ($q) {
+                $q->where('group_code', '100')
+                    ->orWhere('category', MasterBusinessPartner::CATEGORY_CUSTOMER);
+            })
+            ->whereNotNull('industry')
+            ->where('industry', '!=', MasterBusinessPartner::INDUSTRY_MOULDING)
+            ->pluck('industry', 'bp_name')
+            ->all();
 
         return view('second_process.index', compact(
             'reports',
@@ -943,6 +952,7 @@ class SecondProcessReportController extends Controller
                 'id' => $bp->id,
                 'customer_code' => $bp->bp_code,
                 'customer_name' => $bp->bp_name,
+                'bp_name' => $bp->bp_name,
                 'name' => $bp->bp_name,
                 'display_label' => $bp->bp_name . $subtext,
             ];
