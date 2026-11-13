@@ -187,7 +187,7 @@
 
                 {{-- TAB 2: REPRINT & RECENT HISTORY --}}
                 <div x-show="activeTab === 'reprint'" class="p-6 sm:p-8" style="display: none;">
-                    <form action="{{ route('barcode.reprint') }}" method="POST" target="_blank" x-data="{ selectedIds: [], format: 'zebra40x15' }">
+                    <form action="{{ route('barcode.reprint') }}" method="POST" target="_blank" x-data="{ selectedIds: [], format: 'zebra30x20' }">
                         @csrf
                         <input type="hidden" name="format" :value="format">
 
@@ -198,8 +198,8 @@
                             </div>
                             <div class="flex items-center gap-2">
                                 <select x-model="format" class="text-xs border-gray-300 rounded-lg py-1.5 px-3">
-                                    <option value="zebra40x15">Format: Zebra Thermal 40x15 (Kembar)</option>
                                     <option value="zebra30x20">Format: Zebra / Argox Thermal 30x20 (2x per Label)</option>
+                                    <option value="zebra40x15">Format: Zebra Thermal 40x15 (Kembar)</option>
                                     <option value="zebra">Format: Zebra Thermal 50x35</option>
                                     <option value="a4">Format: Kertas A4 Lembar</option>
                                 </select>

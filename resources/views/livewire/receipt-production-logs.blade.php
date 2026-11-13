@@ -134,6 +134,20 @@
 
         {{-- Batch Push, Ignore & Selection Action Buttons --}}
         <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            @if($filterMode === 'daily' && $filterDate)
+            <button wire:click="regenerateSummaryForDate"
+                    wire:loading.attr="disabled"
+                    wire:confirm="Yakin ingin generate ulang Production Summary untuk tanggal {{ $filterDate }} (shift 07:30 s/d 07:30 besok)?"
+                    style="background:#0284C7; color:#fff; border:none; border-radius:2px; 
+                           padding:8px 14px; font-size:11px; font-weight:700; cursor:pointer; 
+                           font-family:'IBM Plex Sans',sans-serif; text-transform:uppercase; 
+                           letter-spacing:.08em; transition:all 0.2s;"
+                    title="Generate summary produksi khusus tanggal {{ $filterDate }} (07:30 - 07:30 besok)">
+                <span wire:loading.remove wire:target="regenerateSummaryForDate">Regenerate Summary ({{ \Carbon\Carbon::parse($filterDate)->format('d/m') }})</span>
+                <span wire:loading wire:target="regenerateSummaryForDate">Memproses...</span>
+            </button>
+            @endif
+
             @if(count($selectedLogs) > 0)
             <div style="background:#FEF3C7; border:1px solid #F59E0B; border-radius:3px; padding:6px 12px; display:flex; align-items:center; gap:8px; font-size:11px; color:#92400E;">
                 <span>

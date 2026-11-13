@@ -216,7 +216,7 @@
                         <div class="part-no">{{ $barcode['partno'] }}</div>
                         <div class="part-name">{{ $barcode['partname'] ?: '-' }}</div>
                         <div class="footer-line">
-                            <span>{{ date('d/m/y H:i', strtotime($generated_at)) }}</span>
+                            <span>{{ \Carbon\Carbon::parse($generated_at ?? now())->timezone('Asia/Jakarta')->format('d/m/y H:i') }} WIB</span>
                             <span>TRIAL</span>
                         </div>
                     </div>
@@ -235,7 +235,7 @@
                         <div class="part-no">{{ $barcode['partno'] }}</div>
                         <div class="part-name">{{ $barcode['partname'] ?: '-' }}</div>
                         <div class="footer-line">
-                            <span>{{ date('d/m/y H:i', strtotime($generated_at)) }}</span>
+                            <span>{{ \Carbon\Carbon::parse($generated_at ?? now())->timezone('Asia/Jakarta')->format('d/m/y H:i') }} WIB</span>
                             <span>TRIAL</span>
                         </div>
                     </div>
