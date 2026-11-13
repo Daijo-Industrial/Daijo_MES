@@ -114,12 +114,36 @@ class StepSampling extends Component
             'ng_quantity' => null,
             'remarks' => '',
         ];
+        $this->autoSave();
     }
 
     public function removeSample($index): void
     {
         unset($this->samples[$index]);
         $this->samples = array_values($this->samples);
+        $this->autoSave();
+    }
+
+    public function setAppearance(int $index, string $val): void
+    {
+        $this->samples[$index]['appearance'] = $val;
+        if ($val === 'OK') {
+            $this->samples[$index]['ng_quantity'] = null;
+            $this->samples[$index]['remarks'] = '';
+            $this->resetValidation("samples.$index.ng_quantity");
+            $this->resetValidation("samples.$index.remarks");
+        }
+        $this->autoSave();
+    }
+
+    public function autoSave(): void
+    {
+        if (! empty($this->samples)) {
+            session()->put("stepDetailSaved.samples.{$this->periodKey}", $this->samples);
+            $this->sessionSaved = $this->samples;
+            $this->isSaved = true;
+            $this->dispatch('samplingSaved')->to(StepDetail::class);
+        }
     }
 
     public function updated($property, $value = null): void
@@ -132,6 +156,7 @@ class StepSampling extends Component
                 unset($this->samples[$index]['ng_quantity'], $this->samples[$index]['remarks']);
             }
         }
+        $this->autoSave();
     }
 
     public function saveStep(): void

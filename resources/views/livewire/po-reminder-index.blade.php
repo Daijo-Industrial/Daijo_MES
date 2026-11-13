@@ -436,24 +436,54 @@
                                     @endif
                                 </td>
                                 <td class="py-3.5 px-4 text-center">
-                                    @if($fg['spk_info']['has_spk'] ?? false)
-                                        <div class="inline-flex flex-col items-center gap-0.5">
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                                                <span>✓</span>
-                                                <span>{{ $fg['spk_info']['spk_count'] }} SPK</span>
-                                                <span class="font-mono text-emerald-700">({{ number_format($fg['spk_info']['available_qty']) }} avail)</span>
-                                            </span>
-                                            <a href="{{ route('spk.changes.index', ['search' => $fg['item_code']]) }}" 
-                                               target="_blank" 
-                                               class="text-[10px] text-blue-600 hover:text-blue-800 font-bold hover:underline flex items-center gap-0.5">
-                                                <span>SPK Changes</span>
-                                                <span>↗</span>
-                                            </a>
-                                        </div>
+                                    @php
+                                        $targetFgRow = $activeView === 'net' ? $fg['net_deficit'] : $fg['delivery_qty'];
+                                        $spkAvailRow = $fg['spk_info']['available_qty'] ?? 0;
+                                        $hasSpkRow = $fg['spk_info']['has_spk'] ?? false;
+                                        $isSpkShortRow = $spkAvailRow < $targetFgRow;
+                                        $spkDeficitRow = max(0, $targetFgRow - $spkAvailRow);
+                                    @endphp
+                                    @if($hasSpkRow)
+                                        @if($isSpkShortRow)
+                                            <div class="inline-flex flex-col items-center gap-0.5">
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
+                                                    <span>⚠️</span>
+                                                    <span>Kurang {{ number_format($spkDeficitRow) }} pcs</span>
+                                                </span>
+                                                <div class="text-[10px] text-gray-500 font-mono">
+                                                    SPK: <strong class="text-rose-700">{{ number_format($spkAvailRow) }}</strong> / {{ number_format($targetFgRow) }} pcs
+                                                </div>
+                                                <a href="{{ route('spk.changes.index', ['search' => $fg['item_code']]) }}" 
+                                                   target="_blank" 
+                                                   class="text-[10px] text-blue-600 hover:text-blue-800 font-bold hover:underline flex items-center gap-0.5">
+                                                    <span>SPK Changes</span>
+                                                    <span>↗</span>
+                                                </a>
+                                            </div>
+                                        @else
+                                            <div class="inline-flex flex-col items-center gap-0.5">
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                                    <span>✓</span>
+                                                    <span>SPK Cukup</span>
+                                                </span>
+                                                <div class="text-[10px] text-emerald-700 font-mono font-semibold">
+                                                    {{ number_format($spkAvailRow) }} pcs avail ({{ $fg['spk_info']['spk_count'] }} SPK)
+                                                </div>
+                                                <a href="{{ route('spk.changes.index', ['search' => $fg['item_code']]) }}" 
+                                                   target="_blank" 
+                                                   class="text-[10px] text-blue-600 hover:text-blue-800 font-bold hover:underline flex items-center gap-0.5">
+                                                    <span>SPK Changes</span>
+                                                    <span>↗</span>
+                                                </a>
+                                            </div>
+                                        @endif
                                     @else
                                         <div class="inline-flex flex-col items-center gap-0.5">
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                                                 <span>⚠️ Belum Ada SPK</span>
+                                            </span>
+                                            <span class="text-[10px] text-rose-600 font-mono font-bold">
+                                                Kurang {{ number_format($targetFgRow) }} pcs
                                             </span>
                                             <a href="{{ route('spk.changes.index', ['search' => $fg['item_code']]) }}" 
                                                target="_blank" 
@@ -696,20 +726,43 @@
 
                                         <div class="flex items-center gap-4 text-xs">
                                             {{-- Status SPK & Sisa Qty --}}
+                                            @php
+                                                $targetFgItem = $activeView === 'net' ? ($f['fg_net_needed'] ?? 0) : ($f['fg_delivery_qty'] ?? 0);
+                                                $spkAvailItem = $f['spk_info']['available_qty'] ?? 0;
+                                                $hasSpkItem = $f['spk_info']['has_spk'] ?? false;
+                                                $isSpkShortItem = $spkAvailItem < $targetFgItem;
+                                                $spkDeficitItem = max(0, $targetFgItem - $spkAvailItem);
+                                            @endphp
                                             <div class="text-right">
-                                                <div class="text-[10px] uppercase font-bold flex items-center justify-end gap-1 {{ ($f['spk_info']['has_spk'] ?? false) ? 'text-emerald-700' : 'text-rose-600' }}">
+                                                <div class="text-[10px] uppercase font-bold flex items-center justify-end gap-1 {{ (!$hasSpkItem || $isSpkShortItem) ? 'text-rose-600' : 'text-emerald-700' }}">
                                                     <span>Status SPK</span>
                                                     <a href="{{ route('spk.changes.index', ['search' => $f['fg_code']]) }}" target="_blank" @click.stop class="hover:underline text-blue-600 font-bold" title="Cari di SPK Changes">↗</a>
                                                 </div>
-                                                @if($f['spk_info']['has_spk'] ?? false)
-                                                    <div class="font-mono font-black text-emerald-700 text-xs">
-                                                        {{ number_format($f['spk_info']['available_qty']) }} pcs
-                                                        <span class="text-[10px] text-gray-400 font-normal">({{ $f['spk_info']['spk_count'] }} SPK)</span>
-                                                    </div>
+                                                @if($hasSpkItem)
+                                                    @if($isSpkShortItem)
+                                                        <div class="font-mono font-black text-rose-600 text-xs">
+                                                            {{ number_format($spkAvailItem) }} pcs
+                                                            <span class="text-[10px] text-gray-400 font-normal">({{ $f['spk_info']['spk_count'] }} SPK)</span>
+                                                        </div>
+                                                        <div class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 mt-0.5">
+                                                            <span>⚠️ Kurang {{ number_format($spkDeficitItem) }} pcs</span>
+                                                        </div>
+                                                    @else
+                                                        <div class="font-mono font-black text-emerald-700 text-xs">
+                                                            {{ number_format($spkAvailItem) }} pcs
+                                                            <span class="text-[10px] text-gray-400 font-normal">({{ $f['spk_info']['spk_count'] }} SPK)</span>
+                                                        </div>
+                                                        <div class="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                                                            ✓ SPK Cukup
+                                                        </div>
+                                                    @endif
                                                 @else
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                                                         Belum Ada SPK
                                                     </span>
+                                                    <div class="text-[10px] text-rose-600 font-semibold mt-0.5">
+                                                        Kurang {{ number_format($targetFgItem) }} pcs
+                                                    </div>
                                                 @endif
                                             </div>
 
@@ -748,13 +801,23 @@
                                                         <span>📋</span>
                                                         <span>Ketersediaan SPK Produksi ({{ $f['fg_code'] }}):</span>
                                                     </span>
-                                                    @if($f['spk_info']['has_spk'] ?? false)
-                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                                                            {{ $f['spk_info']['spk_count'] }} SPK Ditemukan | Sisa Available: <strong>{{ number_format($f['spk_info']['available_qty']) }} pcs</strong>
-                                                        </span>
+                                                    @if($hasSpkItem)
+                                                        @if($isSpkShortItem)
+                                                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300 flex items-center gap-1">
+                                                                <span>⚠️</span>
+                                                                <span>{{ $f['spk_info']['spk_count'] }} SPK (Avail: {{ number_format($spkAvailItem) }} pcs)</span>
+                                                                <span class="mx-0.5">•</span>
+                                                                <span class="uppercase">Kurang {{ number_format($spkDeficitItem) }} pcs dari target ({{ number_format($targetFgItem) }} pcs)</span>
+                                                            </span>
+                                                        @else
+                                                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1">
+                                                                <span>✓</span>
+                                                                <span>{{ $f['spk_info']['spk_count'] }} SPK Ditemukan | Sisa Available: <strong>{{ number_format($spkAvailItem) }} pcs</strong> (Cukup untuk Target {{ number_format($targetFgItem) }} pcs)</span>
+                                                            </span>
+                                                        @endif
                                                     @else
-                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                                                            ⚠️ Belum Ada SPK
+                                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                                            ⚠️ Belum Ada SPK (Kebutuhan: {{ number_format($targetFgItem) }} pcs)
                                                         </span>
                                                     @endif
                                                 </div>
@@ -895,13 +958,27 @@
                             <span class="px-2.5 py-1 rounded-lg border {{ $activeFgDetail['net_deficit'] > 0 ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800' }} font-bold">
                                 Kekurangan (Net): <strong>{{ number_format($activeFgDetail['net_deficit']) }}</strong> pcs
                             </span>
-                            <span class="px-2.5 py-1 rounded-lg border {{ ($activeFgDetail['spk_info']['has_spk'] ?? false) ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800' }} font-bold flex items-center gap-1">
+                            @php
+                                $targetFgModal = $activeView === 'net' ? $activeFgDetail['net_deficit'] : $activeFgDetail['delivery_qty'];
+                                $spkAvailModal = $activeFgDetail['spk_info']['available_qty'] ?? 0;
+                                $hasSpkModal = $activeFgDetail['spk_info']['has_spk'] ?? false;
+                                $isSpkShortModal = $spkAvailModal < $targetFgModal;
+                                $spkDeficitModal = max(0, $targetFgModal - $spkAvailModal);
+                            @endphp
+                            <span class="px-2.5 py-1 rounded-lg border {{ (!$hasSpkModal || $isSpkShortModal) ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800' }} font-bold flex items-center gap-1">
                                 <span>📋 SPK:</span>
-                                @if($activeFgDetail['spk_info']['has_spk'] ?? false)
-                                    <strong>{{ number_format($activeFgDetail['spk_info']['available_qty']) }} pcs avail</strong>
+                                @if($hasSpkModal)
+                                    <strong>{{ number_format($spkAvailModal) }} pcs avail</strong>
                                     <span class="text-[10px] text-gray-500 font-normal">({{ $activeFgDetail['spk_info']['spk_count'] }} SPK)</span>
+                                    @if($isSpkShortModal)
+                                        <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-rose-200 text-rose-900 font-black">
+                                            Kurang {{ number_format($spkDeficitModal) }} pcs
+                                        </span>
+                                    @else
+                                        <span class="ml-1 text-[10px] text-emerald-700 font-bold">✓ Cukup</span>
+                                    @endif
                                 @else
-                                    <span>Belum Ada SPK</span>
+                                    <span>Belum Ada SPK (Kurang {{ number_format($targetFgModal) }} pcs)</span>
                                 @endif
                                 <a href="{{ route('spk.changes.index', ['search' => $activeFgDetail['item_code']]) }}" target="_blank" class="text-blue-600 hover:underline text-[11px] font-bold" title="Cari di SPK Changes">↗</a>
                             </span>
@@ -1106,8 +1183,13 @@
                                     <tfoot>
                                         <tr class="bg-gray-100/80 font-bold border-t-2 border-gray-300">
                                             <td colspan="4" class="py-2.5 px-3 text-right uppercase text-[10px] tracking-wider">TOTAL AVAILABLE DARI SELURUH SPK:</td>
-                                            <td class="py-2.5 px-3 text-right font-mono font-black text-emerald-700 text-sm">
-                                                {{ number_format($activeFgDetail['spk_info']['available_qty']) }} pcs
+                                            <td class="py-2.5 px-3 text-right font-mono font-black {{ $isSpkShortModal ? 'text-rose-600' : 'text-emerald-700' }} text-sm">
+                                                {{ number_format($spkAvailModal) }} pcs
+                                                @if($isSpkShortModal)
+                                                    <div class="text-[10px] font-bold text-rose-600">
+                                                        ⚠️ Kurang {{ number_format($spkDeficitModal) }} pcs dari target ({{ number_format($targetFgModal) }} pcs)
+                                                    </div>
+                                                @endif
                                             </td>
                                             <td colspan="2"></td>
                                         </tr>

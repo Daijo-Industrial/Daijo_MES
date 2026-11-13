@@ -99,12 +99,34 @@ class StepPackaging extends Component
             'judgement' => 'OK',
             'remarks' => '',
         ];
+        $this->autoSave();
     }
 
     public function removePackaging($index): void
     {
         unset($this->packagings[$index]);
         $this->packagings = array_values($this->packagings);
+        $this->autoSave();
+    }
+
+    public function setJudgement(int $index, string $val): void
+    {
+        $this->packagings[$index]['judgement'] = $val;
+        if ($val === 'OK') {
+            $this->packagings[$index]['remarks'] = '';
+            $this->resetValidation("packagings.$index.remarks");
+        }
+        $this->autoSave();
+    }
+
+    public function autoSave(): void
+    {
+        if (! empty($this->packagings)) {
+            session()->put("stepDetailSaved.packagings.{$this->periodKey}", $this->packagings);
+            $this->sessionSaved = $this->packagings;
+            $this->isSaved = true;
+            $this->dispatch('packagingSaved')->to(StepDetail::class);
+        }
     }
 
     public function updated($property, $value = null): void
@@ -117,6 +139,7 @@ class StepPackaging extends Component
                 unset($this->packagings[$index]['remarks']);
             }
         }
+        $this->autoSave();
     }
 
     public function saveStep(): void

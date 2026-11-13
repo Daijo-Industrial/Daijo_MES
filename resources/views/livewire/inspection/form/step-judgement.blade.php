@@ -13,7 +13,9 @@
     </div>
 
     <div class="p-5 space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {{-- Pass & Reject Inputs (Side-by-Side Comparison) --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+            {{-- Pass Quantity --}}
             <div>
                 <label class="block text-xs font-semibold text-zinc-700 mb-1">
                     Pass Quantity (pcs) <span class="text-rose-600">*</span>
@@ -27,6 +29,7 @@
                 @enderror
             </div>
 
+            {{-- Reject Quantity --}}
             <div>
                 <label class="block text-xs font-semibold text-zinc-700 mb-1">
                     Reject Quantity (pcs) <span class="text-rose-600">*</span>
@@ -39,14 +42,18 @@
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror
             </div>
+        </div>
 
-            @php
-                $total = (int)($pass_quantity ?? 0) + (int)($reject_quantity ?? 0);
-            @endphp
-            <div class="bg-zinc-50 p-3.5 rounded-lg border border-zinc-200 flex flex-col justify-center">
-                <span class="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Total Output Periode</span>
-                <span class="text-xl font-bold font-mono text-zinc-900 mt-0.5">{{ number_format($total) }} pcs</span>
+        {{-- Total Output Box --}}
+        @php
+            $total = (int)($pass_quantity ?? 0) + (int)($reject_quantity ?? 0);
+        @endphp
+        <div class="bg-zinc-50 p-4 rounded-xl border border-zinc-200 flex items-center justify-between max-w-xl">
+            <div>
+                <span class="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">Total Output Periode</span>
+                <span class="text-xs text-zinc-400">Pass Qty + Reject Qty</span>
             </div>
+            <span class="text-2xl font-bold font-mono text-zinc-900">{{ number_format($total) }} pcs</span>
         </div>
     </div>
 </div>

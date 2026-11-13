@@ -47,6 +47,8 @@ class StepDetail extends Component
 
     public bool $savedJudgement = false;
 
+    public array $unlockedPeriods = [];
+
     protected $rules = [
         'inspection_report_document_number' => 'required|string',
         'document_number' => 'required|string',
@@ -112,22 +114,29 @@ class StepDetail extends Component
         $this->refreshSavedFlags();
     }
 
+    private function getShiftTimes(int $shift): array
+    {
+        $shifts = config('mes.shifts', []);
+        $shiftData = $shifts[$shift] ?? null;
+
+        if ($shiftData && ! empty($shiftData['start']) && ! empty($shiftData['end'])) {
+            return [$shiftData['start'], $shiftData['end']];
+        }
+
+        return ['07:30', '15:30'];
+    }
+
     public function updatedPeriod(): void
     {
         $shift = (int) ($this->shift ?? 1);
         $period = (int) ($this->period ?? 1);
 
-        $shiftTimes = [
-            1 => ['07:30', '15:30'],
-            2 => ['15:30', '23:30'],
-            3 => ['23:30', '07:30'],
-        ];
-
         $periodOffset = $period - 1;
-        [$shiftStart, $shiftEnd] = $shiftTimes[$shift] ?? ['07:30', '15:30'];
+        [$shiftStart, $shiftEnd] = $this->getShiftTimes($shift);
 
-        $start = Carbon::createFromTimeString($shiftStart);
-        $end = Carbon::createFromTimeString($shiftEnd);
+        $tz = config('mes.timezone', 'Asia/Jakarta');
+        $start = Carbon::createFromTimeString($shiftStart, $tz);
+        $end = Carbon::createFromTimeString($shiftEnd, $tz);
 
         if ($shift === 3 && $end->lessThan($start)) {
             $end->addDay();
@@ -212,11 +221,83 @@ class StepDetail extends Component
         $this->computeSaveFlags();
     }
 
+    public function getPeriodTimeRange(int $period): string
+    {
+        $shift = (int) ($this->shift ?? session('stepHeaderSaved.shift', 1));
+        [$shiftStart, $shiftEnd] = $this->getShiftTimes($shift);
+
+        $tz = config('mes.timezone', 'Asia/Jakarta');
+        $start = Carbon::createFromTimeString($shiftStart, $tz);
+        $end = Carbon::createFromTimeString($shiftEnd, $tz);
+
+        if ($shift === 3 && $end->lessThan($start)) {
+            $end->addDay();
+        }
+
+        $offset = $period - 1;
+        $pStart = $start->copy()->addHours($offset * 2);
+        $pEnd = $pStart->copy()->addHours(2);
+
+        if ($pEnd->greaterThan($end)) {
+            $pEnd = $end;
+        }
+
+        return $pStart->format('H:i') . ' - ' . $pEnd->format('H:i');
+    }
+
+    public function isPeriodSaved(?int $p = null): bool
+    {
+        $targetP = $p ?? $this->period;
+        $pk = 'p' . $targetP;
+        $bag = session('stepDetailSaved', []);
+
+        if (! empty(data_get($bag, "saved_periods.$pk"))) {
+            return true;
+        }
+
+        $hasDetail = ! empty(data_get($bag, "details.$pk"));
+        $hasFirst = ! empty(data_get($bag, "first_inspections.$pk"));
+        $hasDimensions = ! empty(data_get($bag, "dimensions.$pk"));
+        $hasSecond = ! empty(data_get($bag, "second_inspections.$pk"));
+        $hasPackagings = ! empty(data_get($bag, "packagings.$pk"));
+        $hasJudgement = ! empty(data_get($bag, "judgements.$pk"));
+
+        return $hasDetail && ($hasFirst || $hasDimensions || $hasSecond || $hasPackagings || $hasJudgement);
+    }
+
+    public function isPeriodLocked(?int $p = null): bool
+    {
+        $targetP = $p ?? $this->period;
+        if (! empty($this->unlockedPeriods[$targetP])) {
+            return false;
+        }
+
+        return $this->isPeriodSaved($targetP);
+    }
+
+    public function unlockPeriod(?int $p = null): void
+    {
+        $targetP = $p ?? $this->period;
+        $this->unlockedPeriods[$targetP] = true;
+    }
+
+    public function lockPeriod(?int $p = null): void
+    {
+        $targetP = $p ?? $this->period;
+        unset($this->unlockedPeriods[$targetP]);
+    }
+
     public function saveCurrentPeriod(): void
     {
         $this->saveStep();
         $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+
+        $bag = session('stepDetailSaved', []);
+        $bag['saved_periods'][$this->periodKey] = true;
+        session(['stepDetailSaved' => $bag]);
+
         $this->computeSaveFlags();
+        unset($this->unlockedPeriods[$this->period]);
         $this->dispatch('stepDetailSaved');
         $this->dispatch('toast', message: "Data Periode {$this->period} berhasil disimpan!");
     }
@@ -333,6 +414,7 @@ class StepDetail extends Component
                 'samples',
                 'packagings',
                 'judgements',
+                'saved_periods',
             ];
 
             foreach ($sections as $section) {
@@ -356,6 +438,27 @@ class StepDetail extends Component
 
     public function render(): View
     {
-        return view('livewire.inspection.form.step-detail');
+        $this->shift = session('stepHeaderSaved.shift') ?? ($this->shift ?? 1);
+        $this->part_number = session('stepHeaderSaved.part_number') ?? $this->part_number;
+        $this->part_name = session('stepHeaderSaved.part_name') ?? $this->part_name;
+        $this->inspector = session('stepHeaderSaved.inspector') ?? $this->inspector;
+
+        $pk = $this->periodKey($this->period);
+        $bag = session('stepDetailSaved', []);
+
+        $savedSummary = [
+            'isSaved' => $this->isPeriodSaved($this->period),
+            'isLocked' => $this->isPeriodLocked($this->period),
+            'first' => data_get($bag, "first_inspections.$pk"),
+            'dimensions' => data_get($bag, "dimensions.$pk", []),
+            'second' => data_get($bag, "second_inspections.$pk"),
+            'samples' => data_get($bag, "samples.$pk", []),
+            'packagings' => data_get($bag, "packagings.$pk", []),
+            'judgement' => data_get($bag, "judgements.$pk"),
+        ];
+
+        return view('livewire.inspection.form.step-detail', [
+            'savedSummary' => $savedSummary,
+        ]);
     }
 }

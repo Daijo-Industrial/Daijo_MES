@@ -169,12 +169,34 @@ class StepDimension extends Component
             'area' => '',
             'remarks' => '',
         ];
+        $this->autoSave();
     }
 
     public function removeDimension($index): void
     {
         unset($this->dimensions[$index]);
         $this->dimensions = array_values($this->dimensions);
+        $this->autoSave();
+    }
+
+    public function setJudgement(int $index, string $val): void
+    {
+        $this->dimensions[$index]['judgement'] = $val;
+        if ($val === 'OK') {
+            $this->dimensions[$index]['remarks'] = '';
+            $this->resetValidation("dimensions.$index.remarks");
+        }
+        $this->autoSave();
+    }
+
+    public function autoSave(): void
+    {
+        if (! empty($this->dimensions)) {
+            session()->put("stepDetailSaved.dimensions.{$this->periodKey}", $this->dimensions);
+            $this->sessionSaved = $this->dimensions;
+            $this->isSaved = true;
+            $this->dispatch('dimensionsSaved')->to(StepDetail::class);
+        }
     }
 
     public function updated($property, $value = null): void
@@ -187,6 +209,7 @@ class StepDimension extends Component
                 $this->dimensions[$index]['remarks'] = '';
             }
         }
+        $this->autoSave();
     }
 
     public function saveStep(): void

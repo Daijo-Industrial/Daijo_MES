@@ -46,6 +46,18 @@ class StepJudgement extends Component
     public function updated($field): void
     {
         $this->validateOnly($field);
+        $this->autoSave();
+    }
+
+    public function autoSave(): void
+    {
+        if ($this->pass_quantity !== null && $this->pass_quantity !== '' && $this->reject_quantity !== null && $this->reject_quantity !== '') {
+            $data = $this->snapshot();
+            session()->put("stepDetailSaved.judgements.{$this->periodKey}", $data);
+            $this->sessionSaved = $data;
+            $this->isSaved = true;
+            $this->dispatch('judgementSaved')->to(StepDetail::class);
+        }
     }
 
     protected function snapshot(): array

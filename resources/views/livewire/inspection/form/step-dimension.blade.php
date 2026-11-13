@@ -32,7 +32,7 @@
                 <button type="button"
                         wire:click="addDimension"
                         class="mt-2 inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-md text-zinc-900 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 transition">
-                    + Tambah Pengukuran Pertama
+                    Tambah Pengukuran Pertama
                 </button>
             </div>
         @else
@@ -91,11 +91,18 @@
                                            class="w-24 text-xs font-mono font-bold text-center rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.actual_value') border-rose-300 bg-rose-50 @enderror">
                                 </td>
                                 <td class="px-2 py-1.5 text-center">
-                                    <select wire:model.live="dimensions.{{ $i }}.judgement"
-                                            class="text-xs font-bold rounded py-1.5 px-2 border-zinc-300 {{ ($row['judgement'] ?? '') === 'OK' ? 'text-emerald-800 bg-emerald-50' : 'text-rose-800 bg-rose-50' }}">
-                                        <option value="OK">OK</option>
-                                        <option value="NG">NG</option>
-                                    </select>
+                                    <div class="inline-flex rounded-md border border-zinc-300 p-0.5 bg-zinc-100 shadow-sm">
+                                        <button type="button"
+                                                wire:click="setJudgement({{ $i }}, 'OK')"
+                                                class="px-2.5 py-1 text-[11px] font-bold rounded transition {{ ($row['judgement'] ?? '') === 'OK' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                                            OK
+                                        </button>
+                                        <button type="button"
+                                                wire:click="setJudgement({{ $i }}, 'NG')"
+                                                class="px-2.5 py-1 text-[11px] font-bold rounded transition {{ ($row['judgement'] ?? '') === 'NG' ? 'bg-rose-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                                            NG
+                                        </button>
+                                    </div>
                                 </td>
                                 <td class="px-2 py-1.5">
                                     <input type="text"
@@ -106,8 +113,9 @@
                                 <td class="px-2 py-1.5 text-center">
                                     <button type="button"
                                             wire:click="removeDimension({{ $i }})"
-                                            class="text-rose-500 hover:text-rose-700 p-1 font-bold">
-                                        ✕
+                                            title="Hapus baris"
+                                            class="text-rose-500 hover:text-rose-700 p-1 text-xs font-semibold">
+                                        Hapus
                                     </button>
                                 </td>
                             </tr>
