@@ -56,6 +56,17 @@
         </div>
     </div>
 
+    {{-- Notification Banner --}}
+    @if($actionMessage)
+    <div style="margin-bottom:16px; border-radius:4px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; font-weight:600;
+        {{ ($actionMessage['status'] ?? 'success') === 'success' ? 'background:#ECFDF5; border:1px solid #10B981; color:#065F46;' : (($actionMessage['status'] ?? '') === 'error' ? 'background:#FEF2F2; border:1px solid #EF4444; color:#991B1B;' : 'background:#FFFBEB; border:1px solid #F59E0B; color:#92400E;') }}">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span>{{ $actionMessage['message'] ?? '' }}</span>
+        </div>
+        <button type="button" wire:click="$set('actionMessage', null)" style="background:transparent; border:none; color:inherit; font-size:16px; cursor:pointer; font-weight:700; line-height:1;">&times;</button>
+    </div>
+    @endif
+
     {{-- Filters --}}
     <div style="background:#fff; border:1px solid #E8E4DC; border-radius:4px; padding:14px 16px;
                 margin-bottom:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
@@ -134,6 +145,19 @@
 
         {{-- Batch Push, Ignore & Selection Action Buttons --}}
         <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            @if($filterMode === 'daily' && $filterDate)
+            <button wire:click="regenerateSummaryForDate"
+                    wire:loading.attr="disabled"
+                    wire:confirm="Yakin ingin generate ulang Production Summary untuk tanggal {{ $filterDate }} (shift 07:30 s/d 07:30 besok)?"
+                    style="background:#0284C7; color:#fff; border:none; border-radius:2px; 
+                           padding:8px 14px; font-size:11px; font-weight:700; cursor:pointer; 
+                           font-family:'IBM Plex Sans',sans-serif; text-transform:uppercase; 
+                           letter-spacing:.08em; transition:all 0.2s;"
+                    title="Generate summary produksi khusus tanggal {{ $filterDate }} (07:30 - 07:30 besok)">
+                Regenerate Summary ({{ \Carbon\Carbon::parse($filterDate)->format('d/m') }})
+            </button>
+            @endif
+
             @if(count($selectedLogs) > 0)
             <div style="background:#FEF3C7; border:1px solid #F59E0B; border-radius:3px; padding:6px 12px; display:flex; align-items:center; gap:8px; font-size:11px; color:#92400E;">
                 <span>

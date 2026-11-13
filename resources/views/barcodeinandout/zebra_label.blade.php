@@ -185,7 +185,7 @@
 
                     <!-- Row 3: Footer -->
                     <div class="box box-footer">
-                        <span>{{ $generated_at }}</span>
+                        <span>{{ \Carbon\Carbon::parse($generated_at ?? now())->timezone('Asia/Jakarta')->format('d/m/Y H:i') }} WIB</span>
                         <span style="font-weight: bold;">DAIJO MES</span>
                     </div>
                 </div>

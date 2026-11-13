@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Jobs\PushSingleReceiptProductionJob;
+use App\Models\ProductionScannedData;
+use App\Models\ProductionSummary;
 use App\Services\ReceiptProductionService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +46,8 @@ class ReceiptProductionLogs extends Component
     public bool $selectAll = false;
 
     public ?array $activeErrorModal = null;
+
+    public ?array $actionMessage = null;
 
     public function mount(): void
     {
@@ -504,6 +508,147 @@ class ReceiptProductionLogs extends Component
             $this->dispatch('push-notification', [
                 'status' => 'error',
                 'message' => 'Error: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Generate production summary khusus untuk rentang shift 07:30 s/d 07:30 besoknya (hanya processed = 0 & summary_id is null).
+     */
+    public function regenerateSummaryForDate(?string $date = null): void
+    {
+        $targetDate = $date ?: ($this->filterMode === 'daily' ? $this->filterDate : null);
+
+        if (! $targetDate) {
+            $this->dispatch('push-notification', [
+                'status' => 'warning',
+                'message' => 'Pilih mode Harian dan tentukan tanggal yang ingin di-generate summary.',
+            ]);
+
+            return;
+        }
+
+        $start = Carbon::parse($targetDate)->setTime(7, 30, 0)->toDateTimeString();
+        $end = Carbon::parse($targetDate)->addDay()->setTime(7, 30, 0)->toDateTimeString();
+
+        DB::beginTransaction();
+        try {
+            // Ambil data scan yang processed = 0 dan summary_id IS NULL dalam rentang 07:30 s/d 07:30 besok
+            $unprocessedData = ProductionScannedData::where('created_at', '>=', $start)
+                ->where('created_at', '<', $end)
+                ->whereIn('warehouse', ['FFI', 'KRFFI'])
+                ->where('processed', false)
+                ->whereNull('summary_id')
+                ->lockForUpdate()
+                ->get();
+
+            if ($unprocessedData->isEmpty()) {
+                DB::commit();
+                $this->clearStatsCache();
+                $msg = "Tidak ada data scan baru (processed: 0 & summary_id: null) untuk tanggal {$targetDate} (07:30 s/d 07:30 besok).";
+                $this->actionMessage = ['status' => 'warning', 'message' => $msg];
+                $this->dispatch('push-notification', [
+                    'status' => 'warning',
+                    'message' => $msg,
+                ]);
+
+                return;
+            }
+
+            // Deduplicate: jika ada record dengan spk_code + label yang sama, ambil yang pertama
+            $unprocessedData = $unprocessedData->unique(function ($item) {
+                return $item->spk_code . '||' . $item->label;
+            });
+
+            // Group per SPK + Warehouse + 10-Minute interval block
+            $summaries = $unprocessedData->groupBy(function ($item) {
+                $createdAt = Carbon::parse($item->created_at);
+                $minuteBlock = floor($createdAt->minute / 10) * 10;
+                $timeWindow = $createdAt->copy()->minute($minuteBlock)->second(0)->format('H:i');
+
+                return $item->spk_code . '||' . $item->warehouse . '||' . $createdAt->toDateString() . '||' . $timeWindow;
+            });
+
+            $processedIds = [];
+            $generatedCount = 0;
+            $totalQty = 0;
+
+            foreach ($summaries as $groupKey => $group) {
+                $total_quantity = $group->sum('quantity');
+                $first = $group->first();
+
+                $summary = ProductionSummary::create([
+                    'spk_code' => $first->spk_code,
+                    'total_quantity' => $total_quantity,
+                    'warehouse' => $first->warehouse,
+                    'label' => 'all',
+                    'created_date' => $targetDate,
+                    'sap_sent' => 0,
+                    'sap_sent_at' => null,
+                ]);
+
+                $groupIds = $group->pluck('id')->toArray();
+                $processedIds = array_merge($processedIds, $groupIds);
+
+                ProductionScannedData::whereIn('id', $groupIds)
+                    ->update([
+                        'processed' => true,
+                        'summary_id' => $summary->id,
+                    ]);
+
+                $generatedCount++;
+                $totalQty += $total_quantity;
+            }
+
+            if (Schema::hasTable('api_logs')) {
+                DB::table('api_logs')->insert([
+                    'api_name' => 'PRODUCTION_SUMMARY',
+                    'method' => 'INTERNAL',
+                    'endpoint' => 'livewire:receipt-production-logs:regenerate',
+                    'request_payload' => json_encode([
+                        'target_date' => $targetDate,
+                        'start_time' => $start,
+                        'end_time' => $end,
+                        'processed_ids' => $processedIds,
+                    ], JSON_PRETTY_PRINT),
+                    'response_payload' => json_encode([
+                        'generated_count' => $generatedCount,
+                        'total_quantity' => $totalQty,
+                        'target_date' => $targetDate,
+                    ], JSON_PRETTY_PRINT),
+                    'status_code' => 200,
+                    'status' => 'success',
+                    'message' => "Generated {$generatedCount} summaries (Total: {$totalQty} pcs) for {$targetDate}",
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            DB::commit();
+
+            $this->clearStatsCache();
+            $this->resetPage();
+
+            $formattedQty = number_format($totalQty);
+            $msg = "Berhasil generate {$generatedCount} summary (Total: {$formattedQty} pcs) untuk tanggal {$targetDate}!";
+            $this->actionMessage = ['status' => 'success', 'message' => $msg];
+            $this->dispatch('push-notification', [
+                'status' => 'success',
+                'message' => $msg,
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error generating production summary', [
+                'target_date' => $targetDate,
+                'error' => $e->getMessage(),
+            ]);
+
+            $msg = 'Gagal generate summary: ' . $e->getMessage();
+            $this->actionMessage = ['status' => 'error', 'message' => $msg];
+            $this->dispatch('push-notification', [
+                'status' => 'error',
+                'message' => $msg,
             ]);
         }
     }

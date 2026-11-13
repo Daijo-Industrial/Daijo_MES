@@ -129,10 +129,10 @@
                                                 <form action="{{ route('barcode.reprint') }}" method="POST" target="_blank" class="inline">
                                                     @csrf
                                                     <input type="hidden" name="ids[]" value="{{ $detail->id }}">
-                                                    <input type="hidden" name="format" value="zebra">
+                                                    <input type="hidden" name="format" value="zebra30x20">
                                                     <button type="submit"
                                                         class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-md border border-gray-300 transition"
-                                                        title="Cetak Ulang Zebra Thermal">
+                                                        title="Cetak Ulang Zebra 30x20 Thermal">
                                                         🖨️
                                                     </button>
                                                 </form>

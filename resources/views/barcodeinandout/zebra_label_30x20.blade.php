@@ -73,83 +73,105 @@
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
-            padding: 0.8mm;
+            padding: 0.5mm 0.6mm;
             box-sizing: border-box;
             background-color: #ffffff;
             overflow: hidden;
-            gap: 0.8mm;
+            gap: 0.5mm;
         }
 
-        /* Kolom Kiri: QR Code (Besar & Mudah di-scan) */
+        /* Kolom Kiri: QR Code (Ukuran 12.5mm x 12.5mm) & Item Code di Bawah */
         .qr-col {
-            width: 14mm;
-            height: 14mm;
+            width: 13mm;
+            height: 18mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            overflow: hidden;
+            box-sizing: border-box;
+            padding: 0.4mm 0;
+            text-align: center;
+        }
+
+        .qr-wrapper {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
+            width: 100%;
+            overflow: hidden;
         }
 
-        .qr-col img {
-            width: 14mm;
-            height: 14mm;
+        .qr-wrapper img {
+            width: 12.5mm;
+            height: 12.5mm;
             image-rendering: pixelated;
         }
 
-        /* Kolom Kanan: Label #, Part Code, Part Name, Tanggal */
+        .qr-item-code {
+            font-size: 3.5pt;
+            font-weight: 700;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
+            line-height: 1;
+            white-space: nowrap;
+            letter-spacing: -0.1px;
+            text-align: center;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Kolom Kanan: No Label Gede & Tanggal Jam WIB */
         .info-col {
             flex: 1;
-            height: 15mm;
+            min-width: 0;
+            height: 18mm;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            align-items: center;
             overflow: hidden;
-            line-height: 1.1;
+            box-sizing: border-box;
+            padding: 0.4mm 0.5mm;
+            text-align: center;
         }
 
-        .top-row {
+        .label-number-wrapper {
+            flex: 1;
+            min-height: 0;
             display: flex;
             align-items: center;
-            justify-content: flex-start;
-        }
-
-        .label-badge {
-            background: #000;
-            color: #fff;
-            padding: 0 1.2mm;
-            border-radius: 0.8mm;
-            font-size: 6.5pt;
-            font-weight: 900;
-            font-family: monospace;
-            line-height: 1.15;
-            display: inline-block;
-        }
-
-        .part-no {
-            font-size: 6.5pt;
-            font-weight: 900;
-            font-family: monospace;
-            color: #000;
-            word-break: break-all;
-            line-height: 1.1;
-            margin-top: 0.3mm;
-        }
-
-        .part-name {
-            font-size: 4.8pt;
-            color: #222;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
+            justify-content: center;
+            width: 100%;
             overflow: hidden;
-            line-height: 1.1;
-            word-break: break-word;
+            box-sizing: border-box;
+        }
+
+        .label-number {
+            font-weight: 900;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
+            line-height: 1.05;
+            letter-spacing: -0.2px;
+            text-align: center;
+            display: inline-block;
+            white-space: nowrap;
+            max-width: 100%;
         }
 
         .date-row {
-            font-size: 4.2pt;
-            color: #444;
+            font-size: 3.5pt;
+            font-weight: 700;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
             line-height: 1;
+            white-space: nowrap;
+            letter-spacing: -0.1px;
+            text-align: center;
+            width: 100%;
         }
 
         @media print {
@@ -183,7 +205,7 @@
 <body>
 
     <div class="print-btn-container">
-        <button class="print-btn" onclick="window.print()">🖨️ Cetak Zebra / Argox 30x20 (2x per Label)</button>
+        <button class="print-btn" onclick="autoFitLabels(); window.print()">Cetak Zebra / Argox 30x20 (2x per Label)</button>
     </div>
 
     <div class="preview-wrapper">
@@ -192,24 +214,42 @@
             @for ($copy = 1; $copy <= 2; $copy++)
                 <div class="label-row">
                     <div class="label">
-                        {{-- Kolom Kiri: QR Code --}}
+                        {{-- Kolom Kiri: QR Code & Kode Item di Bawah --}}
                         <div class="qr-col">
-                            <img src="{{ $barcode['barcodeUrl'] }}" alt="QR">
-                        </div>
-
-                        {{-- Kolom Kanan: Compact Info (Label #, Part Code, Part Name, Tanggal) --}}
-                        <div class="info-col">
-                            <div class="top-row">
-                                <span class="label-badge">#{{ $barcode['label'] }}</span>
+                            <div class="qr-wrapper">
+                                <img src="{{ $barcode['barcodeUrl'] }}" alt="QR">
                             </div>
-                            <div class="part-no" title="{{ $barcode['partno'] }}">
+                            <div class="qr-item-code" title="{{ $barcode['partno'] }}">
                                 {{ $barcode['partno'] }}
                             </div>
-                            <div class="part-name">
-                                {{ $barcode['partname'] ?: '-' }}
+                        </div>
+
+                        {{-- Kolom Kanan: No Label Gede & Tanggal Jam WIB di Bawah --}}
+                        <div class="info-col">
+                            <div class="label-number-wrapper">
+                                @php
+                                    $labelStr = '#' . $barcode['label'];
+                                    $labelLen = strlen($labelStr);
+                                    if ($labelLen <= 2) {
+                                        $fontSizePt = 18;
+                                    } elseif ($labelLen == 3) {
+                                        $fontSizePt = 15;
+                                    } elseif ($labelLen == 4) {
+                                        $fontSizePt = 12;
+                                    } elseif ($labelLen == 5) {
+                                        $fontSizePt = 9.8;
+                                    } elseif ($labelLen == 6) {
+                                        $fontSizePt = 8.2;
+                                    } elseif ($labelLen == 7) {
+                                        $fontSizePt = 7;
+                                    } else {
+                                        $fontSizePt = max(5.5, round(48 / $labelLen, 1));
+                                    }
+                                @endphp
+                                <span class="label-number" style="font-size: {{ $fontSizePt }}pt;">{{ $labelStr }}</span>
                             </div>
                             <div class="date-row">
-                                {{ date('d/m/y H:i', strtotime($generated_at)) }}
+                                {{ \Carbon\Carbon::parse($generated_at ?? now())->timezone('Asia/Jakarta')->format('d/m/y H:i') }} WIB
                             </div>
                         </div>
                     </div>
@@ -217,6 +257,35 @@
             @endfor
         @endforeach
     </div>
+
+    <script>
+        function autoFitLabels() {
+            var wrappers = document.querySelectorAll('.label-number-wrapper');
+            wrappers.forEach(function (wrapper) {
+                var el = wrapper.querySelector('.label-number');
+                if (!el) return;
+
+                var maxW = wrapper.clientWidth - 2;
+                var maxH = wrapper.clientHeight - 2;
+
+                if (maxW <= 0 || maxH <= 0) return;
+
+                var currentSize = parseFloat(window.getComputedStyle(el).fontSize);
+                while ((el.scrollWidth > maxW || el.scrollHeight > maxH) && currentSize > 5) {
+                    currentSize -= 0.3;
+                    el.style.fontSize = currentSize + 'px';
+                }
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', autoFitLabels);
+        } else {
+            autoFitLabels();
+        }
+        window.addEventListener('load', autoFitLabels);
+        window.addEventListener('beforeprint', autoFitLabels);
+    </script>
 
 </body>
 </html>
