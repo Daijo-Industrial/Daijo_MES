@@ -738,7 +738,7 @@
                         </span>
                         <h2 class="text-xl font-bold text-gray-800">Trend NG Harian per Adjuster</h2>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">Perbandingan jumlah NG produk (pcs) setiap hari berdasarkan adjuster yang bertugas pada shift tersebut</p>
+                    <p class="text-xs text-gray-500 mt-1">Tren total NG harian (NG Produksi + NG Setting Adjust) per adjuster pada shift terkait</p>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -787,7 +787,7 @@
                             @if(($adjSummary['direct_ng'] ?? 0) > 0)
                             <div class="my-1.5 bg-red-50/80 rounded p-1.5 border border-red-100 text-[10px]">
                                 <div class="flex justify-between items-center text-red-700 font-semibold">
-                                    <span>🔧 NG Setting Adjust:</span>
+                                    <span>NG Setting Adjust:</span>
                                     <span class="font-bold font-mono">{{ number_format($adjSummary['direct_ng']) }} pcs</span>
                                 </div>
                                 @if(!empty($adjSummary['direct_ng_breakdown']))
@@ -1382,12 +1382,17 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
+                                    const dataset = context.dataset;
+                                    const idx = context.dataIndex;
+                                    const total = context.parsed.y || 0;
+                                    const prod = (dataset.prodNg && dataset.prodNg[idx] !== undefined) ? dataset.prodNg[idx] : 0;
+                                    const direct = (dataset.directNg && dataset.directNg[idx] !== undefined) ? dataset.directNg[idx] : 0;
+                                    let name = dataset.label || '';
+                                    let res = name + ': ' + total.toLocaleString() + ' pcs NG';
+                                    if (direct > 0) {
+                                        res += ' (Prod: ' + prod.toLocaleString() + ' | Adjust: ' + direct.toLocaleString() + ')';
                                     }
-                                    label += context.parsed.y.toLocaleString() + ' pcs NG';
-                                    return label;
+                                    return res;
                                 }
                             }
                         }
