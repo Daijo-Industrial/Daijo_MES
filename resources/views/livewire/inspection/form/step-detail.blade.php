@@ -137,7 +137,7 @@
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                     <div class="bg-zinc-50 p-3 rounded-lg border border-zinc-200">
                         <span class="text-zinc-500 block text-[10px] uppercase font-semibold">Appearance</span>
-                        @php $app = $savedSummary['first']['appearance'] ?? null; @endphp
+                        @php $app = data_get($savedSummary, 'first.appearance'); @endphp
                         @if ($app === 'OK')
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 mt-1">OK</span>
                         @elseif ($app === 'NG')
@@ -149,19 +149,19 @@
                     <div class="bg-zinc-50 p-3 rounded-lg border border-zinc-200">
                         <span class="text-zinc-500 block text-[10px] uppercase font-semibold">Weight</span>
                         <span class="font-mono font-bold text-zinc-900 block mt-1">
-                            {{ $savedSummary['first']['weight'] ?? '-' }} {{ $savedSummary['first']['weight_uom'] ?? 'g' }}
+                            {{ data_get($savedSummary, 'first.weight', '-') }} {{ data_get($savedSummary, 'first.weight_uom', 'g') }}
                         </span>
                     </div>
                     <div class="bg-zinc-50 p-3 rounded-lg border border-zinc-200">
                         <span class="text-zinc-500 block text-[10px] uppercase font-semibold">Fitting Test</span>
                         <span class="text-zinc-800 font-medium block mt-1">
-                            {{ $savedSummary['first']['fitting_test'] ?: '-' }}
+                            {{ data_get($savedSummary, 'first.fitting_test') ?: '-' }}
                         </span>
                     </div>
                     <div class="bg-zinc-50 p-3 rounded-lg border border-zinc-200">
                         <span class="text-zinc-500 block text-[10px] uppercase font-semibold">Remarks</span>
                         <span class="text-zinc-800 font-medium block mt-1">
-                            {{ $savedSummary['first']['remarks'] ?: '-' }}
+                            {{ data_get($savedSummary, 'first.remarks') ?: '-' }}
                         </span>
                     </div>
                 </div>
@@ -219,13 +219,13 @@
             <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 space-y-4">
                 <div class="flex items-center justify-between border-b border-zinc-100 pb-2.5">
                     <h3 class="text-xs font-bold text-zinc-900 uppercase tracking-wider">3. Second Inspection (Lot Size, Sampling & Packaging)</h3>
-                    @if (!empty($savedSummary['second']['skipLotSize']))
+                    @if (data_get($savedSummary, 'second.skipLotSize'))
                         <span class="text-xs font-semibold px-2 py-0.5 bg-zinc-100 text-zinc-600 rounded border border-zinc-200">
                             Lot Size: Dilewati (Tanpa Lot Size)
                         </span>
                     @else
                         <span class="text-xs font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded border border-emerald-200 font-mono">
-                            Lot Size: {{ number_format((int)($savedSummary['second']['lot_size_quantity'] ?? 0)) }} pcs
+                            Lot Size: {{ number_format((int) data_get($savedSummary, 'second.lot_size_quantity', 0)) }} pcs
                         </span>
                     @endif
                 </div>
@@ -250,19 +250,19 @@
                                     @foreach ($savedSummary['samples'] as $idx => $s)
                                         <tr class="hover:bg-zinc-50/50">
                                             <td class="px-2 py-2 text-center text-zinc-400 font-mono">{{ $idx + 1 }}</td>
-                                            <td class="px-3 py-2 font-medium text-zinc-900">{{ $s['box_label'] ?: '-' }}</td>
-                                            <td class="px-3 py-2 text-center font-mono font-semibold">{{ number_format((int)($s['quantity'] ?? 0)) }} pcs</td>
+                                            <td class="px-3 py-2 font-medium text-zinc-900">{{ data_get($s, 'box_label') ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-center font-mono font-semibold">{{ number_format((int) data_get($s, 'quantity', 0)) }} pcs</td>
                                             <td class="px-2 py-2 text-center">
-                                                @if (($s['appearance'] ?? '') === 'OK')
+                                                @if (data_get($s, 'appearance') === 'OK')
                                                     <span class="inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">OK</span>
                                                 @else
                                                     <span class="inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">NG</span>
                                                 @endif
                                             </td>
-                                            <td class="px-2 py-2 text-center font-mono font-bold {{ (int)($s['ng_quantity'] ?? 0) > 0 ? 'text-rose-600' : 'text-zinc-400' }}">
-                                                {{ (int)($s['ng_quantity'] ?? 0) > 0 ? number_format((int)$s['ng_quantity']) : '-' }}
+                                            <td class="px-2 py-2 text-center font-mono font-bold {{ (int) data_get($s, 'ng_quantity', 0) > 0 ? 'text-rose-600' : 'text-zinc-400' }}">
+                                                {{ (int) data_get($s, 'ng_quantity', 0) > 0 ? number_format((int) data_get($s, 'ng_quantity')) : '-' }}
                                             </td>
-                                            <td class="px-3 py-2 text-zinc-600">{{ $s['remarks'] ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-zinc-600">{{ data_get($s, 'remarks') ?: '-' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -292,16 +292,16 @@
                                     @foreach ($savedSummary['packagings'] as $idx => $pkg)
                                         <tr class="hover:bg-zinc-50/50">
                                             <td class="px-2 py-2 text-center text-zinc-400 font-mono">{{ $idx + 1 }}</td>
-                                            <td class="px-3 py-2 font-medium text-zinc-900">{{ $pkg['box_label'] ?: '-' }}</td>
-                                            <td class="px-3 py-2 text-center font-mono font-semibold">{{ number_format((int)($pkg['snp'] ?? 0)) }} pcs/box</td>
+                                            <td class="px-3 py-2 font-medium text-zinc-900">{{ data_get($pkg, 'box_label') ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-center font-mono font-semibold">{{ number_format((int) data_get($pkg, 'snp', 0)) }} pcs/box</td>
                                             <td class="px-2 py-2 text-center">
-                                                @if (($pkg['judgement'] ?? '') === 'OK')
+                                                @if (data_get($pkg, 'judgement') === 'OK')
                                                     <span class="inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">OK</span>
                                                 @else
                                                     <span class="inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">NG</span>
                                                 @endif
                                             </td>
-                                            <td class="px-3 py-2 text-zinc-600">{{ $pkg['remarks'] ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-zinc-600">{{ data_get($pkg, 'remarks') ?: '-' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -320,8 +320,8 @@
                     <span class="text-[11px] font-mono text-zinc-400">Total Periode {{ $period }}</span>
                 </div>
                 @php
-                    $pass = (int)($savedSummary['judgement']['pass_quantity'] ?? 0);
-                    $rej = (int)($savedSummary['judgement']['reject_quantity'] ?? 0);
+                    $pass = (int) data_get($savedSummary, 'judgement.pass_quantity', 0);
+                    $rej = (int) data_get($savedSummary, 'judgement.reject_quantity', 0);
                     $tot = $pass + $rej;
                 @endphp
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">

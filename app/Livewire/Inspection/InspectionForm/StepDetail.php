@@ -82,7 +82,18 @@ class StepDetail extends Component
         $this->inspection_report_document_number = $inspection_report_document_number
             ?: session('stepHeaderSaved.document_number');
 
+        $headerDoc = session('stepHeaderSaved.document_number');
         $saved = session('stepDetailSaved');
+
+        // Reset stepDetailSaved if it belongs to a different inspection report document
+        if ($headerDoc && ! empty($saved['details'])) {
+            $firstDetailDoc = data_get(reset($saved['details']), 'inspection_report_document_number');
+            if ($firstDetailDoc && $firstDetailDoc !== $headerDoc) {
+                session()->forget('stepDetailSaved');
+                $saved = null;
+            }
+        }
+
         $this->period = (int) data_get($saved, 'period', 1);
 
         $this->generateDocumentNumber();
@@ -272,7 +283,10 @@ class StepDetail extends Component
             return false;
         }
 
-        return $this->isPeriodSaved($targetP);
+        $pk = 'p' . $targetP;
+        $bag = session('stepDetailSaved', []);
+
+        return ! empty(data_get($bag, "saved_periods.$pk"));
     }
 
     public function unlockPeriod(?int $p = null): void
@@ -285,6 +299,10 @@ class StepDetail extends Component
     {
         $targetP = $p ?? $this->period;
         unset($this->unlockedPeriods[$targetP]);
+        $pk = 'p' . $targetP;
+        $bag = session('stepDetailSaved', []);
+        $bag['saved_periods'][$pk] = true;
+        session(['stepDetailSaved' => $bag]);
     }
 
     public function saveCurrentPeriod(): void
