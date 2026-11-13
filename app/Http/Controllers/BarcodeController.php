@@ -211,7 +211,7 @@ class BarcodeController extends Controller
             'quantity' => $print_quantity,
             'startnum' => $startnum,
             'endnum' => $startnum + $print_quantity - 1,
-            'generated_at' => date('Y-m-d H:i:s'),
+            'generated_at' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
         ]);
     }
 
@@ -268,7 +268,7 @@ class BarcodeController extends Controller
             'quantity' => $print_quantity,
             'startnum' => $startnum,
             'endnum' => $startnum + $print_quantity - 1,
-            'generated_at' => date('Y-m-d H:i:s'),
+            'generated_at' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
         ]);
     }
 
@@ -325,7 +325,7 @@ class BarcodeController extends Controller
             'quantity' => $print_quantity,
             'startnum' => $startnum,
             'endnum' => $startnum + $print_quantity - 1,
-            'generated_at' => date('Y-m-d H:i:s'),
+            'generated_at' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
         ]);
     }
 
@@ -1487,7 +1487,7 @@ class BarcodeController extends Controller
 
         return view($view, [
             'barcodes' => $barcodes,
-            'generated_at' => date('Y-m-d H:i:s'),
+            'generated_at' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
         ]);
     }
 }
