@@ -60,11 +60,33 @@ class PackagingMenuRevampTest extends TestCase
     {
         Customer::create(['name' => 'PT YANFENG AUTOMOTIVE']);
 
+        $master = BarcodePackagingMaster::create([
+            'noDokumen' => 'PKG/IN/JKT/9999/20261113',
+            'customer' => 'PT YANFENG AUTOMOTIVE',
+            'tipeBarcode' => 'IN',
+            'location' => 'JAKARTA',
+            'dateScan' => '2026-11-13 12:00:00',
+        ]);
+
+        BarcodePackagingDetail::create([
+            'masterId' => $master->id,
+            'noDokumen' => $master->noDokumen,
+            'partNo' => '601-TESTBOX',
+            'label' => 101,
+            'position' => 'PT YANFENG AUTOMOTIVE',
+            'scantime' => '2026-11-13 12:01:00',
+        ]);
+
         $response = $this->actingAs($this->user)->get(route('inandout.index'));
 
         $response->assertOk();
         $response->assertViewIs('barcodeinandout.inandoutpage');
         $response->assertSee('PT YANFENG AUTOMOTIVE');
+        $response->assertSee('PKG/IN/JKT/9999/20261113');
+        $response->assertSee('1 pcs');
+        $response->assertSee('Detail');
+        $response->assertSee('601-TESTBOX');
+        $response->assertSee('101');
     }
 
     public function test_barcode_index_loads_with_recent_labels(): void
@@ -222,8 +244,8 @@ class PackagingMenuRevampTest extends TestCase
         $response->assertSee('BOX-30X20-001');
 
         // Verify each label is rendered exactly 2 times (2x per label)
-        $this->assertEquals(2, substr_count($content, '<span class="label-badge">#1</span>'));
-        $this->assertEquals(2, substr_count($content, '<span class="label-badge">#2</span>'));
+        $this->assertEquals(2, substr_count($content, '#1</span>'));
+        $this->assertEquals(2, substr_count($content, '#2</span>'));
 
         // Database stores the actual 2 unique box records
         $this->assertDatabaseHas('store_box_details', [

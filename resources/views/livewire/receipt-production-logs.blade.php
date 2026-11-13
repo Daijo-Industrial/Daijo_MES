@@ -9,9 +9,13 @@
             <div style="font-size:22px; font-weight:800; color:#1A1816;">SAP Receipt Monitor</div>
         </div>
         <div>
-            <a href="{{ route('sap.verification') }}" wire:navigate
-               style="display:inline-flex; align-items:center; gap:6px; background:#2563EB; color:#fff; font-size:12px; font-weight:700; padding:8px 14px; border-radius:6px; text-decoration:none; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
-                <span>🔍 Verifikasi File Excel SAP</span>
+            <a href="{{ route('receipt-production.daily-summary', ['date' => $filterDate ?: now()->format('Y-m-d')]) }}"
+               wire:navigate
+               style="display:inline-flex; align-items:center; gap:6px; background:#1E293B; color:#ffffff; font-size:12px; font-weight:700; padding:8px 14px; border-radius:6px; border:1px solid #334155; text-decoration:none; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.05); transition:background 0.15s ease;">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span>Summary Daily ({{ \Carbon\Carbon::parse($filterDate ?: now())->format('d/m') }})</span>
             </a>
         </div>
     </div>
