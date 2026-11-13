@@ -405,13 +405,13 @@ class PoReminderTest extends TestCase
             ->set('startDate', '2026-11-01')
             ->set('endDate', '2026-11-30')
             ->set('displayMode', 'fgs')
-            ->assertSee('2 SPK')
-            ->assertSee('500 avail')
+            ->assertSee('Kurang 500 pcs')
             ->assertSee('Belum Ada SPK')
             ->call('showMaterialDetail', '401-SHARED-WIP')
             ->assertSee('26039901')
             ->assertSee('26039902')
-            ->assertSee('500 pcs');
+            ->assertSee('500 pcs')
+            ->assertSee('Kurang 500 pcs');
     }
 }
 
