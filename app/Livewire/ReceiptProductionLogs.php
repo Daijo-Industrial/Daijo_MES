@@ -47,6 +47,8 @@ class ReceiptProductionLogs extends Component
 
     public ?array $activeErrorModal = null;
 
+    public ?array $actionMessage = null;
+
     public function mount(): void
     {
         Carbon::setLocale('id');
@@ -543,9 +545,11 @@ class ReceiptProductionLogs extends Component
             if ($unprocessedData->isEmpty()) {
                 DB::commit();
                 $this->clearStatsCache();
+                $msg = "Tidak ada data scan baru (processed: 0 & summary_id: null) untuk tanggal {$targetDate} (07:30 s/d 07:30 besok).";
+                $this->actionMessage = ['status' => 'warning', 'message' => $msg];
                 $this->dispatch('push-notification', [
                     'status' => 'warning',
-                    'message' => "Tidak ada data scan baru (processed: 0 & summary_id: null) untuk tanggal {$targetDate} (07:30 s/d 07:30 besok).",
+                    'message' => $msg,
                 ]);
 
                 return;
@@ -626,9 +630,11 @@ class ReceiptProductionLogs extends Component
             $this->resetPage();
 
             $formattedQty = number_format($totalQty);
+            $msg = "Berhasil generate {$generatedCount} summary (Total: {$formattedQty} pcs) untuk tanggal {$targetDate}!";
+            $this->actionMessage = ['status' => 'success', 'message' => $msg];
             $this->dispatch('push-notification', [
                 'status' => 'success',
-                'message' => "Berhasil generate {$generatedCount} summary (Total: {$formattedQty} pcs) untuk tanggal {$targetDate}!",
+                'message' => $msg,
             ]);
 
         } catch (\Throwable $e) {
@@ -638,9 +644,11 @@ class ReceiptProductionLogs extends Component
                 'error' => $e->getMessage(),
             ]);
 
+            $msg = 'Gagal generate summary: ' . $e->getMessage();
+            $this->actionMessage = ['status' => 'error', 'message' => $msg];
             $this->dispatch('push-notification', [
                 'status' => 'error',
-                'message' => 'Gagal generate summary: ' . $e->getMessage(),
+                'message' => $msg,
             ]);
         }
     }
