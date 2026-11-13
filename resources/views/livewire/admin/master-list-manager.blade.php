@@ -29,6 +29,107 @@
         </div>
     </div>
 
+    <!-- Daily Item Code Verification Card -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Verifikasi Item Produksi (Daily Item Code)</span>
+                @if($dicStats['unassigned_items'] > 0)
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                        {{ $dicStats['unassigned_items'] }} Belum Ada Customer
+                    </span>
+                @else
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        100% Lengkap Terhubung
+                    </span>
+                @endif
+            </div>
+
+            <!-- Date Selector -->
+            <div class="flex items-center gap-2 text-xs">
+                <label for="dicDateInput" class="text-slate-500 font-medium">Tanggal Jadwal:</label>
+                <input type="date" id="dicDateInput" wire:model.live="dicDate" class="py-1 px-2 text-xs rounded border border-slate-300 font-mono text-slate-800 focus:ring-1 focus:ring-blue-500">
+                <button type="button" wire:click="setDicToday" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-200 hover:bg-slate-300 text-slate-800 transition cursor-pointer">
+                    Hari Ini
+                </button>
+            </div>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <!-- Total Item Terjadwal -->
+            <div class="bg-slate-50 p-3 rounded border border-slate-200">
+                <div class="text-[10px] uppercase font-bold text-slate-500">Total Item Terjadwal</div>
+                <div class="text-xl font-bold font-mono text-slate-900 mt-0.5">
+                    {{ number_format($dicStats['total_items']) }} <span class="text-xs font-normal text-slate-500">item</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">
+                    Dari {{ number_format($dicStats['total_dics']) }} shift / jadwal mesin
+                </div>
+            </div>
+
+            <!-- Sudah Terhubung -->
+            <div class="bg-emerald-50/50 p-3 rounded border border-emerald-200">
+                <div class="text-[10px] uppercase font-bold text-emerald-700">Sudah Terhubung</div>
+                <div class="text-xl font-bold font-mono text-emerald-800 mt-0.5">
+                    {{ number_format($dicStats['connected_items']) }} <span class="text-xs font-normal text-emerald-600">item</span>
+                </div>
+                <div class="text-[11px] text-emerald-700 mt-1">
+                    Customer code sudah terdaftar
+                </div>
+            </div>
+
+            <!-- Belum Terhubung -->
+            <div class="p-3 rounded border {{ $dicStats['unassigned_items'] > 0 ? 'bg-rose-50 border-rose-300' : 'bg-slate-50 border-slate-200' }}">
+                <div class="text-[10px] uppercase font-bold {{ $dicStats['unassigned_items'] > 0 ? 'text-rose-700' : 'text-slate-500' }}">Belum Terhubung</div>
+                <div class="text-xl font-bold font-mono {{ $dicStats['unassigned_items'] > 0 ? 'text-rose-700' : 'text-slate-700' }} mt-0.5">
+                    {{ number_format($dicStats['unassigned_items']) }} <span class="text-xs font-normal {{ $dicStats['unassigned_items'] > 0 ? 'text-rose-600' : 'text-slate-500' }}">item</span>
+                </div>
+                <div class="text-[11px] {{ $dicStats['unassigned_items'] > 0 ? 'text-rose-700 font-bold' : 'text-slate-500' }} mt-1">
+                    {{ $dicStats['unassigned_items'] > 0 ? 'Perlu segera dipetakan' : 'Semua item siap diproduksi' }}
+                </div>
+            </div>
+
+            <!-- Mode Filter Scope -->
+            <div class="p-3 rounded border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <div class="text-[10px] uppercase font-bold text-slate-500">Scope Tampilan Tabel</div>
+                    <div class="text-xs font-bold text-slate-800 mt-0.5">
+                        {{ $filterScope === 'DIC_ACTIVE' ? 'Hanya Item Produksi DIC' : 'Semua Master Item' }}
+                    </div>
+                </div>
+                <div class="mt-2">
+                    @if($filterScope === 'DIC_ACTIVE')
+                        <button type="button" wire:click="setScopeFilter('ALL')" class="w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded transition text-center cursor-pointer border border-slate-300">
+                            Tampilkan Semua Master Item
+                        </button>
+                    @else
+                        <button type="button" wire:click="setScopeFilter('DIC_ACTIVE')" class="w-full py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded transition text-center cursor-pointer shadow-xs">
+                            Filter Item Produksi DIC
+                        </button>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        @if($dicStats['unassigned_items'] > 0)
+            <div class="px-4 py-2.5 bg-rose-50 border-t border-rose-200 flex items-center justify-between flex-wrap gap-2 text-xs">
+                <span class="text-rose-800 font-medium">
+                    Ada <strong>{{ $dicStats['unassigned_items'] }} item</strong> yang terjadwal produksi pada <strong>{{ Carbon\Carbon::parse($dicStats['date'])->translatedFormat('d F Y') }}</strong> tetapi belum memiliki Customer Code.
+                </span>
+                <button type="button" wire:click="showOnlyUnassignedDic" class="py-1 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded font-bold text-xs shadow-xs transition cursor-pointer">
+                    Tampilkan Item Belum Terhubung
+                </button>
+            </div>
+        @endif
+
+        @if(!empty($dicStats['unregistered_codes']))
+            <div class="px-4 py-2 bg-amber-50 border-t border-amber-200 text-xs text-amber-800">
+                Peringatan: Ada {{ count($dicStats['unregistered_codes']) }} item di Daily Item Code yang belum terdaftar di database Master List: 
+                <span class="font-mono font-bold">{{ implode(', ', $dicStats['unregistered_codes']) }}</span>
+            </div>
+        @endif
+    </div>
+
     <!-- Main Toolbar -->
     <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-4">
@@ -52,7 +153,7 @@
                 <div class="relative flex items-center space-x-2">
                     <input type="file" wire:model="file" id="excel-file-input" class="hidden" accept=".xls,.xlsx,.csv,.txt">
                     <button type="button" onclick="document.getElementById('excel-file-input').click()" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded text-sm shadow transition inline-flex items-center">
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded text-sm shadow transition inline-flex items-center cursor-pointer">
                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                         Sync SAP Excel
                     </button>
@@ -65,27 +166,52 @@
             </div>
         </div>
 
-        <!-- Connection Status Tabs -->
-        <div class="flex flex-wrap items-center gap-2 border-t pt-4">
-            <span class="text-xs font-bold text-gray-500 uppercase mr-2">Status Customer:</span>
-            
-            <button wire:click="setConnectionFilter('ALL')"
-                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $filterConnection === 'ALL' ? 'bg-gray-900 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                <span>Semua</span>
-                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterConnection === 'ALL' ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700' }}">{{ number_format($counts['ALL']) }}</span>
-            </button>
+        <!-- Scope and Connection Status Tabs -->
+        <div class="border-t pt-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold text-gray-500 uppercase mr-2">Scope Data:</span>
+                    <button wire:click="setScopeFilter('ALL')"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer {{ $filterScope === 'ALL' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">
+                        <span>Semua Master List</span>
+                    </button>
+                    <button wire:click="setScopeFilter('DIC_ACTIVE')"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer {{ $filterScope === 'DIC_ACTIVE' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200' }}">
+                        <span>Item Produksi DIC</span>
+                        <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterScope === 'DIC_ACTIVE' ? 'bg-blue-800 text-blue-100' : 'bg-blue-200 text-blue-900' }} font-mono">
+                            {{ number_format($dicStats['total_items']) }}
+                        </span>
+                    </button>
+                </div>
 
-            <button wire:click="setConnectionFilter('CONNECTED')"
-                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $filterConnection === 'CONNECTED' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' }}">
-                <span>✓ Terhubung</span>
-                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterConnection === 'CONNECTED' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-200 text-emerald-900' }}">{{ number_format($counts['CONNECTED']) }}</span>
-            </button>
+                @if($filterScope === 'DIC_ACTIVE')
+                    <span class="text-xs text-blue-700 font-semibold bg-blue-50 px-2.5 py-1 rounded border border-blue-200">
+                        Jadwal DIC: <strong>{{ Carbon\Carbon::parse($dicStats['date'])->translatedFormat('d F Y') }}</strong>
+                    </span>
+                @endif
+            </div>
 
-            <button wire:click="setConnectionFilter('UNASSIGNED')"
-                class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 {{ $filterConnection === 'UNASSIGNED' ? 'bg-amber-600 text-white shadow-sm' : 'bg-amber-50 text-amber-800 hover:bg-amber-100' }}">
-                <span>⚠️ Belum Terhubung</span>
-                <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterConnection === 'UNASSIGNED' ? 'bg-amber-700 text-amber-100' : 'bg-amber-200 text-amber-900' }}">{{ number_format($counts['UNASSIGNED']) }}</span>
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold text-gray-500 uppercase mr-2">Status Customer:</span>
+                
+                <button wire:click="setConnectionFilter('ALL')"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer {{ $filterConnection === 'ALL' ? 'bg-gray-800 text-white shadow-xs' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                    <span>Semua</span>
+                    <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterConnection === 'ALL' ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700' }} font-mono">{{ number_format($counts['ALL']) }}</span>
+                </button>
+
+                <button wire:click="setConnectionFilter('CONNECTED')"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer {{ $filterConnection === 'CONNECTED' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' }}">
+                    <span>Terhubung</span>
+                    <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterConnection === 'CONNECTED' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-200 text-emerald-900' }} font-mono">{{ number_format($counts['CONNECTED']) }}</span>
+                </button>
+
+                <button wire:click="setConnectionFilter('UNASSIGNED')"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer {{ $filterConnection === 'UNASSIGNED' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-800 hover:bg-amber-100' }}">
+                    <span>Belum Terhubung</span>
+                    <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $filterConnection === 'UNASSIGNED' ? 'bg-amber-700 text-amber-100' : 'bg-amber-200 text-amber-900' }} font-mono">{{ number_format($counts['UNASSIGNED']) }}</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -204,7 +330,22 @@
                 <tbody class="divide-y divide-gray-200 text-gray-800">
                     @forelse ($items as $item)
                         <tr class="hover:bg-gray-50/50 transition">
-                            <td class="px-4 py-3 font-semibold text-gray-900 select-all">{{ $item->item_code }}</td>
+                            <td class="px-4 py-3 font-semibold text-gray-900 select-all">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span>{{ $item->item_code }}</span>
+                                    @if(isset($dicItemMap[$item->item_code]))
+                                        @php
+                                            $dicInfo = $dicItemMap[$item->item_code];
+                                            $machStr = !empty($dicInfo['machines']) ? implode(', ', $dicInfo['machines']) : 'Mesin N/A';
+                                            $shfStr = !empty($dicInfo['shifts']) ? 'Shift ' . implode(', ', $dicInfo['shifts']) : '';
+                                        @endphp
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200"
+                                              title="Jadwal DIC: {{ $machStr }} ({{ $shfStr }}) | Qty: {{ number_format($dicInfo['total_qty']) }} pcs">
+                                            Active DIC
+                                        </span>
+                                    @endif
+                                </div>
+                            </td>
                             <td class="px-4 py-3 font-semibold text-gray-600 select-all">{{ $item->item_name }}</td>
                             
                             <!-- Tipe Mesin -->

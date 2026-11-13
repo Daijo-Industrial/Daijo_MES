@@ -2,11 +2,13 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\DailyItemCode;
 use App\Models\MasterBusinessPartner;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterItemImportBatch;
 use App\Models\MasterItemLog;
 use App\Models\MasterListItem;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
@@ -23,6 +25,10 @@ class MasterListManager extends Component
     public $hardSync = false;
 
     public string $filterConnection = 'ALL'; // 'ALL', 'CONNECTED', 'UNASSIGNED'
+
+    public string $filterScope = 'ALL'; // 'ALL', 'DIC_ACTIVE'
+
+    public string $dicDate = '';
 
     // Excel Import status
     public $tempFilePath = '';
@@ -61,9 +67,18 @@ class MasterListManager extends Component
     protected $queryString = [
         'search' => ['except' => ''],
         'filterConnection' => ['except' => 'ALL'],
+        'filterScope' => ['except' => 'ALL'],
+        'dicDate' => ['except' => ''],
     ];
 
-    public function updatingSearch()
+    public function mount(): void
+    {
+        if (empty($this->dicDate)) {
+            $this->dicDate = Carbon::today()->toDateString();
+        }
+    }
+
+    public function updatingSearch(): void
     {
         $this->resetPage('itemsPage');
     }
@@ -71,6 +86,30 @@ class MasterListManager extends Component
     public function setConnectionFilter(string $filter): void
     {
         $this->filterConnection = $filter;
+        $this->resetPage('itemsPage');
+    }
+
+    public function setScopeFilter(string $scope): void
+    {
+        $this->filterScope = $scope;
+        $this->resetPage('itemsPage');
+    }
+
+    public function setDicToday(): void
+    {
+        $this->dicDate = Carbon::today()->toDateString();
+        $this->resetPage('itemsPage');
+    }
+
+    public function updatingDicDate(): void
+    {
+        $this->resetPage('itemsPage');
+    }
+
+    public function showOnlyUnassignedDic(): void
+    {
+        $this->filterScope = 'DIC_ACTIVE';
+        $this->filterConnection = 'UNASSIGNED';
         $this->resetPage('itemsPage');
     }
 
@@ -586,12 +625,73 @@ class MasterListManager extends Component
 
     public function render()
     {
+        if (empty($this->dicDate)) {
+            $this->dicDate = Carbon::today()->toDateString();
+        }
+
+        // 1. Ambil data DailyItemCode pada schedule_date yang dipilih
+        $activeDics = DailyItemCode::whereDate('schedule_date', $this->dicDate)
+            ->with('user:id,name')
+            ->get();
+
+        $dicItemMap = [];
+        foreach ($activeDics as $dic) {
+            $code = trim((string) $dic->item_code);
+            if ($code === '') {
+                continue;
+            }
+            if (! isset($dicItemMap[$code])) {
+                $dicItemMap[$code] = [
+                    'count' => 0,
+                    'machines' => [],
+                    'shifts' => [],
+                    'total_qty' => 0,
+                ];
+            }
+            $dicItemMap[$code]['count']++;
+            if ($dic->user && ! in_array($dic->user->name, $dicItemMap[$code]['machines'], true)) {
+                $dicItemMap[$code]['machines'][] = $dic->user->name;
+            }
+            if ($dic->shift && ! in_array((string) $dic->shift, $dicItemMap[$code]['shifts'], true)) {
+                $dicItemMap[$code]['shifts'][] = (string) $dic->shift;
+            }
+            $dicItemMap[$code]['total_qty'] += (int) $dic->quantity;
+        }
+
+        $activeItemCodes = array_keys($dicItemMap);
+
+        // Cek status koneksi customer untuk active DIC items
+        $dicMasterItems = MasterListItem::whereIn('item_code', $activeItemCodes)
+            ->get(['id', 'item_code', 'customer_code']);
+
+        $dicConnectedCodes = $dicMasterItems->filter(function ($item) {
+            return ! empty($item->customer_code) && ! in_array($item->customer_code, ['', '0', '-'], true);
+        })->pluck('item_code')->toArray();
+
+        $dicUnassignedCodes = array_diff($activeItemCodes, $dicConnectedCodes);
+        $unregisteredDicCodes = array_diff($activeItemCodes, $dicMasterItems->pluck('item_code')->toArray());
+
+        $dicStats = [
+            'date' => $this->dicDate,
+            'total_dics' => $activeDics->count(),
+            'total_items' => count($activeItemCodes),
+            'connected_items' => count($dicConnectedCodes),
+            'unassigned_items' => count($dicUnassignedCodes),
+            'unregistered_items' => count($unregisteredDicCodes),
+            'unregistered_codes' => array_values($unregisteredDicCodes),
+        ];
+
+        // 2. Query data MasterListItem
         $query = MasterListItem::with(['customer', 'businessPartner'])
             ->where(function ($q) {
                 $q->where('item_code', 'like', '%' . $this->search . '%')
                     ->orWhere('item_name', 'like', '%' . $this->search . '%')
                     ->orWhere('customer_code', 'like', '%' . $this->search . '%');
             });
+
+        if ($this->filterScope === 'DIC_ACTIVE') {
+            $query->whereIn('item_code', $activeItemCodes);
+        }
 
         if ($this->filterConnection === 'CONNECTED') {
             $query->whereNotNull('customer_code')
@@ -609,13 +709,40 @@ class MasterListManager extends Component
             ->orderBy('created_at', 'desc')
             ->paginate(10, ['*'], 'logsPage');
 
-        $counts = [
-            'ALL' => MasterListItem::count(),
-            'CONNECTED' => MasterListItem::whereNotNull('customer_code')->whereNotIn('customer_code', ['', '0', '-'])->count(),
-            'UNASSIGNED' => MasterListItem::where(function ($q) {
-                $q->whereNull('customer_code')->orWhereIn('customer_code', ['', '0', '-']);
-            })->count(),
-        ];
+        // Hitung counts sesuai dengan scope aktif
+        if ($this->filterScope === 'DIC_ACTIVE') {
+            $scopeBaseQuery = MasterListItem::whereIn('item_code', $activeItemCodes);
+            if (! empty($this->search)) {
+                $scopeBaseQuery->where(function ($q) {
+                    $q->where('item_code', 'like', '%' . $this->search . '%')
+                        ->orWhere('item_name', 'like', '%' . $this->search . '%')
+                        ->orWhere('customer_code', 'like', '%' . $this->search . '%');
+                });
+            }
+            $counts = [
+                'ALL' => (clone $scopeBaseQuery)->count(),
+                'CONNECTED' => (clone $scopeBaseQuery)->whereNotNull('customer_code')->whereNotIn('customer_code', ['', '0', '-'])->count(),
+                'UNASSIGNED' => (clone $scopeBaseQuery)->where(function ($q) {
+                    $q->whereNull('customer_code')->orWhereIn('customer_code', ['', '0', '-']);
+                })->count(),
+            ];
+        } else {
+            $baseCountQuery = MasterListItem::query();
+            if (! empty($this->search)) {
+                $baseCountQuery->where(function ($q) {
+                    $q->where('item_code', 'like', '%' . $this->search . '%')
+                        ->orWhere('item_name', 'like', '%' . $this->search . '%')
+                        ->orWhere('customer_code', 'like', '%' . $this->search . '%');
+                });
+            }
+            $counts = [
+                'ALL' => (clone $baseCountQuery)->count(),
+                'CONNECTED' => (clone $baseCountQuery)->whereNotNull('customer_code')->whereNotIn('customer_code', ['', '0', '-'])->count(),
+                'UNASSIGNED' => (clone $baseCountQuery)->where(function ($q) {
+                    $q->whereNull('customer_code')->orWhereIn('customer_code', ['', '0', '-']);
+                })->count(),
+            ];
+        }
 
         // Customers list for dropdown selector
         $customers = MasterBusinessPartner::customers()
@@ -630,6 +757,8 @@ class MasterListManager extends Component
             'logs' => $logs,
             'counts' => $counts,
             'customers' => $customers,
+            'dicStats' => $dicStats,
+            'dicItemMap' => $dicItemMap,
         ]);
     }
 }
