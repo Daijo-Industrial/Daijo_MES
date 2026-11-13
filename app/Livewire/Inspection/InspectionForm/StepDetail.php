@@ -15,6 +15,12 @@ class StepDetail extends Component
 
     public int $period = 1;
 
+    public bool $isWizardActive = false;
+
+    public int $subStep = 1;
+
+    public $machine_number;
+
     public $start_datetime;
 
     public $end_datetime;
@@ -94,7 +100,18 @@ class StepDetail extends Component
             }
         }
 
-        $this->period = (int) data_get($saved, 'period', 1);
+        $this->shift = session('stepHeaderSaved.shift') ?? null;
+        $this->operator = session('stepHeaderSaved.operator') ?? 'N/A';
+        $this->inspector = session('stepHeaderSaved.inspector') ?? 'N/A';
+        $this->part_name = session('stepHeaderSaved.part_name') ?? 'N/A';
+        $this->part_number = session('stepHeaderSaved.part_number') ?? 'N/A';
+        $this->machine_number = session('stepHeaderSaved.machine_number') ?? '-';
+
+        if (empty($saved['period'])) {
+            $this->period = $this->determineCurrentPeriod();
+        } else {
+            $this->period = (int) $saved['period'];
+        }
 
         $this->generateDocumentNumber();
 
@@ -112,17 +129,39 @@ class StepDetail extends Component
             }
         }
 
-        $this->shift = session('stepHeaderSaved.shift') ?? null;
-        $this->operator = session('stepHeaderSaved.operator') ?? 'N/A';
-        $this->inspector = session('stepHeaderSaved.inspector') ?? 'N/A';
-        $this->part_name = session('stepHeaderSaved.part_name') ?? 'N/A';
-        $this->part_number = session('stepHeaderSaved.part_number') ?? 'N/A';
-
         if ($this->shift) {
             $this->updatedPeriod();
         }
         $this->saveStep();
         $this->refreshSavedFlags();
+    }
+
+    public function determineCurrentPeriod(): int
+    {
+        $shift = (int) ($this->shift ?? session('stepHeaderSaved.shift', 1));
+        [$shiftStart, $shiftEnd] = $this->getShiftTimes($shift);
+        $tz = config('mes.timezone', 'Asia/Jakarta');
+        $now = now()->setTimezone($tz);
+        $start = Carbon::createFromTimeString($shiftStart, $tz);
+        $end = Carbon::createFromTimeString($shiftEnd, $tz);
+
+        if ($shift === 3 && $end->lessThan($start)) {
+            if ($now->hour < 12) {
+                $start->subDay();
+            } else {
+                $end->addDay();
+            }
+        }
+
+        for ($p = 1; $p <= 4; $p++) {
+            $pStart = $start->copy()->addHours(($p - 1) * 2);
+            $pEnd = ($p === 4) ? $end : $start->copy()->addHours($p * 2);
+            if ($now->betweenIncluded($pStart, $pEnd)) {
+                return $p;
+            }
+        }
+
+        return 1;
     }
 
     private function getShiftTimes(int $shift): array
@@ -173,6 +212,82 @@ class StepDetail extends Component
         $this->generateDocumentNumber();
         $this->saveStep();
         $this->computeSaveFlags();
+    }
+
+    public function startPeriod(int $p): void
+    {
+        $this->period = $p;
+        $this->subStep = 1;
+        $this->updatedPeriod();
+        $this->generateDocumentNumber();
+        $this->saveStep();
+        $this->computeSaveFlags();
+        $this->isWizardActive = true;
+    }
+
+    public function editPeriod(int $p): void
+    {
+        $this->unlockPeriod($p);
+        $this->startPeriod($p);
+    }
+
+    public function goToSubStep(int $step): void
+    {
+        if ($step >= 1 && $step <= 4) {
+            $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+            $this->subStep = $step;
+            $this->saveStep();
+        }
+    }
+
+    public function nextSubStep(): void
+    {
+        $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+        $this->saveStep();
+
+        if ($this->subStep < 4) {
+            $this->subStep++;
+        } else {
+            $this->finishPeriod();
+        }
+    }
+
+    public function prevSubStep(): void
+    {
+        $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+        $this->saveStep();
+
+        if ($this->subStep > 1) {
+            $this->subStep--;
+        } else {
+            $this->exitToHub();
+        }
+    }
+
+    public function finishPeriod(): void
+    {
+        $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+        $this->saveCurrentPeriod();
+        $this->isWizardActive = false;
+        $this->subStep = 1;
+        $this->dispatch('stepDetailSaved');
+        $this->dispatch('toast', message: "Inspeksi Periode {$this->period} berhasil diselesaikan dan disimpan!");
+    }
+
+    public function exitToHub(): void
+    {
+        $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+        $this->saveStep();
+        $this->isWizardActive = false;
+        $this->subStep = 1;
+    }
+
+    public function resetPeriod(int $p): void
+    {
+        $this->period = $p;
+        $this->resetStep(true);
+        $this->isWizardActive = false;
+        $this->subStep = 1;
     }
 
     private function generateDocumentNumber(): void
@@ -413,7 +528,10 @@ class StepDetail extends Component
 
     public function proceedToStep3(): void
     {
-        $this->saveCurrentPeriod();
+        if ($this->isWizardActive) {
+            $this->saveCurrentPeriod();
+            $this->isWizardActive = false;
+        }
         $this->dispatch('nextStep');
     }
 
@@ -460,23 +578,66 @@ class StepDetail extends Component
         $this->part_number = session('stepHeaderSaved.part_number') ?? $this->part_number;
         $this->part_name = session('stepHeaderSaved.part_name') ?? $this->part_name;
         $this->inspector = session('stepHeaderSaved.inspector') ?? $this->inspector;
+        $this->machine_number = session('stepHeaderSaved.machine_number') ?? ($this->machine_number ?? '-');
 
-        $pk = $this->periodKey($this->period);
         $bag = session('stepDetailSaved', []);
 
-        $savedSummary = [
-            'isSaved' => $this->isPeriodSaved($this->period),
-            'isLocked' => $this->isPeriodLocked($this->period),
-            'first' => data_get($bag, "first_inspections.$pk"),
-            'dimensions' => data_get($bag, "dimensions.$pk", []),
-            'second' => data_get($bag, "second_inspections.$pk"),
-            'samples' => data_get($bag, "samples.$pk", []),
-            'packagings' => data_get($bag, "packagings.$pk", []),
-            'judgement' => data_get($bag, "judgements.$pk"),
-        ];
+        $periodsSummary = [];
+        for ($p = 1; $p <= 4; $p++) {
+            $pk = 'p' . $p;
+            $first = data_get($bag, "first_inspections.$pk");
+            $dims = data_get($bag, "dimensions.$pk", []);
+            $second = data_get($bag, "second_inspections.$pk");
+            $samples = data_get($bag, "samples.$pk", []);
+            $packagings = data_get($bag, "packagings.$pk", []);
+            $judgement = data_get($bag, "judgements.$pk");
+
+            $dimOkCount = collect($dims)->where('judgement', 'OK')->count();
+            $dimNgCount = collect($dims)->where('judgement', 'NG')->count();
+            $dimTotal = count($dims);
+
+            $sampleBoxCount = count($samples);
+            $sampleNgTotal = collect($samples)->sum(fn ($s) => (int) data_get($s, 'ng_quantity', 0));
+
+            $passQty = (int) data_get($judgement, 'pass_quantity', 0);
+            $rejQty = (int) data_get($judgement, 'reject_quantity', 0);
+            $totalOutput = $passQty + $rejQty;
+
+            $isSaved = $this->isPeriodSaved($p);
+
+            $periodsSummary[$p] = [
+                'period' => $p,
+                'time_range' => $this->getPeriodTimeRange($p),
+                'isSaved' => $isSaved,
+                'isLocked' => $this->isPeriodLocked($p),
+                'first' => $first,
+                'first_appearance' => data_get($first, 'appearance'),
+                'first_weight' => data_get($first, 'weight'),
+                'first_weight_uom' => data_get($first, 'weight_uom', 'g'),
+                'first_fitting' => data_get($first, 'fitting_test'),
+                'dim_total' => $dimTotal,
+                'dim_ok' => $dimOkCount,
+                'dim_ng' => $dimNgCount,
+                'second_lot_size' => data_get($second, 'lot_size_quantity'),
+                'second_skip_lot' => data_get($second, 'skipLotSize'),
+                'sample_box_count' => $sampleBoxCount,
+                'sample_ng_total' => $sampleNgTotal,
+                'packaging_snp' => data_get($packagings, '0.snp'),
+                'packaging_count' => count($packagings),
+                'pass_quantity' => $passQty,
+                'reject_quantity' => $rejQty,
+                'total_output' => $totalOutput,
+            ];
+        }
+
+        $hasAnySavedPeriod = collect($periodsSummary)->contains(fn ($p) => $p['isSaved']);
+        $recommendedPeriod = $this->determineCurrentPeriod();
 
         return view('livewire.inspection.form.step-detail', [
-            'savedSummary' => $savedSummary,
+            'periodsSummary' => $periodsSummary,
+            'hasAnySavedPeriod' => $hasAnySavedPeriod,
+            'recommendedPeriod' => $recommendedPeriod,
+            'savedSummary' => $periodsSummary[$this->period] ?? [],
         ]);
     }
 }

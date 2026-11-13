@@ -27,7 +27,7 @@ class InspectionForm extends Component
 
     public function mount(): void
     {
-        $this->currentStep = session('lastStepVisited', 1);
+        $this->currentStep = (int) session('lastStepVisited', 1);
         $this->stepSessionKeys = [
             1 => 'stepHeaderSaved',
             2 => 'stepDetailSaved',
@@ -35,24 +35,55 @@ class InspectionForm extends Component
             4 => 'stepFinalSubmit',
         ];
 
-        foreach ($this->stepSessionKeys as $step => $key) {
-            if (session()->has($key)) {
-                $this->filledSteps[$step] = true;
+        $this->filledSteps = $this->computeFilledSteps();
+        $this->inspection_report_document_number = session('stepHeaderSaved.document_number');
+    }
+
+    public function computeFilledSteps(): array
+    {
+        $header = session('stepHeaderSaved', []);
+        $step1 = ! empty($header['document_number'])
+            && ! empty($header['part_number'])
+            && ! empty($header['customer'])
+            && ! empty($header['machine_number'])
+            && ! empty($header['shift'])
+            && ! empty($header['operator'])
+            && ! empty($header['inspector']);
+
+        $detail = session('stepDetailSaved', []);
+        $savedPeriods = data_get($detail, 'saved_periods', []);
+        $hasSavedPeriod = collect($savedPeriods)->contains(fn ($val) => ! empty($val));
+        if (! $hasSavedPeriod && ! empty($detail['details'])) {
+            foreach ($detail['details'] as $pk => $d) {
+                if (! empty(data_get($detail, "first_inspections.$pk"))
+                    && ! empty(data_get($detail, "second_inspections.$pk"))
+                    && ! empty(data_get($detail, "judgements.$pk"))) {
+                    $hasSavedPeriod = true;
+                    break;
+                }
             }
         }
+        $step2 = $hasSavedPeriod;
 
-        $this->inspection_report_document_number = session('stepHeaderSaved.document_number');
+        $step3 = session()->has('stepProblemSaved');
+
+        return [
+            1 => (bool) $step1,
+            2 => (bool) $step2,
+            3 => (bool) $step3,
+            4 => false,
+        ];
     }
 
     public function markStepFilled(): void
     {
-        $this->filledSteps[$this->currentStep] = true;
+        $this->filledSteps = $this->computeFilledSteps();
     }
 
-    public function handlerHeaderSaved($data): void
+    public function handlerHeaderSaved($data = []): void
     {
-        $this->filledSteps[1] = true;
-        $this->inspection_report_document_number = $data['document_number'] ?? null;
+        $this->filledSteps = $this->computeFilledSteps();
+        $this->inspection_report_document_number = $data['document_number'] ?? session('stepHeaderSaved.document_number');
     }
 
     public function updatedCurrentStep($step): void
@@ -84,6 +115,10 @@ class InspectionForm extends Component
 
     public function render(): View
     {
-        return view('livewire.inspection.form')->layout('layouts.app');
+        $this->filledSteps = $this->computeFilledSteps();
+
+        return view('livewire.inspection.form', [
+            'filledSteps' => $this->filledSteps,
+        ])->layout('layouts.app');
     }
 }

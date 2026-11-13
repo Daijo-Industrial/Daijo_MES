@@ -614,10 +614,13 @@ class InspectionFormTest extends TestCase
         Livewire::actingAs($this->user)
             ->test(StepDetail::class)
             ->assertOk()
-            ->assertSee('Periode 1 Telah Tersimpan di Sesi');
+            ->assertSee('Periode 1')
+            ->assertSee('Selesai Tersimpan')
+            ->assertSee('1. First Piece')
+            ->assertSee('Edit Periode 1');
     }
 
-    public function test_step_detail_renders_unified_period_selector_and_minimized_time(): void
+    public function test_step_detail_renders_period_hub_and_navigates_to_sub_wizard(): void
     {
         session([
             'stepHeaderSaved' => [
@@ -635,21 +638,157 @@ class InspectionFormTest extends TestCase
         Livewire::actingAs($this->user)
             ->test(StepDetail::class)
             ->assertOk()
+            ->assertSet('isWizardActive', false)
+            ->assertSee('Pilih Periode Inspeksi Shift 1')
             ->assertSee('Periode 1')
             ->assertSee('Periode 2')
             ->assertSee('Periode 3')
             ->assertSee('Periode 4')
-            ->assertSee('Jam Inspeksi:')
-            ->assertSee('Ubah Jam')
-            ->assertSee('Reset Periode 1')
-            ->assertDontSee('Part Sedang Berjalan')
-            ->assertDontSee('Shift dibagi menjadi 4 periode')
-            // Period 1 doesn't have previous period, so copy button should not exist
-            ->assertDontSee('Salin dari Periode 0')
-            // Switch to Period 2
-            ->call('selectPeriod', 2)
-            ->assertSet('period', 2)
-            ->assertSee('Salin dari Periode 1')
-            ->assertSee('Reset Periode 2');
+            ->assertSee('Mulai Inspeksi Periode 1')
+            ->assertSee('Kembali ke Step 1 (Header)')
+            // Start inspecting Period 1
+            ->call('startPeriod', 1)
+            ->assertSet('isWizardActive', true)
+            ->assertSet('period', 1)
+            ->assertSet('subStep', 1)
+            ->assertSee('Inspeksi Periode 1')
+            ->assertSee('Simpan Draft & Kembali ke Hub')
+            ->assertSee('1. First Piece')
+            ->assertSee('2. Dimensi')
+            ->assertSee('3. Second & Sampling')
+            ->assertSee('4. Judgement & Output')
+            ->assertSee('Lanjut ke 2. Dimensi')
+            // Return to Hub
+            ->call('exitToHub')
+            ->assertSet('isWizardActive', false)
+            ->assertSee('Pilih Periode Inspeksi Shift 1');
+    }
+
+    public function test_step_detail_sub_wizard_sequential_flow_and_completion(): void
+    {
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => 'INSP-TEST-WIZARD-01',
+                'customer' => 'PT DAIJO',
+                'inspection_date' => '2026-11-03',
+                'part_number' => 'PART-WIZARD-01',
+                'part_name' => 'WIZARD PART',
+                'shift' => 1,
+                'operator' => 'OP-WIZARD',
+                'inspector' => 'INSP-WIZARD',
+            ],
+        ]);
+
+        $test = Livewire::actingAs($this->user)
+            ->test(StepDetail::class)
+            ->assertOk()
+            ->call('startPeriod', 1)
+            ->assertSet('isWizardActive', true)
+            ->assertSet('subStep', 1)
+            // Step 1 -> Step 2
+            ->call('nextSubStep')
+            ->assertSet('subStep', 2)
+            ->assertSee('Lanjut ke 3. Second & Sampling')
+            // Step 2 -> Step 3
+            ->call('nextSubStep')
+            ->assertSet('subStep', 3)
+            ->assertSee('Lanjut ke 4. Judgement & Output')
+            // Step 3 -> Step 4
+            ->call('nextSubStep')
+            ->assertSet('subStep', 4)
+            ->assertSee('Simpan Periode 1 & Selesai')
+            // Finish Period
+            ->call('finishPeriod')
+            ->assertSet('isWizardActive', false)
+            ->assertDispatched('stepDetailSaved')
+            ->assertSee('Selesai Tersimpan')
+            ->assertSee('Edit Periode 1')
+            // Proceed to Step 3 should dispatch nextStep
+            ->call('proceedToStep3')
+            ->assertDispatched('nextStep');
+
+        $savedPeriods = session('stepDetailSaved.saved_periods', []);
+        $this->assertTrue(! empty($savedPeriods['p1']));
+    }
+
+    public function test_inspection_form_stepper_is_non_clickable_and_shows_only_titles(): void
+    {
+        Livewire::actingAs($this->user)
+            ->test(InspectionForm::class)
+            ->assertOk()
+            ->assertSee('Header & Part Info')
+            ->assertSee('Detail Periode')
+            ->assertSee('Masalah & Loss Time')
+            ->assertSee('Review & Submit')
+            ->assertDontSee('Customer, Part, Mesin & Shift')
+            ->assertDontSee('First, Dimensi, Sampling & Hasil')
+            ->assertDontSee('Daftar kendala selama shift')
+            ->assertDontSee('Verifikasi dan simpan laporan')
+            ->assertDontSee('wire:click="setStep');
+    }
+
+    public function test_inspection_form_accurately_unifies_filled_steps_based_on_saved_data(): void
+    {
+        // 1. Initially nothing is saved
+        session()->forget(['stepHeaderSaved', 'stepDetailSaved', 'stepProblemSaved']);
+
+        $test = Livewire::actingAs($this->user)->test(InspectionForm::class);
+        $this->assertFalse($test->get('filledSteps')[1]);
+        $this->assertFalse($test->get('filledSteps')[2]);
+        $this->assertFalse($test->get('filledSteps')[3]);
+
+        // 2. Only Step 1 Header is saved
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => 'INSP-STEP-001',
+                'customer' => 'PT ASTRA',
+                'inspection_date' => '2026-11-03',
+                'part_number' => 'PART-001',
+                'part_name' => 'BUMPER',
+                'machine_number' => 'INJ-01',
+                'shift' => 1,
+                'operator' => 'OP-1',
+                'inspector' => 'INSP-1',
+            ],
+            // Step 2 visited with detail metadata but NO saved period
+            'stepDetailSaved' => [
+                'details' => [
+                    'p1' => [
+                        'document_number' => 'DETAIL-001',
+                        'period' => 1,
+                    ],
+                ],
+            ],
+        ]);
+
+        $test = Livewire::actingAs($this->user)->test(InspectionForm::class);
+        $this->assertTrue($test->get('filledSteps')[1]);
+        $this->assertFalse($test->get('filledSteps')[2]);
+
+        // 3. Period 1 is saved
+        session([
+            'stepDetailSaved' => [
+                'saved_periods' => ['p1' => true],
+                'details' => [
+                    'p1' => [
+                        'document_number' => 'DETAIL-001',
+                        'period' => 1,
+                    ],
+                ],
+            ],
+        ]);
+
+        $test = Livewire::actingAs($this->user)->test(InspectionForm::class);
+        $this->assertTrue($test->get('filledSteps')[2]);
+
+        // 4. Step 3 Problem is saved
+        session([
+            'stepProblemSaved' => [
+                ['time' => '08:00', 'type' => 'Setting Mold', 'cycle_time' => 30, 'remarks' => 'Normal'],
+            ],
+        ]);
+
+        $test = Livewire::actingAs($this->user)->test(InspectionForm::class);
+        $this->assertTrue($test->get('filledSteps')[3]);
     }
 }
