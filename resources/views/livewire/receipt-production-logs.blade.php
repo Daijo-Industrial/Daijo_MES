@@ -67,22 +67,6 @@
     </div>
     @endif
 
-    {{-- Loading Overlay for Regenerate Summary --}}
-    <div wire:loading wire:target="regenerateSummaryForDate"
-         style="position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:99999; display:flex; align-items:center; justify-content:center;">
-        <div style="background:#fff; padding:28px 36px; border-radius:8px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); text-align:center; max-width:420px; border:1px solid #E5E7EB;">
-            <svg style="width:42px; height:42px; margin:0 auto 14px; color:#0284C7; animation:spin 1s linear infinite;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle style="opacity:0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path style="opacity:0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <style>
-                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            </style>
-            <div style="font-size:15px; font-weight:800; color:#111827; margin-bottom:6px;">Sedang Memproses Summary...</div>
-            <div style="font-size:12px; color:#4B5563; line-height:1.4;">Mengambil data scan produksi shift 07:30 s/d 07:30 besok dan membentuk production summary. Mohon tunggu...</div>
-        </div>
-    </div>
-
     {{-- Filters --}}
     <div style="background:#fff; border:1px solid #E8E4DC; border-radius:4px; padding:14px 16px;
                 margin-bottom:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
@@ -168,18 +152,9 @@
                     style="background:#0284C7; color:#fff; border:none; border-radius:2px; 
                            padding:8px 14px; font-size:11px; font-weight:700; cursor:pointer; 
                            font-family:'IBM Plex Sans',sans-serif; text-transform:uppercase; 
-                           letter-spacing:.08em; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s;"
+                           letter-spacing:.08em; transition:all 0.2s;"
                     title="Generate summary produksi khusus tanggal {{ $filterDate }} (07:30 - 07:30 besok)">
-                <span wire:loading.remove wire:target="regenerateSummaryForDate">
-                    Regenerate Summary ({{ \Carbon\Carbon::parse($filterDate)->format('d/m') }})
-                </span>
-                <span wire:loading wire:target="regenerateSummaryForDate" style="display:inline-flex; align-items:center; gap:6px;">
-                    <svg style="width:13px; height:13px; animation:spin 1s linear infinite;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle style="opacity:0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path style="opacity:0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Memproses...
-                </span>
+                Regenerate Summary ({{ \Carbon\Carbon::parse($filterDate)->format('d/m') }})
             </button>
             @endif
 
