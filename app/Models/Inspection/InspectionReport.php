@@ -15,6 +15,7 @@ class InspectionReport extends Model
 
     protected $fillable = [
         'document_number',
+        'dic_id',
         'customer',
         'inspection_date',
         'part_number',
@@ -34,10 +35,19 @@ class InspectionReport extends Model
     ];
 
     protected $casts = [
+        'dic_id' => 'integer',
         'inspection_date' => 'date',
         'weight' => 'double',
         'shift' => 'integer',
     ];
+
+    /**
+     * Daily Item Code (DIC) production schedule reference.
+     */
+    public function dailyItemCode(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\DailyItemCode::class, 'dic_id');
+    }
 
     /**
      * Detail inspection reports across periods (Period 1 to 4).
