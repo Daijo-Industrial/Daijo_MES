@@ -65,6 +65,12 @@ class StepHeader extends Component
 
     public ?int $dic_id = null;
 
+    public ?string $dic_operator = null;
+
+    public bool $is_operator_auto_filled = false;
+
+    public bool $has_master_customer = false;
+
     public array $availableDics = [];
 
     public ?string $dicStatusMessage = null;
@@ -292,6 +298,15 @@ class StepHeader extends Component
         }
 
         if (! empty($this->part_number)) {
+            $item = MasterListItem::with(['customer', 'businessPartner'])
+                ->where('item_code', $this->part_number)
+                ->first();
+            $masterCust = $item?->customer?->customer_name ?: ($item?->businessPartner?->bp_name ?: null);
+            $this->has_master_customer = ! empty($masterCust);
+            if ($this->has_master_customer && empty($this->customer)) {
+                $this->customer = $masterCust;
+                $this->customer_search = $masterCust;
+            }
             $this->resolveDailyItemCode();
         }
     }
@@ -304,8 +319,13 @@ class StepHeader extends Component
             $this->customer = $matched ?: null;
         }
 
-        if ($field === 'operator' && is_string($this->operator)) {
-            $this->operator = strtoupper(trim($this->operator));
+        if ($field === 'operator') {
+            if (is_string($this->operator)) {
+                $this->operator = strtoupper(trim($this->operator));
+            }
+            if ($this->operator !== $this->dic_operator) {
+                $this->is_operator_auto_filled = false;
+            }
         }
 
         if ($field === 'inspector' && is_string($this->inspector)) {
@@ -366,6 +386,11 @@ class StepHeader extends Component
             if ($cust) {
                 $this->customer = $cust;
                 $this->customer_search = $cust;
+                $this->has_master_customer = true;
+            } else {
+                $this->customer = null;
+                $this->customer_search = '';
+                $this->has_master_customer = false;
             }
 
             if (! empty($item->color)) {
@@ -409,7 +434,12 @@ class StepHeader extends Component
         $this->part_search = '';
         $this->isSearchingAgain = false;
         $this->show_part_dropdown = false;
+        $this->customer = null;
+        $this->customer_search = '';
+        $this->has_master_customer = false;
         $this->dic_id = null;
+        $this->dic_operator = null;
+        $this->is_operator_auto_filled = false;
         $this->availableDics = [];
         $this->dicStatusMessage = null;
     }
@@ -620,6 +650,11 @@ class StepHeader extends Component
         $resolvedOp = $this->resolveOperatorFromDic($dic);
         if ($resolvedOp) {
             $this->operator = $resolvedOp;
+            $this->dic_operator = $resolvedOp;
+            $this->is_operator_auto_filled = true;
+        } else {
+            $this->dic_operator = null;
+            $this->is_operator_auto_filled = false;
         }
 
         $machineDisplay = $this->machine_number ?: 'Mesin Terdaftar';
@@ -643,6 +678,8 @@ class StepHeader extends Component
     public function detachDic(): void
     {
         $this->dic_id = null;
+        $this->dic_operator = null;
+        $this->is_operator_auto_filled = false;
         $this->dicStatusMessage = 'Koneksi ke DIC dilepas (Mode manual).';
     }
 
@@ -747,24 +784,13 @@ class StepHeader extends Component
             }
         }
 
-        $operatorUsers = OperatorUser::query()
+        $operatorSuggestions = OperatorUser::query()
             ->whereNotNull('name')
             ->where('name', '!=', '')
             ->distinct()
             ->pluck('name')
-            ->toArray();
-
-        $operatorReports = InspectionReport::query()
-            ->whereNotNull('operator')
-            ->where('operator', '!=', '')
-            ->where('operator', '!=', '-')
-            ->distinct()
-            ->pluck('operator')
-            ->toArray();
-
-        $operatorSuggestions = collect(array_merge($operatorUsers, $operatorReports))
-            ->filter()
             ->map(fn ($n) => strtoupper(trim((string) $n)))
+            ->filter()
             ->unique()
             ->sort()
             ->values()

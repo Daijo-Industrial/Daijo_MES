@@ -15,7 +15,10 @@ use App\Livewire\Inspection\InspectionForm\StepSampling;
 use App\Livewire\Inspection\InspectionForm\StepSecond;
 use App\Models\DailyItemCode;
 use App\Models\HourlyRemark;
+use App\Models\Inspection\InspectionReport;
 use App\Models\MachineJob;
+use App\Models\MasterCustomerDelivery;
+use App\Models\MasterListItem;
 use App\Models\OperatorUser;
 use App\Models\Role;
 use App\Models\User;
@@ -468,5 +471,149 @@ class InspectionFormTest extends TestCase
             ->assertSet('material', 'POLYPROPYLENE')
             ->set('color', 'matte black')
             ->assertSet('color', 'MATTE BLACK');
+    }
+
+    public function test_step_header_resets_auto_fill_badge_when_operator_is_edited_manually(): void
+    {
+        $opRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $machineUser = User::factory()->create([
+            'name' => 'INJ-06',
+            'role_id' => $opRole->id,
+        ]);
+
+        $dic = DailyItemCode::create([
+            'user_id' => $machineUser->id,
+            'item_code' => 'PART-OP-TEST',
+            'quantity' => 500,
+            'shift' => 1,
+            'schedule_date' => '2026-10-31',
+        ]);
+
+        MachineJob::create([
+            'user_id' => $machineUser->id,
+            'dic_id' => $dic->id,
+            'shift' => 1,
+            'item_code' => 'PART-OP-TEST',
+            'employee_name' => 'AUTO-OPERATOR-1',
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(StepHeader::class)
+            ->set('inspection_date', '2026-10-31')
+            ->set('shift', 1)
+            ->set('part_number', 'PART-OP-TEST')
+            ->call('resolveDailyItemCode')
+            ->assertSet('operator', 'AUTO-OPERATOR-1')
+            ->assertSet('is_operator_auto_filled', true)
+            ->assertSee('Auto-fill DIC #' . $dic->id)
+            ->set('operator', 'MANUAL-OPERATOR-2')
+            ->assertSet('is_operator_auto_filled', false)
+            ->assertDontSee('Auto-fill DIC #' . $dic->id);
+    }
+
+    public function test_step_header_operator_suggestions_only_from_operator_users_table(): void
+    {
+        OperatorUser::create([
+            'name' => 'OPERATOR-SUGGESTION-VALID',
+            'password' => 'secret123',
+            'department' => '390',
+            'position' => 'Operator',
+        ]);
+
+        InspectionReport::create([
+            'report_number' => 'INSP-HISTORICAL-999',
+            'customer' => 'TEST CUST',
+            'inspection_date' => '2026-10-01',
+            'part_number' => 'PART-XYZ',
+            'part_name' => 'XYZ',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'INJ-01',
+            'shift' => 1,
+            'operator' => 'OPERATOR-OLD-HISTORICAL',
+            'inspector' => 'INSPECTOR-1',
+            'status' => 'draft',
+        ]);
+
+        $test = Livewire::actingAs($this->user)->test(StepHeader::class);
+        $suggestions = $test->viewData('operatorSuggestions');
+
+        $this->assertContains('OPERATOR-SUGGESTION-VALID', $suggestions);
+        $this->assertNotContains('OPERATOR-OLD-HISTORICAL', $suggestions);
+    }
+
+    public function test_step_header_hides_customer_input_when_part_has_master_customer(): void
+    {
+        MasterCustomerDelivery::create([
+            'customer_code' => 'CUST-HONDA',
+            'customer_name' => 'HONDA PROSPECT MOTOR',
+        ]);
+
+        MasterListItem::create([
+            'item_code' => 'PART-WITH-CUST',
+            'item_name' => 'FRONT BUMPER',
+            'customer_code' => 'CUST-HONDA',
+        ]);
+
+        MasterListItem::create([
+            'item_code' => 'PART-WITHOUT-CUST',
+            'item_name' => 'GENERIC CLIP',
+            'customer_code' => null,
+        ]);
+
+        // When part has master customer
+        Livewire::actingAs($this->user)
+            ->test(StepHeader::class)
+            ->call('selectPartItem', 'PART-WITH-CUST')
+            ->assertSet('has_master_customer', true)
+            ->assertSet('customer', 'HONDA PROSPECT MOTOR')
+            ->assertDontSee('PILIH / KETIK CUSTOMER...');
+
+        // When part does not have master customer
+        Livewire::actingAs($this->user)
+            ->test(StepHeader::class)
+            ->call('selectPartItem', 'PART-WITHOUT-CUST')
+            ->assertSet('has_master_customer', false)
+            ->assertSet('customer', null)
+            ->assertSee('PILIH / KETIK CUSTOMER...');
+    }
+
+    public function test_step_detail_renders_without_array_offset_on_null_error(): void
+    {
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => 'INSP-TEST-NULL-01',
+                'customer' => 'PT ASTRA',
+                'inspection_date' => '2026-11-01',
+                'part_number' => 'PART-TEST-01',
+                'part_name' => 'TEST PART',
+                'shift' => 1,
+                'operator' => 'OP-1',
+                'inspector' => 'INSP-1',
+            ],
+            // Simulate saved_periods flag set without subcomponent data filled (or partial)
+            'stepDetailSaved' => [
+                'saved_periods' => ['p1' => true],
+                'details' => [
+                    'p1' => [
+                        'document_number' => 'DETAIL-TEST-01',
+                        'inspection_report_document_number' => 'INSP-TEST-NULL-01',
+                        'period' => 1,
+                    ],
+                ],
+                'first_inspections' => null,
+                'dimensions' => null,
+                'second_inspections' => null,
+                'samples' => null,
+                'packagings' => null,
+                'judgements' => null,
+            ],
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(StepDetail::class)
+            ->assertOk()
+            ->assertSee('Periode 1 Telah Tersimpan di Sesi');
     }
 }

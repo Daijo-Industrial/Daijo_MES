@@ -165,25 +165,27 @@
                     {{-- Form Spesifikasi Part --}}
                     <div class="p-3.5 bg-zinc-50/80 border border-zinc-200 rounded-lg space-y-3.5 pt-1">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            {{-- Customer (Auto-filled dari master, dapat diedit) --}}
-                            <div class="sm:col-span-2 min-w-0">
-                                <label class="block text-sm font-semibold text-zinc-700 mb-1">
-                                    Customer <span class="text-rose-600">*</span>
-                                </label>
-                                <input type="text"
-                                       wire:model.blur="customer"
-                                       list="customerSuggestionsList"
-                                       placeholder="PILIH / KETIK CUSTOMER..."
-                                       class="w-full min-w-0 rounded-lg border-zinc-300 bg-white text-zinc-900 font-semibold text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] @error('customer') border-rose-300 bg-rose-50/50 @enderror">
-                                <datalist id="customerSuggestionsList">
-                                    @foreach ($customerOptions as $custName)
-                                        <option value="{{ $custName }}"></option>
-                                    @endforeach
-                                </datalist>
-                                @error('customer')
-                                    <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
-                                @enderror
-                            </div>
+                            @if (! $has_master_customer)
+                                {{-- Customer (Hanya tampil jika part master belum memiliki data customer) --}}
+                                <div class="sm:col-span-2 min-w-0">
+                                    <label class="block text-sm font-semibold text-zinc-700 mb-1">
+                                        Customer <span class="text-rose-600">*</span>
+                                    </label>
+                                    <input type="text"
+                                           wire:model.blur="customer"
+                                           list="customerSuggestionsList"
+                                           placeholder="PILIH / KETIK CUSTOMER..."
+                                           class="w-full min-w-0 rounded-lg border-zinc-300 bg-white text-zinc-900 font-semibold text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] @error('customer') border-rose-300 bg-rose-50/50 @enderror">
+                                    <datalist id="customerSuggestionsList">
+                                        @foreach ($customerOptions as $custName)
+                                            <option value="{{ $custName }}"></option>
+                                        @endforeach
+                                    </datalist>
+                                    @error('customer')
+                                        <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            @endif
 
                             {{-- Material (Auto-filled dari master, dapat diedit) --}}
                             <div class="min-w-0">
@@ -465,7 +467,7 @@
                             <label class="block text-sm font-semibold text-zinc-700">
                                 Nama Operator <span class="text-rose-600">*</span>
                             </label>
-                            @if ($dic_id && !empty($operator))
+                            @if ($is_operator_auto_filled && !empty($dic_id) && !empty($operator) && $operator === $dic_operator)
                                 <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                     Auto-fill DIC #{{ $dic_id }}
                                 </span>
