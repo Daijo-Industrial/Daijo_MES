@@ -1571,9 +1571,11 @@ class ProductionDashboardService
         bool|array|null $isHalfDay = null,
         ?array $preloadedHalfDayDates = null
     ): array {
-        $today = Carbon::today('Asia/Jakarta');
-        $effectiveChartEndDate = ($startDate->lte($today) && $endDate->gt($today)) ? $today->copy() : $endDate->copy();
-        $period = CarbonPeriod::create($startDate, $effectiveChartEndDate);
+        $today = Carbon::now('Asia/Jakarta')->endOfDay();
+        $chartStart = Carbon::parse($startDate->format('Y-m-d'), 'Asia/Jakarta')->startOfDay();
+        $chartEnd = Carbon::parse($endDate->format('Y-m-d'), 'Asia/Jakarta')->endOfDay();
+        $effectiveChartEndDate = ($chartStart->lte($today) && $chartEnd->gt($today)) ? $today : $chartEnd;
+        $period = CarbonPeriod::create($chartStart, $effectiveChartEndDate);
         $dateLabels = [];
         $dateStrings = [];
 
