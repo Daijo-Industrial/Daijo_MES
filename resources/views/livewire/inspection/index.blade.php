@@ -107,7 +107,15 @@
                 <thead class="bg-gray-50">
                     {{-- Sortable Header Row --}}
                     <tr>
-                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-14">#</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-14 cursor-pointer select-none hover:text-indigo-600"
+                            wire:click="sortBy('id')">
+                            <div class="flex items-center gap-1">
+                                #
+                                @if ($sortField === 'id')
+                                    <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span>
+                                @endif
+                            </div>
+                        </th>
 
                         @if ($showCol['document_number'])
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
@@ -169,6 +177,10 @@
                             </th>
                         @endif
 
+                        @if ($showCol['status'])
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                        @endif
+
                         <th scope="col" class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">Actions</th>
                     </tr>
 
@@ -220,6 +232,16 @@
                             </td>
                         @endif
 
+                        @if ($showCol['status'])
+                            <td class="px-4 py-2">
+                                <select wire:model.live="filters.status" class="w-full text-xs rounded border-gray-300 py-1 px-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">All</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="submitted">Submitted</option>
+                                </select>
+                            </td>
+                        @endif
+
                         <td class="px-4 py-2"></td>
                     </tr>
                 </thead>
@@ -244,6 +266,9 @@
                                 @endif
                                 @if ($showCol['part_number'])
                                     <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-28"></div></td>
+                                @endif
+                                @if ($showCol['status'])
+                                    <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded w-16"></div></td>
                                 @endif
                                 <td class="px-4 py-3 text-right"><div class="h-6 bg-gray-200 rounded w-14 ml-auto"></div></td>
                             </tr>
@@ -290,16 +315,37 @@
                                     </td>
                                 @endif
 
+                                @if ($showCol['status'])
+                                    <td class="px-4 py-3 text-xs">
+                                        @if ($r->status === 'draft')
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                                                Draft
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                                                Submitted
+                                            </span>
+                                        @endif
+                                    </td>
+                                @endif
+
                                 <td class="px-4 py-3 text-right text-xs">
-                                    <a href="{{ route('inspection-reports.show', $r->id) }}" wire:navigate
-                                       class="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold rounded text-xs transition">
-                                        View
-                                    </a>
+                                    @if ($r->status === 'draft')
+                                        <a href="{{ route('inspection-reports.edit', $r->id) }}" wire:navigate
+                                           class="inline-flex items-center px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded text-xs transition">
+                                            Lanjutkan
+                                        </a>
+                                    @else
+                                        <a href="{{ route('inspection-reports.show', $r->id) }}" wire:navigate
+                                           class="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold rounded text-xs transition">
+                                            View
+                                        </a>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
+                                <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">
                                     <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                     </svg>

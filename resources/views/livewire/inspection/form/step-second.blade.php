@@ -18,15 +18,15 @@
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-4">
                     <label class="text-xs font-semibold text-zinc-700">Skip Lot Size?</label>
-                    <div class="inline-flex rounded-lg border border-zinc-300 p-0.5 bg-zinc-100 shadow-sm">
+                    <div class="inline-flex rounded-lg border border-zinc-300 p-1 bg-zinc-100 shadow-sm min-h-[46px]">
                         <button type="button"
                                 wire:click="setSkipLotSize(false)"
-                                class="px-3 py-1.5 text-xs font-semibold rounded-md transition {{ !$skipLotSize ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                                class="px-4 py-2 text-xs font-bold rounded-md transition {{ !$skipLotSize ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
                             Tidak (Gunakan Lot)
                         </button>
                         <button type="button"
                                 wire:click="setSkipLotSize(true)"
-                                class="px-3 py-1.5 text-xs font-semibold rounded-md transition {{ $skipLotSize ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                                class="px-4 py-2 text-xs font-bold rounded-md transition {{ $skipLotSize ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
                             Ya (Lewati Lot Size)
                         </button>
                     </div>
@@ -34,7 +34,7 @@
             </div>
 
             <div class="max-w-xs">
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                <label class="block text-xs font-semibold text-zinc-700 mb-1.5">
                     Lot Size Quantity (pcs) @if (!$skipLotSize)<span class="text-rose-600">*</span>@else<span class="text-zinc-400 font-normal">(Dilewati)</span>@endif
                 </label>
                 @if ($skipLotSize)
@@ -42,12 +42,12 @@
                            disabled
                            value=""
                            placeholder="Lot size dilewati (opsional)"
-                           class="w-full rounded-lg border-zinc-200 bg-zinc-100 text-zinc-400 cursor-not-allowed font-mono text-sm min-h-[42px]">
+                           class="w-full rounded-lg border-zinc-200 bg-zinc-100 text-zinc-400 cursor-not-allowed font-mono text-sm min-h-[48px]">
                 @else
                     <input type="number"
                            wire:model.blur="lot_size_quantity"
                            placeholder="Jumlah lot..."
-                           class="w-full rounded-lg border-zinc-300 font-mono text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('lot_size_quantity') border-rose-300 bg-rose-50 @enderror">
+                           class="w-full rounded-lg border-zinc-300 font-mono text-base font-bold text-zinc-900 focus:border-zinc-900 focus:ring-zinc-900 min-h-[48px] @error('lot_size_quantity') border-rose-300 bg-rose-50 @enderror">
                     @error('lot_size_quantity')
                         <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                     @enderror

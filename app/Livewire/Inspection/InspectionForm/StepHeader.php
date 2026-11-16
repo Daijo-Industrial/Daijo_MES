@@ -138,8 +138,14 @@ class StepHeader extends Component
         $validCustomers = $this->getValidCustomers();
         $validMachines = $this->getValidMachines();
 
+        $existingReport = InspectionReport::where('document_number', $this->document_number)->first();
+        $uniqueDocRule = Rule::unique(InspectionReport::class, 'document_number');
+        if ($existingReport) {
+            $uniqueDocRule = $uniqueDocRule->ignore($existingReport->id);
+        }
+
         return [
-            'document_number' => ['required', 'string', Rule::unique(InspectionReport::class, 'document_number')],
+            'document_number' => ['required', 'string', $uniqueDocRule],
             'customer' => ['required', 'string', Rule::in($validCustomers)],
             'inspection_date' => 'required|date',
             'part_number' => ['required', 'string', Rule::exists(MasterListItem::class, 'item_code')],
@@ -716,6 +722,14 @@ class StepHeader extends Component
 
         $data = $this->snapshot();
         $timezone = config('mes.timezone') ?: 'Asia/Jakarta';
+
+        // Persist header directly to database with draft status
+        InspectionReport::updateOrCreate(
+            ['document_number' => $this->document_number],
+            array_merge($data, [
+                'status' => 'draft',
+            ])
+        );
 
         session([
             'stepHeaderSaved' => $data,

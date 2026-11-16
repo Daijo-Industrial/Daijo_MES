@@ -207,6 +207,7 @@ class InspectionFormTest extends TestCase
             'document_number' => $docNum,
             'customer' => 'PT Astra Daihatsu Motor',
             'part_number' => 'PART-E2E-001',
+            'status' => 'submitted',
         ]);
 
         $this->assertDatabaseHas('detail_inspection_reports', [
@@ -790,5 +791,170 @@ class InspectionFormTest extends TestCase
 
         $test = Livewire::actingAs($this->user)->test(InspectionForm::class);
         $this->assertTrue($test->get('filledSteps')[3]);
+    }
+
+    public function test_step_header_persists_draft_to_database(): void
+    {
+        Livewire::actingAs($this->user)
+            ->test(StepHeader::class)
+            ->set('customer', 'PT HONDA')
+            ->set('part_number', 'PART-DRAFT-001')
+            ->set('part_name', 'DRAFT PART')
+            ->set('weight', 25.5)
+            ->set('weight_uom', 'g')
+            ->set('material', 'PP')
+            ->set('color', 'BLACK')
+            ->set('tool_number_or_cav_number', 'CAV-01')
+            ->set('machine_number', 'INJ-01')
+            ->set('shift', 1)
+            ->set('operator', 'OP-DRAFT')
+            ->set('inspector', 'INSP-DRAFT')
+            ->call('saveStep')
+            ->assertDispatched('stepHeaderSaved');
+
+        $this->assertDatabaseHas('inspection_reports', [
+            'part_number' => 'PART-DRAFT-001',
+            'status' => 'draft',
+        ]);
+    }
+
+    public function test_inspection_form_resumes_draft_from_database(): void
+    {
+        $report = InspectionReport::create([
+            'document_number' => 'INSP-RESUME-001',
+            'customer' => 'PT HONDA',
+            'inspection_date' => '2026-11-13',
+            'part_number' => 'PART-RESUME-001',
+            'part_name' => 'RESUME PART',
+            'weight' => 30.0,
+            'weight_uom' => 'g',
+            'material' => 'ABS',
+            'color' => 'WHITE',
+            'tool_number_or_cav_number' => 'CAV-02',
+            'machine_number' => 'INJ-02',
+            'shift' => 1,
+            'operator' => 'OP-RESUME',
+            'inspector' => 'INSP-RESUME',
+            'status' => 'draft',
+        ]);
+
+        DetailInspectionReport::create([
+            'inspection_report_document_number' => 'INSP-RESUME-001',
+            'document_number' => 'DETAIL-RESUME-P1',
+            'period' => 1,
+            'start_datetime' => '2026-11-13 07:30:00',
+            'end_datetime' => '2026-11-13 09:30:00',
+        ]);
+
+        FirstInspection::create([
+            'detail_inspection_report_document_number' => 'DETAIL-RESUME-P1',
+            'appearance' => 'OK',
+            'weight' => 30.0,
+            'weight_uom' => 'g',
+            'fitting_test' => 'OK',
+        ]);
+
+        SecondInspection::create([
+            'detail_inspection_report_document_number' => 'DETAIL-RESUME-P1',
+            'document_number' => 'SEC-RESUME-P1',
+            'lot_size_quantity' => 500,
+        ]);
+
+        InspectionJudgement::create([
+            'detail_inspection_report_document_number' => 'DETAIL-RESUME-P1',
+            'pass_quantity' => 495,
+            'reject_quantity' => 5,
+        ]);
+
+        // Clear session to simulate brand new browser session / crash recovery
+        session()->flush();
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionForm::class, ['inspection_report' => $report->id])
+            ->assertOk()
+            ->assertSet('inspection_report_document_number', 'INSP-RESUME-001');
+
+        $this->assertEquals('INSP-RESUME-001', session('stepHeaderSaved.document_number'));
+        $this->assertEquals('PART-RESUME-001', session('stepHeaderSaved.part_number'));
+        $this->assertTrue(session('stepDetailSaved.saved_periods.p1'));
+    }
+
+    public function test_step_header_can_resave_and_proceed_after_page_reload(): void
+    {
+        // 1. Initial save of StepHeader
+        Livewire::actingAs($this->user)
+            ->test(StepHeader::class)
+            ->set('customer', 'PT HONDA')
+            ->set('part_number', 'PART-DRAFT-001')
+            ->set('part_name', 'DRAFT PART')
+            ->set('weight', 25.5)
+            ->set('weight_uom', 'g')
+            ->set('material', 'PP')
+            ->set('color', 'BLACK')
+            ->set('tool_number_or_cav_number', 'CAV-01')
+            ->set('machine_number', 'INJ-01')
+            ->set('shift', 1)
+            ->set('operator', 'OP-DRAFT')
+            ->set('inspector', 'INSP-DRAFT')
+            ->call('saveStep')
+            ->assertHasNoErrors()
+            ->assertDispatched('stepHeaderSaved')
+            ->assertDispatched('nextStep');
+
+        $docNum = session('stepHeaderSaved.document_number');
+        $this->assertNotEmpty($docNum);
+
+        // 2. Simulate page reload where user mounts StepHeader again with the existing document_number in session
+        Livewire::actingAs($this->user)
+            ->test(StepHeader::class)
+            ->assertSet('document_number', $docNum)
+            ->call('saveStep')
+            ->assertHasNoErrors()
+            ->assertDispatched('stepHeaderSaved')
+            ->assertDispatched('nextStep');
+
+        // 3. Verify InspectionForm advances to Step 2
+        $form = Livewire::actingAs($this->user)
+            ->test(InspectionForm::class);
+        $this->assertTrue($form->get('filledSteps')[1]);
+    }
+
+    public function test_accidentally_adding_and_removing_dimension_does_not_cause_data_truncation(): void
+    {
+        $docNum = 'INSP-DIM-TEST-001';
+        session(['stepHeaderSaved' => ['document_number' => $docNum, 'shift' => 1]]);
+        session(['stepDetailSaved' => ['period' => 1]]);
+
+        // 1. Mutator protection: setting empty string must convert to null
+        $dim = new \App\Models\Inspection\InspectionDimension();
+        $dim->lower_limit = '';
+        $dim->upper_limit = '';
+        $dim->actual_value = '';
+        $this->assertNull($dim->lower_limit);
+        $this->assertNull($dim->upper_limit);
+        $this->assertNull($dim->actual_value);
+
+        // 2. Test StepDimension add and remove
+        Livewire::actingAs($this->user)
+            ->test(\App\Livewire\Inspection\InspectionForm\StepDimension::class, [
+                'inspection_report_document_number' => $docNum,
+            ])
+            ->call('addDimension')
+            ->assertCount('dimensions', 1)
+            ->call('removeDimension', 0)
+            ->assertCount('dimensions', 0);
+
+        // Verify session was updated to empty array
+        $this->assertSame([], session('stepDetailSaved.dimensions.p1'));
+
+        // 3. Persisting period to database must not throw Data truncated warning
+        $stepDetail = new \App\Livewire\Inspection\InspectionForm\StepDetail();
+        $stepDetail->inspection_report_document_number = $docNum;
+        $stepDetail->period = 1;
+        $stepDetail->persistPeriodToDatabase(1);
+
+        $this->assertDatabaseMissing('inspection_dimensions', [
+            'inspection_report_document_number' => $docNum,
+        ]);
     }
 }

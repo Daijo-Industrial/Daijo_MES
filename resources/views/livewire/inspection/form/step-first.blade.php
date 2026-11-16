@@ -14,22 +14,22 @@
 
     <div class="p-5">
         {{-- Balanced 2-Column Grid (Pairs Appearance + Weight, Fitting + Remarks) --}}
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
             {{-- Appearance --}}
             <div>
                 <label class="block text-xs font-semibold text-zinc-700 mb-1.5">
                     Appearance <span class="text-rose-600">*</span>
                 </label>
-                <div class="inline-flex rounded-lg border border-zinc-300 p-0.5 bg-zinc-100 shadow-sm w-full">
+                <div class="inline-flex rounded-lg border border-zinc-300 p-1 bg-zinc-100 shadow-sm w-full min-h-[48px]">
                     <button type="button"
                             wire:click="$set('appearance', 'OK')"
-                            class="flex-1 py-2 text-xs font-bold rounded-md transition {{ $appearance === 'OK' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
-                        OK
+                            class="flex-1 py-2.5 text-sm font-bold rounded-md transition flex items-center justify-center gap-1.5 {{ $appearance === 'OK' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                        <span>OK</span>
                     </button>
                     <button type="button"
                             wire:click="$set('appearance', 'NG')"
-                            class="flex-1 py-2 text-xs font-bold rounded-md transition {{ $appearance === 'NG' ? 'bg-rose-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
-                        NG
+                            class="flex-1 py-2.5 text-sm font-bold rounded-md transition flex items-center justify-center gap-1.5 {{ $appearance === 'NG' ? 'bg-rose-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                        <span>NG</span>
                     </button>
                 </div>
                 @error('appearance')
@@ -39,16 +39,16 @@
 
             {{-- Weight --}}
             <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                <label class="block text-xs font-semibold text-zinc-700 mb-1.5">
                     Weight <span class="text-rose-600">*</span>
                 </label>
-                <div class="flex rounded-lg shadow-sm">
+                <div class="flex rounded-lg shadow-sm min-h-[48px]">
                     <input type="number"
                            step="any"
                            wire:model.blur="weight"
                            placeholder="0.00"
-                           class="flex-1 rounded-none rounded-l-lg border-zinc-300 font-mono text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('weight') border-rose-300 bg-rose-50/50 @enderror">
-                    <span class="inline-flex items-center rounded-none rounded-r-lg border border-l-0 border-zinc-300 bg-zinc-100 text-zinc-600 text-xs px-3 font-semibold">
+                           class="flex-1 rounded-none rounded-l-lg border-zinc-300 font-mono text-base font-bold text-zinc-900 focus:border-zinc-900 focus:ring-zinc-900 min-h-[48px] @error('weight') border-rose-300 bg-rose-50/50 @enderror">
+                    <span class="inline-flex items-center rounded-none rounded-r-lg border border-l-0 border-zinc-300 bg-zinc-100 text-zinc-700 text-xs px-3.5 font-bold">
                         {{ $weight_uom }}
                     </span>
                 </div>
@@ -59,13 +59,13 @@
 
             {{-- Fitting Test --}}
             <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                <label class="block text-xs font-semibold text-zinc-700 mb-1.5">
                     Fitting Test (Optional)
                 </label>
                 <input type="text"
                        wire:model.blur="fitting_test"
                        placeholder="Hasil fitting..."
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px]">
+                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[48px]">
                 @error('fitting_test')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror
@@ -73,13 +73,13 @@
 
             {{-- Remarks --}}
             <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                <label class="block text-xs font-semibold text-zinc-700 mb-1.5">
                     Remarks @if($appearance === 'NG')<span class="text-rose-600">* (Wajib jika NG)</span>@endif
                 </label>
                 <input type="text"
                        wire:model.blur="remarks"
                        placeholder="Catatan defect / remark..."
-                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('remarks') border-rose-300 bg-rose-50/50 @enderror">
+                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[48px] @error('remarks') border-rose-300 bg-rose-50/50 @enderror">
                 @error('remarks')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror

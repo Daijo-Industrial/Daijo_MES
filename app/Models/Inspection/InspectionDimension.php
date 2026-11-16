@@ -33,6 +33,21 @@ class InspectionDimension extends Model
         'end_datetime' => 'datetime',
     ];
 
+    public function setLowerLimitAttribute($value): void
+    {
+        $this->attributes['lower_limit'] = (is_numeric($value) && $value !== '') ? (float) $value : null;
+    }
+
+    public function setUpperLimitAttribute($value): void
+    {
+        $this->attributes['upper_limit'] = (is_numeric($value) && $value !== '') ? (float) $value : null;
+    }
+
+    public function setActualValueAttribute($value): void
+    {
+        $this->attributes['actual_value'] = (is_numeric($value) && $value !== '') ? (float) $value : null;
+    }
+
     /**
      * Parent inspection report header.
      */

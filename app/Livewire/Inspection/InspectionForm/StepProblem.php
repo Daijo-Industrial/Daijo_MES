@@ -149,6 +149,20 @@ class StepProblem extends Component
     {
         $this->validate();
 
+        $headerDoc = session('stepHeaderSaved.document_number');
+        if ($headerDoc) {
+            \App\Models\Inspection\InspectionProblem::where('inspection_report_document_number', $headerDoc)->delete();
+            foreach ($this->problems as $p) {
+                \App\Models\Inspection\InspectionProblem::create([
+                    'inspection_report_document_number' => $headerDoc,
+                    'type' => $p['type'],
+                    'time' => $p['time'],
+                    'cycle_time' => (int) $p['cycle_time'],
+                    'remarks' => $p['remarks'] ?? null,
+                ]);
+            }
+        }
+
         session()->put('stepProblemSaved', $this->problems);
         $this->savedAt = now()->toIso8601String();
         session()->put('stepProblemSaved_meta.savedAt', $this->savedAt);
@@ -165,6 +179,11 @@ class StepProblem extends Component
     public function resetStep(): void
     {
         $this->problems = [];
+        $headerDoc = session('stepHeaderSaved.document_number');
+        if ($headerDoc) {
+            \App\Models\Inspection\InspectionProblem::where('inspection_report_document_number', $headerDoc)->delete();
+        }
+
         session()->forget('stepProblemSaved');
         session()->forget('stepProblemSaved_meta');
 

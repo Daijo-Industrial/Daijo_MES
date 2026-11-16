@@ -14,16 +14,16 @@
 
     <div class="p-5 space-y-4">
         {{-- Pass & Reject Inputs (Side-by-Side Comparison) --}}
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-xl">
             {{-- Pass Quantity --}}
             <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                <label class="block text-xs font-semibold text-zinc-700 mb-1.5">
                     Pass Quantity (pcs) <span class="text-rose-600">*</span>
                 </label>
                 <input type="number"
                        wire:model.blur="pass_quantity"
                        placeholder="Jumlah OK / Pass"
-                       class="w-full rounded-lg border-zinc-300 font-mono font-bold text-emerald-800 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('pass_quantity') border-rose-300 bg-rose-50 @enderror">
+                       class="w-full rounded-lg border-zinc-300 font-mono font-bold text-emerald-800 text-base focus:border-zinc-900 focus:ring-zinc-900 min-h-[50px] bg-emerald-50/20 @error('pass_quantity') border-rose-300 bg-rose-50 @enderror">
                 @error('pass_quantity')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror
@@ -31,13 +31,13 @@
 
             {{-- Reject Quantity --}}
             <div>
-                <label class="block text-xs font-semibold text-zinc-700 mb-1">
+                <label class="block text-xs font-semibold text-zinc-700 mb-1.5">
                     Reject Quantity (pcs) <span class="text-rose-600">*</span>
                 </label>
                 <input type="number"
                        wire:model.blur="reject_quantity"
                        placeholder="Jumlah NG / Reject"
-                       class="w-full rounded-lg border-zinc-300 font-mono font-bold text-rose-800 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('reject_quantity') border-rose-300 bg-rose-50 @enderror">
+                       class="w-full rounded-lg border-zinc-300 font-mono font-bold text-rose-800 text-base focus:border-zinc-900 focus:ring-zinc-900 min-h-[50px] bg-rose-50/20 @error('reject_quantity') border-rose-300 bg-rose-50 @enderror">
                 @error('reject_quantity')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror
