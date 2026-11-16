@@ -2,8 +2,16 @@
 
 namespace App\Livewire\Inspection\InspectionForm;
 
+use App\Models\Inspection\DetailInspectionReport;
+use App\Models\Inspection\FirstInspection;
+use App\Models\Inspection\InspectionDimension;
+use App\Models\Inspection\InspectionJudgement;
+use App\Models\Inspection\InspectionPackaging;
+use App\Models\Inspection\InspectionSampling;
+use App\Models\Inspection\SecondInspection;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Component;
 
@@ -14,6 +22,12 @@ class StepDetail extends Component
     public $document_number;
 
     public int $period = 1;
+
+    public bool $isWizardActive = false;
+
+    public int $subStep = 1;
+
+    public $machine_number;
 
     public $start_datetime;
 
@@ -94,7 +108,18 @@ class StepDetail extends Component
             }
         }
 
-        $this->period = (int) data_get($saved, 'period', 1);
+        $this->shift = session('stepHeaderSaved.shift') ?? null;
+        $this->operator = session('stepHeaderSaved.operator') ?? 'N/A';
+        $this->inspector = session('stepHeaderSaved.inspector') ?? 'N/A';
+        $this->part_name = session('stepHeaderSaved.part_name') ?? 'N/A';
+        $this->part_number = session('stepHeaderSaved.part_number') ?? 'N/A';
+        $this->machine_number = session('stepHeaderSaved.machine_number') ?? '-';
+
+        if (empty($saved['period'])) {
+            $this->period = $this->determineCurrentPeriod();
+        } else {
+            $this->period = (int) $saved['period'];
+        }
 
         $this->generateDocumentNumber();
 
@@ -112,17 +137,39 @@ class StepDetail extends Component
             }
         }
 
-        $this->shift = session('stepHeaderSaved.shift') ?? null;
-        $this->operator = session('stepHeaderSaved.operator') ?? 'N/A';
-        $this->inspector = session('stepHeaderSaved.inspector') ?? 'N/A';
-        $this->part_name = session('stepHeaderSaved.part_name') ?? 'N/A';
-        $this->part_number = session('stepHeaderSaved.part_number') ?? 'N/A';
-
         if ($this->shift) {
             $this->updatedPeriod();
         }
         $this->saveStep();
         $this->refreshSavedFlags();
+    }
+
+    public function determineCurrentPeriod(): int
+    {
+        $shift = (int) ($this->shift ?? session('stepHeaderSaved.shift', 1));
+        [$shiftStart, $shiftEnd] = $this->getShiftTimes($shift);
+        $tz = config('mes.timezone', 'Asia/Jakarta');
+        $now = now()->setTimezone($tz);
+        $start = Carbon::createFromTimeString($shiftStart, $tz);
+        $end = Carbon::createFromTimeString($shiftEnd, $tz);
+
+        if ($shift === 3 && $end->lessThan($start)) {
+            if ($now->hour < 12) {
+                $start->subDay();
+            } else {
+                $end->addDay();
+            }
+        }
+
+        for ($p = 1; $p <= 4; $p++) {
+            $pStart = $start->copy()->addHours(($p - 1) * 2);
+            $pEnd = ($p === 4) ? $end : $start->copy()->addHours($p * 2);
+            if ($now->betweenIncluded($pStart, $pEnd)) {
+                return $p;
+            }
+        }
+
+        return 1;
     }
 
     private function getShiftTimes(int $shift): array
@@ -175,6 +222,86 @@ class StepDetail extends Component
         $this->computeSaveFlags();
     }
 
+    public function startPeriod(int $p): void
+    {
+        $this->period = $p;
+        $this->subStep = 1;
+        $this->updatedPeriod();
+        $this->generateDocumentNumber();
+        $this->saveStep();
+        $this->computeSaveFlags();
+        $this->isWizardActive = true;
+    }
+
+    public function editPeriod(int $p): void
+    {
+        $this->unlockPeriod($p);
+        $this->startPeriod($p);
+    }
+
+    public function goToSubStep(int $step): void
+    {
+        if ($step >= 1 && $step <= 4) {
+            $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+            $this->subStep = $step;
+            $this->saveStep();
+            $this->persistPeriodToDatabase($this->period);
+        }
+    }
+
+    public function nextSubStep(): void
+    {
+        $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+        $this->saveStep();
+        $this->persistPeriodToDatabase($this->period);
+
+        if ($this->subStep < 4) {
+            $this->subStep++;
+        } else {
+            $this->finishPeriod();
+        }
+    }
+
+    public function prevSubStep(): void
+    {
+        $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+        $this->saveStep();
+        $this->persistPeriodToDatabase($this->period);
+
+        if ($this->subStep > 1) {
+            $this->subStep--;
+        } else {
+            $this->exitToHub();
+        }
+    }
+
+    public function finishPeriod(): void
+    {
+        $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+        $this->saveCurrentPeriod();
+        $this->isWizardActive = false;
+        $this->subStep = 1;
+        $this->dispatch('stepDetailSaved');
+        $this->dispatch('toast', message: "Inspeksi Periode {$this->period} berhasil diselesaikan dan disimpan!");
+    }
+
+    public function exitToHub(): void
+    {
+        $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+        $this->saveStep();
+        $this->persistPeriodToDatabase($this->period);
+        $this->isWizardActive = false;
+        $this->subStep = 1;
+    }
+
+    public function resetPeriod(int $p): void
+    {
+        $this->period = $p;
+        $this->resetStep(true);
+        $this->isWizardActive = false;
+        $this->subStep = 1;
+    }
+
     private function generateDocumentNumber(): void
     {
         $this->periodKey = $this->periodKey();
@@ -208,6 +335,82 @@ class StepDetail extends Component
     public function refreshSavedFlags(): void
     {
         $this->computeSaveFlags();
+    }
+
+    public function getSubStepsSummaryProperty(): array
+    {
+        $pk = $this->periodKey();
+        $bag = session('stepDetailSaved', []);
+
+        // 1. First Piece
+        $first = data_get($bag, "first_inspections.$pk");
+        $firstSummary = 'Belum diisi';
+        if ($first) {
+            $app = data_get($first, 'appearance');
+            $wt = data_get($first, 'weight');
+            $uom = data_get($first, 'weight_uom', 'g');
+            $parts = [];
+            if ($app) {
+                $parts[] = "App: {$app}";
+            }
+            if ($wt !== null && $wt !== '') {
+                $parts[] = "{$wt}{$uom}";
+            }
+            $firstSummary = ! empty($parts) ? implode(' • ', $parts) : 'Tersimpan';
+        }
+
+        // 2. Dimensi
+        $dims = data_get($bag, "dimensions.$pk", []);
+        $dimCount = count($dims);
+        if ($dimCount > 0) {
+            $dimOk = count(array_filter($dims, fn ($d) => ($d['judgement'] ?? '') === 'OK'));
+            $dimNg = count(array_filter($dims, fn ($d) => ($d['judgement'] ?? '') === 'NG'));
+            $dimSummary = "{$dimCount} Titik ({$dimOk} OK" . ($dimNg > 0 ? ", {$dimNg} NG" : '') . ')';
+        } else {
+            $dimSummary = 'Belum ada titik';
+        }
+
+        // 3. Second & Sampling
+        $second = data_get($bag, "second_inspections.$pk");
+        $samples = data_get($bag, "samples.$pk", []);
+        $secondSummary = 'Belum diisi';
+        if ($second || ! empty($samples)) {
+            $boxCount = count($samples);
+            $secondSummary = $boxCount > 0 ? "{$boxCount} Box Sample" : 'Tersimpan';
+        }
+
+        // 4. Judgement & Output
+        $judgement = data_get($bag, "judgements.$pk");
+        $judgSummary = 'Belum diisi';
+        if ($judgement) {
+            $pass = (int) data_get($judgement, 'pass_quantity', 0);
+            $rej = (int) data_get($judgement, 'reject_quantity', 0);
+            $total = $pass + $rej;
+            $judgSummary = "Pass: {$pass} • Rej: {$rej} ({$total} pcs)";
+        }
+
+        return [
+            1 => [
+                'title' => 'First Piece',
+                'isSaved' => $this->savedFirst,
+                'summary' => $firstSummary,
+            ],
+            2 => [
+                'title' => 'Dimensi',
+                'isSaved' => $this->savedDimensions,
+                'summary' => $dimSummary,
+            ],
+            3 => [
+                'title' => 'Second & Sampling',
+                'isSaved' => $this->savedSecond,
+                'summary' => $secondSummary,
+            ],
+            4 => [
+                'title' => 'Judgement & Output',
+                'isSaved' => $this->savedJudgement,
+                'summary' => $judgSummary,
+            ],
+        ];
     }
 
     public function saveStep(): void
@@ -316,6 +519,7 @@ class StepDetail extends Component
 
         $this->computeSaveFlags();
         unset($this->unlockedPeriods[$this->period]);
+        $this->persistPeriodToDatabase($this->period);
         $this->dispatch('stepDetailSaved');
         $this->dispatch('toast', message: "Data Periode {$this->period} berhasil disimpan!");
     }
@@ -413,7 +617,10 @@ class StepDetail extends Component
 
     public function proceedToStep3(): void
     {
-        $this->saveCurrentPeriod();
+        if ($this->isWizardActive) {
+            $this->saveCurrentPeriod();
+            $this->isWizardActive = false;
+        }
         $this->dispatch('nextStep');
     }
 
@@ -443,6 +650,7 @@ class StepDetail extends Component
 
             $saved['period'] = $this->period;
             session(['stepDetailSaved' => $saved]);
+            $this->deletePeriodFromDatabase($this->period);
         } else {
             session()->forget('stepDetailSaved');
         }
@@ -454,29 +662,241 @@ class StepDetail extends Component
         $this->refreshSavedFlags();
     }
 
+    public function persistPeriodToDatabase(int $period): void
+    {
+        $pk = 'p' . $period;
+        $bag = session('stepDetailSaved', []);
+        $headerDoc = $this->inspection_report_document_number ?: session('stepHeaderSaved.document_number');
+        if (! $headerDoc) {
+            return;
+        }
+
+        $detailData = data_get($bag, "details.$pk");
+        if (! $detailData) {
+            return;
+        }
+
+        $detailDocNum = data_get($detailData, 'document_number', $this->document_number);
+
+        DB::transaction(function () use ($headerDoc, $period, $detailDocNum, $detailData, $bag, $pk) {
+            DetailInspectionReport::updateOrCreate(
+                [
+                    'inspection_report_document_number' => $headerDoc,
+                    'period' => $period,
+                ],
+                [
+                    'document_number' => $detailDocNum,
+                    'start_datetime' => data_get($detailData, 'start_datetime'),
+                    'end_datetime' => data_get($detailData, 'end_datetime'),
+                ]
+            );
+
+            $firstData = data_get($bag, "first_inspections.$pk");
+            if ($firstData) {
+                FirstInspection::updateOrCreate(
+                    ['detail_inspection_report_document_number' => $detailDocNum],
+                    [
+                        'appearance' => data_get($firstData, 'appearance', 'OK'),
+                        'remarks' => data_get($firstData, 'remarks'),
+                        'weight' => (float) data_get($firstData, 'weight', 0),
+                        'weight_uom' => data_get($firstData, 'weight_uom', 'g'),
+                        'fitting_test' => data_get($firstData, 'fitting_test'),
+                    ]
+                );
+            }
+
+            $dims = data_get($bag, "dimensions.$pk", []);
+            $validAreas = [];
+            if (! empty($dims)) {
+                foreach ($dims as $d) {
+                    $area = trim((string) data_get($d, 'area', ''));
+                    if ($area === '') {
+                        continue;
+                    }
+                    $validAreas[] = $area;
+
+                    $lower = data_get($d, 'lower_limit');
+                    $upper = data_get($d, 'upper_limit');
+                    $actual = data_get($d, 'actual_value');
+
+                    InspectionDimension::updateOrCreate(
+                        [
+                            'inspection_report_document_number' => $headerDoc,
+                            'area' => $area,
+                        ],
+                        [
+                            'lower_limit' => (is_numeric($lower) && $lower !== '') ? (float) $lower : null,
+                            'upper_limit' => (is_numeric($upper) && $upper !== '') ? (float) $upper : null,
+                            'limit_uom' => data_get($d, 'limit_uom', 'mm'),
+                            'actual_value' => (is_numeric($actual) && $actual !== '') ? (float) $actual : null,
+                            'start_datetime' => data_get($detailData, 'start_datetime'),
+                            'end_datetime' => data_get($detailData, 'end_datetime'),
+                            'judgement' => data_get($d, 'judgement'),
+                            'remarks' => data_get($d, 'remarks'),
+                        ]
+                    );
+                }
+            }
+
+            // Clean up any stale or blank area records for this report
+            $staleDimQuery = InspectionDimension::where('inspection_report_document_number', $headerDoc);
+            if (! empty($validAreas)) {
+                $staleDimQuery->where(function ($q) use ($validAreas) {
+                    $q->whereNotIn('area', $validAreas)
+                        ->orWhereNull('area')
+                        ->orWhere('area', '');
+                });
+            } else {
+                $staleDimQuery->where(function ($q) {
+                    $q->whereNull('area')->orWhere('area', '');
+                });
+            }
+            $staleDimQuery->delete();
+
+            $secondData = data_get($bag, "second_inspections.$pk");
+            if ($secondData) {
+                $secondDoc = data_get($secondData, 'document_number') ?: ('SEC-' . now()->format('Ymd-His') . '-' . strtoupper(Str::random(4)));
+                SecondInspection::updateOrCreate(
+                    ['detail_inspection_report_document_number' => $detailDocNum],
+                    [
+                        'document_number' => $secondDoc,
+                        'lot_size_quantity' => data_get($secondData, 'lot_size_quantity'),
+                    ]
+                );
+
+                $samples = data_get($bag, "samples.$pk", []);
+                if (! empty($samples)) {
+                    InspectionSampling::where('second_inspection_document_number', $secondDoc)->delete();
+                    foreach ($samples as $s) {
+                        InspectionSampling::create([
+                            'second_inspection_document_number' => $secondDoc,
+                            'quantity' => (int) data_get($s, 'quantity', 0),
+                            'box_label' => data_get($s, 'box_label', '-'),
+                            'appearance' => data_get($s, 'appearance', 'OK'),
+                            'ng_quantity' => (int) data_get($s, 'ng_quantity', 0),
+                            'remarks' => data_get($s, 'remarks'),
+                        ]);
+                    }
+                }
+
+                $packagings = data_get($bag, "packagings.$pk", []);
+                if (! empty($packagings)) {
+                    InspectionPackaging::where('second_inspection_document_number', $secondDoc)->delete();
+                    foreach ($packagings as $pkg) {
+                        InspectionPackaging::create([
+                            'second_inspection_document_number' => $secondDoc,
+                            'snp' => (int) data_get($pkg, 'snp', 0),
+                            'box_label' => data_get($pkg, 'box_label', '-'),
+                            'judgement' => data_get($pkg, 'judgement', 'OK'),
+                            'remarks' => data_get($pkg, 'remarks'),
+                        ]);
+                    }
+                }
+            }
+
+            $judgementData = data_get($bag, "judgements.$pk");
+            if ($judgementData) {
+                InspectionJudgement::updateOrCreate(
+                    ['detail_inspection_report_document_number' => $detailDocNum],
+                    [
+                        'pass_quantity' => (int) data_get($judgementData, 'pass_quantity', 0),
+                        'reject_quantity' => (int) data_get($judgementData, 'reject_quantity', 0),
+                    ]
+                );
+            }
+        });
+    }
+
+    public function deletePeriodFromDatabase(int $period): void
+    {
+        $headerDoc = $this->inspection_report_document_number ?: session('stepHeaderSaved.document_number');
+        if (! $headerDoc) {
+            return;
+        }
+
+        $detail = DetailInspectionReport::where('inspection_report_document_number', $headerDoc)
+            ->where('period', $period)
+            ->first();
+
+        if ($detail) {
+            FirstInspection::where('detail_inspection_report_document_number', $detail->document_number)->delete();
+            $second = SecondInspection::where('detail_inspection_report_document_number', $detail->document_number)->first();
+            if ($second) {
+                InspectionSampling::where('second_inspection_document_number', $second->document_number)->delete();
+                InspectionPackaging::where('second_inspection_document_number', $second->document_number)->delete();
+                $second->delete();
+            }
+            InspectionJudgement::where('detail_inspection_report_document_number', $detail->document_number)->delete();
+            $detail->delete();
+        }
+    }
+
     public function render(): View
     {
         $this->shift = session('stepHeaderSaved.shift') ?? ($this->shift ?? 1);
         $this->part_number = session('stepHeaderSaved.part_number') ?? $this->part_number;
         $this->part_name = session('stepHeaderSaved.part_name') ?? $this->part_name;
         $this->inspector = session('stepHeaderSaved.inspector') ?? $this->inspector;
+        $this->machine_number = session('stepHeaderSaved.machine_number') ?? ($this->machine_number ?? '-');
 
-        $pk = $this->periodKey($this->period);
         $bag = session('stepDetailSaved', []);
 
-        $savedSummary = [
-            'isSaved' => $this->isPeriodSaved($this->period),
-            'isLocked' => $this->isPeriodLocked($this->period),
-            'first' => data_get($bag, "first_inspections.$pk"),
-            'dimensions' => data_get($bag, "dimensions.$pk", []),
-            'second' => data_get($bag, "second_inspections.$pk"),
-            'samples' => data_get($bag, "samples.$pk", []),
-            'packagings' => data_get($bag, "packagings.$pk", []),
-            'judgement' => data_get($bag, "judgements.$pk"),
-        ];
+        $periodsSummary = [];
+        for ($p = 1; $p <= 4; $p++) {
+            $pk = 'p' . $p;
+            $first = data_get($bag, "first_inspections.$pk");
+            $dims = data_get($bag, "dimensions.$pk", []);
+            $second = data_get($bag, "second_inspections.$pk");
+            $samples = data_get($bag, "samples.$pk", []);
+            $packagings = data_get($bag, "packagings.$pk", []);
+            $judgement = data_get($bag, "judgements.$pk");
+
+            $dimOkCount = collect($dims)->where('judgement', 'OK')->count();
+            $dimNgCount = collect($dims)->where('judgement', 'NG')->count();
+            $dimTotal = count($dims);
+
+            $sampleBoxCount = count($samples);
+            $sampleNgTotal = collect($samples)->sum(fn ($s) => (int) data_get($s, 'ng_quantity', 0));
+
+            $passQty = (int) data_get($judgement, 'pass_quantity', 0);
+            $rejQty = (int) data_get($judgement, 'reject_quantity', 0);
+            $totalOutput = $passQty + $rejQty;
+
+            $isSaved = $this->isPeriodSaved($p);
+
+            $periodsSummary[$p] = [
+                'period' => $p,
+                'time_range' => $this->getPeriodTimeRange($p),
+                'isSaved' => $isSaved,
+                'isLocked' => $this->isPeriodLocked($p),
+                'first' => $first,
+                'first_appearance' => data_get($first, 'appearance'),
+                'first_weight' => data_get($first, 'weight'),
+                'first_weight_uom' => data_get($first, 'weight_uom', 'g'),
+                'first_fitting' => data_get($first, 'fitting_test'),
+                'dim_total' => $dimTotal,
+                'dim_ok' => $dimOkCount,
+                'dim_ng' => $dimNgCount,
+                'second_lot_size' => data_get($second, 'lot_size_quantity'),
+                'second_skip_lot' => data_get($second, 'skipLotSize'),
+                'sample_box_count' => $sampleBoxCount,
+                'sample_ng_total' => $sampleNgTotal,
+                'packaging_snp' => data_get($packagings, '0.snp'),
+                'packaging_count' => count($packagings),
+                'pass_quantity' => $passQty,
+                'reject_quantity' => $rejQty,
+                'total_output' => $totalOutput,
+            ];
+        }
+
+        $hasAnySavedPeriod = collect($periodsSummary)->contains(fn ($p) => $p['isSaved']);
+        $recommendedPeriod = $this->determineCurrentPeriod();
 
         return view('livewire.inspection.form.step-detail', [
-            'savedSummary' => $savedSummary,
+            'periodsSummary' => $periodsSummary,
+            'hasAnySavedPeriod' => $hasAnySavedPeriod,
+            'recommendedPeriod' => $recommendedPeriod,
+            'savedSummary' => $periodsSummary[$this->period] ?? [],
         ]);
     }
 }

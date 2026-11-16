@@ -29,6 +29,7 @@ class InspectionReport extends Model
         'shift',
         'operator',
         'inspector',
+        'status',
         'inspector_autograph',
         'leader_autograph',
         'head_autograph',
@@ -95,5 +96,25 @@ class InspectionReport extends Model
             'inspection_report_document_number',
             'document_number'
         );
+    }
+
+    public function scopeDraft($query)
+    {
+        return $query->where('status', 'draft');
+    }
+
+    public function scopeSubmitted($query)
+    {
+        return $query->where('status', 'submitted');
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
+
+    public function isSubmitted(): bool
+    {
+        return $this->status === 'submitted';
     }
 }

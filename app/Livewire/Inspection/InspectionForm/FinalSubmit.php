@@ -229,58 +229,119 @@ class FinalSubmit extends Component
         }
 
         DB::transaction(function () {
-            InspectionReport::create($this->headerData);
+            $report = InspectionReport::where('document_number', $this->headerData['document_number'])->first();
+            if ($report) {
+                $report->update(array_merge($this->headerData, ['status' => 'submitted']));
+            } else {
+                InspectionReport::create(array_merge($this->headerData, ['status' => 'submitted']));
+            }
 
             foreach ($this->detailData as $data) {
-                DetailInspectionReport::create($data);
+                DetailInspectionReport::updateOrCreate(
+                    [
+                        'inspection_report_document_number' => $data['inspection_report_document_number'],
+                        'period' => $data['period'],
+                    ],
+                    $data
+                );
             }
 
             foreach ($this->firstData as $data) {
-                FirstInspection::create($data);
+                FirstInspection::updateOrCreate(
+                    ['detail_inspection_report_document_number' => $data['detail_inspection_report_document_number']],
+                    $data
+                );
             }
 
             foreach ($this->dimensionData as $value) {
                 foreach ($value as $data) {
-                    InspectionDimension::create($data);
+                    $area = trim((string) ($data['area'] ?? ''));
+                    if ($area === '') {
+                        continue;
+                    }
+                    $lower = $data['lower_limit'] ?? null;
+                    $upper = $data['upper_limit'] ?? null;
+                    $actual = $data['actual_value'] ?? null;
+
+                    InspectionDimension::updateOrCreate(
+                        [
+                            'inspection_report_document_number' => $data['inspection_report_document_number'],
+                            'area' => $area,
+                            'start_datetime' => $data['start_datetime'] ?? null,
+                        ],
+                        array_merge($data, [
+                            'area' => $area,
+                            'lower_limit' => (is_numeric($lower) && $lower !== '') ? (float) $lower : null,
+                            'upper_limit' => (is_numeric($upper) && $upper !== '') ? (float) $upper : null,
+                            'actual_value' => (is_numeric($actual) && $actual !== '') ? (float) $actual : null,
+                        ])
+                    );
                 }
             }
 
             foreach ($this->secondData as $data) {
-                SecondInspection::create($data);
+                SecondInspection::updateOrCreate(
+                    ['detail_inspection_report_document_number' => $data['detail_inspection_report_document_number']],
+                    $data
+                );
             }
 
             foreach ($this->samplingData as $value) {
                 foreach ($value as $data) {
-                    InspectionSampling::create($data);
+                    InspectionSampling::updateOrCreate(
+                        [
+                            'second_inspection_document_number' => $data['second_inspection_document_number'],
+                            'box_label' => $data['box_label'],
+                        ],
+                        $data
+                    );
                 }
             }
 
             foreach ($this->packagingData as $value) {
                 foreach ($value as $data) {
-                    InspectionPackaging::create($data);
+                    InspectionPackaging::updateOrCreate(
+                        [
+                            'second_inspection_document_number' => $data['second_inspection_document_number'],
+                            'box_label' => $data['box_label'],
+                        ],
+                        $data
+                    );
                 }
             }
 
             foreach ($this->judgementData as $data) {
-                InspectionJudgement::create($data);
+                InspectionJudgement::updateOrCreate(
+                    ['detail_inspection_report_document_number' => $data['detail_inspection_report_document_number']],
+                    $data
+                );
             }
 
             foreach ($this->problemData as $data) {
-                InspectionProblem::create($data);
+                InspectionProblem::updateOrCreate(
+                    [
+                        'inspection_report_document_number' => $data['inspection_report_document_number'],
+                        'time' => $data['time'],
+                        'type' => $data['type'],
+                    ],
+                    $data
+                );
             }
 
             $quantityData = $this->quantityData;
-            InspectionQuantity::create([
-                'inspection_report_document_number' => $this->headerData['document_number'],
-                'output_quantity' => $quantityData['total_output'],
-                'pass_quantity' => $quantityData['total_pass'],
-                'reject_quantity' => $quantityData['total_reject'],
-                'sampling_quantity' => $quantityData['total_sample'],
-                'ng_sample_quantity' => $quantityData['total_ng_sample'],
-                'pass_rate' => $quantityData['pass_rate'],
-                'reject_rate' => $quantityData['reject_rate'],
-                'ng_sample_rate' => $quantityData['ng_sample_rate'],
-            ]);
+            InspectionQuantity::updateOrCreate(
+                ['inspection_report_document_number' => $this->headerData['document_number']],
+                [
+                    'output_quantity' => $quantityData['total_output'],
+                    'pass_quantity' => $quantityData['total_pass'],
+                    'reject_quantity' => $quantityData['total_reject'],
+                    'sampling_quantity' => $quantityData['total_sample'],
+                    'ng_sample_quantity' => $quantityData['total_ng_sample'],
+                    'pass_rate' => $quantityData['pass_rate'],
+                    'reject_rate' => $quantityData['reject_rate'],
+                    'ng_sample_rate' => $quantityData['ng_sample_rate'],
+                ]
+            );
         });
 
         session()->forget([

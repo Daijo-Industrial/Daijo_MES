@@ -27,29 +27,27 @@
 
     @php
         $stepLabels = [
-            1 => ['title' => 'Header & Part Info', 'desc' => 'Customer, Part, Mesin & Shift'],
-            2 => ['title' => 'Detail Periode (1-4)', 'desc' => 'First, Dimensi, Sampling & Hasil'],
-            3 => ['title' => 'Masalah & Loss Time', 'desc' => 'Daftar kendala selama shift'],
-            4 => ['title' => 'Review & Submit', 'desc' => 'Verifikasi dan simpan laporan'],
+            1 => 'Header & Part Info',
+            2 => 'Detail Periode',
+            3 => 'Masalah & Loss Time',
+            4 => 'Review & Submit',
         ];
     @endphp
 
-    {{-- Stepper Progress Bar --}}
-    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-4">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-            @foreach ($stepLabels as $i => $s)
+    {{-- Non-Clickable Segmented Stepper Progress Bar --}}
+    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-3">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+            @foreach ($stepLabels as $i => $title)
                 @php
                     $isCurrent = $currentStep === $i;
                     $isFilled = $filledSteps[$i] ?? false;
                 @endphp
-                <button type="button"
-                        wire:click="setStep({{ $i }})"
-                        class="flex items-center gap-3 p-3 rounded-lg border text-left transition relative overflow-hidden
-                               {{ $isCurrent ? 'bg-zinc-900 border-zinc-900 text-white shadow-sm ring-1 ring-zinc-900' : ($isFilled ? 'bg-emerald-50/70 border-emerald-300 hover:bg-emerald-100/50 text-emerald-950' : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100/80 text-zinc-800') }}">
-                    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs
-                                {{ $isCurrent ? 'bg-zinc-800 text-white ring-1 ring-zinc-700' : ($isFilled ? 'bg-emerald-600 text-white' : 'bg-zinc-200 text-zinc-700') }}">
-                        @if ($isFilled && !$isCurrent)
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition select-none
+                            {{ $isCurrent ? 'bg-zinc-900 border-zinc-900 text-white shadow-sm ring-1 ring-zinc-900' : ($isFilled ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-zinc-50/80 border-zinc-200 text-zinc-500') }}">
+                    <div class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs
+                                {{ $isCurrent ? 'bg-zinc-800 text-white ring-1 ring-zinc-700' : ($isFilled ? 'bg-emerald-600 text-white' : 'bg-zinc-200 text-zinc-600') }}">
+                        @if ($isFilled && ! $isCurrent)
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                             </svg>
                         @else
@@ -57,14 +55,11 @@
                         @endif
                     </div>
                     <div class="min-w-0">
-                        <span class="block text-xs font-bold {{ $isCurrent ? 'text-white' : ($isFilled ? 'text-emerald-950' : 'text-zinc-900') }}">
-                            {{ $s['title'] }}
-                        </span>
-                        <span class="block text-[11px] {{ $isCurrent ? 'text-zinc-300' : 'text-zinc-500' }} truncate">
-                            {{ $s['desc'] }}
+                        <span class="block text-xs font-bold truncate {{ $isCurrent ? 'text-white' : ($isFilled ? 'text-emerald-950' : 'text-zinc-700') }}">
+                            {{ $title }}
                         </span>
                     </div>
-                </button>
+                </div>
             @endforeach
         </div>
     </div>
@@ -114,8 +109,10 @@
                 <div class="flex items-center gap-2">
                     <span x-text="t.message"></span>
                 </div>
-                <button type="button" @click="remove(t.id)" class="text-white/80 hover:text-white ml-3 text-xs font-bold">
-                    ✕
+                <button type="button" @click="remove(t.id)" class="text-white/80 hover:text-white ml-3 p-0.5 rounded transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
                 </button>
             </div>
         </template>

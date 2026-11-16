@@ -3,6 +3,7 @@
 namespace App\Livewire\Inspection\InspectionForm;
 
 use App\Models\File;
+use App\Models\Inspection\InspectionDimension;
 use App\Services\FileService;
 use App\Traits\ClearsNestedSession;
 use Carbon\Carbon;
@@ -161,10 +162,10 @@ class StepDimension extends Component
         $this->dimensions[] = [
             'row_key' => (string) Str::uuid(),
             'inspection_report_document_number' => $this->inspection_report_document_number,
-            'lower_limit' => '',
-            'upper_limit' => '',
+            'lower_limit' => null,
+            'upper_limit' => null,
             'limit_uom' => 'mm',
-            'actual_value' => '',
+            'actual_value' => null,
             'judgement' => 'OK',
             'area' => '',
             'remarks' => '',
@@ -174,8 +175,26 @@ class StepDimension extends Component
 
     public function removeDimension($index): void
     {
+        $removed = $this->dimensions[$index] ?? null;
         unset($this->dimensions[$index]);
         $this->dimensions = array_values($this->dimensions);
+
+        $docNum = $this->inspection_report_document_number ?: session('stepHeaderSaved.document_number');
+        if ($docNum) {
+            $area = trim((string) ($removed['area'] ?? ''));
+            if ($area !== '') {
+                InspectionDimension::where('inspection_report_document_number', $docNum)
+                    ->where('area', $area)
+                    ->delete();
+            } else {
+                InspectionDimension::where('inspection_report_document_number', $docNum)
+                    ->where(function ($q) {
+                        $q->whereNull('area')->orWhere('area', '');
+                    })
+                    ->delete();
+            }
+        }
+
         $this->autoSave();
     }
 
@@ -191,10 +210,14 @@ class StepDimension extends Component
 
     public function autoSave(): void
     {
+        session()->put("stepDetailSaved.dimensions.{$this->periodKey}", $this->dimensions);
+        $this->sessionSaved = $this->dimensions;
+        $this->isSaved = ! empty($this->dimensions);
+
         if (! empty($this->dimensions)) {
-            session()->put("stepDetailSaved.dimensions.{$this->periodKey}", $this->dimensions);
-            $this->sessionSaved = $this->dimensions;
-            $this->isSaved = true;
+            $this->dispatch('dimensionsSaved')->to(StepDetail::class);
+        } else {
+            $this->dispatch('dimensionsReset')->to(StepDetail::class);
             $this->dispatch('dimensionsSaved')->to(StepDetail::class);
         }
     }

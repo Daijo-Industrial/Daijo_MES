@@ -13,8 +13,8 @@
             @endif
             <button type="button"
                     wire:click="addDimension"
-                    class="px-3 py-1.5 text-xs font-semibold text-zinc-900 bg-white border border-zinc-300 hover:bg-zinc-100 rounded-lg shadow-sm transition flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="px-3.5 py-2 text-xs font-bold text-zinc-900 bg-white border border-zinc-300 hover:bg-zinc-100 rounded-lg shadow-sm transition flex items-center gap-1.5 min-h-[42px]">
+                <svg class="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
                 <span>Tambah Dimensi</span>
@@ -55,66 +55,66 @@
                         @foreach ($dimensions as $i => $row)
                             <tr class="hover:bg-zinc-50/50 transition">
                                 <td class="px-2 py-2 text-center text-zinc-400 font-mono">{{ $i + 1 }}</td>
-                                <td class="px-2 py-1.5">
+                                <td class="px-2 py-2">
                                     <input type="text"
                                            wire:model.blur="dimensions.{{ $i }}.area"
                                            placeholder="Area/titik ukur"
-                                           class="w-full text-xs rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.area') border-rose-300 bg-rose-50 @enderror">
+                                           class="w-full text-xs rounded border-zinc-300 py-2 min-h-[40px] focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.area') border-rose-300 bg-rose-50 @enderror">
                                 </td>
-                                <td class="px-2 py-1.5">
+                                <td class="px-2 py-2">
                                     <input type="number"
                                            step="any"
                                            wire:model.blur="dimensions.{{ $i }}.lower_limit"
                                            placeholder="Min"
-                                           class="w-20 text-xs font-mono text-center rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.lower_limit') border-rose-300 bg-rose-50 @enderror">
+                                           class="w-20 text-xs font-mono text-center rounded border-zinc-300 py-2 min-h-[40px] focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.lower_limit') border-rose-300 bg-rose-50 @enderror">
                                 </td>
-                                <td class="px-2 py-1.5">
+                                <td class="px-2 py-2">
                                     <input type="number"
                                            step="any"
                                            wire:model.blur="dimensions.{{ $i }}.upper_limit"
                                            placeholder="Max"
-                                           class="w-20 text-xs font-mono text-center rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.upper_limit') border-rose-300 bg-rose-50 @enderror">
+                                           class="w-20 text-xs font-mono text-center rounded border-zinc-300 py-2 min-h-[40px] focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.upper_limit') border-rose-300 bg-rose-50 @enderror">
                                 </td>
-                                <td class="px-2 py-1.5">
+                                <td class="px-2 py-2">
                                     <select wire:model.blur="dimensions.{{ $i }}.limit_uom"
-                                            class="w-16 text-xs text-center rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 font-semibold">
+                                            class="w-16 text-xs text-center rounded border-zinc-300 py-2 min-h-[40px] focus:ring-zinc-900 focus:border-zinc-900 font-semibold">
                                         <option value="mm">mm</option>
                                         <option value="cm">cm</option>
                                         <option value="μm">μm</option>
                                     </select>
                                 </td>
-                                <td class="px-2 py-1.5">
+                                <td class="px-2 py-2">
                                     <input type="number"
                                            step="any"
                                            wire:model.blur="dimensions.{{ $i }}.actual_value"
                                            placeholder="Aktual"
-                                           class="w-24 text-xs font-mono font-bold text-center rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.actual_value') border-rose-300 bg-rose-50 @enderror">
+                                           class="w-24 text-xs font-mono font-bold text-center rounded border-zinc-300 py-2 min-h-[40px] focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.actual_value') border-rose-300 bg-rose-50 @enderror">
                                 </td>
-                                <td class="px-2 py-1.5 text-center">
-                                    <div class="inline-flex rounded-md border border-zinc-300 p-0.5 bg-zinc-100 shadow-sm">
+                                <td class="px-2 py-2 text-center">
+                                    <div class="inline-flex rounded-md border border-zinc-300 p-0.5 bg-zinc-100 shadow-sm min-h-[40px] items-center">
                                         <button type="button"
                                                 wire:click="setJudgement({{ $i }}, 'OK')"
-                                                class="px-2.5 py-1 text-[11px] font-bold rounded transition {{ ($row['judgement'] ?? '') === 'OK' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                                                class="px-3 py-1.5 text-xs font-bold rounded transition {{ ($row['judgement'] ?? '') === 'OK' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
                                             OK
                                         </button>
                                         <button type="button"
                                                 wire:click="setJudgement({{ $i }}, 'NG')"
-                                                class="px-2.5 py-1 text-[11px] font-bold rounded transition {{ ($row['judgement'] ?? '') === 'NG' ? 'bg-rose-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
+                                                class="px-3 py-1.5 text-xs font-bold rounded transition {{ ($row['judgement'] ?? '') === 'NG' ? 'bg-rose-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-900' }}">
                                             NG
                                         </button>
                                     </div>
                                 </td>
-                                <td class="px-2 py-1.5">
+                                <td class="px-2 py-2">
                                     <input type="text"
                                            wire:model.blur="dimensions.{{ $i }}.remarks"
-                                           placeholder="{{ ($row['judgement'] ?? '') === 'NG' ? 'Wajib diisi jika NG' : 'Catatan opsional' }}"
-                                           class="w-full text-xs rounded border-zinc-300 py-1.5 focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.remarks') border-rose-300 bg-rose-50 @enderror">
+                                           placeholder="{{ ($row['judgement'] ?? '') === 'NG' ? 'Wajib jika NG' : 'Catatan opsional' }}"
+                                           class="w-full text-xs rounded border-zinc-300 py-2 min-h-[40px] focus:ring-zinc-900 focus:border-zinc-900 @error('dimensions.'.$i.'.remarks') border-rose-300 bg-rose-50 @enderror">
                                 </td>
-                                <td class="px-2 py-1.5 text-center">
+                                <td class="px-2 py-2 text-center">
                                     <button type="button"
                                             wire:click="removeDimension({{ $i }})"
                                             title="Hapus baris"
-                                            class="text-rose-500 hover:text-rose-700 p-1 text-xs font-semibold">
+                                            class="p-2 text-xs font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded transition min-h-[40px]">
                                         Hapus
                                     </button>
                                 </td>

@@ -21,6 +21,22 @@
         @endif
     </div>
 
+    @if ($errors->any())
+        <div class="p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-sm space-y-1 shadow-sm">
+            <div class="font-bold flex items-center gap-1.5 text-rose-800">
+                <svg class="w-4 h-4 text-rose-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span>Terdapat kesalahan pada input header:</span>
+            </div>
+            <ul class="list-disc list-inside text-xs space-y-0.5 text-rose-700">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- Main 2-Column Split Form Container --}}
     <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative">
         <div class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-zinc-200">

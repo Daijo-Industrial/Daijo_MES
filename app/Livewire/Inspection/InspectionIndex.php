@@ -17,8 +17,8 @@ class InspectionIndex extends Component
     #[Url(as: 's', except: '')]
     public string $search = '';
 
-    #[Url(as: 'sort', except: 'inspection_date')]
-    public string $sortField = 'inspection_date';
+    #[Url(as: 'sort', except: 'id')]
+    public string $sortField = 'id';
 
     #[Url(as: 'dir', except: 'desc')]
     public string $sortDir = 'desc';
@@ -32,6 +32,7 @@ class InspectionIndex extends Component
         'shift' => true,
         'customer' => true,
         'part_number' => true,
+        'status' => true,
     ];
 
     public array $filters = [
@@ -41,11 +42,13 @@ class InspectionIndex extends Component
         'shift' => '',
         'customer' => '',
         'part_number' => '',
+        'status' => '',
     ];
 
     public bool $ready = false;
 
     private const SORTABLE = [
+        'id',
         'inspection_date',
         'document_number',
         'shift',
@@ -124,7 +127,7 @@ class InspectionIndex extends Component
     {
         $field = in_array($this->sortField, self::SORTABLE, true)
             ? $this->sortField
-            : 'inspection_date';
+            : 'id';
         $dir = $this->sortDir === 'asc' ? 'asc' : 'desc';
 
         return InspectionReport::query()
@@ -138,6 +141,7 @@ class InspectionIndex extends Component
                 'part_name',
                 'machine_number',
                 'inspector',
+                'status',
             ])
             ->when($this->search !== '', function ($q) {
                 $s = '%' . trim($this->search) . '%';
@@ -185,8 +189,12 @@ class InspectionIndex extends Component
                 $this->filters['date_to'] !== '',
                 fn ($q) => $q->whereDate('inspection_date', '<=', $this->filters['date_to'])
             )
+            ->when(
+                $this->filters['status'] !== '',
+                fn ($q) => $q->where('status', $this->filters['status'])
+            )
             ->orderBy($field, $dir)
-            ->orderBy('id', 'desc');
+            ->when($field !== 'id', fn ($q) => $q->orderBy('id', 'desc'));
     }
 
     public function exportCsv(): StreamedResponse
