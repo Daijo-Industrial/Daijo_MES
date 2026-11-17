@@ -411,7 +411,9 @@ class PalletFormCreator extends Component
         $this->validate();
 
         if (count($this->scanned_items) === 0) {
-            session()->flash('error', 'Minimal harus ada 1 box yang di-scan.');
+            $msg = 'Minimal harus ada 1 box yang di-scan.';
+            session()->flash('error', $msg);
+            $this->dispatch('scan-error', ['message' => $msg]);
 
             return;
         }
@@ -426,15 +428,15 @@ class PalletFormCreator extends Component
         }
         $this->isProcessing = true;
 
-        // ─── 1. Atomic Lock per User/Session ──────────────────────────────────────
-        $userKey = auth()->id() ?? session()->getId() ?? 'guest';
-        $lock = Cache::lock("wms_pallet_gen_lock_{$userKey}", 15);
-
-        if (! $lock->get()) {
-            return; // Request lain sedang berjalan, abaikan klik ganda
-        }
-
         try {
+            // ─── 1. Atomic Lock per User/Session ──────────────────────────────────────
+            $userKey = auth()->id() ?? session()->getId() ?? 'guest';
+            $lock = Cache::lock("wms_pallet_gen_lock_{$userKey}", 5);
+
+            if (! $lock->get()) {
+                return; // Request lain sedang berjalan, abaikan klik ganda
+            }
+
             // ─── 2. Idempotency Fingerprint Hash ──────────────────────────────────
             $fingerprint = md5(json_encode([
                 'date' => $this->prod_date,
@@ -452,33 +454,14 @@ class PalletFormCreator extends Component
 
             $idempotencyKey = "wms_pallet_gen_hash_{$fingerprint}";
             if ($existingPalletId = Cache::get($idempotencyKey)) {
-                $this->lastGeneratedPalletId = $existingPalletId;
-                $this->showSuccessModal = true;
-
-                return;
-            }
-
-            // ─── 3. Database Guard: Cek apakah label ini sudah masuk pallet dalam 10 menit terakhir ───
-            $scannedLabels = collect($this->scanned_items)
-                ->where('is_no_label', false)
-                ->pluck('label')
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
-
-            if (! empty($scannedLabels)) {
-                $recentDuplicateDetail = WmsPalletFormDetail::whereIn('label', $scannedLabels)
-                    ->where('created_at', '>=', now()->subMinutes(10))
-                    ->latest('id')
-                    ->first();
-
-                if ($recentDuplicateDetail) {
-                    $this->lastGeneratedPalletId = $recentDuplicateDetail->pallet_form_id;
+                $existingPallet = WmsPalletForm::where('pallet_id', $existingPalletId)->whereNull('deleted_at')->first();
+                if ($existingPallet && $existingPallet->created_at >= now()->subSeconds(15)) {
+                    $this->lastGeneratedPalletId = $existingPalletId;
                     $this->showSuccessModal = true;
-                    Cache::put($idempotencyKey, $recentDuplicateDetail->pallet_form_id, now()->addMinutes(5));
 
                     return;
+                } else {
+                    Cache::forget($idempotencyKey);
                 }
             }
 
@@ -550,8 +533,11 @@ class PalletFormCreator extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', $e->getMessage());
+            $this->dispatch('scan-error', ['message' => $e->getMessage()]);
         } finally {
-            optional($lock)->release();
+            if (isset($lock)) {
+                optional($lock)->release();
+            }
             $this->isProcessing = false;
         }
     }

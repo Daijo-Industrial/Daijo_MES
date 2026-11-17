@@ -3,14 +3,26 @@
     <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-md shadow-blue-200">
-                    📜
+                <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-200">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 </div>
                 <div>
                     <h1 class="text-2xl font-black text-gray-800 tracking-tight">Master Bill of Materials (BOM)</h1>
                     <p class="text-xs text-gray-500 font-semibold mt-0.5">
                         Resep & Struktur Material Manufaktur Terintegrasi SAP Business One
                     </p>
+                    <div class="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="font-medium text-gray-400">Terakhir Diupdate:</span>
+                        <span class="font-bold text-gray-700 font-mono">
+                            {{ $lastUpdatedAt ? $lastUpdatedAt->timezone('Asia/Jakarta')->format('d M Y, H:i') . ' WIB' : 'Belum ada data' }}
+                        </span>
+                        @if($lastUpdatedAt)
+                            <span class="text-[11px] text-gray-400">({{ $lastUpdatedAt->timezone('Asia/Jakarta')->diffForHumans() }})</span>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>

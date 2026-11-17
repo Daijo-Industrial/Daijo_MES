@@ -908,6 +908,38 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
         $parallelComponent->assertSet('showSuccessModal', true);
     }
 
+    public function test_consecutive_generate_form_calls_increment_pallet_id_smoothly(): void
+    {
+        $this->actingAs($this->adminUser);
+
+        // 1. First pallet created with label '1'
+        $component1 = Livewire::test(\App\Livewire\Wms\PalletFormCreator::class, ['isDelivery' => true])
+            ->set('prod_date', '2026-11-17')
+            ->set('delivery_name', 'Driver A')
+            ->set('delivery_shift', '1')
+            ->set('lot_no', 'LOT-FIRST')
+            ->call('addItem', '1', 'SPK-1234', 50, 'FFI')
+            ->call('generateForm');
+
+        $component1->assertSet('showSuccessModal', true);
+        $firstId = $component1->get('lastGeneratedPalletId');
+        $this->assertNotNull($firstId);
+
+        // 2. Second pallet created (different lot) also with label '1' -> Smoothly creates next pallet ID!
+        $component2 = Livewire::test(\App\Livewire\Wms\PalletFormCreator::class, ['isDelivery' => true])
+            ->set('prod_date', '2026-11-17')
+            ->set('delivery_name', 'Driver A')
+            ->set('delivery_shift', '1')
+            ->set('lot_no', 'LOT-SECOND')
+            ->call('addItem', '1', 'SPK-1234', 50, 'FFI')
+            ->call('generateForm');
+
+        $component2->assertSet('showSuccessModal', true);
+        $secondId = $component2->get('lastGeneratedPalletId');
+        $this->assertNotEquals($firstId, $secondId);
+        $this->assertEquals((int) substr($firstId, -4) + 1, (int) substr($secondId, -4));
+    }
+
     public function test_quick_scan_pallet_verifies_details_and_assigns_slot_to_rack(): void
     {
         $pallet = WmsPalletForm::create([

@@ -1041,6 +1041,14 @@ class MasterBomView extends Component
             }
         }
 
+        // Waktu update terakhir lintas tabel Master BOM (Production & Staging)
+        $lastUpdatedRaw = collect([
+            MasterBomFgHeader::max('updated_at'),
+            MasterBomComponent::max('updated_at'),
+            MasterBom::max('updated_at'),
+        ])->filter()->max();
+        $lastUpdatedAt = $lastUpdatedRaw ? \Carbon\Carbon::parse($lastUpdatedRaw) : null;
+
         return view('livewire.master-bom-view', [
             // Stats
             'totalRecords' => $totalRecords,
@@ -1049,6 +1057,7 @@ class MasterBomView extends Component
             'totalWip' => $totalWip,
             'totalValidFg' => $totalValidFg,
             'totalValidComp' => $totalValidComp,
+            'lastUpdatedAt' => $lastUpdatedAt,
 
             // Tab 1: Production Data
             'fgHeaders' => $fgHeaders,

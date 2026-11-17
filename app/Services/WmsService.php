@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\WmsPalletForm;
+use App\Models\WmsPalletFormDetail;
 use App\Models\WmsPosition;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class WmsService
 {
@@ -231,5 +233,274 @@ class WmsService
         }
 
         return $allocated;
+    }
+
+    /**
+     * Find active rack positions holding the given part number that have remaining capacity.
+     */
+    public function findExistingRacksForItem(string $partNo, ?string $warehouseId = null, ?string $excludePalletId = null): \Illuminate\Support\Collection
+    {
+        $cleanPartNo = trim($partNo);
+        $cleanPartNoNoDot = rtrim($cleanPartNo, '.');
+
+        $palletMatcher = function ($pq) use ($cleanPartNo, $cleanPartNoNoDot, $excludePalletId) {
+            $pq->where('total_pallet_qty', '>', 0)
+               ->where('status', '!=', 'OUT')
+               ->whereNull('deleted_at');
+
+            if ($excludePalletId) {
+                $pq->where('pallet_id', '!=', $excludePalletId);
+            }
+
+            $pq->where(function ($q) use ($cleanPartNo, $cleanPartNoNoDot) {
+                $q->whereIn('part_no', [$cleanPartNo, $cleanPartNoNoDot])
+                  ->orWhereHas('details', fn ($dq) => $dq->whereIn('part_no', [$cleanPartNo, $cleanPartNoNoDot])->whereNull('deleted_at'));
+            });
+        };
+
+        $query = WmsPosition::with(['rack.warehouse', 'palletForms' => $palletMatcher])
+            ->whereHas('palletForms', $palletMatcher);
+
+        if (! empty($warehouseId)) {
+            $query->whereHas('rack', fn ($rq) => $rq->where('whse_id', $warehouseId));
+        }
+
+        return $query->orderBy('position_code', 'asc')->get();
+    }
+
+    /**
+     * Split mixed pallet and assign items to their respective racks (consolidate to existing or new pallet).
+     *
+     * @param string $sourcePalletId
+     * @param array $itemAssignments Keyed by part_no: ['action' => 'MERGE'|'NEW_PALLET', 'target_position_id' => int, 'target_pallet_id' => string|null]
+     * @param int|null $forcePositionId If force assigning entire mixed pallet directly to one position
+     * @return array Result summary
+     */
+    public function splitAndAssignMixedPallet(string $sourcePalletId, array $itemAssignments, ?int $forcePositionId = null): array
+    {
+        return DB::transaction(function () use ($sourcePalletId, $itemAssignments, $forcePositionId) {
+            $sourcePallet = WmsPalletForm::with('details')->where('pallet_id', $sourcePalletId)->firstOrFail();
+            $affectedPositionIds = [];
+
+            if ($sourcePallet->position_id) {
+                $affectedPositionIds[] = $sourcePallet->position_id;
+            }
+
+            // Case A: Force direct assignment of mixed pallet to a single rack slot
+            if ($forcePositionId) {
+                $oldPos = $sourcePallet->position_id;
+                $sourcePallet->update([
+                    'position_id' => $forcePositionId,
+                    'assigned_at' => $sourcePallet->assigned_at ?? now(),
+                ]);
+
+                if ($oldPos && $oldPos !== $forcePositionId) {
+                    $this->updatePositionStatus($oldPos);
+                }
+                $this->updatePositionStatus($forcePositionId);
+                $this->logTransaction($sourcePalletId, 'ASSIGN_SLOT', $forcePositionId, 'Force assigned mixed pallet to single slot');
+
+                return [
+                    'status' => true,
+                    'type' => 'FORCE_ASSIGN',
+                    'message' => "Pallet {$sourcePalletId} berhasil di-assign langsung ke slot rak.",
+                ];
+            }
+
+            // Case B: Split & Consolidate items
+            $splitRecords = [];
+            $allDetails = $sourcePallet->details;
+
+            foreach ($itemAssignments as $partNo => $config) {
+                $action = $config['action'] ?? 'NEW_PALLET';
+                $targetPosId = ! empty($config['target_position_id']) ? (int) $config['target_position_id'] : null;
+                $targetPos = $targetPosId ? WmsPosition::find($targetPosId) : null;
+
+                $cleanPNo = trim($partNo);
+                $itemDetails = $allDetails->filter(fn ($d) => in_array(trim($d->part_no), [$cleanPNo, rtrim($cleanPNo, '.')]));
+                if ($itemDetails->isEmpty()) {
+                    continue;
+                }
+
+                $movedQty = (float) $itemDetails->sum('qty');
+                $movedBoxes = $itemDetails->count();
+
+                if ($targetPosId) {
+                    $affectedPositionIds[] = $targetPosId;
+                }
+
+                if ($action === 'MERGE') {
+                    // Consolidate into existing pallet at target position
+                    $targetPalletId = $config['target_pallet_id'] ?? null;
+                    $targetPallet = null;
+
+                    if ($targetPalletId) {
+                        $targetPallet = WmsPalletForm::where('pallet_id', $targetPalletId)->first();
+                    }
+                    if (! $targetPallet && $targetPosId) {
+                        $targetPallet = WmsPalletForm::where('position_id', $targetPosId)
+                            ->where('status', '!=', 'OUT')
+                            ->where('total_pallet_qty', '>', 0)
+                            ->first();
+                    }
+
+                    if (! $targetPallet) {
+                        throw new \Exception("Pallet tujuan untuk konsolidasi item {$partNo} tidak ditemukan pada slot rak yang dipilih.");
+                    }
+
+                    // Move boxes to target pallet
+                    $cleanPNo = trim($partNo);
+                    WmsPalletFormDetail::where('pallet_form_id', $sourcePalletId)
+                        ->where(function ($q) use ($cleanPNo) {
+                            $q->whereIn('part_no', [$cleanPNo, rtrim($cleanPNo, '.')]);
+                        })
+                        ->update(['pallet_form_id' => $targetPallet->pallet_id]);
+
+                    // Recalculate target pallet
+                    $newTargetQty = WmsPalletFormDetail::where('pallet_form_id', $targetPallet->pallet_id)->sum('qty');
+                    $newTargetBoxes = WmsPalletFormDetail::where('pallet_form_id', $targetPallet->pallet_id)->count();
+
+                    $existingMergedFrom = $targetPallet->merged_from ?: [];
+                    $existingMergedFrom[] = [
+                        'source_pallet_id' => $sourcePalletId,
+                        'part_no' => $partNo,
+                        'qty' => $movedQty,
+                        'box_qty' => $movedBoxes,
+                        'merged_at' => now()->format('Y-m-d H:i:s'),
+                    ];
+
+                    $targetPallet->update([
+                        'total_pallet_qty' => $newTargetQty,
+                        'box_qty' => $newTargetBoxes,
+                        'merged_from' => $existingMergedFrom,
+                    ]);
+
+                    $this->logTransaction(
+                        $targetPallet->pallet_id,
+                        'CONSOLIDATE_IN',
+                        $targetPallet->position_id,
+                        "Menerima {$movedBoxes} box ({$movedQty} pcs) {$partNo} dari split pallet {$sourcePalletId}"
+                    );
+
+                    $splitRecords[] = [
+                        'part_no' => $partNo,
+                        'qty' => $movedQty,
+                        'box_qty' => $movedBoxes,
+                        'action' => 'MERGE',
+                        'target_pallet_id' => $targetPallet->pallet_id,
+                        'target_position_id' => $targetPallet->position_id,
+                        'target_position_code' => $targetPallet->position?->position_code ?? ($targetPos?->position_code ?? '-'),
+                    ];
+                } else {
+                    // Create NEW pallet for this item
+                    $newPalletId = $this->generatePalletId();
+                    $firstDetail = $itemDetails->first();
+
+                    $newPallet = WmsPalletForm::create([
+                        'pallet_id' => $newPalletId,
+                        'plant' => $sourcePallet->plant,
+                        'position_id' => $targetPosId,
+                        'assigned_at' => $targetPosId ? now() : null,
+                        'part_no' => $partNo,
+                        'model_name' => $firstDetail?->model_name ?: $sourcePallet->model_name,
+                        'prod_date' => $sourcePallet->prod_date,
+                        'lot_no' => $sourcePallet->lot_no,
+                        'delivery_name' => $sourcePallet->delivery_name,
+                        'delivery_shift' => $sourcePallet->delivery_shift,
+                        'box_qty' => $movedBoxes,
+                        'total_pallet_qty' => $movedQty,
+                        'status' => 'STORED',
+                        'remarks' => "Dibuat dari hasil split pallet {$sourcePalletId}",
+                        'split_from_pallet_id' => $sourcePalletId,
+                        'sap_sync_status' => 0,
+                    ]);
+
+                    // Move details
+                    WmsPalletFormDetail::where('pallet_form_id', $sourcePalletId)
+                        ->where(function ($q) use ($cleanPNo) {
+                            $q->whereIn('part_no', [$cleanPNo, rtrim($cleanPNo, '.')]);
+                        })
+                        ->update(['pallet_form_id' => $newPalletId]);
+
+                    $this->logTransaction(
+                        $newPalletId,
+                        'IN',
+                        $targetPosId,
+                        "Pallet baru dibuat dari hasil split pallet {$sourcePalletId}"
+                    );
+
+                    $splitRecords[] = [
+                        'part_no' => $partNo,
+                        'qty' => $movedQty,
+                        'box_qty' => $movedBoxes,
+                        'action' => 'NEW_PALLET',
+                        'target_pallet_id' => $newPalletId,
+                        'target_position_id' => $targetPosId,
+                        'target_position_code' => $targetPos?->position_code ?? 'TEMPORARY',
+                    ];
+                }
+            }
+
+            // Recalculate remaining on source pallet
+            $remQty = WmsPalletFormDetail::where('pallet_form_id', $sourcePalletId)->sum('qty');
+            $remBoxes = WmsPalletFormDetail::where('pallet_form_id', $sourcePalletId)->count();
+
+            if ($remBoxes <= 0 || $remQty <= 0) {
+                // All items moved (Worst Case solved)
+                $sourcePallet->update([
+                    'total_pallet_qty' => 0,
+                    'box_qty' => 0,
+                    'position_id' => null,
+                    'status' => 'RESOLVED',
+                    'is_split' => true,
+                    'split_into' => $splitRecords,
+                    'split_at' => now(),
+                ]);
+
+                $this->logTransaction(
+                    $sourcePalletId,
+                    'SPLIT_RESOLVED',
+                    null,
+                    'Seluruh item berhasil di-split dan dipindahkan ke rak/pallet tujuan. Pallet asal selesai (0 pcs).'
+                );
+            } else {
+                // Partial split (some items still remain on source pallet)
+                $remPartNos = WmsPalletFormDetail::where('pallet_form_id', $sourcePalletId)
+                    ->pluck('part_no')->unique()->values();
+                $newHeaderPartNo = $remPartNos->count() > 1 ? 'MIXED' : ($remPartNos[0] ?? $sourcePallet->part_no);
+
+                $sourcePallet->update([
+                    'total_pallet_qty' => $remQty,
+                    'box_qty' => $remBoxes,
+                    'part_no' => $newHeaderPartNo,
+                    'is_split' => true,
+                    'split_into' => $splitRecords,
+                    'split_at' => now(),
+                ]);
+
+                $this->logTransaction(
+                    $sourcePalletId,
+                    'SPLIT_PARTIAL',
+                    $sourcePallet->position_id,
+                    "Sebagian item di-split dari pallet {$sourcePalletId}"
+                );
+            }
+
+            // Update status of all affected rack positions
+            foreach (array_unique(array_filter($affectedPositionIds)) as $posId) {
+                $this->updatePositionStatus($posId);
+            }
+
+            return [
+                'status' => true,
+                'type' => 'SPLIT_SUCCESS',
+                'source_pallet_id' => $sourcePalletId,
+                'split_records' => $splitRecords,
+                'is_fully_resolved' => ($remBoxes <= 0),
+                'message' => ($remBoxes <= 0)
+                    ? "✓ Pallet {$sourcePalletId} berhasil di-solve! Seluruh item berhasil dipindahkan ke rak masing-masing."
+                    : "✓ Sebagian item pada pallet {$sourcePalletId} berhasil dipindahkan.",
+            ];
+        });
     }
 }

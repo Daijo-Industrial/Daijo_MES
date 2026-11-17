@@ -57,14 +57,27 @@
         @endif
 
         {{-- Unified Error Banner (Single Dismissible Banner for Both Server & Client Errors) --}}
-        <div x-show="Boolean((localScanError && localScanError.trim()) || (serverError && serverError.trim()))" 
+        @php
+            $currentServerError = session('error') ?: session('scan_error');
+        @endphp
+        @if ($currentServerError)
+            <div class="bg-red-100 border-l-4 border-red-500 p-4 rounded-xl flex items-center justify-between shadow-sm mb-4 transition-all">
+                <div class="flex items-center space-x-3">
+                    <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p class="text-red-800 font-bold text-sm">{{ $currentServerError }}</p>
+                </div>
+            </div>
+        @endif
+        <div x-show="Boolean(localScanError && localScanError.trim())" 
              x-cloak 
              class="bg-red-100 border-l-4 border-red-500 p-4 rounded-xl flex items-center justify-between shadow-sm mb-4 transition-all">
             <div class="flex items-center space-x-3">
                 <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <p class="text-red-800 font-bold text-sm" x-text="(localScanError && localScanError.trim()) ? localScanError : serverError"></p>
+                <p class="text-red-800 font-bold text-sm" x-text="localScanError"></p>
             </div>
             <button type="button" 
                     @click="closeError()" 
