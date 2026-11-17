@@ -181,34 +181,36 @@
         </div>
     </div>
 
-    {{-- Bottom Navigation Action Bar --}}
-    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <button type="button"
-                    wire:click="$dispatch('prevStep')"
-                    class="inline-flex items-center gap-1.5 px-4 py-2.5 border border-zinc-300 text-sm font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 transition">
-                <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                <span>Kembali ke Step 2 (Detail Periode)</span>
-            </button>
-        </div>
+    {{-- Step 3 Floating Bottom Navigation Dock --}}
+    <div class="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] py-3 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div>
+                <button type="button"
+                        wire:click="$dispatch('prevStep')"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 border border-zinc-300 text-xs sm:text-sm font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 shadow-xs transition">
+                    <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    <span>Kembali ke Step 2 (Detail Periode)</span>
+                </button>
+            </div>
 
-        <div class="flex items-center gap-3">
-            <button type="button"
-                    wire:click="resetStep"
-                    wire:confirm="Yakin ingin mereset seluruh daftar kendala shift ini? Seluruh data kendala yang sudah dicatat akan dihapus."
-                    class="px-4 py-2.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition">
-                Reset Kendala
-            </button>
-            <button type="button"
-                    wire:click="saveStep"
-                    class="inline-flex items-center gap-2 px-6 py-2.5 border border-transparent shadow-sm text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
-                <span>Simpan & Lanjut ke Review Final</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                </svg>
-            </button>
+            <div class="flex items-center gap-3">
+                <button type="button"
+                        wire:click="resetStep"
+                        wire:confirm="Yakin ingin mereset seluruh daftar kendala shift ini? Seluruh data kendala yang sudah dicatat akan dihapus."
+                        class="px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition">
+                    Reset Kendala
+                </button>
+                <button type="button"
+                        wire:click="saveStep"
+                        class="inline-flex items-center gap-2 px-5 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
+                    <span>Simpan & Lanjut ke Review Final</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 </div>

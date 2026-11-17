@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="space-y-6 pb-20">
     @if (! $isWizardActive)
         {{-- LEVEL 1: PERIOD HUB (Landing Page for Period Selection & Recaps) --}}
 
@@ -191,40 +191,42 @@
             </div>
         </div>
 
-        {{-- Hub Bottom Navigation Bar --}}
-        <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <button type="button"
-                        wire:click="$dispatch('prevStep')"
-                        class="inline-flex items-center gap-1.5 px-4 py-2.5 border border-zinc-300 text-sm font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 transition">
-                    <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                    </svg>
-                    <span>Kembali ke Step 1 (Header)</span>
-                </button>
-            </div>
+        {{-- Hub Floating Bottom Navigation Dock --}}
+        <div class="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] py-3 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+                <div>
+                    <button type="button"
+                            wire:click="$dispatch('prevStep')"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 border border-zinc-300 text-xs sm:text-sm font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 shadow-xs transition">
+                        <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                        <span>Kembali ke Step 1 (Header)</span>
+                    </button>
+                </div>
 
-            <div class="flex items-center gap-3">
-                @if ($hasAnySavedPeriod)
-                    <button type="button"
-                            wire:click="proceedToStep3"
-                            class="inline-flex items-center gap-2 px-6 py-2.5 border border-transparent shadow-sm text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
-                        <span>Lanjut ke Step 3 (Masalah & Loss Time)</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                        </svg>
-                    </button>
-                @else
-                    <button type="button"
-                            disabled
-                            title="Selesaikan dan simpan minimal 1 periode sebelum melanjutkan ke Step 3"
-                            class="inline-flex items-center gap-2 px-6 py-2.5 border border-zinc-300 shadow-sm text-sm font-bold rounded-lg text-zinc-400 bg-zinc-100 cursor-not-allowed">
-                        <span>Lanjut ke Step 3 (Masalah & Loss Time)</span>
-                        <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                        </svg>
-                    </button>
-                @endif
+                <div class="flex items-center gap-3">
+                    @if ($hasAnySavedPeriod)
+                        <button type="button"
+                                wire:click="proceedToStep3"
+                                class="inline-flex items-center gap-2 px-5 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
+                            <span>Lanjut ke Step 3 (Masalah & Loss Time)</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                            </svg>
+                        </button>
+                    @else
+                        <button type="button"
+                                disabled
+                                title="Selesaikan dan simpan minimal 1 periode sebelum melanjutkan ke Step 3"
+                                class="inline-flex items-center gap-2 px-5 py-2 border border-zinc-300 shadow-sm text-xs sm:text-sm font-bold rounded-lg text-zinc-400 bg-zinc-100 cursor-not-allowed">
+                            <span>Lanjut ke Step 3 (Masalah & Loss Time)</span>
+                            <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                            </svg>
+                        </button>
+                    @endif
+                </div>
             </div>
         </div>
 
@@ -455,77 +457,79 @@
                     @endif
                 </div>
 
-                {{-- Sub-Wizard Sticky Bottom Floating Action Bar --}}
-                <div class="sticky bottom-4 z-20 bg-white/95 backdrop-blur border border-zinc-200/90 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        @if ($subStep === 1)
-                            <button type="button"
-                                    wire:click="prevSubStep"
-                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-zinc-300 text-xs sm:text-sm font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 shadow-xs transition">
-                                <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                                </svg>
-                                <span>Kembali ke Hub</span>
-                            </button>
-                        @else
-                            @php
-                                $subStepLabels = [
-                                    2 => '1. First Piece',
-                                    3 => '2. Dimensi',
-                                    4 => '3. Second & Sampling',
-                                    5 => '4. Judgement & Output',
-                                ];
-                            @endphp
-                            <button type="button"
-                                    wire:click="prevSubStep"
-                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-zinc-300 text-xs sm:text-sm font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 shadow-xs transition">
-                                <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                                </svg>
-                                <span>Kembali ke {{ $subStepLabels[$subStep] ?? 'Sebelumnya' }}</span>
-                            </button>
-                        @endif
-                    </div>
+                {{-- Sub-Wizard Floating Bottom Navigation Dock --}}
+                <div class="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] py-3 px-4 sm:px-6 lg:px-8">
+                    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+                        <div>
+                            @if ($subStep === 1)
+                                <button type="button"
+                                        wire:click="prevSubStep"
+                                        class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-zinc-300 text-xs sm:text-sm font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 shadow-xs transition">
+                                    <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                                    </svg>
+                                    <span>Kembali ke Hub</span>
+                                </button>
+                            @else
+                                @php
+                                    $subStepLabels = [
+                                        2 => '1. First Piece',
+                                        3 => '2. Dimensi',
+                                        4 => '3. Second & Sampling',
+                                        5 => '4. Judgement & Output',
+                                    ];
+                                @endphp
+                                <button type="button"
+                                        wire:click="prevSubStep"
+                                        class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-zinc-300 text-xs sm:text-sm font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 shadow-xs transition">
+                                    <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                                    </svg>
+                                    <span>Kembali ke {{ $subStepLabels[$subStep] ?? 'Sebelumnya' }}</span>
+                                </button>
+                            @endif
+                        </div>
 
-                    {{-- Middle: Progress Context (Visible on tablet & desktop) --}}
-                    <div class="hidden md:flex items-center gap-2 text-xs font-mono text-zinc-500">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 font-bold text-zinc-800">
-                            Periode {{ $period }}
-                        </span>
-                        <span>•</span>
-                        <span class="text-zinc-600">
-                            Tahap <strong class="text-zinc-900 font-bold">{{ $subStep }}/5</strong>: {{ $this->subStepsSummary[$subStep]['title'] ?? '' }}
-                        </span>
-                    </div>
+                        {{-- Middle: Progress Context (Visible on tablet & desktop) --}}
+                        <div class="hidden md:flex items-center gap-2 text-xs font-mono text-zinc-500">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 font-bold text-zinc-800">
+                                Periode {{ $period }}
+                            </span>
+                            <span>•</span>
+                            <span class="text-zinc-600">
+                                Tahap <strong class="text-zinc-900 font-bold">{{ $subStep }}/5</strong>: {{ $this->subStepsSummary[$subStep]['title'] ?? '' }}
+                            </span>
+                        </div>
 
-                    <div class="flex items-center gap-3">
-                        @if ($subStep < 5)
-                            @php
-                                $nextStepLabels = [
-                                    1 => 'Lanjut ke 2. Dimensi',
-                                    2 => 'Lanjut ke 3. Second & Sampling',
-                                    3 => 'Lanjut ke 4. Judgement & Output',
-                                    4 => 'Lanjut ke 5. Masalah & Loss Time',
-                                ];
-                            @endphp
-                            <button type="button"
-                                    wire:click="nextSubStep"
-                                    class="inline-flex items-center gap-2 px-5 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
-                                <span>{{ $nextStepLabels[$subStep] ?? 'Lanjut' }}</span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                                </svg>
-                            </button>
-                        @else
-                            <button type="button"
-                                    wire:click="finishPeriod"
-                                    class="inline-flex items-center gap-2 px-5 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-emerald-700 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-700 transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                <span>Simpan Periode {{ $period }} & Selesai</span>
-                            </button>
-                        @endif
+                        <div class="flex items-center gap-3">
+                            @if ($subStep < 5)
+                                @php
+                                    $nextStepLabels = [
+                                        1 => 'Lanjut ke 2. Dimensi',
+                                        2 => 'Lanjut ke 3. Second & Sampling',
+                                        3 => 'Lanjut ke 4. Judgement & Output',
+                                        4 => 'Lanjut ke 5. Masalah & Loss Time',
+                                    ];
+                                @endphp
+                                <button type="button"
+                                        wire:click="nextSubStep"
+                                        class="inline-flex items-center gap-2 px-5 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
+                                    <span>{{ $nextStepLabels[$subStep] ?? 'Lanjut' }}</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                    </svg>
+                                </button>
+                            @else
+                                <button type="button"
+                                        wire:click="finishPeriod"
+                                        class="inline-flex items-center gap-2 px-5 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-emerald-700 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-700 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span>Simpan Periode {{ $period }} & Selesai</span>
+                                </button>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </main>

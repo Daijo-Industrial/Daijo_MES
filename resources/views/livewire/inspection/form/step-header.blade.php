@@ -523,16 +523,18 @@
             </div>
         </div>
 
-        {{-- Bottom Navigation Action Bar --}}
-        <div class="p-4 bg-zinc-50 border-t border-zinc-200 flex items-center justify-end rounded-b-xl">
-            <button type="button"
-                    wire:click="saveStep"
-                    class="inline-flex items-center gap-2 px-6 py-3 border border-transparent shadow-sm text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
-                <span>Simpan & Lanjut ke Detail Periode</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                </svg>
-            </button>
+        {{-- Step 1 Floating Bottom Navigation Dock --}}
+        <div class="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] py-3 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-7xl mx-auto flex items-center justify-end gap-4">
+                <button type="button"
+                        wire:click="saveStep"
+                        class="inline-flex items-center gap-2 px-6 py-2.5 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
+                    <span>Simpan & Lanjut ke Detail Periode</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 </div>

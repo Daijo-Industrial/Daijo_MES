@@ -1,4 +1,4 @@
-<div class="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
+<div class="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 pb-24">
     {{-- Top Navigation & Document Number Bar --}}
     <a href="{{ route('inspection-reports.index') }}"
        class="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 transition">
@@ -90,7 +90,7 @@
             }
          }"
          x-on:toast.window="add($event.detail)"
-         class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+         class="fixed bottom-20 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
         <template x-for="t in toasts" :key="t.id">
             <div x-show="true"
                  x-transition:enter="transition ease-out duration-300"
