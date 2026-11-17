@@ -155,6 +155,7 @@ class ProductionDayDashboardPalletTrackingTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('PLT-TEST-001');
+        $response->assertDontSee('<a href="' . route('wms.pallet-form.index', ['search' => 'PLT-TEST-001']), false);
         $response->assertSee('Di Rak RAK-TEST-01');
         $response->assertSee('PLT-TEST-002');
         $response->assertSee('Terkirim (Menunggu Rak)');
