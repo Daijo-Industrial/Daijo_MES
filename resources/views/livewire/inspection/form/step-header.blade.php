@@ -37,503 +37,627 @@
         </div>
     @endif
 
-    {{-- Main 2-Column Split Form Container --}}
-    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm relative">
-        <div class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-zinc-200">
-            {{-- KOLOM KIRI: 1. Part & Spesifikasi (Top-to-Down) --}}
-            <div class="p-6 space-y-5 relative z-20">
-                <div class="pb-3 border-b border-zinc-100">
-                    <h2 class="text-base font-bold text-zinc-900 flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
-                        1. Part & Spesifikasi
-                    </h2>
-                    <p class="text-sm text-zinc-500 mt-0.5">Pilih part untuk memuat master data, customer, & spesifikasi.</p>
+    {{-- 2-COLUMN RESPONSIVE LAYOUT (Sticky Left Rail + Right Active Step Panel) --}}
+    <div class="lg:flex lg:items-start lg:gap-6">
+        {{-- Sticky Left Rail --}}
+        <aside class="lg:w-72 flex-shrink-0 lg:sticky lg:top-4 mb-6 lg:mb-0">
+            <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-3 space-y-2">
+                <div class="px-2 py-1 border-b border-zinc-100 flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Tahapan Header</span>
+                    <span class="text-[11px] font-mono text-zinc-500 font-semibold">{{ $subStep }}/2</span>
                 </div>
 
-                {{-- Dedicated Search Toolbar (Terpisah dari field input yang disimpan ke backend) --}}
-                <div class="relative pb-3 border-b border-zinc-100" @click.away="openPartDropdown = false">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-bold text-zinc-800 flex items-center gap-2">
-                            <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                            <span>Cari Part Number / Part Name (Master List)</span>
-                        </label>
-                        @if (!empty($part_number) && !$isSearchingAgain)
-                            <span class="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                                Part Terpilih
-                            </span>
-                        @endif
+                {{-- Sub-Step Buttons List --}}
+                <div class="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-2 pb-1 lg:pb-0">
+                    @foreach ($this->subStepsSummary as $sNum => $sInfo)
+                        @php
+                            $isActive = $subStep === $sNum;
+                            $isCompleted = $sInfo['isSaved'];
+                        @endphp
+                        <button type="button"
+                                wire:click="goToSubStep({{ $sNum }})"
+                                class="w-full min-w-[200px] lg:min-w-0 p-3 rounded-lg border text-left transition relative flex flex-col justify-between gap-1.5 min-h-[56px]
+                                       {{ $isActive ? 'bg-zinc-900 border-zinc-900 text-white shadow-md ring-1 ring-zinc-900' : ($isCompleted ? 'border-emerald-300 bg-emerald-50/60 hover:bg-emerald-100/60 text-zinc-900' : 'border-zinc-200 bg-zinc-50/70 hover:bg-zinc-100/80 text-zinc-700') }}">
+                            <div class="flex items-center justify-between gap-2 w-full">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="text-xs font-bold font-mono px-1.5 py-0.5 rounded {{ $isActive ? 'bg-zinc-800 text-white' : ($isCompleted ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-200 text-zinc-700') }}">
+                                        {{ $sNum }}
+                                    </span>
+                                    <span class="text-xs font-bold truncate {{ $isActive ? 'text-white' : 'text-zinc-900' }}">
+                                        {{ $sInfo['title'] }}
+                                    </span>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    @if ($isCompleted)
+                                        <span class="inline-flex items-center justify-center w-4 h-4 rounded-full {{ $isActive ? 'bg-emerald-400 text-zinc-900' : 'bg-emerald-600 text-white' }}">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </span>
+                                    @elseif ($isActive)
+                                        <span class="w-2.5 h-2.5 rounded-full bg-white ring-2 ring-zinc-900"></span>
+                                    @else
+                                        <span class="w-2 h-2 rounded-full bg-zinc-300"></span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="text-[11px] font-mono truncate w-full {{ $isActive ? 'text-zinc-300' : ($isCompleted ? 'text-emerald-800 font-medium' : 'text-zinc-400') }}">
+                                {{ $sInfo['summary'] }}
+                            </div>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        </aside>
+
+        {{-- Right Focused Form Panel --}}
+        <main class="flex-1 min-w-0 space-y-6">
+            @if ($subStep === 1)
+                {{-- TAHAP 1: 1-LANDING CORE INPUTS (Tanggal, Shift, & Mesin) --}}
+                <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 space-y-4">
+                    <div>
+                        <h2 class="text-base font-bold text-zinc-900 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
+                            1. Konteks Mesin & Jadwal Produksi
+                        </h2>
+                        <p class="text-xs text-zinc-500 mt-0.5">Tentukan tanggal produksi, shift, dan mesin yang sedang diinspeksi untuk memuat jadwal running otomatis.</p>
                     </div>
 
-                    @if (!empty($part_number) && !$isSearchingAgain)
-                        {{-- Last Selected Option Display (Instead of Search Idle Input) --}}
-                        <div class="p-3.5 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-between gap-3">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <div class="w-9 h-9 rounded-lg bg-zinc-900 text-white flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-mono font-bold text-sm text-zinc-900 truncate">{{ $part_number }}</span>
-                                        @if (!empty($customer))
-                                            <span class="text-xs font-semibold text-zinc-700 uppercase bg-zinc-200/80 px-2 py-0.5 rounded border border-zinc-300 flex-shrink-0">
-                                                {{ $customer }}
-                                            </span>
-                                        @endif
-                                    </div>
-                                    <p class="text-sm text-zinc-600 truncate mt-0.5">{{ $part_name }}</p>
-                                </div>
-                            </div>
-                            <button type="button"
-                                    wire:click="startSearchAgain"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-100 hover:text-zinc-900 rounded-lg shadow-sm transition flex-shrink-0">
-                                <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                </svg>
-                                <span>Ganti Part</span>
-                            </button>
-                        </div>
-                    @else
-                        {{-- Active Search Input --}}
-                        <div class="relative">
-                            <input type="text"
-                                   wire:model.live.debounce.250ms="part_search"
-                                   @focus="openPartDropdown = true"
-                                   placeholder="Ketik kode part (misal: 12345-ABC) atau nama part..."
-                                   class="w-full rounded-lg border-zinc-300 font-mono text-sm focus:border-zinc-900 focus:ring-zinc-900 pl-10 pr-24 min-h-[44px]">
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-zinc-400">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                </svg>
-                            </div>
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-2 gap-1.5">
-                                @if (!empty($part_search))
-                                    <button type="button"
-                                            wire:click="clearPartSelection"
-                                            class="p-1 text-zinc-400 hover:text-zinc-600 rounded">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                        </svg>
-                                    </button>
-                                @endif
-                                @if (!empty($part_number) && $isSearchingAgain)
-                                    <button type="button"
-                                            wire:click="cancelSearchAgain"
-                                            class="px-2.5 py-1 text-sm font-semibold text-zinc-700 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 rounded-md border border-zinc-200 transition">
-                                        Batal
-                                    </button>
-                                @endif
-                            </div>
+                    {{-- 3 Core Inputs: 1. Tanggal, 2. Shift, 3. Mesin (user_id) --}}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+                        {{-- 1. Tanggal Produksi --}}
+                        <div class="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1.5">
+                            <label class="block text-xs font-bold text-zinc-700">
+                                Tanggal Produksi <span class="text-rose-600">*</span>
+                            </label>
+                            <input type="date"
+                                   wire:model.live="inspection_date"
+                                   class="w-full rounded-md border-zinc-300 text-xs font-mono font-bold text-zinc-900 focus:border-zinc-900 focus:ring-zinc-900 bg-white py-1.5">
+                            <p class="text-[10px] text-zinc-400">Default: Hari ini (Asia/Jakarta)</p>
                         </div>
 
-                        {{-- Dropdown Search Results --}}
-                        @if ($show_part_dropdown && !empty($searchResults))
-                            <div class="absolute left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-xl max-h-64 overflow-y-auto z-50 divide-y divide-zinc-100"
-                                 x-show="openPartDropdown"
-                                 x-transition.opacity>
-                                @forelse ($searchResults as $item)
-                                    @php
-                                        $custName = $item->customer?->customer_name ?: ($item->businessPartner?->bp_name ?: 'N/A');
-                                    @endphp
+                        {{-- 2. Shift Produksi --}}
+                        <div class="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1.5">
+                            <label class="block text-xs font-bold text-zinc-700">
+                                Shift Produksi <span class="text-rose-600">*</span>
+                            </label>
+                            <div class="grid grid-cols-3 gap-1">
+                                @foreach ([1, 2, 3] as $s)
+                                    @php $isCurrShift = (int) $shift === $s; @endphp
                                     <button type="button"
-                                            wire:click="selectPartItem('{{ $item->item_code }}')"
-                                            class="w-full px-4 py-3 text-left hover:bg-zinc-100 transition flex items-center justify-between gap-3">
-                                        <div class="min-w-0">
-                                            <span class="block text-sm font-mono font-bold text-zinc-900 truncate">{{ $item->item_code }}</span>
-                                            <span class="block text-sm text-zinc-600 truncate">{{ $item->item_name }}</span>
-                                        </div>
-                                        <span class="text-xs font-semibold text-zinc-600 uppercase bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200 flex-shrink-0">
-                                            {{ $custName }}
-                                        </span>
+                                            wire:click="$set('shift', {{ $s }})"
+                                            class="py-1.5 px-2 rounded-md text-xs font-bold transition border text-center {{ $isCurrShift ? 'bg-zinc-900 text-white border-zinc-900 shadow-2xs' : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100' }}">
+                                        Shift {{ $s }}
                                     </button>
-                                @empty
-                                    <div class="p-3 text-sm text-zinc-500 text-center">
-                                        Tidak ada part yang cocok di Master List.
-                                    </div>
-                                @endforelse
+                                @endforeach
                             </div>
-                        @endif
+                            <p class="text-[10px] text-zinc-500 font-mono truncate">
+                                {{ $shiftsConfig[$shift]['start'] ?? '-' }} - {{ $shiftsConfig[$shift]['end'] ?? '-' }} WIB
+                            </p>
+                        </div>
+
+                        {{-- 3. Mesin Produksi (user_id with user->name) --}}
+                        <div class="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1.5">
+                            <label class="block text-xs font-bold text-zinc-700">
+                                Mesin Produksi <span class="text-rose-600">*</span>
+                            </label>
+                            <select wire:model.live="dic_filter_user_id"
+                                    class="w-full rounded-md border-zinc-300 text-xs font-mono font-bold text-zinc-900 focus:border-zinc-900 focus:ring-zinc-900 bg-white py-1.5">
+                                <option value="">-- Semua Mesin --</option>
+                                @foreach ($this->dicMachineUsers as $u)
+                                    <option value="{{ $u['id'] }}">{{ $u['name'] }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-[10px] text-zinc-400 truncate">
+                                {{ count($this->dicMachineUsers) }} mesin aktif pada shift ini
+                            </p>
+                        </div>
+                    </div>
+
+                    {{-- Quick 1-Tap Machine Selector Chips --}}
+                    @if (!empty($this->dicMachineUsers))
+                        <div class="pt-2 border-t border-zinc-100">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[11px] font-semibold text-zinc-500">Pilih Cepat Mesin Berjalan (Shift {{ $shift }}):</span>
+                                @if ($dic_filter_user_id)
+                                    <button type="button"
+                                            wire:click="selectMachineUserId(null)"
+                                            class="text-[11px] text-zinc-500 hover:text-zinc-800 underline">
+                                        Tampilkan Semua Mesin
+                                    </button>
+                                @endif
+                            </div>
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach ($this->dicMachineUsers as $u)
+                                    @php $isMSelected = ((int) $dic_filter_user_id === (int) $u['id']); @endphp
+                                    <button type="button"
+                                            wire:click="selectMachineUserId({{ $u['id'] }})"
+                                            class="px-2.5 py-1 rounded-md text-xs font-mono font-bold transition border {{ $isMSelected ? 'bg-zinc-900 text-white border-zinc-900 shadow-2xs ring-1 ring-zinc-900' : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100' }}">
+                                        {{ $u['name'] }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
                     @endif
                 </div>
 
-                {{-- Landing State: Jika part belum dipilih --}}
-                @if (empty($part_number))
-                    <div class="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/60 p-6 text-center space-y-2">
-                        <div class="w-9 h-9 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-400 mx-auto flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                            </svg>
+                {{-- JADWAL PART DI MESIN TERPILIH --}}
+                <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 space-y-4">
+                    @php
+                        $activeDics = $this->activeDicsForSelectedMachine;
+                    @endphp
+
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2.5">
+                        <div>
+                            <h3 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
+                                @if ($dic_filter_user_id && !empty($machine_number))
+                                    Jadwal Part di Mesin {{ $machine_number }} (Shift {{ $shift }})
+                                @else
+                                    Seluruh Part Terjadwal pada Shift {{ $shift }}
+                                @endif
+                            </h3>
+                            <p class="text-xs text-zinc-500 mt-0.5">
+                                @if ($dic_filter_user_id)
+                                    Klik kartu part untuk memilih dan mengonfirmasi jadwal ini.
+                                @else
+                                    Pilih salah satu part di bawah ini untuk memilih mesin dan part sekaligus.
+                                @endif
+                            </p>
                         </div>
-                        <p class="text-base font-semibold text-zinc-800">Formulir Part Terkunci</p>
-                        <p class="text-sm text-zinc-500">Pilih part melalui pencarian di atas untuk memuat data spesifikasi.</p>
-                        @error('part_number')
-                            <p class="text-sm text-rose-600 font-semibold">{{ $message }}</p>
-                        @enderror
+                        @if (empty($dic_filter_user_id) && count($activeDics) > 4)
+                            <div class="relative w-48">
+                                <input type="text"
+                                       wire:model.live.debounce.300ms="dic_quick_search"
+                                       placeholder="Cari part..."
+                                       class="w-full text-xs rounded-md border-zinc-300 py-1 pl-2 pr-2 bg-zinc-50">
+                            </div>
+                        @endif
                     </div>
-                @else
+
+                    @if (!empty($activeDics))
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            @foreach ($activeDics as $d)
+                                @php $isSel = $d['is_selected']; @endphp
+                                <div wire:click="selectDicFromList({{ $d['id'] }})"
+                                     class="p-4 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-3 relative {{ $isSel ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500 shadow-sm' : 'border-zinc-200 bg-white hover:border-zinc-400 hover:shadow-xs' }}">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="font-mono font-bold text-xs bg-zinc-900 text-white px-2 py-0.5 rounded shadow-2xs">
+                                                {{ $d['machine'] }}
+                                            </span>
+                                            <span class="text-[11px] font-semibold text-zinc-600 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
+                                                DIC #{{ $d['id'] }}
+                                            </span>
+                                        </div>
+                                        @if ($isSel)
+                                            <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                                                <svg class="w-3 h-3 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                                <span>Part Terpilih</span>
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    <div>
+                                        <div class="font-mono font-bold text-sm text-zinc-900 truncate">
+                                            {{ $d['item_code'] }}
+                                        </div>
+                                        <div class="text-xs text-zinc-600 truncate mt-0.5" title="{{ $d['item_name'] }}">
+                                            {{ $d['item_name'] }}
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-100 text-[11px]">
+                                        <span class="text-zinc-500 truncate">
+                                            Operator: <strong class="text-zinc-800">{{ $d['operator'] ?: 'Belum Login' }}</strong>
+                                        </span>
+                                        @if ($d['total_target'])
+                                            <span class="font-mono text-zinc-400">
+                                                Target: {{ number_format($d['total_target']) }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="p-6 bg-zinc-50 rounded-xl border border-dashed border-zinc-300 text-center space-y-2">
+                            <div class="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-400 mx-auto flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                            </div>
+                            <p class="text-sm font-semibold text-zinc-800">
+                                @if ($dic_filter_user_id)
+                                    Tidak ada jadwal running pada mesin {{ $machine_number }} (Shift {{ $shift }})
+                                @else
+                                    Tidak ada jadwal running pada Shift {{ $shift }} tanggal ini
+                                @endif
+                            </p>
+                            <p class="text-xs text-zinc-500">Anda dapat memilih mesin lain atau mencari manual dari Master List di bawah.</p>
+                        </div>
+                    @endif
+
+                    {{-- Fallback: Collapsible Manual Search from Master List --}}
+                    <div class="pt-2 border-t border-zinc-100">
+                        <button type="button"
+                                wire:click="$toggle('showManualSearch')"
+                                class="w-full flex items-center justify-between p-3 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition text-xs font-semibold text-zinc-700">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                <span>Part tidak ada di jadwal DIC? Cari manual dari Master List</span>
+                            </span>
+                            <span class="text-zinc-500 text-[11px]">
+                                {{ $showManualSearch ? '[Tutup Pencarian]' : '[Buka Pencarian Manual]' }}
+                            </span>
+                        </button>
+
+                        <div x-show="$wire.showManualSearch" x-cloak class="mt-3 p-4 bg-zinc-50/70 border border-zinc-200 rounded-lg space-y-3">
+                            <div class="relative" @click.away="openPartDropdown = false">
+                                <label class="block text-xs font-bold text-zinc-700 mb-1">
+                                    Cari Part Number / Part Name (Master List)
+                                </label>
+                                <input type="text"
+                                       wire:model.live.debounce.300ms="part_search"
+                                       placeholder="Ketik minimal 2 karakter part number atau nama..."
+                                       class="w-full rounded-md border-zinc-300 text-xs focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] bg-white">
+
+                                @if ($show_part_dropdown && !empty($searchResults))
+                                    <div class="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto bg-white rounded-lg border border-zinc-200 shadow-lg text-xs divide-y divide-zinc-100">
+                                        @foreach ($searchResults as $item)
+                                            <button type="button"
+                                                    wire:click="selectPartItem('{{ $item->item_code }}')"
+                                                    class="w-full text-left p-2.5 hover:bg-zinc-50 flex items-center justify-between gap-2">
+                                                <div>
+                                                    <div class="font-mono font-bold text-zinc-900">{{ $item->item_code }}</div>
+                                                    <div class="text-[11px] text-zinc-500">{{ $item->item_name }}</div>
+                                                </div>
+                                                @if (!empty($item->customer?->customer_name))
+                                                    <span class="text-[10px] font-semibold bg-zinc-100 px-1.5 py-0.5 rounded border border-zinc-200 text-zinc-700">
+                                                        {{ $item->customer->customer_name }}
+                                                    </span>
+                                                @endif
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @elseif ($subStep === 2)
+                {{-- TAHAP 2: KONFIRMASI SPESIFIKASI & PERSONIL --}}
+                <div class="space-y-5">
+                    {{-- Selected Part & DIC Summary Card --}}
+                    <div class="p-4 bg-white rounded-xl border border-zinc-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-9 h-9 rounded-lg bg-zinc-900 text-white flex items-center justify-center flex-shrink-0 font-bold text-xs">
+                                P
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono font-bold text-sm text-zinc-900 truncate">{{ $part_number }}</span>
+                                    @if ($customer)
+                                        <span class="text-[11px] font-semibold text-zinc-700 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
+                                            {{ $customer }}
+                                        </span>
+                                    @endif
+                                    @if ($dic_id)
+                                        <span class="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                            DIC #{{ $dic_id }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <p class="text-xs text-zinc-500 truncate mt-0.5">{{ $part_name }}</p>
+                            </div>
+                        </div>
+
+                        <button type="button"
+                                wire:click="goToSubStep(1)"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 rounded-lg shadow-2xs transition flex-shrink-0">
+                            <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                            <span>Ganti Part / DIC</span>
+                        </button>
+                    </div>
+
                     {{-- Form Spesifikasi Part --}}
-                    <div class="p-3.5 bg-zinc-50/80 border border-zinc-200 rounded-lg space-y-3.5 pt-1">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 space-y-4">
+                        <div class="border-b border-zinc-100 pb-2.5">
+                            <h3 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
+                                Spesifikasi Teknis Part
+                            </h3>
+                            <p class="text-xs text-zinc-500 mt-0.5">Spesifikasi ini otomatis terisi dari Master Part dan dapat disesuaikan jika ada perubahan cetakan/material.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
                             @if (! $has_master_customer)
-                                {{-- Customer (Hanya tampil jika part master belum memiliki data customer) --}}
-                                <div class="sm:col-span-2 min-w-0">
-                                    <label class="block text-sm font-semibold text-zinc-700 mb-1">
+                                <div class="sm:col-span-2">
+                                    <label class="block font-semibold text-zinc-700 mb-1">
                                         Customer <span class="text-rose-600">*</span>
                                     </label>
                                     <input type="text"
                                            wire:model.blur="customer"
                                            list="customerSuggestionsList"
                                            placeholder="PILIH / KETIK CUSTOMER..."
-                                           class="w-full min-w-0 rounded-lg border-zinc-300 bg-white text-zinc-900 font-semibold text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] @error('customer') border-rose-300 bg-rose-50/50 @enderror">
+                                           class="w-full rounded-md border-zinc-300 text-xs font-semibold focus:border-zinc-900 focus:ring-zinc-900 min-h-[36px] @error('customer') border-rose-300 bg-rose-50/50 @enderror">
                                     <datalist id="customerSuggestionsList">
                                         @foreach ($customerOptions as $custName)
                                             <option value="{{ $custName }}"></option>
                                         @endforeach
                                     </datalist>
                                     @error('customer')
-                                        <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
+                                        <p class="mt-1 text-rose-600">{{ $message }}</p>
                                     @enderror
                                 </div>
                             @endif
 
-                            {{-- Material (Auto-filled dari master, dapat diedit) --}}
-                            <div class="min-w-0">
-                                <label class="block text-sm font-semibold text-zinc-700 mb-1">
+                            {{-- Material --}}
+                            <div>
+                                <label class="block font-semibold text-zinc-700 mb-1">
                                     Material <span class="text-rose-600">*</span>
                                 </label>
                                 <input type="text"
                                        wire:model.blur="material"
-                                       placeholder="Contoh: PP, ABS, PC..."
-                                       class="w-full min-w-0 rounded-lg border-zinc-300 bg-white text-zinc-900 font-semibold text-sm uppercase focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] @error('material') border-rose-300 bg-rose-50/50 @enderror">
+                                       placeholder="PP, ABS, PC..."
+                                       class="w-full rounded-md border-zinc-300 text-xs uppercase font-semibold focus:border-zinc-900 focus:ring-zinc-900 min-h-[36px] @error('material') border-rose-300 bg-rose-50/50 @enderror">
                                 @error('material')
-                                    <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
+                                    <p class="mt-1 text-rose-600">{{ $message }}</p>
                                 @enderror
                             </div>
 
-                            {{-- Color (Auto-filled dari master, dapat diedit) --}}
-                            <div class="min-w-0">
-                                <label class="block text-sm font-semibold text-zinc-700 mb-1">
+                            {{-- Color --}}
+                            <div>
+                                <label class="block font-semibold text-zinc-700 mb-1">
                                     Color <span class="text-rose-600">*</span>
                                 </label>
                                 <input type="text"
                                        wire:model.blur="color"
-                                       placeholder="Contoh: BLACK, GREY..."
-                                       class="w-full min-w-0 rounded-lg border-zinc-300 bg-white text-zinc-900 font-semibold text-sm uppercase focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] @error('color') border-rose-300 bg-rose-50/50 @enderror">
+                                       placeholder="BLACK, NATURAL..."
+                                       class="w-full rounded-md border-zinc-300 text-xs uppercase font-semibold focus:border-zinc-900 focus:ring-zinc-900 min-h-[36px] @error('color') border-rose-300 bg-rose-50/50 @enderror">
                                 @error('color')
-                                    <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
+                                    <p class="mt-1 text-rose-600">{{ $message }}</p>
                                 @enderror
                             </div>
 
-                            {{-- Berat Part (Weight) & UOM (Auto-filled dari master, dapat diedit) --}}
-                            <div class="min-w-0">
-                                <label class="block text-sm font-semibold text-zinc-700 mb-1">
+                            {{-- Weight & UOM --}}
+                            <div>
+                                <label class="block font-semibold text-zinc-700 mb-1">
                                     Berat Part <span class="text-rose-600">*</span>
                                 </label>
-                                <div class="flex rounded-lg shadow-sm w-full min-w-0">
+                                <div class="flex rounded-md shadow-2xs w-full">
                                     <input type="number"
                                            step="any"
                                            wire:model.blur="weight"
                                            placeholder="0.00"
-                                           class="w-full min-w-0 flex-1 rounded-none rounded-l-lg border-zinc-300 bg-white text-zinc-900 font-mono font-bold text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] @error('weight') border-rose-300 bg-rose-50/50 @enderror">
+                                           class="w-full flex-1 rounded-none rounded-l-md border-zinc-300 text-xs font-mono font-bold focus:border-zinc-900 focus:ring-zinc-900 min-h-[36px] @error('weight') border-rose-300 bg-rose-50/50 @enderror">
                                     <select wire:model.blur="weight_uom"
-                                            class="inline-flex items-center rounded-none rounded-r-lg border-l-0 border-zinc-300 bg-zinc-100 text-zinc-800 text-sm font-semibold pl-2.5 pr-7 py-2 w-20 shrink-0 focus:border-zinc-900 focus:ring-zinc-900">
+                                            class="rounded-none rounded-r-md border-l-0 border-zinc-300 bg-zinc-100 text-xs font-semibold pl-2 pr-6 py-1.5 w-16 focus:border-zinc-900 focus:ring-zinc-900">
                                         <option value="g">g</option>
                                         <option value="kg">kg</option>
                                     </select>
                                 </div>
                                 @error('weight')
-                                    <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
+                                    <p class="mt-1 text-rose-600">{{ $message }}</p>
                                 @enderror
                             </div>
 
-                            {{-- Tool / Cavity Number (Auto-filled dari master, dapat diedit) --}}
-                            <div class="min-w-0">
-                                <label class="block text-sm font-semibold text-zinc-700 mb-1">
-                                    Tool / Cavity Number <span class="text-rose-600">*</span>
+                            {{-- Tool / Cavity Number --}}
+                            <div>
+                                <label class="block font-semibold text-zinc-700 mb-1">
+                                    Nomor Tool / Cavity <span class="text-rose-600">*</span>
                                 </label>
                                 <input type="text"
                                        wire:model.blur="tool_number_or_cav_number"
-                                       placeholder="Contoh: 1, 2, Cav 1-4..."
-                                       class="w-full min-w-0 rounded-lg border-zinc-300 bg-white text-zinc-900 font-semibold text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] @error('tool_number_or_cav_number') border-rose-300 bg-rose-50/50 @enderror">
+                                       placeholder="Contoh: 1, 2, CAV 1-4..."
+                                       class="w-full rounded-md border-zinc-300 text-xs uppercase font-mono font-bold focus:border-zinc-900 focus:ring-zinc-900 min-h-[36px] @error('tool_number_or_cav_number') border-rose-300 bg-rose-50/50 @enderror">
                                 @error('tool_number_or_cav_number')
-                                    <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
+                                    <p class="mt-1 text-rose-600">{{ $message }}</p>
                                 @enderror
                             </div>
                         </div>
                     </div>
-                @endif
-            </div>
 
-            {{-- KOLOM KANAN: 2. Konteks Operasional & Personil (Top-to-Down) --}}
-            <div class="p-6 space-y-5 relative z-10">
-                <div class="pb-3 border-b border-zinc-100">
-                    <h2 class="text-base font-bold text-zinc-900 flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
-                        2. Konteks Operasional & Personil
-                    </h2>
-                    <p class="text-sm text-zinc-500 mt-0.5">Jadwal inspeksi otomatis, operator, dan inspector QC.</p>
-                </div>
+                    {{-- Form Operasional, Mesin, & Personil --}}
+                    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 space-y-4">
+                        <div class="border-b border-zinc-100 pb-2.5">
+                            <h3 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
+                                Konteks Operasional & Personil
+                            </h3>
+                            <p class="text-xs text-zinc-500 mt-0.5">Konfirmasi nomor mesin, operator bertugas, dan nama inspector QC.</p>
+                        </div>
 
-                {{-- Minimized View: Tanggal Inspeksi, Shift Produksi, & Nomor Mesin (Auto-Filled, Editable) --}}
-                <div x-data="{ editSchedule: @json($errors->has('inspection_date') || $errors->has('shift') || $errors->has('machine_number')) }"
-                     class="border border-zinc-200 rounded-lg bg-zinc-50/70 p-3.5 transition">
-                    {{-- Minimized State: Single Compact Line --}}
-                    <div x-show="!editSchedule" class="flex items-center justify-between gap-3">
-                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-                            {{-- Tanggal --}}
-                            <div class="flex items-center gap-1.5 text-zinc-800">
-                                <svg class="w-4 h-4 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                <span class="text-zinc-500 font-medium">Tanggal:</span>
-                                <span class="font-bold text-zinc-900 font-mono">{{ $inspection_date ? \Illuminate\Support\Carbon::parse($inspection_date)->format('d/m/Y') : '-' }}</span>
+                        {{-- Schedule & Machine Quick Summary Toolbar (with edit mode) --}}
+                        <div x-data="{ editSchedule: @json($errors->has('inspection_date') || $errors->has('shift') || $errors->has('machine_number')) }"
+                             class="border border-zinc-200 rounded-lg bg-zinc-50/70 p-3.5 transition text-xs">
+                            <div x-show="!editSchedule" class="flex items-center justify-between gap-3">
+                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                                    <div class="flex items-center gap-1.5 text-zinc-800">
+                                        <span class="text-zinc-500">Tanggal:</span>
+                                        <span class="font-bold text-zinc-900 font-mono">{{ $inspection_date ? \Illuminate\Support\Carbon::parse($inspection_date)->format('d/m/Y') : '-' }}</span>
+                                    </div>
+                                    <span class="text-zinc-300">|</span>
+                                    <div class="flex items-center gap-1.5 text-zinc-800">
+                                        <span class="text-zinc-500">Shift:</span>
+                                        <span class="font-bold text-zinc-900">{{ $shiftsConfig[$shift]['name'] ?? ('Shift ' . ($shift ?: '-')) }}</span>
+                                    </div>
+                                    <span class="text-zinc-300">|</span>
+                                    <div class="flex items-center gap-1.5 text-zinc-800">
+                                        <span class="text-zinc-500">Mesin:</span>
+                                        <span class="font-bold font-mono text-zinc-900">{{ $machine_number ?: 'Belum dipilih' }}</span>
+                                    </div>
+                                </div>
+                                <button type="button"
+                                        @click="editSchedule = true"
+                                        class="px-2.5 py-1 text-xs font-semibold text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 rounded-md shadow-2xs">
+                                    Ubah
+                                </button>
                             </div>
 
-                            <span class="text-zinc-300">|</span>
-
-                            {{-- Shift --}}
-                            <div class="flex items-center gap-1.5 text-zinc-800">
-                                <svg class="w-4 h-4 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <span class="text-zinc-500 font-medium">Shift:</span>
-                                <span class="font-bold text-zinc-900">
-                                    {{ $shiftsConfig[$shift]['name'] ?? ('Shift ' . ($shift ?: '-')) }}
-                                    @if (!empty($shiftsConfig[$shift]))
-                                        <span class="text-zinc-500 font-normal">({{ $shiftsConfig[$shift]['start'] }} - {{ $shiftsConfig[$shift]['end'] }})</span>
-                                    @endif
-                                </span>
-                            </div>
-
-                            <span class="text-zinc-300">|</span>
-
-                            {{-- Nomor Mesin --}}
-                            <div class="flex items-center gap-1.5 text-zinc-800">
-                                <svg class="w-4 h-4 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                                </svg>
-                                <span class="text-zinc-500 font-medium">Mesin:</span>
-                                @if (!empty($machine_number))
-                                    <span class="font-bold text-zinc-900 font-mono">{{ $machine_number }}</span>
-                                    @if ($dic_id)
-                                        <span class="text-xs font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                            DIC #{{ $dic_id }}
-                                        </span>
-                                    @endif
-                                @else
-                                    <span class="text-rose-600 font-semibold italic text-xs">Belum Dipilih *</span>
-                                @endif
+                            {{-- Expanded Edit Schedule Inputs --}}
+                            <div x-show="editSchedule" x-cloak class="space-y-3">
+                                <div class="flex items-center justify-between pb-1.5 border-b border-zinc-200">
+                                    <span class="font-bold text-zinc-800">Ubah Tanggal, Shift, & Mesin</span>
+                                    <button type="button" @click="editSchedule = false" class="text-zinc-600 hover:text-zinc-900 underline">
+                                        Selesai
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="block font-semibold text-zinc-700 mb-1">Tanggal Inspeksi</label>
+                                        <input type="date" wire:model.blur="inspection_date" class="w-full rounded-md border-zinc-300 text-xs focus:ring-zinc-900 focus:border-zinc-900 py-1.5">
+                                    </div>
+                                    <div>
+                                        <label class="block font-semibold text-zinc-700 mb-1">Shift</label>
+                                        <select wire:model.live="shift" class="w-full rounded-md border-zinc-300 text-xs font-semibold focus:ring-zinc-900 focus:border-zinc-900 py-1.5">
+                                            @foreach ($shiftsConfig as $sId => $sData)
+                                                <option value="{{ $sId }}">{{ $sData['name'] ?? ('Shift ' . $sId) }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block font-semibold text-zinc-700 mb-1">Nomor Mesin</label>
+                                        <select wire:model.live="machine_number" class="w-full rounded-md border-zinc-300 text-xs font-mono font-bold focus:ring-zinc-900 focus:border-zinc-900 py-1.5">
+                                            <option value="">-- Pilih Mesin --</option>
+                                            @foreach ($machineOptions as $mName)
+                                                <option value="{{ $mName }}" @selected(strtoupper((string) $machine_number) === strtoupper($mName))>{{ $mName }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <button type="button"
-                                @click="editSchedule = true"
-                                class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-100 rounded-md shadow-sm transition flex-shrink-0">
-                            <span>Ubah</span>
-                        </button>
-                    </div>
-
-                    {{-- Expanded State: Form Edit Inputs (Tanggal, Shift, & Mesin) --}}
-                    <div x-show="editSchedule" x-cloak class="space-y-3">
-                        <div class="flex items-center justify-between pb-2 border-b border-zinc-200">
-                            <span class="text-sm font-bold text-zinc-800">Ubah Tanggal, Shift, & Mesin Produksi</span>
-                            <button type="button"
-                                    @click="editSchedule = false"
-                                    class="text-sm font-semibold text-zinc-600 hover:text-zinc-900 underline">
-                                Selesai
-                            </button>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {{-- Tanggal Inspeksi --}}
-                            <div>
-                                <label class="block text-sm font-semibold text-zinc-700 mb-1">
-                                    Tanggal Inspeksi <span class="text-rose-600">*</span>
-                                </label>
-                                <input type="date"
-                                       wire:model.blur="inspection_date"
-                                       class="w-full rounded-lg border-zinc-300 text-sm focus:border-zinc-900 focus:ring-zinc-900 min-h-[40px] @error('inspection_date') border-rose-300 bg-rose-50/50 @enderror">
-                                @error('inspection_date')
-                                    <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            {{-- Shift Produksi --}}
-                            <div>
-                                <label class="block text-sm font-semibold text-zinc-700 mb-1">
-                                    Shift Produksi <span class="text-rose-600">*</span>
-                                </label>
-                                <select wire:model.live="shift"
-                                        class="w-full rounded-lg border-zinc-300 text-sm font-semibold focus:border-zinc-900 focus:ring-zinc-900 min-h-[40px] @error('shift') border-rose-300 bg-rose-50/50 @enderror">
-                                    <option value="">-- Pilih Shift --</option>
-                                    @foreach ($shiftsConfig as $shiftId => $shiftData)
-                                        <option value="{{ $shiftId }}">{{ $shiftData['name'] ?? ('Shift ' . $shiftId) }} ({{ $shiftData['start'] }} - {{ $shiftData['end'] }})</option>
+                        {{-- Multi-Line Selector (Jika part dijadwalkan pada beberapa mesin secara paralel) --}}
+                        @if (!empty($availableDics) && count($availableDics) > 1)
+                            <div class="p-3 bg-zinc-50 border border-zinc-200 rounded-lg space-y-2 text-xs">
+                                <span class="font-bold text-zinc-800">Pilih Mesin Produksi (DIC Aktif):</span>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    @foreach ($availableDics as $dicItem)
+                                        @php $isSelected = ($dic_id === $dicItem['id']); @endphp
+                                        <button type="button"
+                                                wire:click="selectDic({{ $dicItem['id'] }})"
+                                                class="p-2 rounded-md border text-left transition flex items-center justify-between gap-2 {{ $isSelected ? 'bg-zinc-900 border-zinc-900 text-white' : 'bg-white border-zinc-300 text-zinc-800' }}">
+                                            <span class="font-bold font-mono">{{ $dicItem['machine_name'] }} (#{{ $dicItem['id'] }})</span>
+                                            <span class="text-[10px]">{{ $dicItem['operator'] ?: 'Belum Login' }}</span>
+                                        </button>
                                     @endforeach
-                                </select>
-                                @error('shift')
-                                    <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
-                                @enderror
+                                </div>
                             </div>
+                        @endif
 
-                            {{-- Nomor Mesin (Line/Machine) --}}
+                        {{-- Personil Inputs: Operator & Inspector --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                            {{-- Operator --}}
                             <div>
                                 <div class="flex items-center justify-between mb-1">
-                                    <label class="block text-sm font-semibold text-zinc-700">
-                                        Nomor Mesin <span class="text-rose-600">*</span>
+                                    <label class="font-semibold text-zinc-700">
+                                        Nama Operator <span class="text-rose-600">*</span>
                                     </label>
-                                    @if ($dic_id && !empty($machine_number))
-                                        <span class="text-xs font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                            DIC #{{ $dic_id }}
+                                    @if ($is_operator_auto_filled && !empty($dic_id) && !empty($operator) && $operator === $dic_operator)
+                                        <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                            Auto DIC #{{ $dic_id }}
                                         </span>
                                     @endif
                                 </div>
-                                <select wire:model.live="machine_number"
-                                        class="w-full rounded-lg border-zinc-300 font-mono text-sm uppercase font-bold focus:border-zinc-900 focus:ring-zinc-900 min-h-[40px] @error('machine_number') border-rose-300 bg-rose-50/50 @enderror">
-                                    <option value="">-- Pilih Mesin --</option>
-                                    @foreach ($machineOptions as $mName)
-                                        <option value="{{ $mName }}" @selected(strtoupper((string) $machine_number) === strtoupper($mName))>{{ $mName }}</option>
+                                <input type="text"
+                                       wire:model.blur="operator"
+                                       list="operatorSuggestionsList"
+                                       placeholder="KETIK ATAU PILIH NAMA OPERATOR..."
+                                       class="w-full rounded-md border-zinc-300 text-xs uppercase font-semibold focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] @error('operator') border-rose-300 bg-rose-50/50 @enderror">
+                                <datalist id="operatorSuggestionsList">
+                                    @foreach ($operatorSuggestions as $name)
+                                        <option value="{{ $name }}"></option>
                                     @endforeach
-                                </select>
-                                @error('machine_number')
-                                    <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
+                                </datalist>
+                                @error('operator')
+                                    <p class="mt-1 text-rose-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            {{-- Inspector (QC) --}}
+                            <div>
+                                <label class="block font-semibold text-zinc-700 mb-1">
+                                    Nama Inspector (QC) <span class="text-rose-600">*</span>
+                                </label>
+                                <input type="text"
+                                       wire:model.blur="inspector"
+                                       list="inspectorSuggestionsList"
+                                       placeholder="KETIK ATAU PILIH NAMA INSPECTOR..."
+                                       class="w-full rounded-md border-zinc-300 text-xs uppercase font-bold focus:border-zinc-900 focus:ring-zinc-900 min-h-[38px] @error('inspector') border-rose-300 bg-rose-50/50 @enderror">
+                                <datalist id="inspectorSuggestionsList">
+                                    @foreach ($inspectorSuggestions as $name)
+                                        <option value="{{ $name }}"></option>
+                                    @endforeach
+                                </datalist>
+                                @error('inspector')
+                                    <p class="mt-1 text-rose-600">{{ $message }}</p>
                                 @enderror
                             </div>
                         </div>
                     </div>
                 </div>
+            @endif
+        </main>
+    </div>
 
-                {{-- Status Koneksi DIC & Pemilihan Mesin Produksi --}}
-                @if (!empty($availableDics) && count($availableDics) > 1)
-                    {{-- Multi-Line Selector (Jika part dijadwalkan pada beberapa mesin secara paralel) --}}
-                    <div class="p-3.5 bg-zinc-50 border border-zinc-200 rounded-lg space-y-2.5">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-bold text-zinc-900 flex items-center gap-1.5">
-                                <svg class="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                                </svg>
-                                <span>Pilih Mesin Produksi (DIC Aktif)</span>
-                            </span>
-                            <span class="text-xs font-semibold text-zinc-700 bg-white px-2 py-0.5 rounded border border-zinc-200">
-                                {{ count($availableDics) }} Jalur Aktif
-                            </span>
-                        </div>
-                        <p class="text-sm text-zinc-500">Part ini sedang terjadwal di beberapa mesin. Klik mesin yang sedang Anda inspeksi:</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                            @foreach ($availableDics as $dicItem)
-                                @php $isSelected = ($dic_id === $dicItem['id']); @endphp
-                                <button type="button"
-                                        wire:click="selectDic({{ $dicItem['id'] }})"
-                                        class="p-2.5 rounded-lg border text-left transition flex items-center justify-between gap-2 {{ $isSelected ? 'bg-zinc-900 border-zinc-900 text-white shadow-sm' : 'bg-white border-zinc-300 hover:border-zinc-400 text-zinc-800' }}">
-                                    <div class="min-w-0">
-                                        <div class="flex items-center gap-1.5 font-bold text-sm truncate">
-                                            <span>{{ $dicItem['machine_name'] }}</span>
-                                            <span class="{{ $isSelected ? 'text-zinc-300' : 'text-zinc-500' }} font-normal text-xs">(#{{ $dicItem['id'] }})</span>
-                                        </div>
-                                        <div class="text-xs {{ $isSelected ? 'text-zinc-300' : 'text-zinc-600' }} truncate mt-0.5">
-                                            Op: {{ $dicItem['operator'] ?: 'Belum Login' }}
-                                        </div>
-                                    </div>
-                                    @if ($isSelected)
-                                        <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                    @endif
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                @if ($dic_id)
-                    {{-- DIC Connected Status Bar --}}
-                    <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between gap-3 text-sm">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <svg class="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                            </svg>
-                            <span class="font-semibold text-emerald-900 truncate">{{ $dicStatusMessage }}</span>
-                        </div>
-                        <button type="button"
-                                wire:click="detachDic"
-                                class="text-xs font-semibold text-emerald-800 hover:text-emerald-950 underline flex-shrink-0">
-                            Lepas Koneksi
-                        </button>
-                    </div>
-                @elseif (!empty($dicStatusMessage) && !empty($part_number))
-                    {{-- Notice when no active DIC found for this date/shift/part --}}
-                    <div class="p-3 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center gap-2 text-sm text-zinc-600">
-                        <svg class="w-4 h-4 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    {{-- Step 1 Floating Bottom Navigation Dock --}}
+    <div class="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] py-3 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div>
+                @if ($subStep === 2)
+                    <button type="button"
+                            wire:click="prevSubStep"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-zinc-300 text-xs sm:text-sm font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 shadow-2xs transition">
+                        <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                         </svg>
-                        <span>{{ $dicStatusMessage }}</span>
-                    </div>
+                        <span>Kembali ke 1. Pilih Part & Jadwal</span>
+                    </button>
+                @else
+                    <span class="text-xs text-zinc-400 hidden sm:inline">Pilih jadwal DIC atau cari part manual untuk lanjut</span>
                 @endif
-
-                <div class="space-y-4 pt-1">
-                    {{-- Nama Operator (Auto-Uppercase + Suggestions) --}}
-                    <div>
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="block text-sm font-semibold text-zinc-700">
-                                Nama Operator <span class="text-rose-600">*</span>
-                            </label>
-                            @if ($is_operator_auto_filled && !empty($dic_id) && !empty($operator) && $operator === $dic_operator)
-                                <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                    Auto-fill DIC #{{ $dic_id }}
-                                </span>
-                            @endif
-                        </div>
-                        <input type="text"
-                               wire:model.blur="operator"
-                               list="operatorSuggestionsList"
-                               placeholder="KETIK ATAU PILIH NAMA OPERATOR..."
-                               class="w-full rounded-lg border-zinc-300 text-sm uppercase font-semibold focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('operator') border-rose-300 bg-rose-50/50 @enderror">
-                        <datalist id="operatorSuggestionsList">
-                            @foreach ($operatorSuggestions as $name)
-                                <option value="{{ $name }}"></option>
-                            @endforeach
-                        </datalist>
-                        @error('operator')
-                            <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    {{-- Nama Inspector (QC) (Auto-Uppercase + Suggestions) --}}
-                    <div>
-                        <label class="block text-sm font-semibold text-zinc-700 mb-1">
-                            Nama Inspector (QC) <span class="text-rose-600">*</span>
-                        </label>
-                        <input type="text"
-                               wire:model.blur="inspector"
-                               list="inspectorSuggestionsList"
-                               placeholder="KETIK ATAU PILIH NAMA INSPECTOR..."
-                               class="w-full rounded-lg border-zinc-300 text-sm uppercase font-semibold focus:border-zinc-900 focus:ring-zinc-900 min-h-[42px] @error('inspector') border-rose-300 bg-rose-50/50 @enderror">
-                        <datalist id="inspectorSuggestionsList">
-                            @foreach ($inspectorSuggestions as $name)
-                                <option value="{{ $name }}"></option>
-                            @endforeach
-                        </datalist>
-                        @error('inspector')
-                            <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div>
             </div>
-        </div>
 
-        {{-- Step 1 Floating Bottom Navigation Dock --}}
-        <div class="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] py-3 px-4 sm:px-6 lg:px-8">
-            <div class="max-w-7xl mx-auto flex items-center justify-end gap-4">
-                <button type="button"
-                        wire:click="saveStep"
-                        class="inline-flex items-center gap-2 px-6 py-2.5 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
-                    <span>Simpan & Lanjut ke Detail Periode</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                    </svg>
-                </button>
+            {{-- Middle: Progress Context --}}
+            <div class="hidden md:flex items-center gap-2 text-xs font-mono text-zinc-500">
+                <span class="inline-flex items-center px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 font-bold text-zinc-800">
+                    Step 1 Header
+                </span>
+                <span>•</span>
+                <span class="text-zinc-600">
+                    Tahap <strong class="text-zinc-900 font-bold">{{ $subStep }}/2</strong>: {{ $this->subStepsSummary[$subStep]['title'] ?? '' }}
+                </span>
+            </div>
+
+            <div class="flex items-center gap-3">
+                @if ($subStep === 1)
+                    <button type="button"
+                            wire:click="nextSubStep"
+                            @if (empty($part_number)) disabled @endif
+                            class="inline-flex items-center gap-2 px-5 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span>Lanjut ke 2. Spesifikasi & Personil</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </button>
+                @else
+                    <button type="button"
+                            wire:click="saveStep"
+                            class="inline-flex items-center gap-2 px-6 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-bold rounded-lg text-white bg-zinc-900 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 transition">
+                        <span>Simpan & Lanjut ke Detail Periode</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </button>
+                @endif
             </div>
         </div>
     </div>

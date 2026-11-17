@@ -1100,4 +1100,58 @@ class InspectionFormTest extends TestCase
             'period' => 1,
         ]);
     }
+
+    public function test_step_header_one_at_a_time_substep_navigation_and_dic_selection(): void
+    {
+        $part = MasterListItem::firstOrCreate([
+            'item_code' => 'PART-HEADER-TEST-001',
+        ], [
+            'item_name' => 'BEZEL UPPER TEST',
+            'part_weight' => 25.5,
+            'color' => 'BLACK',
+            'cavity' => 2,
+        ]);
+
+        $dic = \App\Models\DailyItemCode::create([
+            'schedule_date' => now()->format('Y-m-d'),
+            'item_code' => $part->item_code,
+            'item_name' => $part->item_name,
+            'shift' => 1,
+            'total_target' => 500,
+        ]);
+
+        $test = Livewire::actingAs($this->user)
+            ->test(StepHeader::class);
+
+        // 1. Initial subStep is 1 and dic_active_shift defaults to current active shift
+        $this->assertEquals(1, $test->get('subStep'));
+        $this->assertGreaterThanOrEqual(1, $test->get('dic_active_shift'));
+        $this->assertLessThanOrEqual(3, $test->get('dic_active_shift'));
+
+        // 2. Next subStep blocked if part is not selected
+        $test->set('part_number', '')
+            ->call('nextSubStep')
+            ->assertHasErrors(['part_number'])
+            ->assertSet('subStep', 1);
+
+        // 3. Select DIC from list populates part, shift, and date
+        $test->call('selectDicFromList', $dic->id);
+        $this->assertEquals($part->item_code, $test->get('part_number'));
+        $this->assertEquals(1, $test->get('shift'));
+        $this->assertEquals($dic->id, $test->get('dic_id'));
+
+        // 4. Advance to subStep 2 succeeds
+        $test->call('nextSubStep')
+            ->assertHasNoErrors()
+            ->assertSet('subStep', 2);
+
+        // 5. Left rail summary accurately reflects state
+        $summaries = $test->get('subStepsSummary');
+        $this->assertTrue($summaries[1]['isSaved']);
+        $this->assertStringContainsString($part->item_code, $summaries[1]['summary']);
+
+        // 6. Prev subStep navigates back to 1
+        $test->call('prevSubStep')
+            ->assertSet('subStep', 1);
+    }
 }
