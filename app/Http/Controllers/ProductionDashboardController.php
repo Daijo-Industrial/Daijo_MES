@@ -12,6 +12,7 @@ use App\Models\MasterZone;
 use App\Models\MouldChangeLog;
 use App\Models\OperatorUser;
 use App\Models\User;
+use App\Models\WmsPalletFormDetail;
 use App\Models\ZoneLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -53,6 +54,55 @@ class ProductionDashboardController extends Controller
                 });
             })
             ->get();
+
+        // Batch pre-fetch WmsPalletFormDetail to connect scanned boxes with Pallet ID & Store rack status
+        $allScans = $machineJobs->flatMap(function ($mj) {
+            return $mj->dailyItemCode->flatMap(function ($dic) {
+                return $dic->scannedData;
+            });
+        });
+
+        $spkCodes = $allScans->pluck('spk_code')->filter()->unique()->values()->all();
+        $labels = $allScans->pluck('label')->filter()->unique()->values()->all();
+
+        $palletDetailsMap = [];
+        if (! empty($spkCodes) && ! empty($labels)) {
+            $palletDetails = WmsPalletFormDetail::with(['header.position'])
+                ->whereIn('spk_no', $spkCodes)
+                ->whereIn('label', $labels)
+                ->whereNull('deleted_at')
+                ->latest('id')
+                ->get();
+
+            foreach ($palletDetails as $pDetail) {
+                $spk = trim((string) $pDetail->spk_no);
+                $lbl = trim((string) $pDetail->label);
+                $part = trim((string) $pDetail->part_no);
+                $partClean = rtrim($part, '.');
+                $header = $pDetail->header;
+
+                $palletInfo = [
+                    'pallet_id' => $header?->pallet_id ?? $pDetail->pallet_form_id,
+                    'pallet_status' => $header?->status ?? null,
+                    'position_code' => $header?->position?->position_code ?? null,
+                    'assigned_at' => $header?->assigned_at ? $header->assigned_at->timezone('Asia/Jakarta')->format('Y-m-d H:i') : null,
+                ];
+
+                $keyWithPart = $spk . '_' . $lbl . '_' . $part;
+                $keyWithCleanPart = $spk . '_' . $lbl . '_' . $partClean;
+                $keyGeneric = $spk . '_' . $lbl;
+
+                if (! isset($palletDetailsMap[$keyWithPart])) {
+                    $palletDetailsMap[$keyWithPart] = $palletInfo;
+                }
+                if (! isset($palletDetailsMap[$keyWithCleanPart])) {
+                    $palletDetailsMap[$keyWithCleanPart] = $palletInfo;
+                }
+                if (! isset($palletDetailsMap[$keyGeneric])) {
+                    $palletDetailsMap[$keyGeneric] = $palletInfo;
+                }
+            }
+        }
 
         $structuredData = [];
 
@@ -270,6 +320,16 @@ class ProductionDashboardController extends Controller
                     }
                     $hourlyProduction[$hour][$itemCode][$scanUser]['quantity'] += $scan->quantity;
 
+                    $scanSpk = trim((string) $scan->spk_code);
+                    $scanLbl = trim((string) $scan->label);
+                    $scanItem = trim((string) $scan->item_code);
+                    $scanItemClean = rtrim($scanItem, '.');
+
+                    $palletInfo = $palletDetailsMap[$scanSpk . '_' . $scanLbl . '_' . $scanItem]
+                        ?? $palletDetailsMap[$scanSpk . '_' . $scanLbl . '_' . $scanItemClean]
+                        ?? $palletDetailsMap[$scanSpk . '_' . $scanLbl]
+                        ?? null;
+
                     $formattedDailyItem['scanned_data'][] = [
                         'id' => $scan->id,
                         'spk_code' => $scan->spk_code,
@@ -280,6 +340,10 @@ class ProductionDashboardController extends Controller
                         'user' => $scanUser,
                         'user_profile_path' => $scannedUserProfilePath,
                         'scanned_at' => Carbon::parse($scan->created_at)->timezone('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                        'pallet_id' => $palletInfo['pallet_id'] ?? null,
+                        'pallet_status' => $palletInfo['pallet_status'] ?? null,
+                        'rack_position' => $palletInfo['position_code'] ?? null,
+                        'pallet_assigned_at' => $palletInfo['assigned_at'] ?? null,
                     ];
                 }
 

@@ -157,8 +157,8 @@
                     <!-- 3-Column Verification & Placement Grid -->
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                         
-                        <!-- Column 1: Item & Delivery Details (4 cols) -->
-                        <div class="lg:col-span-4 bg-slate-50 p-4 rounded-2xl border border-gray-200 space-y-3.5">
+                        <!-- Column 1: Item & Delivery Details (4 cols or 3 if mixed split) -->
+                        <div class="{{ $isMixedPallet && $mixedAssignMode === 'SPLIT' ? 'lg:col-span-3' : 'lg:col-span-4' }} bg-slate-50 p-4 rounded-2xl border border-gray-200 space-y-3.5">
                             <div>
                                 <span class="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-0.5">Item & Model</span>
                                 <div class="text-base font-black text-gray-900 leading-tight">
@@ -228,8 +228,8 @@
                             </button>
                         </div>
 
-                        <!-- Column 3: Destination Placement & Smart Recommendation (5 cols) -->
-                        <div class="lg:col-span-5 bg-gradient-to-br from-gray-50 to-slate-100 p-4 rounded-2xl border-2 border-slate-300 space-y-3.5 shadow-2xs">
+                        <!-- Column 3: Destination Placement & Smart Recommendation (5 cols or 6 if mixed split) -->
+                        <div class="{{ $isMixedPallet && $mixedAssignMode === 'SPLIT' ? 'lg:col-span-6' : 'lg:col-span-5' }} bg-gradient-to-br from-gray-50 to-slate-100 p-4 rounded-2xl border-2 border-slate-300 space-y-3.5 shadow-2xs">
                             <div class="flex justify-between items-center pb-2 border-b border-gray-200">
                                 <span class="text-xs font-black uppercase text-gray-900 tracking-tight flex items-center gap-1">
                                     <span>🎯</span>
@@ -246,116 +246,240 @@
                                 @endif
                             </div>
 
-                            <!-- Smart Recommendation Pill -->
-                            @if($recommendedPosition)
-                                <div class="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-2 shadow-3xs">
-                                    <div class="text-xs text-emerald-950">
-                                        <span class="font-black text-[11px] block text-emerald-800 uppercase flex items-center gap-1">
-                                            <span>💡</span> Rekomendasi Sistem:
-                                        </span>
-                                        <span class="font-black font-mono text-sm text-emerald-900">{{ $recommendedPosition->position_code }}</span>
-                                        <span class="text-[10px] text-emerald-700">({{ $recommendedPosition->rack?->warehouse?->whse_code ?? 'WMS' }} - Status: {{ $recommendedPosition->status }})</span>
+                            @if($isMixedPallet)
+                                <!-- Warning Banner for Mixed Pallet -->
+                                <div class="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 space-y-1">
+                                    <div class="font-black text-amber-800 uppercase text-[11px] flex items-center gap-1.5">
+                                        <span>Peringatan: Pallet Berisi Multi-Item (Mixed)</span>
                                     </div>
-                                    <button type="button" wire:click="applyRecommendation" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black transition shadow-xs shrink-0 cursor-pointer">
-                                        ⚡ Gunakan
+                                    <p class="text-[11px] text-amber-700 font-medium">
+                                        Pallet ini memuat {{ count($mixedItemGroups) }} item berbeda. Normalnya disarankan untuk memisahkan item ke rak masing-masing agar pencatatan stok dan FIFO akurat.
+                                    </p>
+                                </div>
+
+                                <!-- Mode Switch Tabs -->
+                                <div class="flex items-center gap-2 border-b border-gray-200 pb-2">
+                                    <button type="button" wire:click="$set('mixedAssignMode', 'SPLIT')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer {{ $mixedAssignMode === 'SPLIT' ? 'bg-blue-600 text-white shadow-xs' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                                        Pisahkan Item (Rekomendasi)
+                                    </button>
+                                    <button type="button" wire:click="$set('mixedAssignMode', 'FORCE')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer {{ $mixedAssignMode === 'FORCE' ? 'bg-amber-600 text-white shadow-xs' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                                        Tetap Assign 1 Rak (Bypass)
                                     </button>
                                 </div>
                             @endif
 
-                            <!-- Direct Barcode Scanner for Rack / Slot -->
-                            <div class="space-y-1.5">
-                                <div class="flex justify-between items-center">
-                                    <label class="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Scan Barcode Rak (Opsional):</label>
-                                    <span class="text-[9px] text-gray-400">Otomatis membaca</span>
-                                </div>
-                                <div class="flex gap-2">
-                                    <input type="text" 
-                                           wire:model.live.debounce.300ms="scanRackCode" 
-                                           wire:keydown.enter="scanRackPosition"
-                                           placeholder="Scan Barcode Rak (misal: GUB-F25-L1-01)..."
-                                           style="background-color: #ffffff !important; color: #0f172a !important;"
-                                           class="w-full px-3 py-2 bg-white border-2 border-gray-300 focus:border-blue-500 rounded-xl text-xs font-mono font-black text-slate-900 focus:ring-2 focus:ring-blue-100 outline-none shadow-3xs placeholder:text-gray-400">
-                                    <button type="button" 
-                                            onclick="openTabletCameraScanner('rack')"
-                                            class="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer flex items-center gap-1"
-                                            title="Buka Kamera untuk scan barcode slot rak">
-                                        <span>📷</span>
-                                    </button>
-                                    <button type="button" wire:click="scanRackPosition" class="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer">
-                                        PILIH
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Warehouse & Slot Selector Dropdown -->
-                            <div class="space-y-2">
-                                <div>
-                                    <div class="flex justify-between items-center mb-1">
-                                        <label class="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
-                                            <span>🏭</span>
-                                            <span>Pilih Gudang:</span>
+                            @if($isMixedPallet && $mixedAssignMode === 'SPLIT')
+                                <!-- Section: Split Mixed Items into Respective Racks (Quick Scan Panel) -->
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <label class="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                                            Pemisahan Item ke Rak Masing-Masing:
                                         </label>
-                                        @php
-                                            $quickWhse = $warehouses->firstWhere('id', $filterWarehouseId);
-                                        @endphp
-                                        <span class="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                                            {{ $quickWhse ? $quickWhse->whse_code : 'Semua Gudang' }}
+                                        <span class="text-[10px] text-gray-500 font-bold">
+                                            {{ count($mixedItemGroups) }} Item Terdeteksi
                                         </span>
                                     </div>
-                                    <div class="grid grid-cols-4 gap-1.5">
-                                        @foreach($warehouses as $wh)
-                                            <button type="button" 
-                                                    wire:click="$set('filterWarehouseId', '{{ $wh->id }}')"
-                                                    class="py-1 px-1.5 rounded-lg text-center font-mono text-xs font-black transition border cursor-pointer {{ (string)$filterWarehouseId === (string)$wh->id ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300' }}">
-                                                {{ $wh->whse_code }}
-                                            </button>
+
+                                    <div class="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                                        @foreach($mixedItemGroups as $pNo => $grp)
+                                            <div class="p-3 bg-white border border-gray-200 rounded-xl space-y-2 shadow-3xs">
+                                                <div class="flex justify-between items-start gap-2">
+                                                    <div>
+                                                        <div class="font-bold text-xs text-gray-900">{{ $grp['part_no'] }}</div>
+                                                        <div class="text-[10px] text-gray-500 truncate max-w-[220px]">{{ $grp['model_name'] }}</div>
+                                                        <div class="text-[10px] text-gray-600 font-semibold mt-0.5"><strong>{{ $grp['box_qty'] }} Box</strong> ({{ number_format($grp['total_qty']) }} pcs)</div>
+                                                    </div>
+                                                    @if($grp['has_existing_rack'])
+                                                        <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold rounded shrink-0">
+                                                            Ada di Rak Eksisting
+                                                        </span>
+                                                    @else
+                                                        <span class="px-2 py-0.5 bg-gray-200 text-gray-700 text-[10px] font-bold rounded shrink-0">
+                                                            Belum Ada di Rak
+                                                        </span>
+                                                    @endif
+                                                </div>
+
+                                                <div class="pt-1 space-y-1.5">
+                                                    @if($grp['has_existing_rack'])
+                                                        <label class="block text-[10px] font-bold text-gray-600 uppercase">
+                                                            Pilih Rak Eksisting (Konsolidasi):
+                                                        </label>
+                                                        <div class="flex gap-2 items-center">
+                                                            <select wire:model="splitItemActions.{{ $pNo }}.target_position_id" class="flex-1 p-2 bg-white border border-emerald-400 rounded-lg text-xs font-bold text-gray-900 min-w-0">
+                                                                @foreach($grp['existing_racks'] as $exRack)
+                                                                    <option value="{{ $exRack['id'] }}">
+                                                                        Rak {{ $exRack['code'] }} [{{ $exRack['whse'] }}] (Pallet: {{ $exRack['target_pallet_id'] }})
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            <button type="button" 
+                                                                    wire:click="executeSplitSingleItem('{{ $pNo }}')"
+                                                                    class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-xs whitespace-nowrap cursor-pointer shrink-0">
+                                                                Gabungkan Item Ini
+                                                            </button>
+                                                        </div>
+                                                        <p class="text-[9px] text-emerald-700 font-medium">Item ini akan digabungkan ke pallet yang sudah ada di rak tersebut.</p>
+                                                    @else
+                                                        <label class="block text-[10px] font-bold text-gray-600 uppercase">
+                                                            Pilih Slot Rak Baru (Pallet Baru Otomatis):
+                                                        </label>
+                                                        <div class="flex gap-2 items-center">
+                                                            <select wire:model="splitItemActions.{{ $pNo }}.target_position_id" class="flex-1 p-2 bg-white border border-indigo-400 rounded-lg text-xs font-bold text-gray-900 min-w-0">
+                                                                <option value="">Pilih Slot Rak...</option>
+                                                                @foreach($availablePositions as $pos)
+                                                                    <option value="{{ $pos->id }}" @disabled($pos->status === 'FULL')>
+                                                                        Rak {{ $pos->position_code }} [{{ $pos->rack?->warehouse?->whse_code ?? 'WMS' }}] ({{ $pos->status }})
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            <button type="button" 
+                                                                    wire:click="executeSplitSingleItem('{{ $pNo }}')"
+                                                                    class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-xs whitespace-nowrap cursor-pointer shrink-0">
+                                                                Simpan Item Ini
+                                                            </button>
+                                                        </div>
+                                                        <p class="text-[9px] text-indigo-700 font-medium">Sistem akan membuat Pallet Baru untuk item ini dan menempatkannya di slot rak baru.</p>
+                                                    @endif
+                                                </div>
+                                            </div>
                                         @endforeach
+                                    </div>
+
+                                    <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 border-t border-gray-200">
+                                        <span class="text-[10px] text-gray-400 font-medium italic">Item yang belum dipilih slot raknya akan tetap tersimpan di pallet asal.</span>
+                                        <button wire:click="executeSplitAndAssign" type="button" class="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md cursor-pointer whitespace-nowrap">
+                                            Eksekusi Semua yang Dipilih
+                                        </button>
+                                    </div>
+                                </div>
+                            @else
+                                <!-- Standard Single Slot Assignment (or Force Assignment for Mixed) -->
+                                @if($isMixedPallet && $mixedAssignMode === 'FORCE')
+                                    <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 font-semibold">
+                                        Catatan: Seluruh isi pallet mixed akan ditaruh di 1 slot rak berikut tanpa memisahkan item.
+                                    </div>
+                                @endif
+
+                                <!-- Smart Recommendation Pill -->
+                                @if(!$isMixedPallet && $recommendedPosition)
+                                    <div class="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-2 shadow-3xs">
+                                        <div class="text-xs text-emerald-950">
+                                            <span class="font-black text-[11px] block text-emerald-800 uppercase flex items-center gap-1">
+                                                <span>💡</span> Rekomendasi Sistem:
+                                            </span>
+                                            <span class="font-black font-mono text-sm text-emerald-900">{{ $recommendedPosition->position_code }}</span>
+                                            <span class="text-[10px] text-emerald-700">({{ $recommendedPosition->rack?->warehouse?->whse_code ?? 'WMS' }} - Status: {{ $recommendedPosition->status }})</span>
+                                        </div>
+                                        <button type="button" wire:click="applyRecommendation" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black transition shadow-xs shrink-0 cursor-pointer">
+                                            ⚡ Gunakan
+                                        </button>
+                                    </div>
+                                @endif
+
+                                <!-- Direct Barcode Scanner for Rack / Slot -->
+                                <div class="space-y-1.5">
+                                    <div class="flex justify-between items-center">
+                                        <label class="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Scan Barcode Rak (Opsional):</label>
+                                        <span class="text-[9px] text-gray-400">Otomatis membaca</span>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <input type="text" 
+                                               wire:model.live.debounce.300ms="scanRackCode" 
+                                               wire:keydown.enter="scanRackPosition"
+                                               placeholder="Scan Barcode Rak (misal: GUB-F25-L1-01)..."
+                                               style="background-color: #ffffff !important; color: #0f172a !important;"
+                                               class="w-full px-3 py-2 bg-white border-2 border-gray-300 focus:border-blue-500 rounded-xl text-xs font-mono font-black text-slate-900 focus:ring-2 focus:ring-blue-100 outline-none shadow-3xs placeholder:text-gray-400">
                                         <button type="button" 
-                                                wire:click="$set('filterWarehouseId', '')"
-                                                class="py-1 px-1.5 rounded-lg text-center text-[10px] font-bold transition border cursor-pointer {{ empty($filterWarehouseId) ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300' }}">
-                                            SEMUA
+                                                onclick="openTabletCameraScanner('rack')"
+                                                class="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer flex items-center gap-1"
+                                                title="Buka Kamera untuk scan barcode slot rak">
+                                            <span>📷</span>
+                                        </button>
+                                        <button type="button" wire:click="scanRackPosition" class="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer">
+                                            PILIH
                                         </button>
                                     </div>
                                 </div>
 
-                                <div class="space-y-1">
-                                    <div class="flex justify-between items-center">
-                                        <label class="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
-                                            <span>🎯</span>
-                                            <span>Pilih Slot Rak:</span>
-                                        </label>
-                                        <span class="text-[9px] text-gray-400 font-semibold">{{ $availablePositions->count() }} Slot</span>
-                                    </div>
-                                    <select wire:model="selectedPositionId" class="w-full p-2.5 bg-white border-2 border-blue-400 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-3xs">
-                                        <option value="">⏳ TEMPORARY (Belum ada tempat / Unassigned)</option>
-                                        @foreach ($availablePositions as $pos)
+                                <!-- Warehouse & Slot Selector Dropdown -->
+                                <div class="space-y-2">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                                                <span>🏭</span>
+                                                <span>Pilih Gudang:</span>
+                                            </label>
                                             @php
-                                                $isFull = $pos->status === 'FULL';
-                                                $statusIcon = $pos->status === 'EMPTY' ? '⚪ Kosong' : ($pos->status === 'PARTIAL' ? '🟡 Partial' : '⛔ FULL');
+                                                $quickWhse = $warehouses->firstWhere('id', $filterWarehouseId);
                                             @endphp
-                                            <option value="{{ $pos->id }}" @disabled($isFull) class="{{ $isFull ? 'text-gray-400 bg-gray-50' : '' }}">
-                                                📍 {{ $pos->position_code }} [{{ $pos->rack?->warehouse?->whse_code ?? 'WMS' }}] &bull; {{ $statusIcon }} &bull; (Cust: {{ $pos->customer_code ?: 'ALL' }})
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                            <span class="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                                {{ $quickWhse ? $quickWhse->whse_code : 'Semua Gudang' }}
+                                            </span>
+                                        </div>
+                                        <div class="grid grid-cols-4 gap-1.5">
+                                            @foreach($warehouses as $wh)
+                                                <button type="button" 
+                                                        wire:click="$set('filterWarehouseId', '{{ $wh->id }}')"
+                                                        class="py-1 px-1.5 rounded-lg text-center font-mono text-xs font-black transition border cursor-pointer {{ (string)$filterWarehouseId === (string)$wh->id ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300' }}">
+                                                    {{ $wh->whse_code }}
+                                                </button>
+                                            @endforeach
+                                            <button type="button" 
+                                                    wire:click="$set('filterWarehouseId', '')"
+                                                    class="py-1 px-1.5 rounded-lg text-center text-[10px] font-bold transition border cursor-pointer {{ empty($filterWarehouseId) ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300' }}">
+                                                SEMUA
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-1">
+                                        <div class="flex justify-between items-center">
+                                            <label class="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                                                <span>🎯</span>
+                                                <span>Pilih Slot Rak:</span>
+                                            </label>
+                                            <span class="text-[9px] text-gray-400 font-semibold">{{ $availablePositions->count() }} Slot</span>
+                                        </div>
+                                        <select wire:model="selectedPositionId" class="w-full p-2.5 bg-white border-2 border-blue-400 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-3xs">
+                                            <option value="">⏳ TEMPORARY (Belum ada tempat / Unassigned)</option>
+                                            @foreach ($availablePositions as $pos)
+                                                @php
+                                                    $isFull = $pos->status === 'FULL';
+                                                    $statusIcon = $pos->status === 'EMPTY' ? '⚪ Kosong' : ($pos->status === 'PARTIAL' ? '🟡 Partial' : '⛔ FULL');
+                                                @endphp
+                                                <option value="{{ $pos->id }}" @disabled($isFull) class="{{ $isFull ? 'text-gray-400 bg-gray-50' : '' }}">
+                                                    📍 {{ $pos->position_code }} [{{ $pos->rack?->warehouse?->whse_code ?? 'WMS' }}] &bull; {{ $statusIcon }} &bull; (Cust: {{ $pos->customer_code ?: 'ALL' }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <!-- Placement Action Buttons -->
-                            <div class="flex items-center gap-2 pt-2 border-t border-gray-200">
-                                <button type="button" 
-                                        wire:click="saveAssignSlot" 
-                                        class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
-                                    <span>✓ SIMPAN & ASSIGN RAK</span>
-                                </button>
+                                <!-- Placement Action Buttons -->
+                                <div class="flex items-center gap-2 pt-2 border-t border-gray-200">
+                                    @if($isMixedPallet && $mixedAssignMode === 'FORCE')
+                                        <button type="button" 
+                                                wire:click="executeForceAssignMixed" 
+                                                class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
+                                            <span>✓ TETAP ASSIGN 1 RAK</span>
+                                        </button>
+                                    @else
+                                        <button type="button" 
+                                                wire:click="saveAssignSlot" 
+                                                class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
+                                            <span>✓ SIMPAN & ASSIGN RAK</span>
+                                        </button>
+                                    @endif
 
-                                <button type="button" 
-                                        wire:click="unassignScannedPallet" 
-                                        class="px-3 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black transition shadow-xs cursor-pointer"
-                                        title="Set status pallet menjadi Temporary (Belum ada tempat)">
-                                    <span>⏳ Temporary</span>
-                                </button>
-                            </div>
+                                    <button type="button" 
+                                            wire:click="unassignScannedPallet" 
+                                            class="px-3 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black transition shadow-xs cursor-pointer"
+                                            title="Set status pallet menjadi Temporary (Belum ada tempat)">
+                                        <span>⏳ Temporary</span>
+                                    </button>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
