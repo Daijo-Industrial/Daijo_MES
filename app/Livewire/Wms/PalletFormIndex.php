@@ -40,6 +40,15 @@ class PalletFormIndex extends Component
 
     public ?int $assignPositionId = null;
 
+    // Mixed Pallet Handling State
+    public bool $isMixedPallet = false;
+
+    public array $mixedItemGroups = [];
+
+    public array $splitItemActions = [];
+
+    public string $mixedAssignMode = 'SPLIT'; // 'SPLIT' or 'FORCE'
+
     protected $queryString = ['search', 'filterSlot'];
 
     public function updatingSearch()
@@ -122,6 +131,10 @@ class PalletFormIndex extends Component
         $this->assignPositionId = $pallet->position_id;
         $this->showBoxDetails = false;
 
+        $distinctPartNos = $pallet->details->pluck('part_no')->filter()->unique()->values();
+        $this->isMixedPallet = ($pallet->part_no === 'MIXED') || ($distinctPartNos->count() > 1);
+        $this->mixedAssignMode = 'SPLIT';
+
         // Auto pre-select warehouse from existing pallet position if any, or default to first warehouse
         if ($pallet->position?->rack?->whse_id) {
             $this->filterWarehouseId = (string) $pallet->position->rack->whse_id;
@@ -132,9 +145,77 @@ class PalletFormIndex extends Component
             }
         }
 
+        if ($this->isMixedPallet) {
+            $this->loadMixedItemGroups($wmsService);
+        }
+
         $this->recalculateRecommendation($wmsService);
 
         $this->dispatch('scan-success');
+    }
+
+    /**
+     * Load item groups and find existing rack slots for mixed pallet resolution
+     */
+    public function loadMixedItemGroups(?WmsService $wmsService = null)
+    {
+        if (! $this->scannedPallet || ! $this->isMixedPallet) {
+            $this->mixedItemGroups = [];
+            $this->splitItemActions = [];
+
+            return;
+        }
+
+        $wmsService = $wmsService ?? app(WmsService::class);
+        $this->mixedItemGroups = [];
+        $this->splitItemActions = [];
+
+        $grouped = $this->scannedPallet->details->groupBy('part_no');
+
+        foreach ($grouped as $pNo => $boxes) {
+            $existingRacks = $wmsService->findExistingRacksForItem($pNo, $this->filterWarehouseId ?: null, $this->scannedPallet->pallet_id);
+            if ($existingRacks->isEmpty() && ! empty($this->filterWarehouseId)) {
+                $existingRacks = $wmsService->findExistingRacksForItem($pNo, null, $this->scannedPallet->pallet_id);
+            }
+            $firstExisting = $existingRacks->first();
+            $hasExisting = $firstExisting !== null;
+
+            $this->mixedItemGroups[$pNo] = [
+                'part_no' => $pNo,
+                'model_name' => $boxes->first()?->model_name ?: '-',
+                'box_qty' => $boxes->count(),
+                'total_qty' => (float) $boxes->sum('qty'),
+                'has_existing_rack' => $hasExisting,
+                'existing_racks' => $existingRacks->map(fn ($r) => [
+                    'id' => $r->id,
+                    'code' => $r->position_code,
+                    'whse' => $r->rack?->warehouse?->whse_code ?? 'WMS',
+                    'status' => $r->status,
+                    'target_pallet_id' => $r->palletForms->first()?->pallet_id,
+                ])->toArray(),
+            ];
+
+            if ($hasExisting) {
+                $this->splitItemActions[$pNo] = [
+                    'action' => 'MERGE',
+                    'target_position_id' => $firstExisting->id,
+                    'target_pallet_id' => $firstExisting->palletForms->first()?->pallet_id,
+                ];
+            } else {
+                $customerCode = $boxes->first()?->item?->customer?->customer_code;
+                $recEmpty = $wmsService->recommendPosition(
+                    $customerCode ? [$customerCode] : [],
+                    $pNo,
+                    $this->filterWarehouseId ?: null
+                );
+
+                $this->splitItemActions[$pNo] = [
+                    'action' => 'NEW_PALLET',
+                    'target_position_id' => $recEmpty?->id,
+                    'target_pallet_id' => null,
+                ];
+            }
+        }
     }
 
     /**
@@ -165,6 +246,10 @@ class PalletFormIndex extends Component
     public function updatedFilterWarehouseId()
     {
         $this->recalculateRecommendation();
+
+        if ($this->isMixedPallet) {
+            $this->loadMixedItemGroups();
+        }
 
         // If currently chosen slot does not belong to the newly selected warehouse, reset it
         if (! empty($this->filterWarehouseId)) {
@@ -305,6 +390,129 @@ class PalletFormIndex extends Component
     }
 
     /**
+     * Execute split and assign for a single item from the mixed pallet
+     */
+    public function executeSplitSingleItem(string $partNo, ?WmsService $wmsService = null)
+    {
+        if (! $this->scannedPallet) {
+            session()->flash('error', 'Pallet tidak ditemukan.');
+
+            return;
+        }
+
+        $wmsService = $wmsService ?? app(WmsService::class);
+        $config = $this->splitItemActions[$partNo] ?? null;
+
+        if (empty($config) || empty($config['target_position_id'])) {
+            session()->flash('error', "Silakan pilih slot rak tujuan untuk item {$partNo} terlebih dahulu.");
+
+            return;
+        }
+
+        try {
+            $palletId = $this->scannedPallet->pallet_id;
+            $res = $wmsService->splitAndAssignMixedPallet(
+                $palletId,
+                [$partNo => $config]
+            );
+
+            session()->flash('success', $res['message']);
+
+            if (! empty($res['is_fully_resolved'])) {
+                $this->clearScannedPallet();
+            } else {
+                // Refresh remaining items on source pallet
+                $this->scannedPallet = WmsPalletForm::with('details')->where('pallet_id', $palletId)->first();
+                if ($this->scannedPallet) {
+                    $this->loadMixedItemGroups($wmsService);
+                } else {
+                    $this->clearScannedPallet();
+                }
+            }
+
+            $this->dispatch('scan-success');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal memproses pemisahan item: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Execute split and assign mixed pallet to multiple target racks (batch for all selected items)
+     */
+    public function executeSplitAndAssign(?WmsService $wmsService = null)
+    {
+        if (! $this->scannedPallet) {
+            session()->flash('error', 'Pallet tidak ditemukan.');
+
+            return;
+        }
+
+        $wmsService = $wmsService ?? app(WmsService::class);
+
+        // Filter only items that have an assigned target position
+        $assignedActions = collect($this->splitItemActions)
+            ->filter(fn ($cfg) => ! empty($cfg['target_position_id']))
+            ->all();
+
+        if (empty($assignedActions)) {
+            session()->flash('error', 'Silakan pilih slot rak tujuan minimal untuk 1 item.');
+
+            return;
+        }
+
+        try {
+            $palletId = $this->scannedPallet->pallet_id;
+            $res = $wmsService->splitAndAssignMixedPallet($palletId, $assignedActions);
+            session()->flash('success', $res['message']);
+
+            if (! empty($res['is_fully_resolved'])) {
+                $this->clearScannedPallet();
+            } else {
+                $this->scannedPallet = WmsPalletForm::with('details')->where('pallet_id', $palletId)->first();
+                if ($this->scannedPallet) {
+                    $this->loadMixedItemGroups($wmsService);
+                } else {
+                    $this->clearScannedPallet();
+                }
+            }
+
+            $this->dispatch('scan-success');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal memproses pemisahan pallet: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Force assign entire mixed pallet directly to a single rack slot with warning acknowledged
+     */
+    public function executeForceAssignMixed(?WmsService $wmsService = null)
+    {
+        if (! $this->scannedPallet) {
+            session()->flash('error', 'Pallet tidak ditemukan.');
+
+            return;
+        }
+
+        $targetPosId = $this->assignPositionId ?: $this->selectedPositionId;
+        if (! $targetPosId) {
+            session()->flash('error', 'Silakan pilih slot rak tujuan terlebih dahulu.');
+
+            return;
+        }
+
+        $wmsService = $wmsService ?? app(WmsService::class);
+
+        try {
+            $res = $wmsService->splitAndAssignMixedPallet($this->scannedPallet->pallet_id, [], (int) $targetPosId);
+            session()->flash('success', $res['message']);
+            $this->clearScannedPallet();
+            $this->dispatch('scan-success');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal meng-assign slot rak: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Unassign / Set Pallet to Temporary
      */
     public function unassignScannedPallet(?WmsService $wmsService = null)
@@ -328,6 +536,10 @@ class PalletFormIndex extends Component
         $this->assignPositionId = null;
         $this->showAssignModal = false;
         $this->showBoxDetails = false;
+        $this->isMixedPallet = false;
+        $this->mixedItemGroups = [];
+        $this->splitItemActions = [];
+        $this->mixedAssignMode = 'SPLIT';
         $this->dispatch('focus-scan-input');
     }
 
