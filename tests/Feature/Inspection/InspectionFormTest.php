@@ -1154,4 +1154,67 @@ class InspectionFormTest extends TestCase
         $test->call('prevSubStep')
             ->assertSet('subStep', 1);
     }
+
+    public function test_user_can_reset_form_via_start_new_report(): void
+    {
+        $docNum = 'INSP-DRAFT-RESET-001';
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'part_number' => 'PART-RESET-TEST',
+            ],
+            'lastStepVisited' => 2,
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionForm::class)
+            ->call('startNewReport')
+            ->assertSet('currentStep', 1)
+            ->assertSet('inspection_report_document_number', null)
+            ->assertDispatched('toast');
+
+        $this->assertNull(session('stepHeaderSaved'));
+        $this->assertNull(session('lastStepVisited'));
+    }
+
+    public function test_create_form_continues_draft_when_continue_param_is_passed(): void
+    {
+        $docNum = 'INSP-DRAFT-CONT-001';
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'customer' => 'PT Honda Prospect Motor',
+                'part_number' => 'PART-CONT-TEST',
+                'machine_number' => 'MC-02',
+                'shift' => 2,
+                'operator' => 'Wahyu',
+                'inspector' => 'Rini',
+            ],
+            'lastStepVisited' => 2,
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->withQueryParams(['continue' => 1])
+            ->test(InspectionForm::class)
+            ->assertSet('currentStep', 2)
+            ->assertSet('inspection_report_document_number', $docNum);
+    }
+
+    public function test_create_form_starts_fresh_when_new_param_is_passed(): void
+    {
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => 'INSP-PARAM-NEW-001',
+                'part_number' => 'PART-PARAM-TEST',
+            ],
+            'lastStepVisited' => 2,
+        ]);
+
+        $this->actingAs($this->user)
+            ->get(route('inspection-reports.create', ['new' => 1]))
+            ->assertOk()
+            ->assertSee('Header & Part Info');
+
+        $this->assertNull(session('stepHeaderSaved'));
+    }
 }
