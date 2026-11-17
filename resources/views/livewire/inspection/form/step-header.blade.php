@@ -95,13 +95,10 @@
             @if ($subStep === 1)
                 {{-- TAHAP 1: 1-LANDING CORE INPUTS (Tanggal, Shift, & Mesin) --}}
                 <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 space-y-4">
-                    <div>
-                        <h2 class="text-base font-bold text-zinc-900 flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
-                            1. Konteks Mesin & Jadwal Produksi
-                        </h2>
-                        <p class="text-xs text-zinc-500 mt-0.5">Tentukan tanggal produksi, shift, dan mesin yang sedang diinspeksi untuk memuat jadwal running otomatis.</p>
-                    </div>
+                    <h2 class="text-base font-bold text-zinc-900 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
+                        1. Konteks Mesin & Jadwal Produksi
+                    </h2>
 
                     {{-- 3 Core Inputs: 1. Tanggal, 2. Shift, 3. Mesin (user_id) --}}
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
@@ -113,7 +110,6 @@
                             <input type="date"
                                    wire:model.live="inspection_date"
                                    class="w-full rounded-md border-zinc-300 text-xs font-mono font-bold text-zinc-900 focus:border-zinc-900 focus:ring-zinc-900 bg-white py-1.5">
-                            <p class="text-[10px] text-zinc-400">Default: Hari ini (Asia/Jakarta)</p>
                         </div>
 
                         {{-- 2. Shift Produksi --}}
@@ -148,37 +144,8 @@
                                     <option value="{{ $u['id'] }}">{{ $u['name'] }}</option>
                                 @endforeach
                             </select>
-                            <p class="text-[10px] text-zinc-400 truncate">
-                                {{ count($this->dicMachineUsers) }} mesin aktif pada shift ini
-                            </p>
                         </div>
                     </div>
-
-                    {{-- Quick 1-Tap Machine Selector Chips --}}
-                    @if (!empty($this->dicMachineUsers))
-                        <div class="pt-2 border-t border-zinc-100">
-                            <div class="flex items-center justify-between mb-1.5">
-                                <span class="text-[11px] font-semibold text-zinc-500">Pilih Cepat Mesin Berjalan (Shift {{ $shift }}):</span>
-                                @if ($dic_filter_user_id)
-                                    <button type="button"
-                                            wire:click="selectMachineUserId(null)"
-                                            class="text-[11px] text-zinc-500 hover:text-zinc-800 underline">
-                                        Tampilkan Semua Mesin
-                                    </button>
-                                @endif
-                            </div>
-                            <div class="flex flex-wrap gap-1.5">
-                                @foreach ($this->dicMachineUsers as $u)
-                                    @php $isMSelected = ((int) $dic_filter_user_id === (int) $u['id']); @endphp
-                                    <button type="button"
-                                            wire:click="selectMachineUserId({{ $u['id'] }})"
-                                            class="px-2.5 py-1 rounded-md text-xs font-mono font-bold transition border {{ $isMSelected ? 'bg-zinc-900 text-white border-zinc-900 shadow-2xs ring-1 ring-zinc-900' : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100' }}">
-                                        {{ $u['name'] }}
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
                 </div>
 
                 {{-- JADWAL PART DI MESIN TERPILIH --}}
@@ -188,23 +155,14 @@
                     @endphp
 
                     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2.5">
-                        <div>
-                            <h3 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
-                                @if ($dic_filter_user_id && !empty($machine_number))
-                                    Jadwal Part di Mesin {{ $machine_number }} (Shift {{ $shift }})
-                                @else
-                                    Seluruh Part Terjadwal pada Shift {{ $shift }}
-                                @endif
-                            </h3>
-                            <p class="text-xs text-zinc-500 mt-0.5">
-                                @if ($dic_filter_user_id)
-                                    Klik kartu part untuk memilih dan mengonfirmasi jadwal ini.
-                                @else
-                                    Pilih salah satu part di bawah ini untuk memilih mesin dan part sekaligus.
-                                @endif
-                            </p>
-                        </div>
+                        <h3 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
+                            @if ($dic_filter_user_id && !empty($machine_number))
+                                Jadwal Part di Mesin {{ $machine_number }} (Shift {{ $shift }})
+                            @else
+                                Seluruh Part Terjadwal pada Shift {{ $shift }}
+                            @endif
+                        </h3>
                         @if (empty($dic_filter_user_id) && count($activeDics) > 4)
                             <div class="relative w-48">
                                 <input type="text"
@@ -269,14 +227,13 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
                             </div>
-                            <p class="text-sm font-semibold text-zinc-800">
+                            <p class="text-xs font-semibold text-zinc-600">
                                 @if ($dic_filter_user_id)
                                     Tidak ada jadwal running pada mesin {{ $machine_number }} (Shift {{ $shift }})
                                 @else
                                     Tidak ada jadwal running pada Shift {{ $shift }} tanggal ini
                                 @endif
                             </p>
-                            <p class="text-xs text-zinc-500">Anda dapat memilih mesin lain atau mencari manual dari Master List di bawah.</p>
                         </div>
                     @endif
 
@@ -373,7 +330,6 @@
                                 <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
                                 Spesifikasi Teknis Part
                             </h3>
-                            <p class="text-xs text-zinc-500 mt-0.5">Spesifikasi ini otomatis terisi dari Master Part dan dapat disesuaikan jika ada perubahan cetakan/material.</p>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
@@ -471,7 +427,6 @@
                                 <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
                                 Konteks Operasional & Personil
                             </h3>
-                            <p class="text-xs text-zinc-500 mt-0.5">Konfirmasi nomor mesin, operator bertugas, dan nama inspector QC.</p>
                         </div>
 
                         {{-- Schedule & Machine Quick Summary Toolbar (with edit mode) --}}
@@ -621,8 +576,6 @@
                         </svg>
                         <span>Kembali ke 1. Pilih Part & Jadwal</span>
                     </button>
-                @else
-                    <span class="text-xs text-zinc-400 hidden sm:inline">Pilih jadwal DIC atau cari part manual untuk lanjut</span>
                 @endif
             </div>
 

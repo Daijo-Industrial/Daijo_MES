@@ -858,6 +858,11 @@ class StepHeader extends Component
         })->toArray();
     }
 
+    public function updatedDicFilterUserId($value): void
+    {
+        $this->selectMachineUserId($value ? (int) $value : null);
+    }
+
     public function selectMachineUserId(?int $userId): void
     {
         $this->dic_filter_user_id = $userId;
