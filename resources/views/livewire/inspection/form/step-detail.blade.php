@@ -231,100 +231,134 @@
     @else
         {{-- LEVEL 2: FOCUSED SUB-WIZARD (Inspecting 1 Subcomponent at a time for Selected Period) --}}
 
-        {{-- Wizard Top Bar --}}
-        <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-4 space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Step 2 &bull; Detail Periode</span>
-                        <span class="text-zinc-300">/</span>
-                        <span class="text-sm font-bold text-zinc-900">Inspeksi Periode {{ $period }}</span>
-                        <span class="text-xs font-mono font-bold text-zinc-700 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
-                            {{ $start_time }} - {{ $end_time }} WIB
-                        </span>
+        {{-- Ultra-Compact Single-Row Bar (Zero Layout Shift) --}}
+        <div class="bg-white rounded-xl border border-zinc-200 shadow-sm px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs relative">
+            {{-- Left: Navigation, Title & Interactive Time Popover --}}
+            <div class="flex items-center gap-3">
+                <button type="button"
+                        wire:click="exitToHub"
+                        class="inline-flex items-center gap-1 px-2 py-1 border border-zinc-200 hover:border-zinc-300 text-xs font-semibold rounded-md text-zinc-700 bg-zinc-50 hover:bg-zinc-100 transition shadow-xs"
+                        title="Kembali ke Hub Periode">
+                    <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    <span>Hub</span>
+                </button>
+
+                <div class="h-4 w-px bg-zinc-200"></div>
+
+                <span class="font-bold text-zinc-900 text-sm tracking-tight whitespace-nowrap">
+                    Periode {{ $period }}
+                </span>
+
+                {{-- Time Popover Dropdown --}}
+                <div class="relative" x-data="{ openTime: @json($errors->has('start_time') || $errors->has('end_time')) }">
+                    <button type="button"
+                            @click="openTime = !openTime"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold rounded-lg border transition shadow-xs {{ $errors->has('start_time') || $errors->has('end_time') ? 'border-rose-300 bg-rose-50 text-rose-800' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 hover:border-zinc-300' }}"
+                            title="Klik untuk mengubah jam inspeksi periode">
+                        <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>{{ $start_time ?: '-' }} - {{ $end_time ?: '-' }} WIB</span>
+                        <svg class="w-3 h-3 text-zinc-400 transition" :class="{ 'rotate-180': openTime }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    {{-- Floating Popover Box (Zero Layout Shift) --}}
+                    <div x-show="openTime"
+                         @click.outside="openTime = false"
+                         x-cloak
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+                         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
+                         class="absolute left-0 mt-2 z-30 w-72 bg-white rounded-xl border border-zinc-200 shadow-xl p-3.5 space-y-3">
+                        <div class="flex items-center justify-between border-b border-zinc-100 pb-2">
+                            <span class="text-xs font-bold text-zinc-900">Ubah Jam Periode {{ $period }}</span>
+                            <button type="button"
+                                    @click="openTime = false"
+                                    class="text-xs font-semibold text-zinc-400 hover:text-zinc-800 p-0.5">
+                                ✕
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-zinc-600 mb-1">
+                                    Jam Mulai <span class="text-rose-600">*</span>
+                                </label>
+                                <input type="time"
+                                       wire:model.live="start_time"
+                                       class="w-full rounded-md border-zinc-300 text-xs focus:border-zinc-900 focus:ring-zinc-900 font-mono py-1.5 @error('start_time') border-rose-300 bg-rose-50/50 @enderror">
+                                @error('start_time')
+                                    <p class="mt-1 text-[10px] text-rose-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-zinc-600 mb-1">
+                                    Jam Selesai <span class="text-rose-600">*</span>
+                                </label>
+                                <input type="time"
+                                       wire:model.live="end_time"
+                                       class="w-full rounded-md border-zinc-300 text-xs focus:border-zinc-900 focus:ring-zinc-900 font-mono py-1.5 @error('end_time') border-rose-300 bg-rose-50/50 @enderror">
+                                @error('end_time')
+                                    <p class="mt-1 text-[10px] text-rose-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="pt-1 flex justify-end">
+                            <button type="button"
+                                    @click="openTime = false"
+                                    class="px-3 py-1 bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-bold rounded-md shadow-xs transition">
+                                Selesai
+                            </button>
+                        </div>
                     </div>
-                    <p class="text-xs text-zinc-500 mt-1">
-                        Shift {{ $shift ?? '-' }} &bull; Inspector: <strong class="text-zinc-800">{{ $inspector }}</strong> &bull; Part: <strong class="text-zinc-800 font-mono">{{ $part_number }}</strong> &bull; Mesin: <strong class="text-zinc-800">{{ $machine_number }}</strong>
-                    </p>
                 </div>
+            </div>
+
+            {{-- Middle: Monospaced Context Badges --}}
+            <div class="hidden lg:flex items-center gap-1.5 text-xs">
+                <span class="inline-flex items-center px-2 py-0.5 rounded border border-zinc-200 bg-zinc-100 text-zinc-700 font-semibold" title="Shift Kerja">
+                    Shift {{ $shift ?? '-' }}
+                </span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded border border-zinc-200 bg-zinc-100 text-zinc-900 font-mono font-bold" title="Part: {{ $part_number ?? '-' }} ({{ $part_name ?? '-' }})">
+                    {{ $part_number ?? '-' }}
+                </span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded border border-zinc-200 bg-zinc-100 text-zinc-800 font-semibold" title="Nomor Mesin">
+                    {{ $machine_number ?? '-' }}
+                </span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded border border-zinc-200 bg-zinc-100 text-zinc-700 font-medium truncate max-w-[140px]" title="Inspector: {{ $inspector ?? '-' }}">
+                    {{ $inspector ?? '-' }}
+                </span>
+            </div>
+
+            {{-- Right: Actions Toolbar --}}
+            <div class="flex items-center gap-2">
+                @if ($period > 1)
+                    <button type="button"
+                            wire:click="copyFromPreviousPeriod"
+                            wire:confirm="Salin format pengukuran dari Periode {{ $period - 1 }} ke Periode {{ $period }}?"
+                            class="inline-flex items-center gap-1 px-2.5 py-1.5 border border-zinc-300 text-xs font-semibold text-zinc-700 bg-white hover:bg-zinc-50 rounded-lg shadow-xs transition"
+                            title="Salin template pengukuran dari Periode {{ $period - 1 }}">
+                        <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/>
+                        </svg>
+                        <span>Salin P{{ $period - 1 }}</span>
+                    </button>
+                @endif
 
                 <button type="button"
                         wire:click="exitToHub"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-zinc-300 text-xs font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 shadow-sm transition">
-                    <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-zinc-300 text-xs font-semibold rounded-lg text-zinc-700 bg-white hover:bg-zinc-50 shadow-xs transition">
+                    <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
                     </svg>
-                    <span>Simpan Draft & Kembali ke Hub</span>
+                    <span class="hidden sm:inline">Simpan Draft &</span> Kembali ke Hub
                 </button>
-            </div>
-
-            {{-- Minimized Time Range Toolbar & Edit Option --}}
-            <div x-data="{ editTime: @json($errors->has('start_time') || $errors->has('end_time')) }"
-                 class="border-t border-zinc-100 pt-2.5">
-                <div x-show="!editTime" class="flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <div class="flex items-center gap-2">
-                        <div class="flex items-center gap-1.5 text-zinc-700 bg-zinc-50 px-2.5 py-1 rounded-md border border-zinc-200">
-                            <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <span class="text-zinc-500 font-medium">Jam Periode:</span>
-                            <span class="font-bold text-zinc-900 font-mono">{{ $start_time ?: '-' }} - {{ $end_time ?: '-' }} WIB</span>
-                        </div>
-                        <button type="button"
-                                @click="editTime = true"
-                                class="inline-flex items-center px-2 py-1 text-xs font-semibold text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 rounded-md shadow-sm transition">
-                            Ubah Jam
-                        </button>
-                    </div>
-
-                    @if ($period > 1)
-                        <button type="button"
-                                wire:click="copyFromPreviousPeriod"
-                                wire:confirm="Salin format pengukuran dari Periode {{ $period - 1 }} ke Periode {{ $period }}?"
-                                class="inline-flex items-center gap-1.5 px-2.5 py-1 border border-zinc-300 text-xs font-semibold text-zinc-700 bg-white hover:bg-zinc-50 rounded-md shadow-sm transition">
-                            <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/>
-                            </svg>
-                            <span>Salin dari Periode {{ $period - 1 }}</span>
-                        </button>
-                    @endif
-                </div>
-
-                {{-- Expanded Time Inputs --}}
-                <div x-show="editTime" x-cloak class="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-3 mt-2">
-                    <div class="flex items-center justify-between pb-2 border-b border-zinc-200">
-                        <span class="text-xs font-bold text-zinc-800">Ubah Jam Inspeksi Periode {{ $period }}</span>
-                        <button type="button"
-                                @click="editTime = false"
-                                class="text-xs font-semibold text-zinc-600 hover:text-zinc-900 underline">
-                            Selesai
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                                Jam Mulai <span class="text-rose-600">*</span>
-                            </label>
-                            <input type="time"
-                                   wire:model.live="start_time"
-                                   class="w-full rounded-lg border-zinc-300 text-xs focus:border-zinc-900 focus:ring-zinc-900 font-mono min-h-[38px] @error('start_time') border-rose-300 bg-rose-50/50 @enderror">
-                            @error('start_time')
-                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-zinc-700 mb-1">
-                                Jam Selesai <span class="text-rose-600">*</span>
-                            </label>
-                            <input type="time"
-                                   wire:model.live="end_time"
-                                   class="w-full rounded-lg border-zinc-300 text-xs focus:border-zinc-900 focus:ring-zinc-900 font-mono min-h-[38px] @error('end_time') border-rose-300 bg-rose-50/50 @enderror">
-                            @error('end_time')
-                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
