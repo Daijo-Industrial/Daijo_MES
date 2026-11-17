@@ -91,10 +91,236 @@
                     </svg>
                     Export CSV
                 </button>
+            </div>
+        </div>
+    </div>
 
-                <button wire:click="clearFilters"
-                        class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Reset
+    {{-- Progressive Disclosure Filter Bar Card --}}
+    <div x-data="{ filtersOpen: false }" class="bg-white rounded-xl shadow-sm border border-zinc-200 p-4 space-y-3">
+        {{-- Minimized Mode Bar --}}
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            {{-- Left: Active Filter Pills --}}
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                    </svg>
+                    <span>Filter:</span>
+                </span>
+
+                {{-- Date Preset Pill --}}
+                @if ($preset !== 'all' || ($filters['date_from'] && $filters['date_to']))
+                    @php
+                        $presetLabels = [
+                            'today' => 'Today',
+                            'yesterday' => 'Yesterday',
+                            'this_month' => 'This Month',
+                            'custom' => 'Custom Date',
+                        ];
+                        $dateLabel = $presetLabels[$preset] ?? 'Date Range';
+                        if ($filters['date_from'] && $filters['date_to']) {
+                            $dateRangeStr = \Illuminate\Support\Carbon::parse($filters['date_from'])->format('d/m/Y') . ' - ' . \Illuminate\Support\Carbon::parse($filters['date_to'])->format('d/m/Y');
+                        } else {
+                            $dateRangeStr = $dateLabel;
+                        }
+                    @endphp
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-300">
+                        <span class="text-zinc-500 font-normal">Tanggal:</span> {{ $dateRangeStr }}
+                        <button type="button" wire:click="removeFilter('date')" class="text-zinc-400 hover:text-rose-600 ml-0.5" title="Hapus filter tanggal">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </span>
+                @else
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-zinc-50 text-zinc-500 border border-zinc-200">
+                        Semua Tanggal
+                    </span>
+                @endif
+
+                {{-- Shift Pill --}}
+                @if (!empty($filters['shift']))
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-300">
+                        <span class="text-zinc-500 font-normal">Shift:</span> Shift {{ $filters['shift'] }}
+                        <button type="button" wire:click="removeFilter('shift')" class="text-zinc-400 hover:text-rose-600 ml-0.5" title="Hapus filter shift">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </span>
+                @endif
+
+                {{-- Customer Pill --}}
+                @if (!empty($filters['customer']))
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-300">
+                        <span class="text-zinc-500 font-normal">Customer:</span> {{ $filters['customer'] }}
+                        <button type="button" wire:click="removeFilter('customer')" class="text-zinc-400 hover:text-rose-600 ml-0.5" title="Hapus filter customer">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </span>
+                @endif
+
+                {{-- Part Number Pill --}}
+                @if (!empty($filters['part_number']))
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-300">
+                        <span class="text-zinc-500 font-normal">Part:</span> {{ $filters['part_number'] }}
+                        <button type="button" wire:click="removeFilter('part_number')" class="text-zinc-400 hover:text-rose-600 ml-0.5" title="Hapus filter part number">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </span>
+                @endif
+
+                {{-- Status Pill --}}
+                @if (!empty($filters['status']))
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-300">
+                        <span class="text-zinc-500 font-normal">Status:</span> {{ ucfirst($filters['status']) }}
+                        <button type="button" wire:click="removeFilter('status')" class="text-zinc-400 hover:text-rose-600 ml-0.5" title="Hapus filter status">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </span>
+                @endif
+
+                {{-- Document Number Pill --}}
+                @if (!empty($filters['document_number']))
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-300">
+                        <span class="text-zinc-500 font-normal">Doc:</span> {{ $filters['document_number'] }}
+                        <button type="button" wire:click="removeFilter('document_number')" class="text-zinc-400 hover:text-rose-600 ml-0.5" title="Hapus filter dokumen">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </span>
+                @endif
+            </div>
+
+            {{-- Right: Reset All & Toggle Open/Close Button --}}
+            <div class="flex items-center gap-2 ml-auto">
+                @if ($this->hasActiveFilters)
+                    <button type="button" wire:click="clearFilters"
+                            class="px-2.5 py-1.5 text-xs font-medium text-zinc-600 hover:text-rose-600 hover:bg-rose-50 border border-dashed border-zinc-300 rounded-lg transition"
+                            title="Reset semua filter ke default">
+                        Reset All
+                    </button>
+                @endif
+
+                <button type="button" @click="filtersOpen = !filtersOpen"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition shadow-sm"
+                        :class="filtersOpen ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white hover:bg-zinc-50 text-zinc-800 border-zinc-300'">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                    </svg>
+                    <span x-text="filtersOpen ? 'Tutup Filter' : 'Ubah Filter'">Ubah Filter</span>
+                    <svg class="w-3 h-3 text-zinc-400 transition-transform duration-200" :class="filtersOpen ? 'rotate-180 text-white' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        {{-- Expanded Mode Panel --}}
+        <div x-show="filtersOpen" x-cloak
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 -translate-y-1"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-1"
+             class="pt-3 border-t border-zinc-100 space-y-4">
+
+            {{-- Quick Date Presets Row --}}
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold text-zinc-500 uppercase flex items-center gap-1 mr-1">
+                    <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span>Preset Tanggal:</span>
+                </span>
+                @php
+                    $presetBase = 'px-3 py-1.5 text-xs font-bold rounded-lg border transition cursor-pointer select-none';
+                    $presetActive = 'bg-zinc-900 text-white border-zinc-900 shadow-sm';
+                    $presetInactive = 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100';
+                @endphp
+                <button type="button" wire:click="setPreset('today')" class="{{ $presetBase }} {{ $preset === 'today' ? $presetActive : $presetInactive }}">
+                    Today
+                </button>
+                <button type="button" wire:click="setPreset('yesterday')" class="{{ $presetBase }} {{ $preset === 'yesterday' ? $presetActive : $presetInactive }}">
+                    Yesterday
+                </button>
+                <button type="button" wire:click="setPreset('this_month')" class="{{ $presetBase }} {{ $preset === 'this_month' ? $presetActive : $presetInactive }}">
+                    This Month
+                </button>
+                <button type="button" wire:click="setPreset('all')" class="{{ $presetBase }} {{ $preset === 'all' ? $presetActive : $presetInactive }}">
+                    All Dates
+                </button>
+            </div>
+
+            {{-- Inputs Grid --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {{-- Date From --}}
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-700 mb-1">Tanggal Mulai</label>
+                    <input type="date" wire:model="draftFilters.date_from"
+                           class="w-full text-xs rounded-lg border-zinc-300 py-2 focus:ring-zinc-900 focus:border-zinc-900 min-h-[38px]">
+                </div>
+
+                {{-- Date To --}}
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-700 mb-1">Tanggal Selesai</label>
+                    <input type="date" wire:model="draftFilters.date_to"
+                           class="w-full text-xs rounded-lg border-zinc-300 py-2 focus:ring-zinc-900 focus:border-zinc-900 min-h-[38px]">
+                </div>
+
+                {{-- Shift --}}
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-700 mb-1">Shift</label>
+                    <select wire:model="draftFilters.shift"
+                            class="w-full text-xs rounded-lg border-zinc-300 py-2 focus:ring-zinc-900 focus:border-zinc-900 min-h-[38px]">
+                        <option value="">Semua Shift</option>
+                        @foreach ($shiftOptions as $opt)
+                            <option value="{{ $opt }}">Shift {{ $opt }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Status --}}
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-700 mb-1">Status Laporan</label>
+                    <select wire:model="draftFilters.status"
+                            class="w-full text-xs rounded-lg border-zinc-300 py-2 focus:ring-zinc-900 focus:border-zinc-900 min-h-[38px]">
+                        <option value="">Semua Status</option>
+                        <option value="draft">Draft</option>
+                        <option value="submitted">Submitted</option>
+                    </select>
+                </div>
+
+                {{-- Customer --}}
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-700 mb-1">Customer</label>
+                    <input type="text" wire:model="draftFilters.customer" placeholder="Nama customer..."
+                           class="w-full text-xs rounded-lg border-zinc-300 py-2 focus:ring-zinc-900 focus:border-zinc-900 min-h-[38px]">
+                </div>
+
+                {{-- Part Number --}}
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-700 mb-1">Part Number</label>
+                    <input type="text" wire:model="draftFilters.part_number" placeholder="Nomor part..."
+                           class="w-full text-xs rounded-lg border-zinc-300 py-2 focus:ring-zinc-900 focus:border-zinc-900 min-h-[38px]">
+                </div>
+
+                {{-- Document Number --}}
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold text-zinc-700 mb-1">Nomor Dokumen</label>
+                    <input type="text" wire:model="draftFilters.document_number" placeholder="Nomor dokumen laporan..."
+                           class="w-full text-xs rounded-lg border-zinc-300 py-2 focus:ring-zinc-900 focus:border-zinc-900 min-h-[38px]">
+                </div>
+            </div>
+
+            {{-- Action Buttons: Apply & Reset --}}
+            <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-100">
+                <button type="button" wire:click="clearFilters"
+                        class="px-4 py-2 border border-zinc-300 text-xs font-semibold text-zinc-700 bg-white hover:bg-zinc-50 rounded-lg shadow-sm transition">
+                    Reset Filter
+                </button>
+                <button type="button" wire:click="applyFilters"
+                        class="inline-flex items-center gap-1.5 px-5 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-lg shadow-sm transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span>Apply Filter</span>
                 </button>
             </div>
         </div>
@@ -112,139 +338,82 @@
                             <div class="flex items-center gap-1">
                                 #
                                 @if ($sortField === 'id')
-                                    <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span>
+                                    <svg class="w-3.5 h-3.5 text-zinc-800 transition-transform {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                    </svg>
                                 @endif
                             </div>
                         </th>
 
                         @if ($showCol['document_number'])
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
-                                wire:click="sortBy('document_number')">
-                                <div class="flex items-center gap-1">
-                                    Document No.
-                                    @if ($sortField === 'document_number')
-                                        <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span>
-                                    @endif
-                                </div>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                Document No.
                             </th>
                         @endif
 
-                        @if ($showCol['inspection_date'])
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
-                                wire:click="sortBy('inspection_date')">
-                                <div class="flex items-center gap-1">
-                                    Date
-                                    @if ($sortField === 'inspection_date')
-                                        <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span>
-                                    @endif
-                                </div>
-                            </th>
-                        @endif
+                    @if ($showCol['inspection_date'])
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
+                            wire:click="sortBy('inspection_date')">
+                            <div class="flex items-center gap-1">
+                                Date
+                                @if ($sortField === 'inspection_date')
+                                    <svg class="w-3.5 h-3.5 text-zinc-800 transition-transform {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                @endif
+                            </div>
+                        </th>
+                    @endif
 
-                        @if ($showCol['shift'])
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
-                                wire:click="sortBy('shift')">
-                                <div class="flex items-center gap-1">
-                                    Shift
-                                    @if ($sortField === 'shift')
-                                        <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span>
-                                    @endif
-                                </div>
-                            </th>
-                        @endif
+                    @if ($showCol['shift'])
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
+                            wire:click="sortBy('shift')">
+                            <div class="flex items-center gap-1">
+                                Shift
+                                @if ($sortField === 'shift')
+                                    <svg class="w-3.5 h-3.5 text-zinc-800 transition-transform {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                @endif
+                            </div>
+                        </th>
+                    @endif
 
-                        @if ($showCol['customer'])
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
-                                wire:click="sortBy('customer')">
-                                <div class="flex items-center gap-1">
-                                    Customer
-                                    @if ($sortField === 'customer')
-                                        <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span>
-                                    @endif
-                                </div>
-                            </th>
-                        @endif
+                    @if ($showCol['customer'])
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
+                            wire:click="sortBy('customer')">
+                            <div class="flex items-center gap-1">
+                                Customer
+                                @if ($sortField === 'customer')
+                                    <svg class="w-3.5 h-3.5 text-zinc-800 transition-transform {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                @endif
+                            </div>
+                        </th>
+                    @endif
 
-                        @if ($showCol['part_number'])
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
-                                wire:click="sortBy('part_number')">
-                                <div class="flex items-center gap-1">
-                                    Part Number
-                                    @if ($sortField === 'part_number')
-                                        <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span>
-                                    @endif
-                                </div>
-                            </th>
-                        @endif
+                    @if ($showCol['part_number'])
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:text-indigo-600"
+                            wire:click="sortBy('part_number')">
+                            <div class="flex items-center gap-1">
+                                Part Number
+                                @if ($sortField === 'part_number')
+                                    <svg class="w-3.5 h-3.5 text-zinc-800 transition-transform {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                @endif
+                            </div>
+                        </th>
+                    @endif
 
-                        @if ($showCol['status'])
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                        @endif
+                    @if ($showCol['status'])
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                    @endif
 
-                        <th scope="col" class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">Actions</th>
-                    </tr>
-
-                    {{-- Column Filter Inputs Row --}}
-                    <tr class="bg-gray-100 border-t border-gray-200">
-                        <td class="px-4 py-2"></td>
-
-                        @if ($showCol['document_number'])
-                            <td class="px-4 py-2">
-                                <input type="text" wire:model.live.debounce.400ms="filters.document_number" placeholder="Doc no..."
-                                       class="w-full text-xs rounded border-gray-300 py-1 px-2 focus:ring-indigo-500 focus:border-indigo-500">
-                            </td>
-                        @endif
-
-                        @if ($showCol['inspection_date'])
-                            <td class="px-4 py-2">
-                                <div class="flex items-center gap-1">
-                                    <input type="date" wire:model.live="filters.date_from" title="From"
-                                           class="text-xs rounded border-gray-300 py-1 px-1.5 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <span class="text-gray-400 text-xs">-</span>
-                                    <input type="date" wire:model.live="filters.date_to" title="To"
-                                           class="text-xs rounded border-gray-300 py-1 px-1.5 focus:ring-indigo-500 focus:border-indigo-500">
-                                </div>
-                            </td>
-                        @endif
-
-                        @if ($showCol['shift'])
-                            <td class="px-4 py-2">
-                                <select wire:model.live="filters.shift" class="w-full text-xs rounded border-gray-300 py-1 px-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">All</option>
-                                    @foreach ($shiftOptions as $opt)
-                                        <option value="{{ $opt }}">Shift {{ $opt }}</option>
-                                    @endforeach
-                                </select>
-                            </td>
-                        @endif
-
-                        @if ($showCol['customer'])
-                            <td class="px-4 py-2">
-                                <input type="text" wire:model.live.debounce.400ms="filters.customer" placeholder="Customer..."
-                                       class="w-full text-xs rounded border-gray-300 py-1 px-2 focus:ring-indigo-500 focus:border-indigo-500">
-                            </td>
-                        @endif
-
-                        @if ($showCol['part_number'])
-                            <td class="px-4 py-2">
-                                <input type="text" wire:model.live.debounce.400ms="filters.part_number" placeholder="Part no..."
-                                       class="w-full text-xs rounded border-gray-300 py-1 px-2 focus:ring-indigo-500 focus:border-indigo-500">
-                            </td>
-                        @endif
-
-                        @if ($showCol['status'])
-                            <td class="px-4 py-2">
-                                <select wire:model.live="filters.status" class="w-full text-xs rounded border-gray-300 py-1 px-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">All</option>
-                                    <option value="draft">Draft</option>
-                                    <option value="submitted">Submitted</option>
-                                </select>
-                            </td>
-                        @endif
-
-                        <td class="px-4 py-2"></td>
-                    </tr>
-                </thead>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">Actions</th>
+                </tr>
+            </thead>
 
                 <tbody class="divide-y divide-gray-200 bg-white" wire:loading.class="opacity-50">
                     @if (!$ready)
@@ -276,7 +445,7 @@
                     @else
                         @forelse ($reports as $r)
                             <tr class="hover:bg-gray-50 transition" wire:key="report-{{ $r->id }}">
-                                <td class="px-4 py-3 text-xs text-gray-500">{{ $reports->firstItem() + $loop->index }}</td>
+                                <td class="px-4 py-3 text-xs font-mono font-medium text-gray-600">{{ $r->id }}</td>
 
                                 @if ($showCol['document_number'])
                                     <td class="px-4 py-3 text-xs font-mono font-medium text-indigo-600">

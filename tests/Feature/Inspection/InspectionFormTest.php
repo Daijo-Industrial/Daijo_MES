@@ -10,6 +10,7 @@ use App\Livewire\Inspection\InspectionForm\StepFirst;
 use App\Livewire\Inspection\InspectionForm\StepHeader;
 use App\Livewire\Inspection\InspectionForm\StepJudgement;
 use App\Livewire\Inspection\InspectionForm\StepPackaging;
+use App\Livewire\Inspection\InspectionForm\StepPeriodProblem;
 use App\Livewire\Inspection\InspectionForm\StepProblem;
 use App\Livewire\Inspection\InspectionForm\StepSampling;
 use App\Livewire\Inspection\InspectionForm\StepSecond;
@@ -188,7 +189,7 @@ class InspectionFormTest extends TestCase
                     'inspection_report_document_number' => $docNum,
                     'time' => '08:15',
                     'cycle_time' => 50,
-                    'type' => 'NO PROBLEM',
+                    'type' => 'MACHINE PROBLEM',
                     'remarks' => 'Normal condition',
                 ],
             ],
@@ -248,7 +249,7 @@ class InspectionFormTest extends TestCase
 
         $this->assertDatabaseHas('inspection_problems', [
             'inspection_report_document_number' => $docNum,
-            'type' => 'NO PROBLEM',
+            'type' => 'MACHINE PROBLEM',
         ]);
 
         $this->assertDatabaseHas('inspection_quantities', [
@@ -956,5 +957,98 @@ class InspectionFormTest extends TestCase
         $this->assertDatabaseMissing('inspection_dimensions', [
             'inspection_report_document_number' => $docNum,
         ]);
+    }
+
+    public function test_pillar_5_period_problems_persists_and_recaps_in_step_3(): void
+    {
+        $docNum = 'INSP-P5-TEST-001';
+        $detailDocNum = 'DETAIL-P5-TEST-001';
+
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'shift' => 1,
+                'inspector' => 'Inspector Test',
+                'part_number' => 'PART-TEST-P5',
+                'part_name' => 'BRACKET TEST',
+                'machine_number' => 'INJ-01',
+            ],
+            'stepDetailSaved' => [
+                'period' => 1,
+                'details' => [
+                    'p1' => [
+                        'document_number' => $detailDocNum,
+                        'inspection_report_document_number' => $docNum,
+                        'period' => 1,
+                        'start_datetime' => '2026-11-17 07:30:00',
+                        'end_datetime' => '2026-11-17 09:30:00',
+                    ],
+                ],
+            ],
+        ]);
+
+        // 1. Mount StepPeriodProblem and add a problem
+        Livewire::actingAs($this->user)
+            ->test(StepPeriodProblem::class, [
+                'inspection_report_document_number' => $docNum,
+                'period' => 1,
+                'start_time' => '07:30',
+                'end_time' => '09:30',
+            ])
+            ->call('addProblem')
+            ->assertCount('problems', 1)
+            ->set('problems.0.type', 'MACHINE PROBLEM')
+            ->set('problems.0.time', '08:15')
+            ->set('problems.0.cycle_time', 20)
+            ->set('problems.0.remarks', 'Nozzle tersumbat material asing')
+            ->call('autoSave');
+
+        $this->assertNotEmpty(session('stepDetailSaved.problems.p1'));
+        $this->assertEquals('MACHINE PROBLEM', session('stepDetailSaved.problems.p1.0.type'));
+        $this->assertEquals(20, session('stepDetailSaved.problems.p1.0.cycle_time'));
+
+        // 2. StepDetail subStepsSummary must include 5th pillar
+        $stepDetail = Livewire::actingAs($this->user)
+            ->test(StepDetail::class, [
+                'inspection_report_document_number' => $docNum,
+            ]);
+
+        $subSteps = $stepDetail->get('subStepsSummary');
+        $this->assertArrayHasKey(5, $subSteps);
+        $this->assertEquals('Masalah & Loss Time', $subSteps[5]['title']);
+        $this->assertTrue($subSteps[5]['isSaved']);
+        $this->assertStringContainsString('1 Masalah (20 mnt)', $subSteps[5]['summary']);
+
+        // 3. Persist period to database
+        $stepDetailComponent = new StepDetail();
+        $stepDetailComponent->inspection_report_document_number = $docNum;
+        $stepDetailComponent->document_number = $detailDocNum;
+        $stepDetailComponent->period = 1;
+        $stepDetailComponent->persistPeriodToDatabase(1);
+
+        // Verify problem is saved to inspection_problems table
+        $this->assertDatabaseHas('inspection_problems', [
+            'inspection_report_document_number' => $docNum,
+            'type' => 'MACHINE PROBLEM',
+            'time' => '08:15',
+            'cycle_time' => 20,
+            'remarks' => 'Nozzle tersumbat material asing',
+        ]);
+
+        // Verify stepProblemSaved session is synchronized
+        $this->assertNotEmpty(session('stepProblemSaved'));
+        $this->assertEquals('MACHINE PROBLEM', session('stepProblemSaved.0.type'));
+
+        // 4. Step 3 (StepProblem) renders recap with 1 problem in period 1
+        Livewire::actingAs($this->user)
+            ->test(StepProblem::class, [
+                'inspection_report_document_number' => $docNum,
+            ])
+            ->assertSee('Rekap Kendala Per Periode Inspeksi')
+            ->assertSee('Periode 1')
+            ->assertSee('Nozzle tersumbat material asing')
+            ->call('saveStep')
+            ->assertDispatched('stepProblemSaved')
+            ->assertDispatched('nextStep');
     }
 }

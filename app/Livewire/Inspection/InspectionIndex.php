@@ -45,12 +45,16 @@ class InspectionIndex extends Component
         'status' => '',
     ];
 
+    public array $draftFilters = [];
+
+    #[Url(as: 'preset', except: 'all')]
+    public string $preset = 'all';
+
     public bool $ready = false;
 
     private const SORTABLE = [
         'id',
         'inspection_date',
-        'document_number',
         'shift',
         'customer',
         'part_number',
@@ -59,6 +63,19 @@ class InspectionIndex extends Component
     public function mount(): void
     {
         $this->ready = false;
+
+        $now = Carbon::now();
+        if ($this->preset === 'this_month' && $this->filters['date_from'] === '' && $this->filters['date_to'] === '') {
+            $this->filters['date_from'] = $now->copy()->startOfMonth()->toDateString();
+            $this->filters['date_to'] = $now->copy()->endOfMonth()->toDateString();
+        } elseif ($this->preset === 'today' && $this->filters['date_from'] === '' && $this->filters['date_to'] === '') {
+            $this->filters['date_from'] = $now->toDateString();
+            $this->filters['date_to'] = $now->toDateString();
+        } else {
+            $this->determinePresetFromDates();
+        }
+
+        $this->draftFilters = $this->filters;
     }
 
     public function load(): void
@@ -81,16 +98,90 @@ class InspectionIndex extends Component
         $this->resetPage();
     }
 
-    public function updatedFilters($value, $name): void
+    public function setPreset(string $preset): void
     {
-        if (in_array($name, ['date_from', 'date_to'], true)) {
-            $from = $this->filters['date_from'] ?: null;
-            $to = $this->filters['date_to'] ?: null;
-            if ($from && $to && $from > $to) {
-                [$this->filters['date_from'], $this->filters['date_to']] = [$to, $from];
+        $this->preset = $preset;
+        $now = Carbon::now();
+
+        switch ($preset) {
+            case 'today':
+                $this->draftFilters['date_from'] = $now->toDateString();
+                $this->draftFilters['date_to'] = $now->toDateString();
+                break;
+            case 'yesterday':
+                $yest = $now->copy()->subDay()->toDateString();
+                $this->draftFilters['date_from'] = $yest;
+                $this->draftFilters['date_to'] = $yest;
+                break;
+            case 'this_month':
+                $this->draftFilters['date_from'] = $now->copy()->startOfMonth()->toDateString();
+                $this->draftFilters['date_to'] = $now->copy()->endOfMonth()->toDateString();
+                break;
+            case 'all':
+                $this->draftFilters['date_from'] = '';
+                $this->draftFilters['date_to'] = '';
+                break;
+        }
+    }
+
+    public function applyFilters(): void
+    {
+        if (! empty($this->draftFilters['date_from']) && ! empty($this->draftFilters['date_to'])) {
+            if ($this->draftFilters['date_from'] > $this->draftFilters['date_to']) {
+                [$this->draftFilters['date_from'], $this->draftFilters['date_to']] = [
+                    $this->draftFilters['date_to'],
+                    $this->draftFilters['date_from'],
+                ];
             }
         }
+
+        $this->filters = $this->draftFilters;
+        $this->determinePresetFromDates();
         $this->resetPage();
+    }
+
+    public function removeFilter(string $key): void
+    {
+        if ($key === 'date') {
+            $this->filters['date_from'] = '';
+            $this->filters['date_to'] = '';
+            $this->preset = 'all';
+            $this->draftFilters['date_from'] = '';
+            $this->draftFilters['date_to'] = '';
+        } elseif (array_key_exists($key, $this->filters)) {
+            $this->filters[$key] = '';
+            $this->draftFilters[$key] = '';
+        }
+        $this->resetPage();
+    }
+
+    public function getHasActiveFiltersProperty(): bool
+    {
+        return ($this->preset !== 'all' && ($this->filters['date_from'] !== '' || $this->filters['date_to'] !== ''))
+            || $this->filters['document_number'] !== ''
+            || $this->filters['shift'] !== ''
+            || $this->filters['customer'] !== ''
+            || $this->filters['part_number'] !== ''
+            || $this->filters['status'] !== '';
+    }
+
+    private function determinePresetFromDates(): void
+    {
+        $from = $this->filters['date_from'] ?? '';
+        $to = $this->filters['date_to'] ?? '';
+        $now = Carbon::now();
+
+        if ($from === '' && $to === '') {
+            $this->preset = 'all';
+        } elseif ($from === $now->toDateString() && $to === $now->toDateString()) {
+            $this->preset = 'today';
+        } elseif ($from === $now->copy()->subDay()->toDateString() && $to === $now->copy()->subDay()->toDateString()) {
+            $this->preset = 'yesterday';
+        } elseif ($from === $now->copy()->startOfMonth()->toDateString() && $to === $now->copy()->endOfMonth()->toDateString()) {
+            $this->preset = 'this_month';
+        } else {
+            $this->preset = 'custom';
+        }
     }
 
     public function sortBy(string $field): void
@@ -112,6 +203,7 @@ class InspectionIndex extends Component
 
     public function clearFilters(): void
     {
+        $this->preset = 'all';
         $this->filters = [
             'document_number' => '',
             'date_from' => '',
@@ -119,7 +211,9 @@ class InspectionIndex extends Component
             'shift' => '',
             'customer' => '',
             'part_number' => '',
+            'status' => '',
         ];
+        $this->draftFilters = $this->filters;
         $this->resetPage();
     }
 
@@ -211,6 +305,7 @@ class InspectionIndex extends Component
             'shift' => 'Shift',
             'customer' => 'Customer',
             'part_number' => 'Part Number',
+            'status' => 'Status',
         ];
         $visibleCols = array_keys(array_filter($this->showCol));
         $headers = array_map(fn ($k) => $labels[$k] ?? $k, $visibleCols);

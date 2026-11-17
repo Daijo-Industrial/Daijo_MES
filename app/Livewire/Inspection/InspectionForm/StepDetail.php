@@ -7,6 +7,7 @@ use App\Models\Inspection\FirstInspection;
 use App\Models\Inspection\InspectionDimension;
 use App\Models\Inspection\InspectionJudgement;
 use App\Models\Inspection\InspectionPackaging;
+use App\Models\Inspection\InspectionProblem;
 use App\Models\Inspection\InspectionSampling;
 use App\Models\Inspection\SecondInspection;
 use Carbon\Carbon;
@@ -61,6 +62,8 @@ class StepDetail extends Component
 
     public bool $savedJudgement = false;
 
+    public bool $savedProblems = true;
+
     public array $unlockedPeriods = [];
 
     protected $rules = [
@@ -84,6 +87,8 @@ class StepDetail extends Component
         'packagingReset' => 'refreshSavedFlags',
         'judgementSaved' => 'refreshSavedFlags',
         'judgementReset' => 'refreshSavedFlags',
+        'periodProblemsSaved' => 'refreshSavedFlags',
+        'periodProblemsReset' => 'refreshSavedFlags',
     ];
 
     public function updated($field): void
@@ -241,7 +246,7 @@ class StepDetail extends Component
 
     public function goToSubStep(int $step): void
     {
-        if ($step >= 1 && $step <= 4) {
+        if ($step >= 1 && $step <= 5) {
             $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
             $this->subStep = $step;
             $this->saveStep();
@@ -255,7 +260,7 @@ class StepDetail extends Component
         $this->saveStep();
         $this->persistPeriodToDatabase($this->period);
 
-        if ($this->subStep < 4) {
+        if ($this->subStep < 5) {
             $this->subStep++;
         } else {
             $this->finishPeriod();
@@ -389,6 +394,16 @@ class StepDetail extends Component
             $judgSummary = "Pass: {$pass} • Rej: {$rej} ({$total} pcs)";
         }
 
+        // 5. Masalah & Loss Time
+        $probs = data_get($bag, "problems.$pk", []);
+        $probCount = count($probs);
+        if ($probCount > 0) {
+            $totalLoss = collect($probs)->sum(fn ($pr) => (int) data_get($pr, 'cycle_time', 0));
+            $probSummary = "{$probCount} Masalah ({$totalLoss} mnt)";
+        } else {
+            $probSummary = 'Normal (0 Masalah)';
+        }
+
         return [
             1 => [
                 'title' => 'First Piece',
@@ -409,6 +424,11 @@ class StepDetail extends Component
                 'title' => 'Judgement & Output',
                 'isSaved' => $this->savedJudgement,
                 'summary' => $judgSummary,
+            ],
+            5 => [
+                'title' => 'Masalah & Loss Time',
+                'isSaved' => true,
+                'summary' => $probSummary,
             ],
         ];
     }
@@ -457,6 +477,56 @@ class StepDetail extends Component
         }
 
         return $pStart->format('H:i') . ' - ' . $pEnd->format('H:i');
+    }
+
+    public function getPeriodTimeBounds(int $period): array
+    {
+        $pk = 'p' . $period;
+        $bag = session('stepDetailSaved', []);
+        $st = data_get($bag, "details.$pk.start_datetime");
+        $et = data_get($bag, "details.$pk.end_datetime");
+
+        if ($st && $et) {
+            return [
+                Carbon::parse($st)->format('H:i'),
+                Carbon::parse($et)->format('H:i'),
+            ];
+        }
+
+        $shift = (int) ($this->shift ?? session('stepHeaderSaved.shift', 1));
+        [$shiftStart, $shiftEnd] = $this->getShiftTimes($shift);
+
+        $tz = config('mes.timezone', 'Asia/Jakarta');
+        $start = Carbon::createFromTimeString($shiftStart, $tz);
+        $end = Carbon::createFromTimeString($shiftEnd, $tz);
+
+        if ($shift === 3 && $end->lessThan($start)) {
+            $end->addDay();
+        }
+
+        $offset = $period - 1;
+        $pStart = $start->copy()->addHours($offset * 2);
+        $pEnd = $pStart->copy()->addHours(2);
+
+        if ($pEnd->greaterThan($end)) {
+            $pEnd = $end;
+        }
+
+        return [$pStart->format('H:i'), $pEnd->format('H:i')];
+    }
+
+    public function isTimeInBounds(string $time, string $start, string $end): bool
+    {
+        $cleanTime = substr(trim($time), 0, 5);
+        $t = strtotime($cleanTime);
+        $s = strtotime($start);
+        $e = strtotime($end);
+
+        if ($e < $s) {
+            return $t >= $s || $t <= $e;
+        }
+
+        return $t >= $s && $t <= $e;
     }
 
     public function isPeriodSaved(?int $p = null): bool
@@ -639,6 +709,7 @@ class StepDetail extends Component
                 'samples',
                 'packagings',
                 'judgements',
+                'problems',
                 'saved_periods',
             ];
 
@@ -804,7 +875,49 @@ class StepDetail extends Component
                     ]
                 );
             }
+
+            // Sync period problems to inspection_problems table
+            [$startTime, $endTime] = $this->getPeriodTimeBounds($period);
+            $existingProblems = InspectionProblem::where('inspection_report_document_number', $headerDoc)->get();
+            $toDeleteIds = [];
+            foreach ($existingProblems as $prob) {
+                if ($this->isTimeInBounds((string) $prob->time, $startTime, $endTime)) {
+                    $toDeleteIds[] = $prob->id;
+                }
+            }
+            if (! empty($toDeleteIds)) {
+                InspectionProblem::whereIn('id', $toDeleteIds)->delete();
+            }
+
+            $periodProbs = data_get($bag, "problems.$pk", []);
+            if (! empty($periodProbs)) {
+                foreach ($periodProbs as $pr) {
+                    if (empty($pr['type']) || empty($pr['time'])) {
+                        continue;
+                    }
+                    InspectionProblem::create([
+                        'inspection_report_document_number' => $headerDoc,
+                        'type' => $pr['type'],
+                        'time' => $pr['time'],
+                        'cycle_time' => (int) data_get($pr, 'cycle_time', 0),
+                        'remarks' => data_get($pr, 'remarks'),
+                    ]);
+                }
+            }
         });
+
+        // Synchronize all merged period problems into session('stepProblemSaved') for Step 3 recap & Final Submit
+        $allProblems = [];
+        for ($i = 1; $i <= 4; $i++) {
+            $pKey = 'p' . $i;
+            $pProblems = data_get($bag, "problems.$pKey", []);
+            if (is_array($pProblems)) {
+                foreach ($pProblems as $prob) {
+                    $allProblems[] = $prob;
+                }
+            }
+        }
+        session(['stepProblemSaved' => $allProblems]);
     }
 
     public function deletePeriodFromDatabase(int $period): void
@@ -828,6 +941,18 @@ class StepDetail extends Component
             }
             InspectionJudgement::where('detail_inspection_report_document_number', $detail->document_number)->delete();
             $detail->delete();
+        }
+
+        [$startTime, $endTime] = $this->getPeriodTimeBounds($period);
+        $existingProblems = InspectionProblem::where('inspection_report_document_number', $headerDoc)->get();
+        $toDeleteIds = [];
+        foreach ($existingProblems as $prob) {
+            if ($this->isTimeInBounds((string) $prob->time, $startTime, $endTime)) {
+                $toDeleteIds[] = $prob->id;
+            }
+        }
+        if (! empty($toDeleteIds)) {
+            InspectionProblem::whereIn('id', $toDeleteIds)->delete();
         }
     }
 
@@ -862,6 +987,10 @@ class StepDetail extends Component
             $rejQty = (int) data_get($judgement, 'reject_quantity', 0);
             $totalOutput = $passQty + $rejQty;
 
+            $periodProbs = data_get($bag, "problems.$pk", []);
+            $problemCount = count($periodProbs);
+            $problemLossTime = collect($periodProbs)->sum(fn ($pr) => (int) data_get($pr, 'cycle_time', 0));
+
             $isSaved = $this->isPeriodSaved($p);
 
             $periodsSummary[$p] = [
@@ -886,6 +1015,9 @@ class StepDetail extends Component
                 'pass_quantity' => $passQty,
                 'reject_quantity' => $rejQty,
                 'total_output' => $totalOutput,
+                'problem_count' => $problemCount,
+                'problem_loss_time' => $problemLossTime,
+                'problems' => $periodProbs,
             ];
         }
 

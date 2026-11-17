@@ -135,4 +135,68 @@ class InspectionIndexTest extends TestCase
             ->call('exportCsv')
             ->assertFileDownloaded();
     }
+
+    public function test_filter_bar_progressive_disclosure_and_batch_apply(): void
+    {
+        InspectionReport::create([
+            'document_number' => 'INSP-SHIFT-1',
+            'customer' => 'Customer A',
+            'inspection_date' => '2026-11-01',
+            'part_number' => 'PART-A',
+            'part_name' => 'Part A',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'M1',
+            'shift' => 1,
+            'operator' => 'Op1',
+            'inspector' => 'Insp1',
+            'status' => 'submitted',
+        ]);
+
+        InspectionReport::create([
+            'document_number' => 'INSP-SHIFT-2',
+            'customer' => 'Customer B',
+            'inspection_date' => '2026-11-01',
+            'part_number' => 'PART-B',
+            'part_name' => 'Part B',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'M1',
+            'shift' => 2,
+            'operator' => 'Op2',
+            'inspector' => 'Insp2',
+            'status' => 'draft',
+        ]);
+
+        // 1. Initially both reports are visible (preset all)
+        $test = Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->call('loadData')
+            ->assertSee('INSP-SHIFT-1')
+            ->assertSee('INSP-SHIFT-2');
+
+        // 2. Modify draftFilters (shift = 1) and apply batch
+        $test->set('draftFilters.shift', '1')
+            ->call('applyFilters')
+            ->assertSee('INSP-SHIFT-1')
+            ->assertDontSee('INSP-SHIFT-2');
+
+        // 3. Remove shift filter pill
+        $test->call('removeFilter', 'shift')
+            ->assertSee('INSP-SHIFT-1')
+            ->assertSee('INSP-SHIFT-2');
+
+        // 4. Test Quick Date Presets
+        $test->call('setPreset', 'this_month')
+            ->call('applyFilters')
+            ->assertSet('preset', 'this_month')
+            ->call('removeFilter', 'date')
+            ->assertSet('preset', 'all');
+    }
 }
