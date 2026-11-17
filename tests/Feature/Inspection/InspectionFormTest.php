@@ -1051,4 +1051,53 @@ class InspectionFormTest extends TestCase
             ->assertDispatched('stepProblemSaved')
             ->assertDispatched('nextStep');
     }
+
+    public function test_entering_blank_period_does_not_accidentally_save_or_mark_pillar_5_as_saved(): void
+    {
+        $docNum = 'INSP-BLANK-TEST-001';
+
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'shift' => 1,
+                'inspector' => 'Inspector Test',
+                'part_number' => 'PART-TEST-BLANK',
+                'part_name' => 'BLANK PART',
+                'machine_number' => 'INJ-01',
+            ],
+            'stepDetailSaved' => [
+                'period' => 1,
+            ],
+        ]);
+
+        // 1. Mount StepDetail and enter period 1
+        $component = Livewire::actingAs($this->user)
+            ->test(StepDetail::class, [
+                'inspection_report_document_number' => $docNum,
+            ])
+            ->call('startPeriod', 1);
+
+        // 2. Pillar 5 must NOT default to saved when user just enters the period with no changes
+        $subSteps = $component->get('subStepsSummary');
+        $this->assertFalse($subSteps[5]['isSaved']);
+        $this->assertEquals('Belum dikonfirmasi', $subSteps[5]['summary']);
+
+        // 3. Exiting to hub without entering data must NOT mark period as saved
+        $component->call('exitToHub');
+        $this->assertFalse($component->instance()->isPeriodSaved(1));
+        $this->assertFalse($component->instance()->hasPeriodRealData(1));
+
+        // 4. Attempting to save empty period must be blocked
+        $component->call('startPeriod', 1);
+        $component->call('saveCurrentPeriod')
+            ->assertDispatched('toast', message: 'Periode 1 belum memiliki data inspeksi yang diisi. Harap masukkan hasil inspeksi sebelum menyimpan periode.');
+
+        $this->assertFalse($component->instance()->isPeriodSaved(1));
+
+        // Database must remain clean with NO ghost detail records
+        $this->assertDatabaseMissing('detail_inspection_reports', [
+            'inspection_report_document_number' => $docNum,
+            'period' => 1,
+        ]);
+    }
 }

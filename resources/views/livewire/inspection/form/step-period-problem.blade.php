@@ -11,12 +11,18 @@
 
         <div class="flex items-center gap-2">
             @if (empty($problems))
-                <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
-                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    <span>Normal (0 Masalah)</span>
-                </span>
+                @if ($isConfirmedNormal)
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Terkonfirmasi Normal</span>
+                    </span>
+                @else
+                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-600 bg-zinc-100 px-2.5 py-1 rounded border border-zinc-200">
+                        <span>Belum Dikonfirmasi</span>
+                    </span>
+                @endif
             @else
                 <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
                     <span>{{ count($problems) }} Masalah Tercatat</span>
@@ -49,14 +55,33 @@
                         Tidak ada kendala yang dicatat pada rentang jam <strong class="text-zinc-700 font-mono">{{ $start_time }} - {{ $end_time }} WIB</strong>. Jika terjadi trouble mesin, mold, atau material, klik tombol di bawah untuk mencatat kejadian.
                     </p>
                 </div>
-                <button type="button"
-                        wire:click="addProblem"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg text-zinc-900 bg-white hover:bg-zinc-50 border border-zinc-300 shadow-sm transition">
-                    <svg class="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    <span>Catat Kendala / Loss Time</span>
-                </button>
+                <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    @if (! $isConfirmedNormal)
+                        <button type="button"
+                                wire:click="confirmNormal"
+                                class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 shadow-sm transition">
+                            <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span>Konfirmasi Normal (0 Kendala)</span>
+                        </button>
+                    @else
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-emerald-800 bg-emerald-100 border border-emerald-300">
+                            <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span>Terkonfirmasi Normal</span>
+                        </span>
+                    @endif
+                    <button type="button"
+                            wire:click="addProblem"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg text-zinc-900 bg-white hover:bg-zinc-50 border border-zinc-300 shadow-sm transition">
+                        <svg class="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span>Catat Kendala / Loss Time</span>
+                    </button>
+                </div>
             </div>
         @else
             {{-- List of Problem Cards --}}

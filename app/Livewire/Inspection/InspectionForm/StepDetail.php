@@ -62,7 +62,7 @@ class StepDetail extends Component
 
     public bool $savedJudgement = false;
 
-    public bool $savedProblems = true;
+    public bool $savedProblems = false;
 
     public array $unlockedPeriods = [];
 
@@ -223,7 +223,7 @@ class StepDetail extends Component
         $this->period = $q;
         $this->updatedPeriod();
         $this->generateDocumentNumber();
-        $this->saveStep();
+        $this->periodKey = 'p' . $this->period;
         $this->computeSaveFlags();
     }
 
@@ -233,7 +233,7 @@ class StepDetail extends Component
         $this->subStep = 1;
         $this->updatedPeriod();
         $this->generateDocumentNumber();
-        $this->saveStep();
+        $this->periodKey = 'p' . $this->period;
         $this->computeSaveFlags();
         $this->isWizardActive = true;
     }
@@ -249,16 +249,20 @@ class StepDetail extends Component
         if ($step >= 1 && $step <= 5) {
             $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
             $this->subStep = $step;
-            $this->saveStep();
-            $this->persistPeriodToDatabase($this->period);
+            if ($this->hasPeriodRealData($this->period)) {
+                $this->saveStep();
+                $this->persistPeriodToDatabase($this->period);
+            }
         }
     }
 
     public function nextSubStep(): void
     {
         $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
-        $this->saveStep();
-        $this->persistPeriodToDatabase($this->period);
+        if ($this->hasPeriodRealData($this->period)) {
+            $this->saveStep();
+            $this->persistPeriodToDatabase($this->period);
+        }
 
         if ($this->subStep < 5) {
             $this->subStep++;
@@ -270,8 +274,10 @@ class StepDetail extends Component
     public function prevSubStep(): void
     {
         $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
-        $this->saveStep();
-        $this->persistPeriodToDatabase($this->period);
+        if ($this->hasPeriodRealData($this->period)) {
+            $this->saveStep();
+            $this->persistPeriodToDatabase($this->period);
+        }
 
         if ($this->subStep > 1) {
             $this->subStep--;
@@ -283,6 +289,19 @@ class StepDetail extends Component
     public function finishPeriod(): void
     {
         $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
+
+        if (! $this->hasPeriodRealData($this->period)) {
+            $this->dispatch('toast', message: "Periode {$this->period} belum memiliki data inspeksi yang diisi. Harap masukkan hasil inspeksi sebelum menyelesaikan periode.", type: 'warning');
+            return;
+        }
+
+        $bag = session('stepDetailSaved', []);
+        $probs = data_get($bag, "problems.{$this->periodKey}", []);
+        if (empty($probs)) {
+            $bag['problems_confirmed'][$this->periodKey] = true;
+            session(['stepDetailSaved' => $bag]);
+        }
+
         $this->saveCurrentPeriod();
         $this->isWizardActive = false;
         $this->subStep = 1;
@@ -293,8 +312,17 @@ class StepDetail extends Component
     public function exitToHub(): void
     {
         $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
-        $this->saveStep();
-        $this->persistPeriodToDatabase($this->period);
+
+        if ($this->hasPeriodRealData($this->period)) {
+            $this->saveStep();
+            $this->persistPeriodToDatabase($this->period);
+        } else {
+            $saved = session('stepDetailSaved', []);
+            unset($saved['details'][$this->periodKey]);
+            unset($saved['saved_periods'][$this->periodKey]);
+            session(['stepDetailSaved' => $saved]);
+        }
+
         $this->isWizardActive = false;
         $this->subStep = 1;
     }
@@ -335,6 +363,10 @@ class StepDetail extends Component
             ! empty(data_get($bag, "samples.$pk")) &&
             ! empty(data_get($bag, "packagings.$pk"));
         $this->savedJudgement = ! empty(data_get($bag, "judgements.$pk"));
+
+        $probs = data_get($bag, "problems.$pk", []);
+        $probsConfirmed = ! empty(data_get($bag, "problems_confirmed.$pk"));
+        $this->savedProblems = (count($probs) > 0) || $probsConfirmed;
     }
 
     public function refreshSavedFlags(): void
@@ -397,11 +429,18 @@ class StepDetail extends Component
         // 5. Masalah & Loss Time
         $probs = data_get($bag, "problems.$pk", []);
         $probCount = count($probs);
+        $probsConfirmed = ! empty(data_get($bag, "problems_confirmed.$pk"));
+
         if ($probCount > 0) {
             $totalLoss = collect($probs)->sum(fn ($pr) => (int) data_get($pr, 'cycle_time', 0));
             $probSummary = "{$probCount} Masalah ({$totalLoss} mnt)";
-        } else {
+            $probSaved = true;
+        } elseif ($probsConfirmed) {
             $probSummary = 'Normal (0 Masalah)';
+            $probSaved = true;
+        } else {
+            $probSummary = 'Belum dikonfirmasi';
+            $probSaved = false;
         }
 
         return [
@@ -427,7 +466,7 @@ class StepDetail extends Component
             ],
             5 => [
                 'title' => 'Masalah & Loss Time',
-                'isSaved' => true,
+                'isSaved' => $probSaved,
                 'summary' => $probSummary,
             ],
         ];
@@ -529,24 +568,60 @@ class StepDetail extends Component
         return $t >= $s && $t <= $e;
     }
 
+    public function hasPeriodRealData(int $period): bool
+    {
+        $pk = 'p' . $period;
+        $bag = session('stepDetailSaved', []);
+
+        $first = data_get($bag, "first_inspections.$pk");
+        $hasFirst = ! empty($first) && (
+            ! empty($first['appearance']) ||
+            (isset($first['weight']) && (float) $first['weight'] > 0) ||
+            ! empty($first['fitting_test'])
+        );
+
+        $dims = data_get($bag, "dimensions.$pk", []);
+        $hasDims = ! empty($dims) && collect($dims)->contains(fn ($d) => isset($d['actual_value']) && $d['actual_value'] !== null && $d['actual_value'] !== '');
+
+        $second = data_get($bag, "second_inspections.$pk");
+        $samples = data_get($bag, "samples.$pk", []);
+        $hasSecond = (! empty($second) && (int) ($second['lot_size_quantity'] ?? 0) > 0) ||
+                     (! empty($samples) && collect($samples)->contains(fn ($s) => (int) ($s['quantity'] ?? 0) > 0));
+
+        $judgement = data_get($bag, "judgements.$pk");
+        $hasJudgement = ! empty($judgement) && (
+            (int) ($judgement['pass_quantity'] ?? 0) > 0 ||
+            (int) ($judgement['reject_quantity'] ?? 0) > 0
+        );
+
+        $probs = data_get($bag, "problems.$pk", []);
+        $hasProbs = ! empty($probs) && count($probs) > 0;
+
+        return $hasFirst || $hasDims || $hasSecond || $hasJudgement || $hasProbs;
+    }
+
+    public function hasCoreInspectionData(int $period): bool
+    {
+        $pk = 'p' . $period;
+        $bag = session('stepDetailSaved', []);
+
+        $hasFirst = ! empty(data_get($bag, "first_inspections.$pk.appearance"));
+        $hasJudgement = (int) data_get($bag, "judgements.$pk.pass_quantity", 0) > 0 ||
+                        (int) data_get($bag, "judgements.$pk.reject_quantity", 0) > 0;
+
+        return $hasFirst && $hasJudgement;
+    }
+
     public function isPeriodSaved(?int $p = null): bool
     {
         $targetP = $p ?? $this->period;
         $pk = 'p' . $targetP;
         $bag = session('stepDetailSaved', []);
 
-        if (! empty(data_get($bag, "saved_periods.$pk"))) {
-            return true;
-        }
+        $hasRealData = $this->hasPeriodRealData($targetP);
+        $isMarkedSaved = ! empty(data_get($bag, "saved_periods.$pk"));
 
-        $hasDetail = ! empty(data_get($bag, "details.$pk"));
-        $hasFirst = ! empty(data_get($bag, "first_inspections.$pk"));
-        $hasDimensions = ! empty(data_get($bag, "dimensions.$pk"));
-        $hasSecond = ! empty(data_get($bag, "second_inspections.$pk"));
-        $hasPackagings = ! empty(data_get($bag, "packagings.$pk"));
-        $hasJudgement = ! empty(data_get($bag, "judgements.$pk"));
-
-        return $hasDetail && ($hasFirst || $hasDimensions || $hasSecond || $hasPackagings || $hasJudgement);
+        return $hasRealData && ($isMarkedSaved || $this->hasCoreInspectionData($targetP));
     }
 
     public function isPeriodLocked(?int $p = null): bool
@@ -580,6 +655,11 @@ class StepDetail extends Component
 
     public function saveCurrentPeriod(): void
     {
+        if (! $this->hasPeriodRealData($this->period)) {
+            $this->dispatch('toast', message: "Periode {$this->period} belum memiliki data inspeksi yang diisi. Harap masukkan hasil inspeksi sebelum menyimpan periode.", type: 'warning');
+            return;
+        }
+
         $this->saveStep();
         $this->dispatch('triggerSubcomponentSave', periodKey: $this->periodKey);
 
@@ -688,7 +768,9 @@ class StepDetail extends Component
     public function proceedToStep3(): void
     {
         if ($this->isWizardActive) {
-            $this->saveCurrentPeriod();
+            if ($this->hasPeriodRealData($this->period)) {
+                $this->saveCurrentPeriod();
+            }
             $this->isWizardActive = false;
         }
         $this->dispatch('nextStep');
@@ -710,6 +792,7 @@ class StepDetail extends Component
                 'packagings',
                 'judgements',
                 'problems',
+                'problems_confirmed',
                 'saved_periods',
             ];
 
@@ -735,6 +818,10 @@ class StepDetail extends Component
 
     public function persistPeriodToDatabase(int $period): void
     {
+        if (! $this->hasPeriodRealData($period)) {
+            return;
+        }
+
         $pk = 'p' . $period;
         $bag = session('stepDetailSaved', []);
         $headerDoc = $this->inspection_report_document_number ?: session('stepHeaderSaved.document_number');
