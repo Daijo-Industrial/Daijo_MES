@@ -21,13 +21,18 @@ class WmsPalletForm extends Model
     protected $fillable = [
         'pallet_id', 'plant', 'position_id', 'assigned_at', 'part_no', 'model_name',
         'prod_date', 'lot_no', 'delivery_name', 'delivery_shift',
-        'box_qty', 'total_pallet_qty', 'status', 'remarks',
+        'box_qty', 'total_pallet_qty', 'status', 'is_split', 'split_from_pallet_id',
+        'split_into', 'merged_from', 'split_at', 'remarks',
         'sap_sync_status', 'sap_error_msg', 'sap_sync_at', 'sap_sync_duration',
     ];
 
     protected $casts = [
         'assigned_at' => 'datetime',
         'sap_sync_at' => 'datetime',
+        'split_at' => 'datetime',
+        'is_split' => 'boolean',
+        'split_into' => 'array',
+        'merged_from' => 'array',
     ];
 
     public function details()
@@ -38,6 +43,38 @@ class WmsPalletForm extends Model
     public function position()
     {
         return $this->belongsTo(WmsPosition::class, 'position_id');
+    }
+
+    /**
+     * Get records of incoming merges/consolidations into this pallet
+     */
+    public function getMergedFromList(): array
+    {
+        if (! empty($this->merged_from)) {
+            return $this->merged_from;
+        }
+
+        // Fallback: search other pallets whose split_into targeted this pallet
+        $records = [];
+        $sourcePallets = static::whereNotNull('split_into')
+            ->where('pallet_id', '!=', $this->pallet_id)
+            ->get();
+
+        foreach ($sourcePallets as $sp) {
+            foreach ($sp->split_into ?? [] as $item) {
+                if (($item['target_pallet_id'] ?? null) === $this->pallet_id && ($item['action'] ?? '') === 'MERGE') {
+                    $records[] = [
+                        'source_pallet_id' => $sp->pallet_id,
+                        'part_no' => $item['part_no'] ?? '-',
+                        'qty' => $item['qty'] ?? 0,
+                        'box_qty' => $item['box_qty'] ?? 0,
+                        'merged_at' => $sp->split_at ? $sp->split_at->format('Y-m-d H:i:s') : null,
+                    ];
+                }
+            }
+        }
+
+        return $records;
     }
 
     /**

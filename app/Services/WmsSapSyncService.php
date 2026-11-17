@@ -39,6 +39,15 @@ class WmsSapSyncService extends BaseSapService
         }
 
         if ($pallet->details->isEmpty()) {
+            if ($pallet->is_split || $pallet->status === 'RESOLVED') {
+                $pallet->update([
+                    'sap_sync_status' => 4, // 4 = IGNORED / RESOLVED
+                    'sap_error_msg' => 'Pallet di-split ke pallet lain',
+                ]);
+
+                return ['status' => true, 'message' => 'Pallet resolved (split to other pallets)'];
+            }
+
             $pallet->update(['sap_sync_status' => 2, 'sap_error_msg' => 'No items']);
 
             return ['status' => false, 'message' => 'Pallet has no items to sync'];

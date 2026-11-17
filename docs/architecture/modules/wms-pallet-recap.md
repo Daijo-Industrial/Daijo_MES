@@ -49,3 +49,38 @@ Manages pallet generation for internal transfer and delivery (`/wms/pallet-form/
   - Dropdown selector filterable by warehouse (`whse_id`) with real-time status indicators (EMPTY / PARTIAL / FULL) and customer mapping.
 - Zero-dependency Web Audio API synthesizer feedback (high success beep / low error double-beep) and automatic scanner focus recycling.
 
+---
+
+## Mixed Pallet Resolution & Split Assignment (`/wms/pallet-form/history`)
+- **Mixed Pallet Detection**:
+  - Automatically identifies multi-item pallets (`part_no === 'MIXED'` or multiple unique `part_no` values in `details`).
+- **Modal Assign Slot with Warning**:
+  - Prominently warns operators when attempting to assign a multi-item pallet directly to a rack.
+  - **Option 1: Pisahkan Item (Solve Mixed - Recommended)**:
+    - Scans warehouse for active racks holding matching `part_no` (`WmsService::findExistingRacksForItem`).
+    - Suggests merging boxes into the existing pallet in that rack (`MERGE`).
+    - If no rack holds the item, suggests creating a new pallet into an available slot (`NEW_PALLET`).
+    - **Single Item / Granular Execution**:
+      - Operators can process items individually via **`[Gabungkan Item Ini]`** (for existing rack merge) or **`[Simpan Item Ini]`** (for new pallet).
+      - Allows resolving 1 item immediately while leaving unassigned items in the source mixed pallet without blocking.
+    - **Batch Execution (`Eksekusi Semua yang Dipilih`)**:
+      - Applies split to all items that have assigned rack slots; unassigned items safely remain in the source pallet.
+    - **Worst Case Handling (All Items Consolidated)**:
+      - Source pallet transitions to `status = 'RESOLVED'`, `total_pallet_qty = 0`, `box_qty = 0`, `position_id = null`.
+      - Full audit trail preserved in `is_split = true`, `split_at`, `split_into` (JSON array of transferred parts, boxes, and target pallets/racks), and `wms_pallet_logs`.
+  - **Option 2: Tetap Assign 1 Rak (Force Bypass)**:
+    - Allows direct assignment of the entire mixed pallet to a single rack slot with explicit operator confirmation.
+
+---
+
+## SAP Sync Monitor Split Tracking (`/wms/sap-sync-monitor-delivery`)
+- **Purpose**: Strictly read-only monitoring of pallet inventory transfer status to SAP.
+- **Split Pallet Indicator**:
+  - Pallets marked `is_split = true` or `status = 'RESOLVED'` render a `[SPLIT]` button adjacent to the Pallet ID.
+  - Pallets created as split children show `(dari <parent_pallet_id>)`.
+- **Read-Only Split History Modal**:
+  - Clicking `[SPLIT]` opens a diagnostic modal displaying split timestamp, source pallet status, and breakdown table showing which items/boxes were transferred to which target pallets and rack positions.
+- **SAP Sync Engine Protection**:
+  - Pallets emptied during split (`status = 'RESOLVED'` and 0 details) automatically transition to `sap_sync_status = 4` (IGNORED/RESOLVED) with notes `"Pallet di-split ke pallet lain"` to eliminate false "FAILED: No items" sync errors.
+
+

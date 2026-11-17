@@ -27,7 +27,8 @@ class MasterBomTest extends TestCase
 
         Livewire::test(MasterBomView::class)
             ->assertStatus(200)
-            ->assertSee('Master Bill of Materials');
+            ->assertSee('Master Bill of Materials')
+            ->assertSee('Terakhir Diupdate');
     }
 
     public function test_bom_tree_explosion_calculates_multi_level()

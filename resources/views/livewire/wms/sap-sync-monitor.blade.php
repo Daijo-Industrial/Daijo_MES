@@ -88,7 +88,33 @@
                     @forelse($pallets as $pallet)
                         <tr class="hover:bg-gray-50/80 transition-colors group">
                             <td class="py-4 px-6">
-                                <span class="text-sm font-black text-gray-900 tracking-tight">{{ $pallet->pallet_id }}</span>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-sm font-black text-gray-900 tracking-tight">{{ $pallet->pallet_id }}</span>
+                                    @if($pallet->is_split || !empty($pallet->split_into) || $pallet->status === 'RESOLVED')
+                                        <button wire:click="showSplitModal('{{ $pallet->pallet_id }}')" 
+                                                type="button"
+                                                class="px-2 py-0.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[10px] font-bold rounded cursor-pointer transition" 
+                                                title="Pallet ini telah di-split. Klik untuk detail.">
+                                            SPLIT
+                                        </button>
+                                    @endif
+                                    @php
+                                        $mergeHistory = $pallet->getMergedFromList();
+                                    @endphp
+                                    @if(!empty($mergeHistory))
+                                        <button wire:click="showMergeModal('{{ $pallet->pallet_id }}')" 
+                                                type="button"
+                                                class="px-2 py-0.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-300 text-[10px] font-bold rounded cursor-pointer transition" 
+                                                title="Pallet ini menerima gabungan box dari pallet lain. Klik untuk detail.">
+                                            GABUNGAN
+                                        </button>
+                                    @endif
+                                    @if(!empty($pallet->split_from_pallet_id))
+                                        <span class="text-[9px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200" title="Hasil split dari {{ $pallet->split_from_pallet_id }}">
+                                            (dari {{ $pallet->split_from_pallet_id }})
+                                        </span>
+                                    @endif
+                                </div>
                                 <div class="text-[9px] font-bold text-gray-400 uppercase mt-0.5">{{ $pallet->created_at->timezone('Asia/Jakarta')->format('d M Y H:i') }}</div>
                             </td>
                             <td class="py-4 px-6">
@@ -319,6 +345,167 @@
                     <button wire:click="closeDetails" class="bg-gray-900 text-white px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all">
                         Close Diagnostics
                     </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Modal Riwayat Split Pallet --}}
+    @if($showSplitInfoModal && $selectedSplitPallet)
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 border border-gray-100">
+                <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div>
+                        <span class="text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-blue-200">
+                            Riwayat Split Pallet
+                        </span>
+                        <h3 class="text-base font-black text-gray-900 mt-1 flex items-center gap-2">
+                            <span>Pallet:</span>
+                            <span class="font-mono text-blue-700">{{ $selectedSplitPallet->pallet_id }}</span>
+                        </h3>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            Waktu Split: {{ $selectedSplitPallet->split_at ? $selectedSplitPallet->split_at->timezone('Asia/Jakarta')->format('d M Y H:i:s') : '-' }}
+                        </p>
+                    </div>
+                    <button wire:click="closeSplitModal" type="button" class="text-gray-400 hover:text-gray-600 font-bold text-xl cursor-pointer">&times;</button>
+                </div>
+
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex justify-between items-center">
+                    <div>
+                        <span class="font-bold text-gray-500 block">Status Pallet Asal:</span>
+                        <strong class="font-bold text-sm text-blue-950">{{ $selectedSplitPallet->status }} ({{ number_format($selectedSplitPallet->total_pallet_qty) }} pcs / {{ $selectedSplitPallet->box_qty }} box)</strong>
+                    </div>
+                    <span class="px-2.5 py-1 bg-white border border-blue-300 text-[10px] font-bold rounded-lg uppercase">
+                        {{ $selectedSplitPallet->box_qty == 0 ? 'Konsolidasi Penuh' : 'Split Sebagian' }}
+                    </span>
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Daftar Item Hasil Pemisahan:</h4>
+                    <div class="border border-gray-200 rounded-xl overflow-hidden">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-50 text-gray-600 font-bold uppercase text-[10px] border-b border-gray-200">
+                                <tr>
+                                    <th class="px-3 py-2">Part No</th>
+                                    <th class="px-3 py-2 text-center">Box & Qty</th>
+                                    <th class="px-3 py-2">Tipe Aksi</th>
+                                    <th class="px-3 py-2">Tujuan (Pallet & Rak)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @forelse($selectedSplitPallet->split_into ?? [] as $splitItem)
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-3 py-2 font-bold text-gray-900">
+                                            {{ $splitItem['part_no'] ?? '-' }}
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            <span class="font-semibold">{{ $splitItem['box_qty'] ?? 0 }} Box</span>
+                                            <div class="text-[10px] text-gray-500">{{ number_format($splitItem['qty'] ?? 0) }} pcs</div>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            @if(($splitItem['action'] ?? '') === 'MERGE')
+                                                <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
+                                                    GABUNG RAK
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold">
+                                                    PALLET BARU
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <div class="font-mono font-bold text-blue-700 text-[11px]">{{ $splitItem['target_pallet_id'] ?? '-' }}</div>
+                                            <div class="text-[10px] text-gray-500">Rak: <span class="font-bold text-gray-800">{{ $splitItem['target_position_code'] ?? '-' }}</span></div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="px-3 py-4 text-center text-gray-400 italic">Tidak ada catatan pemisahan item.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-2 border-t border-gray-100">
+                    <button wire:click="closeSplitModal" type="button" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs cursor-pointer">Tutup</button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Modal Riwayat Gabungan Pallet --}}
+    @if($showMergeInfoModal && $selectedMergePallet)
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 border border-gray-100">
+                <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div>
+                        <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200">
+                            Riwayat Gabungan Box (Konsolidasi)
+                        </span>
+                        <h3 class="text-base font-black text-gray-900 mt-1 flex items-center gap-2">
+                            <span>Pallet Tujuan:</span>
+                            <span class="font-mono text-emerald-700">{{ $selectedMergePallet->pallet_id }}</span>
+                        </h3>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            Item: <strong class="text-gray-800">{{ $selectedMergePallet->part_no }}</strong> - {{ $selectedMergePallet->model_name }}
+                        </p>
+                    </div>
+                    <button wire:click="closeMergeModal" type="button" class="text-gray-400 hover:text-gray-600 font-bold text-xl cursor-pointer">&times;</button>
+                </div>
+
+                <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex justify-between items-center">
+                    <div>
+                        <span class="font-bold text-gray-500 block">Total Box Saat Ini:</span>
+                        <strong class="font-bold text-sm text-emerald-950">{{ $selectedMergePallet->box_qty }} Box ({{ number_format($selectedMergePallet->total_pallet_qty) }} pcs)</strong>
+                    </div>
+                    <span class="px-2.5 py-1 bg-white border border-emerald-300 text-[10px] font-bold rounded-lg uppercase text-emerald-800">
+                        {{ count($selectedMergeRecords) }} Sumber Gabungan
+                    </span>
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Rincian Box Tambahan yang Digabungkan:</h4>
+                    <div class="border border-gray-200 rounded-xl overflow-hidden">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-50 text-gray-600 font-bold uppercase text-[10px] border-b border-gray-200">
+                                <tr>
+                                    <th class="px-3 py-2">Pallet Asal</th>
+                                    <th class="px-3 py-2">Part No</th>
+                                    <th class="px-3 py-2 text-center">Box & Qty Masuk</th>
+                                    <th class="px-3 py-2 text-right">Waktu Gabung</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @forelse($selectedMergeRecords as $rec)
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-3 py-2">
+                                            <div class="font-mono font-bold text-blue-700 text-xs">{{ $rec['source_pallet_id'] ?? '-' }}</div>
+                                        </td>
+                                        <td class="px-3 py-2 font-bold text-gray-900">
+                                            {{ $rec['part_no'] ?? '-' }}
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            <span class="font-bold text-emerald-700">+{{ $rec['box_qty'] ?? 0 }} Box</span>
+                                            <div class="text-[10px] text-gray-500">{{ number_format($rec['qty'] ?? 0) }} pcs</div>
+                                        </td>
+                                        <td class="px-3 py-2 text-right text-[11px] text-gray-500 font-mono">
+                                            {{ !empty($rec['merged_at']) ? \Carbon\Carbon::parse($rec['merged_at'])->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-' }}
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="px-3 py-4 text-center text-gray-400 italic">Tidak ada catatan box gabungan.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-2 border-t border-gray-100">
+                    <button wire:click="closeMergeModal" type="button" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs cursor-pointer">Tutup</button>
                 </div>
             </div>
         </div>

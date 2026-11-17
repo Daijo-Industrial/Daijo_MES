@@ -24,6 +24,16 @@ class SapSyncMonitor extends Component
 
     public $palletDetails = [];
 
+    public bool $showSplitInfoModal = false;
+
+    public ?WmsPalletForm $selectedSplitPallet = null;
+
+    public bool $showMergeInfoModal = false;
+
+    public ?WmsPalletForm $selectedMergePallet = null;
+
+    public array $selectedMergeRecords = [];
+
     public $connectionTestResult = null;
 
     protected $queryString = ['search', 'statusFilter'];
@@ -64,6 +74,40 @@ class SapSyncMonitor extends Component
         $this->showDetails = false;
         $this->selectedPalletId = null;
         $this->palletDetails = [];
+    }
+
+    /**
+     * Show modal with split history details
+     */
+    public function showSplitModal($palletId)
+    {
+        $this->selectedSplitPallet = WmsPalletForm::where('pallet_id', $palletId)->first();
+        $this->showSplitInfoModal = true;
+    }
+
+    public function closeSplitModal()
+    {
+        $this->showSplitInfoModal = false;
+        $this->selectedSplitPallet = null;
+    }
+
+    /**
+     * Show modal with merge / consolidation details
+     */
+    public function showMergeModal($palletId)
+    {
+        $this->selectedMergePallet = WmsPalletForm::where('pallet_id', $palletId)->first();
+        if ($this->selectedMergePallet) {
+            $this->selectedMergeRecords = $this->selectedMergePallet->getMergedFromList();
+            $this->showMergeInfoModal = true;
+        }
+    }
+
+    public function closeMergeModal()
+    {
+        $this->showMergeInfoModal = false;
+        $this->selectedMergePallet = null;
+        $this->selectedMergeRecords = [];
     }
 
     /**
