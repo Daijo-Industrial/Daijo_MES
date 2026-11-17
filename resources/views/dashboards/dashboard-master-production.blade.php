@@ -896,9 +896,9 @@
                                                                         <td class="border px-4 py-2 font-mono font-semibold">{{ $detail['label'] }}</td>
                                                                         <td class="border px-4 py-2 font-mono text-xs">
                                                                             @if (! empty($detail['pallet_id']))
-                                                                                <a href="{{ route('wms.pallet-form.index', ['search' => $detail['pallet_id']]) }}" target="_blank" class="inline-flex items-center font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded transition">
+                                                                                <span class="inline-flex items-center font-bold text-gray-800 bg-gray-100 border border-gray-300 px-2 py-0.5 rounded select-all">
                                                                                     {{ $detail['pallet_id'] }}
-                                                                                </a>
+                                                                                </span>
                                                                             @else
                                                                                 <span class="text-gray-400 italic text-xs">Belum di-Pallet</span>
                                                                             @endif
