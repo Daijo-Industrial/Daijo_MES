@@ -178,20 +178,44 @@ class InspectionForm extends Component
             }
         }
 
-        session(['stepDetailSaved' => $detailBag]);
-
         $problems = InspectionProblem::where('inspection_report_document_number', $report->document_number)->get();
         if ($problems->isNotEmpty()) {
             session([
                 'stepProblemSaved' => $problems->map(fn ($p) => [
                     'inspection_report_document_number' => $report->document_number,
                     'type' => $p->type,
-                    'time' => $p->time,
+                    'time' => substr((string) $p->time, 0, 5),
                     'cycle_time' => $p->cycle_time,
                     'remarks' => $p->remarks,
                 ])->all(),
             ]);
+
+            foreach ($details as $d) {
+                $pk = 'p' . $d->period;
+                $st = $d->start_datetime ? \Carbon\Carbon::parse($d->start_datetime)->format('H:i') : null;
+                $et = $d->end_datetime ? \Carbon\Carbon::parse($d->end_datetime)->format('H:i') : null;
+                if ($st && $et) {
+                    $detailBag['problems'][$pk] = $problems->filter(function ($prob) use ($st, $et) {
+                        $t = strtotime(substr((string) $prob->time, 0, 5));
+                        $s = strtotime($st);
+                        $e = strtotime($et);
+                        if ($e < $s) {
+                            return $t >= $s || $t <= $e;
+                        }
+
+                        return $t >= $s && $t <= $e;
+                    })->map(fn ($p) => [
+                        'inspection_report_document_number' => $report->document_number,
+                        'type' => $p->type,
+                        'time' => substr((string) $p->time, 0, 5),
+                        'cycle_time' => $p->cycle_time,
+                        'remarks' => $p->remarks,
+                    ])->values()->all();
+                }
+            }
         }
+
+        session(['stepDetailSaved' => $detailBag]);
     }
 
     public function computeFilledSteps(): array

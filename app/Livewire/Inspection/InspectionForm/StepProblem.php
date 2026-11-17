@@ -43,7 +43,7 @@ class StepProblem extends Component
             'problems.*.type' => ['required', 'string', Rule::in($this->types)],
             'problems.*.time' => 'required|date_format:H:i',
             'problems.*.cycle_time' => 'required|integer|min:1',
-            'problems.*.remarks' => 'required|string|max:255',
+            'problems.*.remarks' => 'nullable|string|max:255',
         ];
     }
 
@@ -69,7 +69,6 @@ class StepProblem extends Component
     public function mount($inspection_report_document_number = null): void
     {
         $this->types = [
-            'NO PROBLEM',
             'PART PROBLEM',
             'MOLD PROBLEM',
             'MACHINE PROBLEM',
@@ -77,6 +76,7 @@ class StepProblem extends Component
             'MATERIAL PROBLEM',
             'METHOD PROBLEM',
             'MAN PROBLEM',
+            'OTHER PROBLEM',
         ];
 
         $this->inspection_report_document_number = $inspection_report_document_number
@@ -89,17 +89,30 @@ class StepProblem extends Component
         $this->part_number = session('stepHeaderSaved.part_number', null);
 
         $this->problems = session('stepProblemSaved', []);
-        $this->sessionSaved = session('stepProblemSaved', []);
-        $this->savedAt = session('stepProblemSaved_meta.savedAt');
-        $this->isSaved = ! empty($this->problems);
-
         if (empty($this->problems)) {
-            $this->addProblem();
-        } else {
-            foreach ($this->problems as &$problem) {
-                if (empty($problem['inspection_report_document_number'])) {
-                    $problem['inspection_report_document_number'] = $this->inspection_report_document_number;
+            $periodProblems = session('stepDetailSaved.problems', []);
+            $merged = [];
+            foreach (range(1, 4) as $p) {
+                $pk = 'p' . $p;
+                $rows = $periodProblems[$pk] ?? [];
+                if (is_array($rows)) {
+                    foreach ($rows as $r) {
+                        $merged[] = $r;
+                    }
                 }
+            }
+            if (! empty($merged)) {
+                $this->problems = $merged;
+            }
+        }
+
+        $this->sessionSaved = $this->problems;
+        $this->savedAt = session('stepProblemSaved_meta.savedAt');
+        $this->isSaved = true;
+
+        foreach ($this->problems as &$problem) {
+            if (empty($problem['inspection_report_document_number'])) {
+                $problem['inspection_report_document_number'] = $this->inspection_report_document_number;
             }
         }
 
@@ -112,26 +125,11 @@ class StepProblem extends Component
         $this->problems[] = [
             'row_key' => (string) Str::uuid(),
             'inspection_report_document_number' => $this->inspection_report_document_number,
-            'time' => now()->format('H:i'),
-            'cycle_time' => 60,
-            'type' => 'NO PROBLEM',
-            'remarks' => 'Normal production',
+            'time' => now()->timezone('Asia/Jakarta')->format('H:i'),
+            'cycle_time' => 15,
+            'type' => 'MACHINE PROBLEM',
+            'remarks' => '',
         ];
-    }
-
-    public function setNoProblemPreset(): void
-    {
-        $this->problems = [
-            [
-                'row_key' => (string) Str::uuid(),
-                'inspection_report_document_number' => $this->inspection_report_document_number,
-                'time' => now()->format('H:i'),
-                'cycle_time' => 60,
-                'type' => 'NO PROBLEM',
-                'remarks' => 'Normal production / Tidak ada kendala',
-            ],
-        ];
-        $this->dispatch('toast', message: 'Preset produksi normal diterapkan.');
     }
 
     public function removeProblem($index): void
@@ -153,6 +151,9 @@ class StepProblem extends Component
         if ($headerDoc) {
             \App\Models\Inspection\InspectionProblem::where('inspection_report_document_number', $headerDoc)->delete();
             foreach ($this->problems as $p) {
+                if (empty($p['type']) || empty($p['time'])) {
+                    continue;
+                }
                 \App\Models\Inspection\InspectionProblem::create([
                     'inspection_report_document_number' => $headerDoc,
                     'type' => $p['type'],
@@ -173,7 +174,7 @@ class StepProblem extends Component
 
         $this->dispatch('stepProblemSaved');
         $this->dispatch('nextStep');
-        $this->dispatch('toast', message: 'Daftar problem & loss time shift berhasil disimpan!');
+        $this->dispatch('toast', message: 'Daftar kendala & loss time shift berhasil disimpan!');
     }
 
     public function resetStep(): void
@@ -190,17 +191,98 @@ class StepProblem extends Component
         $this->sessionSaved = [];
         $this->baselineByKey = [];
         $this->savedAt = null;
-        $this->isSaved = false;
+        $this->isSaved = true;
 
-        $this->addProblem();
         $this->resetValidation();
 
         $this->dispatch('problemsReset');
-        $this->dispatch('toast', message: 'Daftar problem di-reset!');
+        $this->dispatch('toast', message: 'Daftar kendala shift di-reset!');
+    }
+
+    private function getShiftTimes(int $shift): array
+    {
+        $shifts = config('mes.shifts', []);
+        $shiftData = $shifts[$shift] ?? null;
+
+        if ($shiftData && ! empty($shiftData['start']) && ! empty($shiftData['end'])) {
+            return [$shiftData['start'], $shiftData['end']];
+        }
+
+        return ['07:30', '15:30'];
+    }
+
+    public function getPeriodForTime(string $time): int
+    {
+        $shift = (int) ($this->shift ?? session('stepHeaderSaved.shift', 1));
+        [$shiftStart, $shiftEnd] = $this->getShiftTimes($shift);
+
+        $tz = config('mes.timezone', 'Asia/Jakarta');
+        $start = \Carbon\Carbon::createFromTimeString($shiftStart, $tz);
+        $end = \Carbon\Carbon::createFromTimeString($shiftEnd, $tz);
+
+        if ($shift === 3 && $end->lessThan($start)) {
+            $end->addDay();
+        }
+
+        $cleanTime = substr(trim($time), 0, 5);
+        $target = \Carbon\Carbon::createFromTimeString($cleanTime ?: '07:30', $tz);
+        if ($shift === 3 && $target->lessThan($start)) {
+            $target->addDay();
+        }
+
+        for ($p = 1; $p <= 4; $p++) {
+            $pStart = $start->copy()->addHours(($p - 1) * 2);
+            $pEnd = ($p === 4) ? $end : $start->copy()->addHours($p * 2);
+            if ($target->betweenIncluded($pStart, $pEnd)) {
+                return $p;
+            }
+        }
+
+        return 1;
     }
 
     public function render(): View
     {
-        return view('livewire.inspection.form.step-problem');
+        $shift = (int) ($this->shift ?? session('stepHeaderSaved.shift', 1));
+        [$shiftStart, $shiftEnd] = $this->getShiftTimes($shift);
+
+        $tz = config('mes.timezone', 'Asia/Jakarta');
+        $start = \Carbon\Carbon::createFromTimeString($shiftStart, $tz);
+        $end = \Carbon\Carbon::createFromTimeString($shiftEnd, $tz);
+        if ($shift === 3 && $end->lessThan($start)) {
+            $end->addDay();
+        }
+
+        $periodRecap = [];
+        for ($p = 1; $p <= 4; $p++) {
+            $offset = $p - 1;
+            $pStart = $start->copy()->addHours($offset * 2);
+            $pEnd = ($p === 4) ? $end : $pStart->copy()->addHours(2);
+            if ($pEnd->greaterThan($end)) {
+                $pEnd = $end;
+            }
+
+            $periodRecap[$p] = [
+                'period' => $p,
+                'time_range' => $pStart->format('H:i') . ' - ' . $pEnd->format('H:i'),
+                'problems' => [],
+                'loss_time' => 0,
+            ];
+        }
+
+        foreach ($this->problems as $idx => $prob) {
+            $pNum = $this->getPeriodForTime($prob['time'] ?? '07:30');
+            $periodRecap[$pNum]['problems'][] = array_merge($prob, ['index' => $idx]);
+            $periodRecap[$pNum]['loss_time'] += (int) ($prob['cycle_time'] ?? 0);
+        }
+
+        $totalProblems = count($this->problems);
+        $totalLossTime = collect($this->problems)->sum(fn ($p) => (int) ($p['cycle_time'] ?? 0));
+
+        return view('livewire.inspection.form.step-problem', [
+            'periodRecap' => $periodRecap,
+            'totalProblems' => $totalProblems,
+            'totalLossTime' => $totalLossTime,
+        ]);
     }
 }

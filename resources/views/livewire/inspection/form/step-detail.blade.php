@@ -121,6 +121,19 @@
                                             &bull; Total: <strong class="text-zinc-900">{{ number_format($pData['total_output']) }} pcs</strong>
                                         </span>
                                     </div>
+
+                                    {{-- Pillar 5: Masalah & Loss Time --}}
+                                    <div class="flex items-center justify-between gap-2 pt-1 border-t border-zinc-200/50">
+                                        <span class="text-zinc-500 font-medium text-[11px]">5. Masalah</span>
+                                        <span class="font-mono text-[11px] text-right">
+                                            @if (! empty($pData['problem_count']) && $pData['problem_count'] > 0)
+                                                <strong class="text-rose-700">{{ $pData['problem_count'] }} Masalah</strong>
+                                                (<span class="text-zinc-800">{{ $pData['problem_loss_time'] }} mnt</span>)
+                                            @else
+                                                <span class="text-emerald-700 font-semibold">Normal (0 Masalah)</span>
+                                            @endif
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -322,7 +335,7 @@
                 <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-3 space-y-2">
                     <div class="px-2 py-1 border-b border-zinc-100 flex items-center justify-between">
                         <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Tahapan Periode {{ $period }}</span>
-                        <span class="text-[11px] font-mono text-zinc-500 font-semibold">{{ $subStep }}/4</span>
+                        <span class="text-[11px] font-mono text-zinc-500 font-semibold">{{ $subStep }}/5</span>
                     </div>
 
                     {{-- Pillar Buttons List (Horizontal scroll on mobile, vertical stack on desktop) --}}
@@ -396,6 +409,15 @@
                                 'detail_inspection_report_document_number' => $document_number,
                             ], key('judgement-' . $period . '-' . $reloadToken))
                         </div>
+                    @elseif ($subStep === 5)
+                        <div>
+                            @livewire(\App\Livewire\Inspection\InspectionForm\StepPeriodProblem::class, [
+                                'inspection_report_document_number' => $inspection_report_document_number,
+                                'period' => $period,
+                                'start_time' => $start_time,
+                                'end_time' => $end_time,
+                            ], key('period-problem-' . $period . '-' . $reloadToken))
+                        </div>
                     @endif
                 </div>
 
@@ -417,6 +439,7 @@
                                     2 => '1. First Piece',
                                     3 => '2. Dimensi',
                                     4 => '3. Second & Sampling',
+                                    5 => '4. Judgement & Output',
                                 ];
                             @endphp
                             <button type="button"
@@ -431,12 +454,13 @@
                     </div>
 
                     <div class="flex items-center gap-3">
-                        @if ($subStep < 4)
+                        @if ($subStep < 5)
                             @php
                                 $nextStepLabels = [
                                     1 => 'Lanjut ke 2. Dimensi',
                                     2 => 'Lanjut ke 3. Second & Sampling',
                                     3 => 'Lanjut ke 4. Judgement & Output',
+                                    4 => 'Lanjut ke 5. Masalah & Loss Time',
                                 ];
                             @endphp
                             <button type="button"
