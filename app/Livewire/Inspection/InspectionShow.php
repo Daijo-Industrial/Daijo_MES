@@ -12,6 +12,8 @@ class InspectionShow extends Component
 
     public function mount(InspectionReport $inspection_report): void
     {
+        $this->authorize('view', $inspection_report);
+
         $inspection_report->load([
             'detailInspectionReports' => function ($q) {
                 $q->orderBy('period');

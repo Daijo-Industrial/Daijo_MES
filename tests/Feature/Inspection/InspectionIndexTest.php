@@ -398,4 +398,50 @@ class InspectionIndexTest extends TestCase
 
         $this->assertDatabaseHas('inspection_reports', ['id' => $report->id]);
     }
+
+    public function test_unauthorized_user_cannot_access_inspection_reports(): void
+    {
+        $operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $operator = User::factory()->create([
+            'role_id' => $operatorRole->id,
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($operator)->get(route('inspection-reports.index'));
+        $response->assertForbidden();
+    }
+
+    public function test_unauthorized_user_cannot_delete_draft_report(): void
+    {
+        $operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $operator = User::factory()->create([
+            'role_id' => $operatorRole->id,
+            'email_verified_at' => now(),
+        ]);
+
+        $report = InspectionReport::create([
+            'document_number' => 'INSP-UNAUTH-DEL',
+            'customer' => 'Customer A',
+            'inspection_date' => '2026-11-18',
+            'part_number' => 'PART-A',
+            'part_name' => 'Part A',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'M1',
+            'shift' => 1,
+            'operator' => 'Op1',
+            'inspector' => 'QC-Insp',
+            'status' => 'draft',
+        ]);
+
+        Livewire::actingAs($operator)
+            ->test(InspectionIndex::class)
+            ->call('deleteDraft', $report->id)
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('inspection_reports', ['id' => $report->id]);
+    }
 }

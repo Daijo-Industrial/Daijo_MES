@@ -21,14 +21,16 @@
                 Analytics Dashboard
             </a>
 
-            <button type="button"
-                    wire:click="handleCreateClick"
-                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition cursor-pointer">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Create Report
-            </button>
+            @can('create', \App\Models\Inspection\InspectionReport::class)
+                <button type="button"
+                        wire:click="handleCreateClick"
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition cursor-pointer">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Create Report
+                </button>
+            @endcan
         </div>
     </div>
 
@@ -531,26 +533,32 @@
                                 <td class="px-4 py-3 text-right text-xs">
                                     @if ($r->status === 'draft')
                                         <div class="inline-flex items-center gap-1.5 justify-end">
-                                            <a href="{{ route('inspection-reports.edit', $r->id) }}" wire:navigate
-                                               class="inline-flex items-center px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded text-xs transition">
-                                                Lanjutkan
-                                            </a>
-                                            <button type="button"
-                                                    wire:click="deleteDraft({{ $r->id }})"
-                                                    wire:confirm="Apakah Anda yakin ingin menghapus draft laporan {{ $r->document_number }} ini? Seluruh data yang belum disubmit akan dihapus permanen."
-                                                    class="inline-flex items-center gap-1 px-2 py-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded text-xs font-semibold transition cursor-pointer"
-                                                    title="Hapus Draft">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                </svg>
-                                                <span>Hapus</span>
-                                            </button>
+                                            @can('update', $r)
+                                                <a href="{{ route('inspection-reports.edit', $r->id) }}" wire:navigate
+                                                   class="inline-flex items-center px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded text-xs transition">
+                                                    Lanjutkan
+                                                </a>
+                                            @endcan
+                                            @can('delete', $r)
+                                                <button type="button"
+                                                        wire:click="deleteDraft({{ $r->id }})"
+                                                        wire:confirm="Apakah Anda yakin ingin menghapus draft laporan {{ $r->document_number }} ini? Seluruh data yang belum disubmit akan dihapus permanen."
+                                                        class="inline-flex items-center gap-1 px-2 py-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded text-xs font-semibold transition cursor-pointer"
+                                                        title="Hapus Draft">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                    </svg>
+                                                    <span>Hapus</span>
+                                                </button>
+                                            @endcan
                                         </div>
                                     @else
-                                        <a href="{{ route('inspection-reports.show', $r->id) }}" wire:navigate
-                                           class="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold rounded text-xs transition">
-                                            View
-                                        </a>
+                                        @can('view', $r)
+                                            <a href="{{ route('inspection-reports.show', $r->id) }}" wire:navigate
+                                               class="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold rounded text-xs transition">
+                                                View
+                                            </a>
+                                        @endcan
                                     @endif
                                 </td>
                             </tr>

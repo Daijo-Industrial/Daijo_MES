@@ -58,12 +58,16 @@ class InspectionForm extends Component
         }
 
         if ($this->report) {
+            $this->authorize('update', $this->report);
+
             $this->inspection_report_document_number = $this->report->document_number;
             $this->loadDraftFromDatabase($this->report);
             $this->currentStep = (int) session('lastStepVisited', 2);
             $this->filledSteps = $this->computeFilledSteps();
             return;
         }
+
+        $this->authorize('create', InspectionReport::class);
 
         if (request()->query('new') == 1) {
             $this->startNewReport(false);

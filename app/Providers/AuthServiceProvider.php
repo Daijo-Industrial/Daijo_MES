@@ -18,6 +18,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\FirstPieceInspection::class => \App\Policies\FirstPieceInspectionPolicy::class,
         \App\Models\IpqcInspection::class => \App\Policies\IpqcInspectionPolicy::class,
         \App\Models\SecondProcessReport::class => \App\Policies\SecondProcessReportPolicy::class,
+        \App\Models\Inspection\InspectionReport::class => \App\Policies\InspectionReportPolicy::class,
     ];
 
     /**
