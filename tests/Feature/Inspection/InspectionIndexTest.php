@@ -275,4 +275,127 @@ class InspectionIndexTest extends TestCase
             ->assertSet('showDraftModal', false)
             ->assertRedirect(route('inspection-reports.create', ['continue' => 1]));
     }
+
+    public function test_user_can_delete_draft_report_and_its_children(): void
+    {
+        $docNum = 'INSP-DRAFT-DEL-001';
+        $report = InspectionReport::create([
+            'document_number' => $docNum,
+            'customer' => 'Customer Draft',
+            'inspection_date' => '2026-11-18',
+            'part_number' => 'PART-DRAFT-DEL',
+            'part_name' => 'Draft Part to Delete',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'M1',
+            'shift' => 1,
+            'operator' => 'Op1',
+            'inspector' => 'QC-Insp',
+            'status' => 'draft',
+        ]);
+
+        $detail = \App\Models\Inspection\DetailInspectionReport::create([
+            'inspection_report_document_number' => $docNum,
+            'document_number' => 'DIR-' . $docNum . '-1',
+            'period' => 1,
+            'start_datetime' => now(),
+            'end_datetime' => now()->addHour(),
+        ]);
+
+        \App\Models\Inspection\FirstInspection::create([
+            'detail_inspection_report_document_number' => $detail->document_number,
+            'appearance' => 'OK',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+        ]);
+
+        $second = \App\Models\Inspection\SecondInspection::create([
+            'detail_inspection_report_document_number' => $detail->document_number,
+            'document_number' => 'SEC-' . $detail->document_number,
+        ]);
+
+        \App\Models\Inspection\InspectionPackaging::create([
+            'second_inspection_document_number' => $second->document_number,
+            'snp' => 100,
+            'box_label' => 'LABEL',
+            'judgement' => 'OK',
+        ]);
+
+        \App\Models\Inspection\InspectionDimension::create([
+            'inspection_report_document_number' => $docNum,
+            'actual_value' => 5.25,
+        ]);
+
+        \App\Models\Inspection\InspectionProblem::create([
+            'inspection_report_document_number' => $docNum,
+            'type' => 'Setting',
+            'time' => '10:00:00',
+            'cycle_time' => 30,
+        ]);
+
+        \App\Models\Inspection\InspectionQuantity::create([
+            'inspection_report_document_number' => $docNum,
+            'output_quantity' => 100,
+            'pass_quantity' => 95,
+            'pass_rate' => 95.0,
+            'reject_quantity' => 5,
+            'reject_rate' => 5.0,
+            'sampling_quantity' => 5,
+            'ng_sample_quantity' => 0,
+            'ng_sample_rate' => 0.0,
+        ]);
+
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'part_number' => 'PART-DRAFT-DEL',
+            ],
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->call('deleteDraft', $report->id)
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('inspection_reports', ['id' => $report->id]);
+        $this->assertDatabaseMissing('detail_inspection_reports', ['document_number' => $detail->document_number]);
+        $this->assertDatabaseMissing('first_inspections', ['detail_inspection_report_document_number' => $detail->document_number]);
+        $this->assertDatabaseMissing('second_inspections', ['document_number' => $second->document_number]);
+        $this->assertDatabaseMissing('inspection_packagings', ['second_inspection_document_number' => $second->document_number]);
+        $this->assertDatabaseMissing('inspection_dimensions', ['inspection_report_document_number' => $docNum]);
+        $this->assertDatabaseMissing('inspection_problems', ['inspection_report_document_number' => $docNum]);
+        $this->assertDatabaseMissing('inspection_quantities', ['inspection_report_document_number' => $docNum]);
+        $this->assertNull(session('stepHeaderSaved'));
+    }
+
+    public function test_user_cannot_delete_submitted_report(): void
+    {
+        $report = InspectionReport::create([
+            'document_number' => 'INSP-SUBMITTED-001',
+            'customer' => 'Customer Submitted',
+            'inspection_date' => '2026-11-18',
+            'part_number' => 'PART-SUBMITTED',
+            'part_name' => 'Submitted Part',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'M1',
+            'shift' => 1,
+            'operator' => 'Op1',
+            'inspector' => 'QC-Insp',
+            'status' => 'submitted',
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->call('deleteDraft', $report->id)
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('inspection_reports', ['id' => $report->id]);
+    }
 }

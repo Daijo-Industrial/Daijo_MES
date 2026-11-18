@@ -32,6 +32,35 @@
         </div>
     </div>
 
+    {{-- Feedback Banners --}}
+    @if (session()->has('success'))
+        <div class="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>{{ session('success') }}</span>
+            </div>
+            <button type="button" @click="$el.parentElement.remove()" class="text-emerald-500 hover:text-emerald-800">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    @endif
+
+    @if (session()->has('error'))
+        <div class="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-rose-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>{{ session('error') }}</span>
+            </div>
+            <button type="button" @click="$el.parentElement.remove()" class="text-rose-500 hover:text-rose-800">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    @endif
+
     {{-- Filter Toolbar Card --}}
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -501,10 +530,22 @@
 
                                 <td class="px-4 py-3 text-right text-xs">
                                     @if ($r->status === 'draft')
-                                        <a href="{{ route('inspection-reports.edit', $r->id) }}" wire:navigate
-                                           class="inline-flex items-center px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded text-xs transition">
-                                            Lanjutkan
-                                        </a>
+                                        <div class="inline-flex items-center gap-1.5 justify-end">
+                                            <a href="{{ route('inspection-reports.edit', $r->id) }}" wire:navigate
+                                               class="inline-flex items-center px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded text-xs transition">
+                                                Lanjutkan
+                                            </a>
+                                            <button type="button"
+                                                    wire:click="deleteDraft({{ $r->id }})"
+                                                    wire:confirm="Apakah Anda yakin ingin menghapus draft laporan {{ $r->document_number }} ini? Seluruh data yang belum disubmit akan dihapus permanen."
+                                                    class="inline-flex items-center gap-1 px-2 py-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded text-xs font-semibold transition cursor-pointer"
+                                                    title="Hapus Draft">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                                <span>Hapus</span>
+                                            </button>
+                                        </div>
                                     @else
                                         <a href="{{ route('inspection-reports.show', $r->id) }}" wire:navigate
                                            class="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold rounded text-xs transition">
@@ -587,6 +628,20 @@
                         Lanjutkan Draft
                     </button>
                 </div>
+
+                @if (!empty($pendingDraftInfo['id']))
+                    <div class="pt-1.5 text-center border-t border-zinc-100">
+                        <button type="button"
+                                wire:click="deleteDraft({{ $pendingDraftInfo['id'] }})"
+                                wire:confirm="Hapus draft laporan {{ $pendingDraftInfo['document_number'] }} ini?"
+                                class="text-xs text-rose-600 hover:text-rose-800 hover:underline inline-flex items-center gap-1 font-medium">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            <span>Hapus Draft Ini</span>
+                        </button>
+                    </div>
+                @endif
             </div>
         </div>
     @endif
