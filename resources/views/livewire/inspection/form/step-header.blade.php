@@ -103,7 +103,7 @@
                         <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
                             <h2 class="text-base font-bold text-zinc-900 flex items-center gap-2">
                                 <span class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
-                                1. Tanggal & Shift Produksi
+                                Tanggal & Shift Produksi
                             </h2>
                             <span class="text-xs font-mono font-bold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-md border border-zinc-200">
                                 Tahap 1 / 3
@@ -167,7 +167,7 @@
                                 </button>
                                 <h2 class="text-base font-bold text-zinc-900 flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
-                                    2. Filter Mesin Produksi (Opsional)
+                                    Filter Mesin Produksi (Opsional)
                                 </h2>
                             </div>
                             <span class="text-xs font-mono font-bold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-md border border-zinc-200">
@@ -257,9 +257,9 @@
                                 <h2 class="text-base font-bold text-zinc-900 flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
                                     @if ($dic_filter_user_id && !empty($machine_number))
-                                        3. Jadwal Part di Mesin {{ $machine_number }} (Shift {{ $shift }})
+                                        Jadwal Part di Mesin {{ $machine_number }} (Shift {{ $shift }})
                                     @else
-                                        3. Seluruh Part Terjadwal pada Shift {{ $shift }}
+                                        Seluruh Part Terjadwal pada Shift {{ $shift }}
                                     @endif
                                 </h2>
                             </div>
