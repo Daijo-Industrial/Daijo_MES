@@ -83,6 +83,8 @@ class StepHeader extends Component
 
     public int $subStep = 1;
 
+    public int $subStep1Stage = 1; // 1: Waktu & Shift, 2: Filter Mesin, 3: Pilih DIC / Part
+
     public string $dic_quick_search = '';
 
     public int $dic_active_shift = 0;
@@ -333,6 +335,8 @@ class StepHeader extends Component
             }
             $this->resolveDailyItemCode();
         }
+
+        $this->subStep1Stage = ! empty($this->part_number) ? 3 : 1;
     }
 
     public function updated($field): void
@@ -450,6 +454,10 @@ class StepHeader extends Component
             $this->isSearchingAgain = false;
             $this->resetValidation(['part_number', 'part_name', 'customer', 'machine_number']);
             $this->resolveDailyItemCode();
+
+            if ($this->subStep === 1) {
+                $this->subStep = 2;
+            }
         }
     }
 
@@ -906,6 +914,42 @@ class StepHeader extends Component
         $this->isSearchingAgain = false;
         $this->show_part_dropdown = false;
         $this->showManualSearch = false;
+
+        // 5. Auto-advance to Sub-step 2 (Spesifikasi & Personil)
+        $this->subStep = 2;
+    }
+
+    public function setSubStep1Stage(int $stage): void
+    {
+        $this->subStep1Stage = max(1, min(3, $stage));
+    }
+
+    public function nextSubStep1Stage(): void
+    {
+        if ($this->subStep1Stage < 3) {
+            $this->subStep1Stage++;
+        }
+    }
+
+    public function prevSubStep1Stage(): void
+    {
+        if ($this->subStep1Stage > 1) {
+            $this->subStep1Stage--;
+        }
+    }
+
+    public function selectMachineAndAdvance(?int $userId): void
+    {
+        $this->dic_filter_user_id = $userId;
+        $this->updatedDicFilterUserId($userId);
+        $this->subStep1Stage = 3;
+    }
+
+    public function skipMachineFilterAndAdvance(): void
+    {
+        $this->dic_filter_user_id = null;
+        $this->updatedDicFilterUserId(null);
+        $this->subStep1Stage = 3;
     }
 
     public function goToSubStep(int $step): void
@@ -916,6 +960,8 @@ class StepHeader extends Component
 
                 return;
             }
+        } elseif ($step === 1) {
+            $this->subStep1Stage = 3;
         }
 
         $this->subStep = max(1, min(2, $step));
@@ -932,6 +978,7 @@ class StepHeader extends Component
     {
         if ($this->subStep === 2) {
             $this->subStep = 1;
+            $this->subStep1Stage = 3;
         }
     }
 

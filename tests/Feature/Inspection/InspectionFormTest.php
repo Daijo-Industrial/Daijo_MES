@@ -1134,25 +1134,72 @@ class InspectionFormTest extends TestCase
             ->assertHasErrors(['part_number'])
             ->assertSet('subStep', 1);
 
-        // 3. Select DIC from list populates part, shift, and date
+        // 3. Select DIC from list populates part, shift, and date, auto-advancing to subStep 2
         $test->call('selectDicFromList', $dic->id);
         $this->assertEquals($part->item_code, $test->get('part_number'));
         $this->assertEquals(1, $test->get('shift'));
         $this->assertEquals($dic->id, $test->get('dic_id'));
+        $this->assertEquals(2, $test->get('subStep'));
 
-        // 4. Advance to subStep 2 succeeds
-        $test->call('nextSubStep')
-            ->assertHasNoErrors()
-            ->assertSet('subStep', 2);
-
-        // 5. Left rail summary accurately reflects state
+        // 4. In subStep 2, left rail summary accurately reflects state
         $summaries = $test->get('subStepsSummary');
         $this->assertTrue($summaries[1]['isSaved']);
         $this->assertStringContainsString($part->item_code, $summaries[1]['summary']);
 
-        // 6. Prev subStep navigates back to 1
+        // 5. Prev subStep navigates back to 1 and defaults to Stage 3
         $test->call('prevSubStep')
-            ->assertSet('subStep', 1);
+            ->assertSet('subStep', 1)
+            ->assertSet('subStep1Stage', 3);
+    }
+
+    public function test_step_header_one_card_at_a_time_stages_and_auto_advance(): void
+    {
+        $machineUser = User::factory()->create(['name' => 'MC-TEST-99']);
+        $part = MasterListItem::factory()->create([
+            'item_code' => 'PART-STAGE-TEST',
+            'item_name' => 'TEST STAGE PART',
+        ]);
+        $dic = DailyItemCode::factory()->create([
+            'item_code' => $part->item_code,
+            'user_id' => $machineUser->id,
+            'shift' => 1,
+            'schedule_date' => '2026-11-17',
+        ]);
+
+        $test = Livewire::actingAs($this->user)
+            ->test(StepHeader::class);
+
+        // Stage 1 initially
+        $this->assertEquals(1, $test->get('subStep1Stage'));
+
+        // Advance to Stage 2 (Filter Mesin)
+        $test->call('setSubStep1Stage', 2);
+        $this->assertEquals(2, $test->get('subStep1Stage'));
+
+        // Go back to Stage 1
+        $test->call('prevSubStep1Stage');
+        $this->assertEquals(1, $test->get('subStep1Stage'));
+
+        // Advance again to Stage 2
+        $test->call('nextSubStep1Stage');
+        $this->assertEquals(2, $test->get('subStep1Stage'));
+
+        // Select specific machine and auto-advance to Stage 3
+        $test->call('selectMachineAndAdvance', $machineUser->id);
+        $this->assertEquals(3, $test->get('subStep1Stage'));
+        $this->assertEquals($machineUser->id, $test->get('dic_filter_user_id'));
+        $this->assertEquals('MC-TEST-99', $test->get('machine_number'));
+
+        // Skip filter and advance to Stage 3
+        $test->call('setSubStep1Stage', 2);
+        $test->call('skipMachineFilterAndAdvance');
+        $this->assertEquals(3, $test->get('subStep1Stage'));
+        $this->assertNull($test->get('dic_filter_user_id'));
+
+        // In Stage 3, selecting DIC auto-advances directly to Sub-step 2
+        $test->call('selectDicFromList', $dic->id);
+        $this->assertEquals(2, $test->get('subStep'));
+        $this->assertEquals($part->item_code, $test->get('part_number'));
     }
 
     public function test_user_can_reset_form_via_start_new_report(): void
