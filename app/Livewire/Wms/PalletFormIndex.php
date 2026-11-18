@@ -291,6 +291,24 @@ class PalletFormIndex extends Component
     }
 
     /**
+     * Direct scan handler from tablet camera scanner (single roundtrip)
+     */
+    public function scanPalletDirect(string $palletId, ?WmsService $wmsService = null)
+    {
+        $this->scanPalletId = trim($palletId);
+        $this->scanPallet($wmsService);
+    }
+
+    /**
+     * Direct rack scan handler from tablet camera scanner (single roundtrip)
+     */
+    public function scanRackPositionDirect(string $rackCode)
+    {
+        $this->scanRackCode = trim($rackCode);
+        $this->scanRackPosition();
+    }
+
+    /**
      * Apply system smart recommendation
      */
     public function applyRecommendation()
