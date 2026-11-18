@@ -908,7 +908,7 @@
     @endif
 
     <!-- Tablet Camera Scanner Modal Viewport -->
-    <div id="tabCameraModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div id="tabCameraModal" wire:ignore class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border-2 border-blue-500/80 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl space-y-4 p-5 sm:p-6 text-white animate-in fade-in zoom-in-95 duration-200">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                 <div class="flex items-center gap-2.5">
@@ -968,12 +968,16 @@
     <!-- Scanner & Camera Controller Script -->
     <script>
         let zxingReader = null;
+        let zxingControls = null;
+        let isScanHandling = false;
         let currentCameraTarget = 'pallet'; // 'pallet' or 'rack'
         let selectedCameraDeviceId = null;
         let availableVideoDevices = [];
 
         async function openTabletCameraScanner(target = 'pallet') {
             currentCameraTarget = target;
+            isScanHandling = false;
+
             const modal = document.getElementById('tabCameraModal');
             const videoElem = document.getElementById('tabCameraVideo');
             const loadingElem = document.getElementById('camLoadingIndicator');
@@ -984,13 +988,16 @@
 
             if (titleElem) {
                 titleElem.innerText = target === 'pallet' 
-                    ? '📷 Scan Barcode Pallet (Tablet Camera)' 
-                    : '📷 Scan Barcode Slot Rak (Tablet Camera)';
+                    ? 'Scan Barcode Pallet (Tablet Camera)' 
+                    : 'Scan Barcode Slot Rak (Tablet Camera)';
             }
 
             modal.classList.remove('hidden');
             if (loadingElem) loadingElem.classList.remove('hidden');
             if (statusElem) statusElem.innerText = 'Mengakses kamera tablet...';
+
+            // Clean up any stale scanner instance first
+            closeTabletCameraScanner(false);
 
             try {
                 if (typeof ZXingBrowser === 'undefined') {
@@ -1023,27 +1030,34 @@
                 }
 
                 if (loadingElem) loadingElem.classList.add('hidden');
-                if (statusElem) statusElem.innerText = '🎥 Kamera aktif. Arahkan ke barcode...';
+                if (statusElem) statusElem.innerText = 'Kamera aktif. Arahkan ke barcode...';
 
-                await zxingReader.decodeFromVideoDevice(selectedCameraDeviceId, videoElem, (result, error) => {
-                    if (result) {
+                zxingControls = await zxingReader.decodeFromVideoDevice(selectedCameraDeviceId, videoElem, (result, error, controls) => {
+                    if (result && !isScanHandling) {
                         const text = result.getText().trim();
                         if (text) {
-                            if (statusElem) statusElem.innerText = '✓ Terbaca: ' + text;
+                            // Lock IMMEDIATELY to prevent continuous frame loop
+                            isScanHandling = true;
+
+                            if (statusElem) statusElem.innerText = 'Terbaca: ' + text;
                             
                             // Audio beep
                             window.dispatchEvent(new CustomEvent('scan-success'));
 
-                            // Pass to Livewire
-                            if (currentCameraTarget === 'pallet') {
-                                @this.set('scanPalletId', text);
-                                @this.scanPallet();
-                            } else {
-                                @this.set('scanRackCode', text);
-                                @this.scanRackPosition();
+                            // Stop camera controls immediately
+                            if (controls) {
+                                try { controls.stop(); } catch(e) {}
                             }
 
+                            // Close modal and stop hardware stream tracks
                             closeTabletCameraScanner();
+
+                            // Single atomic call to Livewire (prevents duplicate requests & DOM morph loop)
+                            if (currentCameraTarget === 'pallet') {
+                                @this.call('scanPalletDirect', text);
+                            } else {
+                                @this.call('scanRackPositionDirect', text);
+                            }
                         }
                     }
                 });
@@ -1054,19 +1068,49 @@
             }
         }
 
-        function closeTabletCameraScanner() {
-            const modal = document.getElementById('tabCameraModal');
+        function closeTabletCameraScanner(hideModal = true) {
+            // 1. Stop ZXing controls
+            if (zxingControls) {
+                try {
+                    zxingControls.stop();
+                } catch(e) {}
+                zxingControls = null;
+            }
+
+            // 2. Stop camera video stream tracks directly
             const videoElem = document.getElementById('tabCameraVideo');
+            if (videoElem) {
+                try {
+                    if (videoElem.srcObject) {
+                        const tracks = videoElem.srcObject.getTracks() || [];
+                        tracks.forEach(track => {
+                            track.stop();
+                        });
+                        videoElem.srcObject = null;
+                    }
+                } catch(e) {}
+            }
+
+            // 3. Reset zxingReader instance
             if (zxingReader) {
                 try {
-                    if (videoElem && videoElem.srcObject) {
-                        videoElem.srcObject.getTracks().forEach(track => track.stop());
-                        videoElem.srcObject = null;
+                    if (typeof zxingReader.reset === 'function') {
+                        zxingReader.reset();
                     }
                 } catch(e) {}
                 zxingReader = null;
             }
-            if (modal) modal.classList.add('hidden');
+
+            // 4. Hide modal
+            if (hideModal) {
+                const modal = document.getElementById('tabCameraModal');
+                if (modal) modal.classList.add('hidden');
+            }
+
+            // 5. Cooldown lock
+            setTimeout(() => {
+                isScanHandling = false;
+            }, 800);
         }
 
         async function switchTabletCamera() {
