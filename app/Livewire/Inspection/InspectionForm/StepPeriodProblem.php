@@ -29,7 +29,9 @@ class StepPeriodProblem extends Component
 
     public array $sessionSaved = [];
 
-    public bool $isSaved = true;
+    public bool $isConfirmedNormal = false;
+
+    public bool $isSaved = false;
 
     protected $listeners = [
         'triggerSubcomponentSave' => 'handleSaveTrigger',
@@ -92,7 +94,17 @@ class StepPeriodProblem extends Component
 
         $this->problems = session("stepDetailSaved.problems.{$this->periodKey}", []);
         $this->sessionSaved = $this->problems;
+        $this->isConfirmedNormal = (bool) session("stepDetailSaved.problems_confirmed.{$this->periodKey}", false);
+        $this->isSaved = count($this->problems) > 0 || $this->isConfirmedNormal;
+    }
+
+    public function confirmNormal(): void
+    {
+        $this->isConfirmedNormal = true;
+        session()->put("stepDetailSaved.problems_confirmed.{$this->periodKey}", true);
         $this->isSaved = true;
+        $this->dispatch('periodProblemsSaved', periodKey: $this->periodKey)->to(StepDetail::class);
+        $this->dispatch('toast', message: 'Kondisi produksi normal (0 kendala) pada periode ini dikonfirmasi.');
     }
 
     public function isTimeWithinPeriod(string $time): bool
@@ -134,6 +146,10 @@ class StepPeriodProblem extends Component
     {
         unset($this->problems[$index]);
         $this->problems = array_values($this->problems);
+        if (empty($this->problems)) {
+            $this->isConfirmedNormal = false;
+            session()->forget("stepDetailSaved.problems_confirmed.{$this->periodKey}");
+        }
         $this->autoSave();
     }
 
@@ -146,8 +162,12 @@ class StepPeriodProblem extends Component
     public function autoSave(): void
     {
         session()->put("stepDetailSaved.problems.{$this->periodKey}", $this->problems);
+        if (count($this->problems) > 0) {
+            $this->isConfirmedNormal = true;
+            session()->put("stepDetailSaved.problems_confirmed.{$this->periodKey}", true);
+        }
         $this->sessionSaved = $this->problems;
-        $this->isSaved = true;
+        $this->isSaved = count($this->problems) > 0 || $this->isConfirmedNormal;
         $this->dispatch('periodProblemsSaved', periodKey: $this->periodKey)->to(StepDetail::class);
     }
 

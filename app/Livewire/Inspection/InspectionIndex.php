@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Inspection;
 
+use App\Livewire\Inspection\Concerns\HandlesInspectionDraft;
 use App\Models\Inspection\InspectionReport;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -12,7 +13,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InspectionIndex extends Component
 {
+    use HandlesInspectionDraft;
     use WithPagination;
+
+    public bool $showDraftModal = false;
+
+    public ?array $pendingDraftInfo = null;
 
     #[Url(as: 's', except: '')]
     public string $search = '';
@@ -340,6 +346,33 @@ class InspectionIndex extends Component
                 'Content-Disposition' => "attachment; filename=\"{$filename}\"",
             ]
         );
+    }
+
+    public function handleCreateClick()
+    {
+        $draft = $this->findPendingDraft();
+        if ($draft) {
+            $this->pendingDraftInfo = $draft;
+            $this->showDraftModal = true;
+            return;
+        }
+
+        return $this->redirect(route('inspection-reports.create'), navigate: true);
+    }
+
+    public function startNewReport()
+    {
+        $this->clearWizardSession();
+        $this->showDraftModal = false;
+
+        return $this->redirect(route('inspection-reports.create', ['new' => 1]), navigate: true);
+    }
+
+    public function continueDraft()
+    {
+        $this->showDraftModal = false;
+
+        return $this->redirect(route('inspection-reports.create', ['continue' => 1]), navigate: true);
     }
 
     public function render()

@@ -81,6 +81,18 @@ class StepHeader extends Component
 
     public bool $isSaved = false;
 
+    public int $subStep = 1;
+
+    public int $subStep1Stage = 1; // 1: Waktu & Shift, 2: Filter Mesin, 3: Pilih DIC / Part
+
+    public string $dic_quick_search = '';
+
+    public int $dic_active_shift = 0;
+
+    public ?int $dic_filter_user_id = null;
+
+    public bool $showManualSearch = false;
+
     public function getValidCustomers(): array
     {
         $bpCustomers = MasterBusinessPartner::query()
@@ -272,9 +284,12 @@ class StepHeader extends Component
             $this->inspection_date = now()->setTimezone($timezone)->format('Y-m-d');
         }
 
+        $currentShift = $this->determineCurrentShift();
         if (! $this->shift) {
-            $this->shift = $this->determineCurrentShift();
+            $this->shift = $currentShift;
         }
+
+        $this->dic_active_shift = $currentShift;
 
         if (! empty($this->inspector)) {
             $this->inspector = strtoupper(trim((string) $this->inspector));
@@ -294,9 +309,14 @@ class StepHeader extends Component
             if ($user && $user->hasRole('OPERATOR')) {
                 $this->machine_number = strtoupper($user->name);
                 $this->machine_search = $this->machine_number;
+                $this->dic_filter_user_id = $user->id;
             }
         } else {
             $this->machine_search = $this->machine_number;
+            $mUser = User::where('name', $this->machine_number)->first();
+            if ($mUser) {
+                $this->dic_filter_user_id = $mUser->id;
+            }
         }
 
         if (! empty($this->customer)) {
@@ -315,10 +335,28 @@ class StepHeader extends Component
             }
             $this->resolveDailyItemCode();
         }
+
+        $this->subStep1Stage = ! empty($this->part_number) ? 3 : 1;
     }
 
     public function updated($field): void
     {
+        if ($field === 'shift') {
+            $this->dic_active_shift = (int) $this->shift;
+        }
+
+        if ($field === 'dic_filter_user_id') {
+            if (! empty($this->dic_filter_user_id)) {
+                $user = User::find($this->dic_filter_user_id);
+                if ($user) {
+                    $this->machine_number = strtoupper(trim($user->name));
+                    $this->machine_search = $this->machine_number;
+                }
+            } else {
+                $this->machine_number = null;
+                $this->machine_search = '';
+            }
+        }
         if ($field === 'customer_search') {
             $this->show_customer_dropdown = true;
             $matched = collect($this->getValidCustomers())->first(fn ($c) => strcasecmp($c, trim($this->customer_search)) === 0);
@@ -416,6 +454,10 @@ class StepHeader extends Component
             $this->isSearchingAgain = false;
             $this->resetValidation(['part_number', 'part_name', 'customer', 'machine_number']);
             $this->resolveDailyItemCode();
+
+            if ($this->subStep === 1) {
+                $this->subStep = 2;
+            }
         }
     }
 
@@ -689,6 +731,288 @@ class StepHeader extends Component
         $this->dicStatusMessage = 'Koneksi ke DIC dilepas (Mode manual).';
     }
 
+    public function getActiveDicsGroupedByShiftProperty(): array
+    {
+        if (empty($this->inspection_date)) {
+            return [1 => [], 2 => [], 3 => []];
+        }
+
+        $query = DailyItemCode::with([
+            'user',
+            'hourlyRemarks' => fn ($q) => $q->latest('id'),
+            'outputLogs' => fn ($q) => $q->latest('id'),
+        ])
+            ->where('schedule_date', $this->inspection_date);
+
+        if (! empty($this->dic_filter_user_id)) {
+            $query->where('user_id', $this->dic_filter_user_id);
+        }
+
+        if (! empty(trim($this->dic_quick_search))) {
+            $term = '%' . trim($this->dic_quick_search) . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('item_code', 'like', $term)
+                    ->orWhere('item_name', 'like', $term)
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $term));
+            });
+        }
+
+        $dics = $query->orderBy('shift')->orderBy('id')->get();
+
+        $grouped = [1 => [], 2 => [], 3 => []];
+
+        foreach ($dics as $dic) {
+            $s = (int) ($dic->shift ?? 1);
+            if (! isset($grouped[$s])) {
+                $grouped[$s] = [];
+            }
+
+            $op = $this->resolveOperatorFromDic($dic);
+            $machineName = $dic->user ? strtoupper(trim($dic->user->name)) : '-';
+
+            $isSelected = ($this->dic_id === $dic->id)
+                || (! empty($this->part_number) && $this->part_number === $dic->item_code && (int) $this->shift === $s && strcasecmp($this->machine_number ?? '', $machineName) === 0);
+
+            $grouped[$s][] = [
+                'id' => $dic->id,
+                'item_code' => $dic->item_code,
+                'item_name' => $dic->item_name,
+                'shift' => $s,
+                'machine' => $machineName,
+                'operator' => $op,
+                'total_target' => $dic->total_target,
+                'plan' => $dic->plan,
+                'is_selected' => $isSelected,
+            ];
+        }
+
+        return $grouped;
+    }
+
+    public function getDicMachineUsersProperty(): array
+    {
+        if (empty($this->inspection_date)) {
+            return [];
+        }
+
+        $query = DailyItemCode::where('schedule_date', $this->inspection_date)
+            ->whereNotNull('user_id');
+
+        if (! empty($this->shift)) {
+            $query->where('shift', $this->shift);
+        }
+
+        return $query->with('user:id,name')
+            ->get()
+            ->pluck('user')
+            ->filter()
+            ->unique('id')
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])
+            ->values()
+            ->toArray();
+    }
+
+    public function getActiveDicsForSelectedMachineProperty(): array
+    {
+        if (empty($this->inspection_date)) {
+            return [];
+        }
+
+        $query = DailyItemCode::with([
+            'user',
+            'hourlyRemarks' => fn ($q) => $q->latest('id'),
+            'outputLogs' => fn ($q) => $q->latest('id'),
+        ])
+            ->where('schedule_date', $this->inspection_date);
+
+        if (! empty($this->shift)) {
+            $query->where('shift', $this->shift);
+        }
+
+        if (! empty($this->dic_filter_user_id)) {
+            $query->where('user_id', $this->dic_filter_user_id);
+        }
+
+        if (! empty(trim($this->dic_quick_search))) {
+            $term = '%' . trim($this->dic_quick_search) . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('item_code', 'like', $term)
+                    ->orWhere('item_name', 'like', $term)
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $term));
+            });
+        }
+
+        $dics = $query->orderBy('id')->get();
+
+        return $dics->map(function ($dic) {
+            $op = $this->resolveOperatorFromDic($dic);
+            $machineName = $dic->user ? strtoupper(trim($dic->user->name)) : '-';
+            $isSelected = ($this->dic_id === $dic->id)
+                || (! empty($this->part_number) && $this->part_number === $dic->item_code && (int) $this->shift === (int) $dic->shift && strcasecmp($this->machine_number ?? '', $machineName) === 0);
+
+            return [
+                'id' => $dic->id,
+                'user_id' => $dic->user_id,
+                'item_code' => $dic->item_code,
+                'item_name' => $dic->item_name,
+                'shift' => (int) $dic->shift,
+                'machine' => $machineName,
+                'operator' => $op,
+                'total_target' => $dic->total_target,
+                'plan' => $dic->plan,
+                'is_selected' => $isSelected,
+            ];
+        })->toArray();
+    }
+
+    public function updatedDicFilterUserId($value): void
+    {
+        $this->selectMachineUserId($value ? (int) $value : null);
+    }
+
+    public function selectMachineUserId(?int $userId): void
+    {
+        $this->dic_filter_user_id = $userId;
+        if ($userId) {
+            $user = User::find($userId);
+            if ($user) {
+                $this->machine_number = strtoupper(trim($user->name));
+                $this->machine_search = $this->machine_number;
+            }
+        } else {
+            $this->machine_number = null;
+            $this->machine_search = '';
+        }
+    }
+
+    public function selectDicFromList(int $id): void
+    {
+        $dic = DailyItemCode::with([
+            'user',
+            'hourlyRemarks' => fn ($q) => $q->latest('id'),
+            'outputLogs' => fn ($q) => $q->latest('id'),
+        ])->find($id);
+
+        if (! $dic) {
+            return;
+        }
+
+        // 1. Select the part item and auto-fill master specs & customer
+        $this->selectPartItem($dic->item_code);
+
+        // 2. Set shift & date from DIC
+        $this->shift = (int) ($dic->shift ?? $this->shift);
+        if (! empty($dic->schedule_date)) {
+            $this->inspection_date = $dic->schedule_date;
+        }
+
+        // 3. Apply DIC machine & operator
+        $this->applyDailyItemCode($dic);
+
+        // 4. Reset manual search state
+        $this->isSearchingAgain = false;
+        $this->show_part_dropdown = false;
+        $this->showManualSearch = false;
+
+        // 5. Auto-advance to Sub-step 2 (Spesifikasi & Personil)
+        $this->subStep = 2;
+    }
+
+    public function setSubStep1Stage(int $stage): void
+    {
+        $this->subStep1Stage = max(1, min(3, $stage));
+    }
+
+    public function nextSubStep1Stage(): void
+    {
+        if ($this->subStep1Stage < 3) {
+            $this->subStep1Stage++;
+        }
+    }
+
+    public function prevSubStep1Stage(): void
+    {
+        if ($this->subStep1Stage > 1) {
+            $this->subStep1Stage--;
+        }
+    }
+
+    public function selectMachineAndAdvance(?int $userId): void
+    {
+        $this->dic_filter_user_id = $userId;
+        $this->updatedDicFilterUserId($userId);
+        $this->subStep1Stage = 3;
+    }
+
+    public function skipMachineFilterAndAdvance(): void
+    {
+        $this->dic_filter_user_id = null;
+        $this->updatedDicFilterUserId(null);
+        $this->subStep1Stage = 3;
+    }
+
+    public function goToSubStep(int $step): void
+    {
+        if ($step === 2) {
+            if (empty($this->part_number)) {
+                $this->addError('part_number', 'Silakan pilih part dari daftar DIC atau cari manual terlebih dahulu.');
+
+                return;
+            }
+        } elseif ($step === 1) {
+            $this->subStep1Stage = 3;
+        }
+
+        $this->subStep = max(1, min(2, $step));
+    }
+
+    public function nextSubStep(): void
+    {
+        if ($this->subStep === 1) {
+            $this->goToSubStep(2);
+        }
+    }
+
+    public function prevSubStep(): void
+    {
+        if ($this->subStep === 2) {
+            $this->subStep = 1;
+            $this->subStep1Stage = 3;
+        }
+    }
+
+    public function getSubStepsSummaryProperty(): array
+    {
+        $isStep1Complete = ! empty($this->part_number);
+        $isStep2Complete = ! empty($this->inspector) && ! empty($this->machine_number) && ! empty($this->operator) && ($this->weight !== null && $this->weight !== '');
+
+        $step1Summary = 'Belum dipilih';
+        if ($this->part_number) {
+            $step1Summary = $this->part_number . ($this->dic_id ? " (DIC #{$this->dic_id})" : '');
+        }
+
+        $step2Summary = 'Belum lengkap';
+        if ($this->inspector) {
+            $step2Summary = "QC: {$this->inspector}";
+        } elseif ($this->machine_number) {
+            $step2Summary = "Mesin: {$this->machine_number}";
+        }
+
+        return [
+            1 => [
+                'title' => 'Pilih Part & Jadwal',
+                'summary' => $step1Summary,
+                'isSaved' => $isStep1Complete,
+            ],
+            2 => [
+                'title' => 'Spesifikasi & Personil',
+                'summary' => $step2Summary,
+                'isSaved' => $isStep2Complete,
+            ],
+        ];
+    }
+
     public function saveStep(): void
     {
         if (! empty($this->customer_search) && empty($this->customer)) {
@@ -718,7 +1042,17 @@ class StepHeader extends Component
             $this->color = strtoupper(trim($this->color));
         }
 
-        $this->validate();
+        try {
+            $this->validate();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $errors = $e->validator->errors();
+            if ($errors->has('part_number') || $errors->has('customer') || $errors->has('part_name')) {
+                $this->subStep = 1;
+            } else {
+                $this->subStep = 2;
+            }
+            throw $e;
+        }
 
         $data = $this->snapshot();
         $timezone = config('mes.timezone') ?: 'Asia/Jakarta';

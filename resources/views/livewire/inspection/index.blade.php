@@ -21,13 +21,14 @@
                 Analytics Dashboard
             </a>
 
-            <a href="{{ route('inspection-reports.create') }}" wire:navigate
-               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+            <button type="button"
+                    wire:click="handleCreateClick"
+                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition cursor-pointer">
                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
                 Create Report
-            </a>
+            </button>
         </div>
     </div>
 
@@ -533,5 +534,61 @@
             </div>
         @endif
     </div>
+
+    {{-- Draft Continuation Modal --}}
+    @if ($showDraftModal && $pendingDraftInfo)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+            {{-- Backdrop --}}
+            <div class="fixed inset-0 bg-zinc-900/50 backdrop-blur-xs transition-opacity"
+                 wire:click="$set('showDraftModal', false)"></div>
+
+            <div class="relative bg-white rounded-xl shadow-xl border border-zinc-200 max-w-sm w-full p-5 space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-200">
+                            Draft Ditemukan
+                        </span>
+                        <h3 class="text-base font-bold text-zinc-900">Lanjutkan Draft Laporan?</h3>
+                    </div>
+                    <button type="button"
+                            wire:click="$set('showDraftModal', false)"
+                            class="text-zinc-400 hover:text-zinc-600 rounded p-1 -mr-1 -mt-1 hover:bg-zinc-100 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Compact Draft Pill --}}
+                <div class="p-3 bg-zinc-50 border border-zinc-200 rounded-lg text-xs space-y-1">
+                    <div class="flex items-center justify-between font-bold text-zinc-900">
+                        <span class="truncate">{{ $pendingDraftInfo['part_number'] }}</span>
+                        <span class="font-mono text-zinc-500 font-normal ml-2 flex-shrink-0">{{ $pendingDraftInfo['document_number'] }}</span>
+                    </div>
+                    <div class="text-zinc-500 flex items-center gap-2 flex-wrap">
+                        <span>Mesin {{ $pendingDraftInfo['machine_number'] }}</span>
+                        <span>&bull;</span>
+                        <span>Shift {{ $pendingDraftInfo['shift'] }}</span>
+                        <span>&bull;</span>
+                        <span>{{ $pendingDraftInfo['updated_at'] }}</span>
+                    </div>
+                </div>
+
+                {{-- Actions --}}
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button type="button"
+                            wire:click="startNewReport"
+                            class="w-full px-3 py-2 rounded-lg border border-zinc-300 bg-white text-zinc-700 text-xs font-semibold hover:bg-zinc-100 transition text-center">
+                        Mulai Laporan Baru
+                    </button>
+                    <button type="button"
+                            wire:click="continueDraft"
+                            class="w-full px-3 py-2 rounded-lg bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 transition shadow-xs text-center">
+                        Lanjutkan Draft
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 
 </div>

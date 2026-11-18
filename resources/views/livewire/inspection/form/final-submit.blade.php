@@ -232,7 +232,8 @@
     </div>
 
     {{-- Final Submit Actions --}}
-    <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 flex flex-wrap items-center justify-between gap-4">
+    <div class="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] py-3 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div>
             <button type="button"
                     wire:click="$dispatch('prevStep')"
@@ -264,6 +265,7 @@
                     <span>Menyimpan ke Database...</span>
                 </span>
             </button>
+        </div>
         </div>
     </div>
 </div>

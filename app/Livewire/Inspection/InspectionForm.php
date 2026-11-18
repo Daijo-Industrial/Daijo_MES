@@ -2,15 +2,20 @@
 
 namespace App\Livewire\Inspection;
 
+use App\Livewire\Inspection\Concerns\HandlesInspectionDraft;
 use App\Models\Inspection\DetailInspectionReport;
 use App\Models\Inspection\InspectionDimension;
 use App\Models\Inspection\InspectionProblem;
 use App\Models\Inspection\InspectionReport;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class InspectionForm extends Component
 {
+    use HandlesInspectionDraft;
+
     public int $currentStep = 1;
 
     public array $filledSteps = [];
@@ -20,6 +25,10 @@ class InspectionForm extends Component
     public ?InspectionReport $report = null;
 
     public array $stepSessionKeys = [];
+
+    public ?array $pendingDraftInfo = null;
+
+    public string $resetToken = '';
 
     protected $listeners = [
         'stepHeaderSaved' => 'handlerHeaderSaved',
@@ -33,6 +42,15 @@ class InspectionForm extends Component
 
     public function mount($inspection_report = null): void
     {
+        $this->resetToken = Str::random(6);
+
+        $this->stepSessionKeys = [
+            1 => 'stepHeaderSaved',
+            2 => 'stepDetailSaved',
+            3 => 'stepProblemSaved',
+            4 => 'stepFinalSubmit',
+        ];
+
         if ($inspection_report) {
             $this->report = $inspection_report instanceof InspectionReport
                 ? $inspection_report
@@ -43,19 +61,79 @@ class InspectionForm extends Component
             $this->inspection_report_document_number = $this->report->document_number;
             $this->loadDraftFromDatabase($this->report);
             $this->currentStep = (int) session('lastStepVisited', 2);
-        } else {
-            $this->inspection_report_document_number = session('stepHeaderSaved.document_number');
-            $this->currentStep = (int) session('lastStepVisited', 1);
+            $this->filledSteps = $this->computeFilledSteps();
+            return;
         }
 
-        $this->stepSessionKeys = [
-            1 => 'stepHeaderSaved',
-            2 => 'stepDetailSaved',
-            3 => 'stepProblemSaved',
-            4 => 'stepFinalSubmit',
-        ];
+        if (request()->query('new') == 1) {
+            $this->startNewReport(false);
+            return;
+        }
 
+        if (request()->query('continue') == 1) {
+            $draft = $this->findPendingDraft();
+            if ($draft) {
+                $this->pendingDraftInfo = $draft;
+                $this->continueDraft();
+                return;
+            }
+        }
+
+        $this->inspection_report_document_number = session('stepHeaderSaved.document_number');
+        $this->currentStep = (int) session('lastStepVisited', 1);
         $this->filledSteps = $this->computeFilledSteps();
+    }
+
+    public function continueDraft(): void
+    {
+        if (! $this->pendingDraftInfo) {
+            return;
+        }
+
+        if (! empty($this->pendingDraftInfo['id'])) {
+            $report = InspectionReport::find($this->pendingDraftInfo['id']);
+            if ($report) {
+                $this->report = $report;
+                $this->loadDraftFromDatabase($report);
+            }
+        }
+
+        $this->inspection_report_document_number = $this->pendingDraftInfo['document_number'] ?? session('stepHeaderSaved.document_number');
+        $this->filledSteps = $this->computeFilledSteps();
+
+        $targetStep = (int) ($this->pendingDraftInfo['last_step'] ?? session('lastStepVisited', 0));
+        if ($targetStep >= 1 && $targetStep <= 4) {
+            $this->currentStep = $targetStep;
+        } elseif ($this->filledSteps[1] ?? false) {
+            $this->currentStep = 2;
+        } else {
+            $this->currentStep = 1;
+        }
+
+        session(['lastStepVisited' => $this->currentStep]);
+
+        $this->dispatch('toast', message: 'Melanjutkan draft laporan: ' . $this->inspection_report_document_number);
+    }
+
+    public function startNewReport(bool $notify = true): void
+    {
+        $this->clearWizardSession();
+
+        $this->report = null;
+        $this->inspection_report_document_number = null;
+        $this->currentStep = 1;
+        $this->pendingDraftInfo = null;
+        $this->filledSteps = [
+            1 => false,
+            2 => false,
+            3 => false,
+            4 => false,
+        ];
+        $this->resetToken = Str::random(6);
+
+        if ($notify) {
+            $this->dispatch('toast', message: 'Sesi dibersihkan. Memulai laporan inspeksi baru.');
+        }
     }
 
     public function loadDraftFromDatabase(InspectionReport $report): void

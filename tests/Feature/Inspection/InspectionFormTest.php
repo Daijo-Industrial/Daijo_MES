@@ -1051,4 +1051,217 @@ class InspectionFormTest extends TestCase
             ->assertDispatched('stepProblemSaved')
             ->assertDispatched('nextStep');
     }
+
+    public function test_entering_blank_period_does_not_accidentally_save_or_mark_pillar_5_as_saved(): void
+    {
+        $docNum = 'INSP-BLANK-TEST-001';
+
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'shift' => 1,
+                'inspector' => 'Inspector Test',
+                'part_number' => 'PART-TEST-BLANK',
+                'part_name' => 'BLANK PART',
+                'machine_number' => 'INJ-01',
+            ],
+            'stepDetailSaved' => [
+                'period' => 1,
+            ],
+        ]);
+
+        // 1. Mount StepDetail and enter period 1
+        $component = Livewire::actingAs($this->user)
+            ->test(StepDetail::class, [
+                'inspection_report_document_number' => $docNum,
+            ])
+            ->call('startPeriod', 1);
+
+        // 2. Pillar 5 must NOT default to saved when user just enters the period with no changes
+        $subSteps = $component->get('subStepsSummary');
+        $this->assertFalse($subSteps[5]['isSaved']);
+        $this->assertEquals('Belum dikonfirmasi', $subSteps[5]['summary']);
+
+        // 3. Exiting to hub without entering data must NOT mark period as saved
+        $component->call('exitToHub');
+        $this->assertFalse($component->instance()->isPeriodSaved(1));
+        $this->assertFalse($component->instance()->hasPeriodRealData(1));
+
+        // 4. Attempting to save empty period must be blocked
+        $component->call('startPeriod', 1);
+        $component->call('saveCurrentPeriod')
+            ->assertDispatched('toast', message: 'Periode 1 belum memiliki data inspeksi yang diisi. Harap masukkan hasil inspeksi sebelum menyimpan periode.');
+
+        $this->assertFalse($component->instance()->isPeriodSaved(1));
+
+        // Database must remain clean with NO ghost detail records
+        $this->assertDatabaseMissing('detail_inspection_reports', [
+            'inspection_report_document_number' => $docNum,
+            'period' => 1,
+        ]);
+    }
+
+    public function test_step_header_one_at_a_time_substep_navigation_and_dic_selection(): void
+    {
+        $part = MasterListItem::firstOrCreate([
+            'item_code' => 'PART-HEADER-TEST-001',
+        ], [
+            'item_name' => 'BEZEL UPPER TEST',
+            'part_weight' => 25.5,
+            'color' => 'BLACK',
+            'cavity' => 2,
+        ]);
+
+        $dic = \App\Models\DailyItemCode::create([
+            'schedule_date' => now()->format('Y-m-d'),
+            'item_code' => $part->item_code,
+            'item_name' => $part->item_name,
+            'shift' => 1,
+            'total_target' => 500,
+        ]);
+
+        $test = Livewire::actingAs($this->user)
+            ->test(StepHeader::class);
+
+        // 1. Initial subStep is 1 and dic_active_shift defaults to current active shift
+        $this->assertEquals(1, $test->get('subStep'));
+        $this->assertGreaterThanOrEqual(1, $test->get('dic_active_shift'));
+        $this->assertLessThanOrEqual(3, $test->get('dic_active_shift'));
+
+        // 2. Next subStep blocked if part is not selected
+        $test->set('part_number', '')
+            ->call('nextSubStep')
+            ->assertHasErrors(['part_number'])
+            ->assertSet('subStep', 1);
+
+        // 3. Select DIC from list populates part, shift, and date, auto-advancing to subStep 2
+        $test->call('selectDicFromList', $dic->id);
+        $this->assertEquals($part->item_code, $test->get('part_number'));
+        $this->assertEquals(1, $test->get('shift'));
+        $this->assertEquals($dic->id, $test->get('dic_id'));
+        $this->assertEquals(2, $test->get('subStep'));
+
+        // 4. In subStep 2, left rail summary accurately reflects state
+        $summaries = $test->get('subStepsSummary');
+        $this->assertTrue($summaries[1]['isSaved']);
+        $this->assertStringContainsString($part->item_code, $summaries[1]['summary']);
+
+        // 5. Prev subStep navigates back to 1 and defaults to Stage 3
+        $test->call('prevSubStep')
+            ->assertSet('subStep', 1)
+            ->assertSet('subStep1Stage', 3);
+    }
+
+    public function test_step_header_one_card_at_a_time_stages_and_auto_advance(): void
+    {
+        $machineUser = User::factory()->create(['name' => 'MC-TEST-99']);
+        $part = MasterListItem::factory()->create([
+            'item_code' => 'PART-STAGE-TEST',
+            'item_name' => 'TEST STAGE PART',
+        ]);
+        $dic = DailyItemCode::factory()->create([
+            'item_code' => $part->item_code,
+            'user_id' => $machineUser->id,
+            'shift' => 1,
+            'schedule_date' => '2026-11-17',
+        ]);
+
+        $test = Livewire::actingAs($this->user)
+            ->test(StepHeader::class);
+
+        // Stage 1 initially
+        $this->assertEquals(1, $test->get('subStep1Stage'));
+
+        // Advance to Stage 2 (Filter Mesin)
+        $test->call('setSubStep1Stage', 2);
+        $this->assertEquals(2, $test->get('subStep1Stage'));
+
+        // Go back to Stage 1
+        $test->call('prevSubStep1Stage');
+        $this->assertEquals(1, $test->get('subStep1Stage'));
+
+        // Advance again to Stage 2
+        $test->call('nextSubStep1Stage');
+        $this->assertEquals(2, $test->get('subStep1Stage'));
+
+        // Select specific machine and auto-advance to Stage 3
+        $test->call('selectMachineAndAdvance', $machineUser->id);
+        $this->assertEquals(3, $test->get('subStep1Stage'));
+        $this->assertEquals($machineUser->id, $test->get('dic_filter_user_id'));
+        $this->assertEquals('MC-TEST-99', $test->get('machine_number'));
+
+        // Skip filter and advance to Stage 3
+        $test->call('setSubStep1Stage', 2);
+        $test->call('skipMachineFilterAndAdvance');
+        $this->assertEquals(3, $test->get('subStep1Stage'));
+        $this->assertNull($test->get('dic_filter_user_id'));
+
+        // In Stage 3, selecting DIC auto-advances directly to Sub-step 2
+        $test->call('selectDicFromList', $dic->id);
+        $this->assertEquals(2, $test->get('subStep'));
+        $this->assertEquals($part->item_code, $test->get('part_number'));
+    }
+
+    public function test_user_can_reset_form_via_start_new_report(): void
+    {
+        $docNum = 'INSP-DRAFT-RESET-001';
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'part_number' => 'PART-RESET-TEST',
+            ],
+            'lastStepVisited' => 2,
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionForm::class)
+            ->call('startNewReport')
+            ->assertSet('currentStep', 1)
+            ->assertSet('inspection_report_document_number', null)
+            ->assertDispatched('toast');
+
+        $this->assertNull(session('stepHeaderSaved'));
+        $this->assertNull(session('lastStepVisited'));
+    }
+
+    public function test_create_form_continues_draft_when_continue_param_is_passed(): void
+    {
+        $docNum = 'INSP-DRAFT-CONT-001';
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'customer' => 'PT Honda Prospect Motor',
+                'part_number' => 'PART-CONT-TEST',
+                'machine_number' => 'MC-02',
+                'shift' => 2,
+                'operator' => 'Wahyu',
+                'inspector' => 'Rini',
+            ],
+            'lastStepVisited' => 2,
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->withQueryParams(['continue' => 1])
+            ->test(InspectionForm::class)
+            ->assertSet('currentStep', 2)
+            ->assertSet('inspection_report_document_number', $docNum);
+    }
+
+    public function test_create_form_starts_fresh_when_new_param_is_passed(): void
+    {
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => 'INSP-PARAM-NEW-001',
+                'part_number' => 'PART-PARAM-TEST',
+            ],
+            'lastStepVisited' => 2,
+        ]);
+
+        $this->actingAs($this->user)
+            ->get(route('inspection-reports.create', ['new' => 1]))
+            ->assertOk()
+            ->assertSee('Header & Part Info');
+
+        $this->assertNull(session('stepHeaderSaved'));
+    }
 }

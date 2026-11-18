@@ -199,4 +199,80 @@ class InspectionIndexTest extends TestCase
             ->call('removeFilter', 'date')
             ->assertSet('preset', 'all');
     }
+
+    public function test_create_report_button_redirects_directly_when_no_draft_exists(): void
+    {
+        session()->flush();
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->call('handleCreateClick')
+            ->assertSet('showDraftModal', false)
+            ->assertRedirect(route('inspection-reports.create'));
+    }
+
+    public function test_create_report_button_opens_modal_when_pending_draft_exists(): void
+    {
+        $docNum = 'INSP-MODAL-TEST-001';
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'customer' => 'PT Astra Daihatsu Motor',
+                'inspection_date' => '2026-11-17',
+                'part_number' => 'PART-MODAL-001',
+                'machine_number' => 'MC-01',
+                'shift' => 1,
+                'operator' => 'Budi',
+                'inspector' => 'Rini',
+            ],
+            'lastStepVisited' => 2,
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->call('handleCreateClick')
+            ->assertSet('showDraftModal', true)
+            ->assertSee('Draft Ditemukan')
+            ->assertSee($docNum)
+            ->assertSee('Lanjutkan Draft')
+            ->assertSee('Mulai Laporan Baru');
+    }
+
+    public function test_modal_start_new_report_clears_session_and_redirects_with_new_flag(): void
+    {
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => 'INSP-CLEAR-001',
+                'part_number' => 'PART-CLEAR',
+            ],
+            'lastStepVisited' => 2,
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->set('showDraftModal', true)
+            ->call('startNewReport')
+            ->assertSet('showDraftModal', false)
+            ->assertRedirect(route('inspection-reports.create', ['new' => 1]));
+
+        $this->assertNull(session('stepHeaderSaved'));
+    }
+
+    public function test_modal_continue_draft_redirects_with_continue_flag(): void
+    {
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => 'INSP-CONT-001',
+                'part_number' => 'PART-CONT',
+            ],
+            'lastStepVisited' => 2,
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->set('showDraftModal', true)
+            ->call('continueDraft')
+            ->assertSet('showDraftModal', false)
+            ->assertRedirect(route('inspection-reports.create', ['continue' => 1]));
+    }
 }
