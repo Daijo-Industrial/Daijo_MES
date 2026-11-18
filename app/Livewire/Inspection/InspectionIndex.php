@@ -3,9 +3,19 @@
 namespace App\Livewire\Inspection;
 
 use App\Livewire\Inspection\Concerns\HandlesInspectionDraft;
+use App\Models\Inspection\DetailInspectionReport;
+use App\Models\Inspection\FirstInspection;
+use App\Models\Inspection\InspectionDimension;
+use App\Models\Inspection\InspectionJudgement;
+use App\Models\Inspection\InspectionPackaging;
+use App\Models\Inspection\InspectionProblem;
+use App\Models\Inspection\InspectionQuantity;
 use App\Models\Inspection\InspectionReport;
+use App\Models\Inspection\InspectionSampling;
+use App\Models\Inspection\SecondInspection;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -373,6 +383,58 @@ class InspectionIndex extends Component
         $this->showDraftModal = false;
 
         return $this->redirect(route('inspection-reports.create', ['continue' => 1]), navigate: true);
+    }
+
+    public function deleteDraft(int $id): void
+    {
+        $report = InspectionReport::find($id);
+
+        if (! $report) {
+            session()->flash('error', 'Laporan tidak ditemukan.');
+            return;
+        }
+
+        if ($report->status !== 'draft') {
+            session()->flash('error', 'Hanya laporan berstatus draft yang dapat dihapus.');
+            return;
+        }
+
+        $docNum = $report->document_number;
+
+        DB::transaction(function () use ($report, $docNum) {
+            $details = DetailInspectionReport::where('inspection_report_document_number', $docNum)->get();
+
+            foreach ($details as $detail) {
+                FirstInspection::where('detail_inspection_report_document_number', $detail->document_number)->delete();
+
+                $secondInspections = SecondInspection::where('detail_inspection_report_document_number', $detail->document_number)->get();
+                foreach ($secondInspections as $second) {
+                    InspectionPackaging::where('second_inspection_document_number', $second->document_number)->delete();
+                    InspectionSampling::where('second_inspection_document_number', $second->document_number)->delete();
+                    $second->delete();
+                }
+
+                InspectionJudgement::where('detail_inspection_report_document_number', $detail->document_number)->delete();
+                $detail->delete();
+            }
+
+            InspectionDimension::where('inspection_report_document_number', $docNum)->delete();
+            InspectionProblem::where('inspection_report_document_number', $docNum)->delete();
+            InspectionQuantity::where('inspection_report_document_number', $docNum)->delete();
+
+            $report->delete();
+        });
+
+        if (session('stepHeaderSaved.document_number') === $docNum) {
+            $this->clearWizardSession();
+        }
+
+        if ($this->showDraftModal) {
+            $this->showDraftModal = false;
+            $this->pendingDraftInfo = null;
+        }
+
+        session()->flash('success', "Draft laporan {$docNum} berhasil dihapus.");
     }
 
     public function render()
