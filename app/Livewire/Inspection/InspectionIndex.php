@@ -78,6 +78,8 @@ class InspectionIndex extends Component
 
     public function mount(): void
     {
+        $this->authorize('viewAny', InspectionReport::class);
+
         $this->ready = false;
 
         $now = Carbon::now();
@@ -360,6 +362,8 @@ class InspectionIndex extends Component
 
     public function handleCreateClick()
     {
+        $this->authorize('create', InspectionReport::class);
+
         $draft = $this->findPendingDraft();
         if ($draft) {
             $this->pendingDraftInfo = $draft;
@@ -372,6 +376,8 @@ class InspectionIndex extends Component
 
     public function startNewReport()
     {
+        $this->authorize('create', InspectionReport::class);
+
         $this->clearWizardSession();
         $this->showDraftModal = false;
 
@@ -394,10 +400,7 @@ class InspectionIndex extends Component
             return;
         }
 
-        if ($report->status !== 'draft') {
-            session()->flash('error', 'Hanya laporan berstatus draft yang dapat dihapus.');
-            return;
-        }
+        $this->authorize('delete', $report);
 
         $docNum = $report->document_number;
 

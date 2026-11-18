@@ -83,6 +83,9 @@ class Role extends Model
     public function defaultPermissionFallback(string $permissionName): bool
     {
         $roleName = strtoupper(trim($this->name));
+        if ($roleName === 'QC') {
+            $roleName = 'QUALITY';
+        }
 
         if ($roleName === 'SUPER-ADMIN') {
             return true;
