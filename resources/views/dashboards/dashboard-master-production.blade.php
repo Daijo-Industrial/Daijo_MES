@@ -853,6 +853,10 @@
                                                         'label'       => $scan['label'],
                                                         'user'        => $scan['user'],
                                                         'scanned_at'  => $scan['scanned_at'],
+                                                        'pallet_id'   => $scan['pallet_id'] ?? null,
+                                                        'pallet_status' => $scan['pallet_status'] ?? null,
+                                                        'rack_position' => $scan['rack_position'] ?? null,
+                                                        'pallet_assigned_at' => $scan['pallet_assigned_at'] ?? null,
                                                     ];
                                                 @endphp
                                             @endforeach
@@ -878,6 +882,8 @@
                                                                     <th class="border px-4 py-2">Warehouse</th>
                                                                     <th class="border px-4 py-2">Quantity</th>
                                                                     <th class="border px-4 py-2">Label</th>
+                                                                    <th class="border px-4 py-2">Pallet ID</th>
+                                                                    <th class="border px-4 py-2">Status Store</th>
                                                                     <th class="border px-4 py-2">User</th>
                                                                     <th class="border px-4 py-2">Scanned At</th>
                                                                 </tr>
@@ -887,7 +893,39 @@
                                                                     <tr>
                                                                         <td class="border px-4 py-2">{{ $detail['warehouse'] }}</td>
                                                                         <td class="border px-4 py-2">{{ $detail['quantity'] }}</td>
-                                                                        <td class="border px-4 py-2">{{ $detail['label'] }}</td>
+                                                                        <td class="border px-4 py-2 font-mono font-semibold">{{ $detail['label'] }}</td>
+                                                                        <td class="border px-4 py-2 font-mono text-xs">
+                                                                            @if (! empty($detail['pallet_id']))
+                                                                                <span class="inline-flex items-center font-bold text-gray-800 bg-gray-100 border border-gray-300 px-2 py-0.5 rounded select-all">
+                                                                                    {{ $detail['pallet_id'] }}
+                                                                                </span>
+                                                                            @else
+                                                                                <span class="text-gray-400 italic text-xs">Belum di-Pallet</span>
+                                                                            @endif
+                                                                        </td>
+                                                                        <td class="border px-4 py-2 text-xs">
+                                                                            @if (empty($detail['pallet_id']))
+                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                                                                    Belum Dikirim
+                                                                                </span>
+                                                                            @elseif (! empty($detail['rack_position']))
+                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                                                                                    Di Rak {{ $detail['rack_position'] }}
+                                                                                </span>
+                                                                            @elseif ($detail['pallet_status'] === 'TEMPORARY')
+                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                                                                                    Temporary (Transit)
+                                                                                </span>
+                                                                            @elseif ($detail['pallet_status'] === 'OUT')
+                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-300">
+                                                                                    OUT
+                                                                                </span>
+                                                                            @else
+                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                                                                    Terkirim (Menunggu Rak)
+                                                                                </span>
+                                                                            @endif
+                                                                        </td>
                                                                         <td class="border px-4 py-2">{{ $detail['user'] }}</td>
                                                                         <td class="border px-4 py-2">{{ $detail['scanned_at'] }}</td>
                                                                     </tr>

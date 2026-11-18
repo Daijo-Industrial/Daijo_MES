@@ -324,6 +324,7 @@ class WmsPalletMixedSplitAndMonitorTest extends TestCase
             'qty' => 50,
         ]);
 
+        // 1. Test via openAssignModal (Table Row Modal)
         Livewire::test(PalletFormIndex::class)
             ->call('openAssignModal', 'PLT-MIX-101')
             ->assertSet('isMixedPallet', true)
@@ -333,6 +334,19 @@ class WmsPalletMixedSplitAndMonitorTest extends TestCase
             ->assertSee('Tetap Assign 1 Rak (Bypass)')
             ->assertSee('ITEM-X')
             ->assertSee('ITEM-Y');
+
+        // 2. Test via Quick Scan Panel directly (Top Barcode Scanner)
+        Livewire::test(PalletFormIndex::class)
+            ->set('scanPalletId', 'PLT-MIX-101')
+            ->call('scanPallet')
+            ->assertSet('isMixedPallet', true)
+            ->assertSet('mixedAssignMode', 'SPLIT')
+            ->assertSee('Hasil Scan Verifikasi:')
+            ->assertSee('Peringatan: Pallet Berisi Multi-Item (Mixed)')
+            ->assertSee('Pemisahan Item ke Rak Masing-Masing:')
+            ->assertSee('ITEM-X')
+            ->assertSee('ITEM-Y')
+            ->assertSee('Eksekusi Semua yang Dipilih');
     }
 
     public function test_sap_sync_monitor_renders_split_button_and_modal(): void
