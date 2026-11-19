@@ -20,15 +20,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/inspection-reports/create', InspectionForm::class)
         ->middleware('can:create,' . InspectionReport::class);
 
-    Route::get('/inspection-reports/{inspection_report}/edit', InspectionForm::class)
-        ->middleware('can:update,inspection_report')
+    Route::get('/inspection-reports/{report}/edit', InspectionForm::class)
+        ->middleware('can:update,report')
         ->name('inspection-reports.edit');
 
     Route::get('/inspection-reports/dashboard', InspectionDashboard::class)
         ->middleware('can:viewAny,' . InspectionReport::class)
         ->name('inspection-reports.dashboard');
 
-    Route::get('/inspection-reports/{inspection_report}', InspectionShow::class)
-        ->middleware('can:view,inspection_report')
+    Route::get('/inspection-reports/{report}', InspectionShow::class)
+        ->middleware('can:view,report')
         ->name('inspection-reports.show');
 });
