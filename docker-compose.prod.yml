@@ -71,6 +71,14 @@ services:
         image: redis:alpine
         container_name: daijo-mes-redis
         restart: unless-stopped
+        command: >
+            sh -c "if [ -n \"$$REDIS_PASSWORD\" ]; then
+                exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes;
+            else
+                exec redis-server --appendonly yes;
+            fi"
+        environment:
+            - REDIS_PASSWORD=${REDIS_PASSWORD:-}
         volumes:
             - redis-data:/data
         networks:
