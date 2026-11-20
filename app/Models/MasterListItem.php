@@ -11,6 +11,21 @@ class MasterListItem extends Model
 
     public $timestamps = false;
 
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $schema = $model->getConnection()->getSchemaBuilder();
+            $table = $model->getTable();
+
+            if (empty($model->tipe_mesin) && $schema->hasColumn($table, 'tipe_mesin')) {
+                $model->tipe_mesin = 'INJECTION';
+            }
+            if ($model->standart_packaging_list === null && $schema->hasColumn($table, 'standart_packaging_list')) {
+                $model->standart_packaging_list = 0;
+            }
+        });
+    }
+
     protected $fillable = [
         'item_code',
         'item_name',

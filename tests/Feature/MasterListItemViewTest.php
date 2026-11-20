@@ -25,7 +25,7 @@ class MasterListItemViewTest extends TestCase
     {
         parent::setUp();
 
-        $role = Role::create(['name' => 'ADMIN']);
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
         $this->user = User::factory()->create(['role_id' => $role->id]);
 
         $this->customerA = MasterCustomerDelivery::create([

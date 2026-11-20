@@ -23,7 +23,7 @@ class SecondProcessReportAnalyticsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->adminRole = Role::create(['name' => 'ADMIN']);
+        $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
         $this->user = User::factory()->create(['role_id' => $this->adminRole->id]);
     }
 
@@ -53,6 +53,7 @@ class SecondProcessReportAnalyticsTest extends TestCase
             'jumlah_ok' => 900,
             'jumlah_ng' => 50,
             'jml_ng_lebur' => 10,
+            'sisa_input' => 90,
         ]);
 
         // Create Report 2
@@ -71,6 +72,7 @@ class SecondProcessReportAnalyticsTest extends TestCase
             'jumlah_ok' => 480,
             'jumlah_ng' => 20,
             'jml_ng_lebur' => 5,
+            'sisa_input' => 15,
         ]);
 
         // Add troubles to Report 1
@@ -106,7 +108,7 @@ class SecondProcessReportAnalyticsTest extends TestCase
         $this->assertEquals(4.83, $response->viewData('avgNgRate')); // 70 / 1450 * 100
         $this->assertEquals(105, $response->viewData('wipVariance')); // 1570 - (1450 + 15)
         $this->assertEquals(0.96, $response->viewData('scrapRate')); // 15 / 1570 * 100
-        $this->assertEquals(2.0, $response->viewData('targetNgRate'));
+        $this->assertEquals((float) config('mes.sp_target_ng_rate', 3.6), $response->viewData('targetNgRate'));
         $this->assertNull($response->viewData('targetAchievementRate'));
         $this->assertEquals(30, $response->viewData('totalDowntimeMinutes'));
         $this->assertEquals(0.5, $response->viewData('totalDowntimeHours'));
@@ -518,6 +520,7 @@ class SecondProcessReportAnalyticsTest extends TestCase
             'jumlah_ok' => 700,
             'jumlah_ng' => 20,
             'jml_ng_lebur' => 10,
+            'sisa_input' => 120,
         ]);
 
         for ($h = 1; $h <= 8; $h++) {
@@ -548,7 +551,7 @@ class SecondProcessReportAnalyticsTest extends TestCase
 
         $response->assertSee('90% Plan');
         $response->assertSee('+120');
-        $response->assertSee('In-Line WIP');
+        $response->assertSee('Open Sisa');
     }
 
     public function test_analytics_can_export_csv(): void

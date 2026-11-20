@@ -44,7 +44,7 @@ class WmsPalletSortingTest extends TestCase
 
         $this->createTestSchema();
 
-        $this->adminRole = Role::create(['name' => 'ADMIN']);
+        $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
 
         $this->adminUser = new User([
             'name' => 'Admin User',
@@ -181,6 +181,7 @@ class WmsPalletSortingTest extends TestCase
             $table->id();
             $table->string('pallet_id')->unique();
             $table->foreignId('position_id');
+            $table->timestamp('assigned_at')->nullable();
             $table->string('part_no')->nullable();
             $table->string('model_name')->nullable();
             $table->date('prod_date');

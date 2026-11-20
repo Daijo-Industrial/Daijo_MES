@@ -57,6 +57,7 @@ class OperatorDashboardHourlyRemarkOperatorTest extends TestCase
             $table->string('remark')->nullable();
             $table->boolean('is_done')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('machine_jobs', function ($table) {
@@ -96,11 +97,28 @@ class OperatorDashboardHourlyRemarkOperatorTest extends TestCase
             $table->string('user')->nullable();
             $table->timestamps();
         });
+
+        Schema::create('master_list_items', function ($table) {
+            $table->id();
+            $table->string('item_code')->nullable();
+            $table->string('item_name')->nullable();
+            $table->string('pair')->nullable();
+            $table->integer('cavity')->nullable();
+            $table->decimal('cycle_time', 8, 2)->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('sap_inventory_fg', function ($table) {
+            $table->id();
+            $table->string('item_code')->nullable();
+            $table->float('cycle_time')->nullable();
+            $table->timestamps();
+        });
     }
 
     public function test_sync_additional_operators_via_update_employee_name_updates_machine_job_and_backfills_hourly_remarks(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 01',
             'email' => 'mesin01@daijo.co.id',
@@ -160,7 +178,7 @@ class OperatorDashboardHourlyRemarkOperatorTest extends TestCase
 
     public function test_store_hourly_remark_saves_pic_2_and_pic_3_from_request(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 02',
             'email' => 'mesin02@daijo.co.id',
@@ -213,7 +231,7 @@ class OperatorDashboardHourlyRemarkOperatorTest extends TestCase
 
     public function test_store_hourly_remark_falls_back_to_machine_job_assigned_operators_when_missing_in_request(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 03',
             'email' => 'mesin03@daijo.co.id',

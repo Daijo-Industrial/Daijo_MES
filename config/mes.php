@@ -9,7 +9,7 @@ return [
     | Define the primary operational timezone for shop floor logs and shifts.
     |
     */
-    'timezone' => env('APP_TIMEZONE'),
+    'timezone' => env('APP_TIMEZONE', 'Asia/Jakarta'),
 
     /*
     |--------------------------------------------------------------------------

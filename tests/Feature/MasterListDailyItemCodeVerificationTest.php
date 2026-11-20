@@ -106,8 +106,13 @@ class MasterListDailyItemCodeVerificationTest extends TestCase
             $table->unsignedBigInteger('branch_id')->nullable();
             $table->string('item_code');
             $table->integer('quantity')->default(0);
+            $table->integer('actual_quantity')->default(0);
             $table->integer('shift')->default(1);
             $table->date('schedule_date');
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->time('start_time')->nullable();
+            $table->time('end_time')->nullable();
             $table->integer('is_done')->nullable();
             $table->softDeletes();
             $table->timestamps();

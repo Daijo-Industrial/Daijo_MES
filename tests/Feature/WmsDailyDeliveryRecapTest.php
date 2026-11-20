@@ -41,7 +41,7 @@ class WmsDailyDeliveryRecapTest extends TestCase
 
         $this->createTestSchema();
 
-        $this->adminRole = Role::create(['name' => 'ADMIN']);
+        $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
         $this->adminUser = User::create([
             'name' => 'Store Admin',
             'email' => 'store@test.com',

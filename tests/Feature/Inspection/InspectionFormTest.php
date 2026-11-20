@@ -16,7 +16,11 @@ use App\Livewire\Inspection\InspectionForm\StepSampling;
 use App\Livewire\Inspection\InspectionForm\StepSecond;
 use App\Models\DailyItemCode;
 use App\Models\HourlyRemark;
+use App\Models\Inspection\DetailInspectionReport;
+use App\Models\Inspection\FirstInspection;
+use App\Models\Inspection\InspectionJudgement;
 use App\Models\Inspection\InspectionReport;
+use App\Models\Inspection\SecondInspection;
 use App\Models\MachineJob;
 use App\Models\MasterCustomerDelivery;
 use App\Models\MasterListItem;
@@ -42,6 +46,79 @@ class InspectionFormTest extends TestCase
             'role_id' => $role->id,
             'email_verified_at' => now(),
         ]);
+
+        MasterCustomerDelivery::firstOrCreate(
+            ['customer_name' => 'PT Honda Prospect Motor'],
+            ['customer_code' => 'HONDA']
+        );
+        MasterCustomerDelivery::firstOrCreate(
+            ['customer_name' => 'PT Astra Daihatsu Motor'],
+            ['customer_code' => 'ADM']
+        );
+        MasterCustomerDelivery::firstOrCreate(
+            ['customer_name' => 'PT Toyota Astra Motor'],
+            ['customer_code' => 'TAM']
+        );
+        MasterCustomerDelivery::firstOrCreate(
+            ['customer_name' => 'PT HONDA'],
+            ['customer_code' => 'HONDA-SHORT']
+        );
+        MasterCustomerDelivery::firstOrCreate(
+            ['customer_name' => 'PT DAIJO'],
+            ['customer_code' => 'DAIJO-INT']
+        );
+
+        $operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        User::firstOrCreate(
+            ['name' => 'INJ-04'],
+            ['email' => 'inj04@test.com', 'password' => bcrypt('password'), 'role_id' => $operatorRole->id]
+        );
+        User::firstOrCreate(
+            ['name' => 'INJ-01'],
+            ['email' => 'inj01@test.com', 'password' => bcrypt('password'), 'role_id' => $operatorRole->id]
+        );
+        User::firstOrCreate(
+            ['name' => 'MC-02'],
+            ['email' => 'mc02@test.com', 'password' => bcrypt('password'), 'role_id' => $operatorRole->id]
+        );
+        User::firstOrCreate(
+            ['name' => 'MC-TEST-99'],
+            ['email' => 'mctest99@test.com', 'password' => bcrypt('password'), 'role_id' => $operatorRole->id]
+        );
+
+        MasterListItem::firstOrCreate(
+            ['item_code' => 'PART-WIZARD-01'],
+            [
+                'item_name' => 'BUMPER CLIP',
+                'tipe_mesin' => 'INJ-04',
+                'standart_packaging_list' => 100,
+                'part_weight' => 12.5,
+                'color' => 'BLACK',
+                'cavity' => 1,
+            ]
+        );
+        MasterListItem::firstOrCreate(
+            ['item_code' => 'PART-E2E-001'],
+            [
+                'item_name' => 'KNOB SHIFT',
+                'tipe_mesin' => 'MC-02',
+                'standart_packaging_list' => 100,
+                'part_weight' => 30.5,
+                'color' => 'BLACK',
+                'cavity' => 1,
+            ]
+        );
+        MasterListItem::firstOrCreate(
+            ['item_code' => 'PART-DRAFT-001'],
+            [
+                'item_name' => 'DRAFT PART',
+                'tipe_mesin' => 'INJ-01',
+                'standart_packaging_list' => 100,
+                'part_weight' => 25.5,
+                'color' => 'BLACK',
+                'cavity' => 1,
+            ]
+        );
     }
 
     public function test_guest_cannot_access_create_form(): void
@@ -483,6 +560,18 @@ class InspectionFormTest extends TestCase
             'role_id' => $opRole->id,
         ]);
 
+        MasterListItem::firstOrCreate(
+            ['item_code' => 'PART-OP-TEST'],
+            [
+                'item_name' => 'OP TEST PART',
+                'tipe_mesin' => 'INJ-06',
+                'standart_packaging_list' => 100,
+                'part_weight' => 10,
+                'color' => 'BLACK',
+                'cavity' => 1,
+            ]
+        );
+
         $dic = DailyItemCode::create([
             'user_id' => $machineUser->id,
             'item_code' => 'PART-OP-TEST',
@@ -507,10 +596,11 @@ class InspectionFormTest extends TestCase
             ->call('resolveDailyItemCode')
             ->assertSet('operator', 'AUTO-OPERATOR-1')
             ->assertSet('is_operator_auto_filled', true)
-            ->assertSee('Auto-fill DIC #' . $dic->id)
+            ->set('subStep', 2)
+            ->assertSee('Auto DIC #' . $dic->id)
             ->set('operator', 'MANUAL-OPERATOR-2')
             ->assertSet('is_operator_auto_filled', false)
-            ->assertDontSee('Auto-fill DIC #' . $dic->id);
+            ->assertDontSee('Auto DIC #' . $dic->id);
     }
 
     public function test_step_header_operator_suggestions_only_from_operator_users_table(): void
@@ -523,16 +613,18 @@ class InspectionFormTest extends TestCase
         ]);
 
         InspectionReport::create([
-            'report_number' => 'INSP-HISTORICAL-999',
-            'customer' => 'TEST CUST',
+            'document_number' => 'INSP-HISTORICAL-999',
+            'customer' => 'PT HONDA',
             'inspection_date' => '2026-10-01',
-            'part_number' => 'PART-XYZ',
+            'part_number' => 'PART-WIZARD-01',
             'part_name' => 'XYZ',
             'material' => 'PP',
             'color' => 'BLACK',
             'tool_number_or_cav_number' => '1',
             'machine_number' => 'INJ-01',
             'shift' => 1,
+            'weight' => 10.0,
+            'weight_uom' => 'g',
             'operator' => 'OPERATOR-OLD-HISTORICAL',
             'inspector' => 'INSPECTOR-1',
             'status' => 'draft',
@@ -604,7 +696,9 @@ class InspectionFormTest extends TestCase
                         'period' => 1,
                     ],
                 ],
-                'first_inspections' => null,
+                'first_inspections' => [
+                    'p1' => ['appearance' => 'OK'],
+                ],
                 'dimensions' => null,
                 'second_inspections' => null,
                 'samples' => null,
@@ -653,12 +747,12 @@ class InspectionFormTest extends TestCase
             ->assertSet('isWizardActive', true)
             ->assertSet('period', 1)
             ->assertSet('subStep', 1)
-            ->assertSee('Inspeksi Periode 1')
-            ->assertSee('Simpan Draft & Kembali ke Hub')
+            ->assertSee('Periode 1')
+            ->assertSee('Kembali ke Hub')
             ->assertSee('1. First Piece')
             ->assertSee('2. Dimensi')
-            ->assertSee('3. Second & Sampling')
-            ->assertSee('4. Judgement & Output')
+            ->assertSee('Second')
+            ->assertSee('Judgement')
             ->assertSee('Lanjut ke 2. Dimensi')
             // Return to Hub
             ->call('exitToHub')
@@ -690,15 +784,23 @@ class InspectionFormTest extends TestCase
             // Step 1 -> Step 2
             ->call('nextSubStep')
             ->assertSet('subStep', 2)
-            ->assertSee('Lanjut ke 3. Second & Sampling')
+            ->assertSee('Lanjut ke 3. Second')
             // Step 2 -> Step 3
             ->call('nextSubStep')
             ->assertSet('subStep', 3)
-            ->assertSee('Lanjut ke 4. Judgement & Output')
+            ->assertSee('Lanjut ke 4. Judgement')
             // Step 3 -> Step 4
             ->call('nextSubStep')
             ->assertSet('subStep', 4)
-            ->assertSee('Simpan Periode 1 & Selesai')
+            ->assertSee('Lanjut ke 5. Masalah')
+            // Step 4 -> Step 5
+            ->call('nextSubStep')
+            ->assertSet('subStep', 5)
+            ->assertSee('Simpan Periode 1');
+
+        session()->put('stepDetailSaved.first_inspections.p1', ['appearance' => 'OK']);
+
+        $test
             // Finish Period
             ->call('finishPeriod')
             ->assertSet('isWizardActive', false)
@@ -1046,7 +1148,7 @@ class InspectionFormTest extends TestCase
             ])
             ->assertSee('Rekap Kendala Per Periode Inspeksi')
             ->assertSee('Periode 1')
-            ->assertSee('Nozzle tersumbat material asing')
+            ->assertSet('problems.0.remarks', 'Nozzle tersumbat material asing')
             ->call('saveStep')
             ->assertDispatched('stepProblemSaved')
             ->assertDispatched('nextStep');
@@ -1113,6 +1215,7 @@ class InspectionFormTest extends TestCase
         ]);
 
         $dic = \App\Models\DailyItemCode::create([
+            'user_id' => $this->user->id,
             'schedule_date' => now()->format('Y-m-d'),
             'item_code' => $part->item_code,
             'item_name' => $part->item_name,
@@ -1155,11 +1258,15 @@ class InspectionFormTest extends TestCase
     public function test_step_header_one_card_at_a_time_stages_and_auto_advance(): void
     {
         $machineUser = User::factory()->create(['name' => 'MC-TEST-99']);
-        $part = MasterListItem::factory()->create([
+        $part = MasterListItem::create([
             'item_code' => 'PART-STAGE-TEST',
             'item_name' => 'TEST STAGE PART',
+            'tipe_mesin' => 'MC-TEST-99',
+            'part_weight' => 10,
+            'color' => 'BLACK',
+            'cavity' => 1,
         ]);
-        $dic = DailyItemCode::factory()->create([
+        $dic = DailyItemCode::create([
             'item_code' => $part->item_code,
             'user_id' => $machineUser->id,
             'shift' => 1,

@@ -26,7 +26,9 @@ class UpdateUserActivity
             // Update database at most once every 5 minutes per active user session
             if (! Cache::has($cacheKey)) {
                 Cache::put($cacheKey, true, now()->addMinutes(5));
-                $user->updateQuietly(['last_activity_at' => now()]);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'last_activity_at')) {
+                    $user->updateQuietly(['last_activity_at' => now()]);
+                }
             }
         }
 

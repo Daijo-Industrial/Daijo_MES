@@ -23,7 +23,9 @@ class SpProductionApprovalTest extends TestCase
     {
         parent::setUp();
 
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $this->user = User::factory()->create([
+            'role_id' => $role->id,
             'name' => 'Supervisor Test',
         ]);
 
@@ -215,7 +217,6 @@ class SpProductionApprovalTest extends TestCase
 
     public function test_supervisor_can_reject_session_back_to_running_with_reason(): void
     {
-        Gate::define('approve-sp-sessions', fn () => true);
         $this->actingAs($this->user);
 
         $reason = 'Final scrap count does not tally with WIP bins. Please recount.';
@@ -236,16 +237,18 @@ class SpProductionApprovalTest extends TestCase
 
     public function test_unauthorized_user_cannot_approve_or_reject_session(): void
     {
-        Gate::define('approve-sp-sessions', fn () => false);
-        $this->actingAs($this->user);
+        $unauthorizedUser = User::factory()->create();
+        $this->actingAs($unauthorizedUser);
 
         $responseApprove = $this->post(route('sp-approvals.approve', $this->session->id));
-        $responseApprove->assertStatus(403);
+        $responseApprove->assertRedirect();
+        $responseApprove->assertSessionHas('error');
 
         $responseReject = $this->post(route('sp-approvals.reject', $this->session->id), [
             'reason' => 'Some reason',
         ]);
-        $responseReject->assertStatus(403);
+        $responseReject->assertRedirect();
+        $responseReject->assertSessionHas('error');
     }
 
     public function test_timestamps_are_rendered_in_wib(): void

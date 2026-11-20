@@ -41,6 +41,7 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->foreignId('role_id')->nullable();
             $table->timestamps();
@@ -62,9 +63,11 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
             $table->string('temporal_cycle_time')->nullable();
+            $table->integer('temporal_cavity')->nullable();
             $table->string('remark')->nullable();
             $table->boolean('is_done')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('machine_jobs', function ($table) {
@@ -123,14 +126,31 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
             $table->float('cycle_time')->nullable();
             $table->timestamps();
         });
+
+        Schema::create('master_list_items', function ($table) {
+            $table->id();
+            $table->string('item_code')->nullable();
+            $table->string('item_name')->nullable();
+            $table->string('pair')->nullable();
+            $table->decimal('cycle_time', 8, 2)->nullable();
+            $table->integer('cavity')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('branches', function ($table) {
+            $table->id();
+            $table->string('name')->nullable();
+            $table->timestamps();
+        });
     }
 
     public function test_adminoperator_view_renders_successfully_for_operator(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => '0850d@daijo.co.id',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'role_id' => $role->id,
         ]);
@@ -162,10 +182,11 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
 
     public function test_operator_can_create_manual_hourly_remark_without_scan(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => '0850d@daijo.co.id',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'role_id' => $role->id,
         ]);
@@ -209,10 +230,11 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
 
     public function test_operator_can_generate_all_8_slots_for_shift_3_at_once(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => '0850d@daijo.co.id',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'role_id' => $role->id,
         ]);
@@ -254,10 +276,11 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
 
     public function test_create_daily_item_from_admin_can_auto_generate_slots(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => '0850d@daijo.co.id',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'role_id' => $role->id,
         ]);
@@ -287,10 +310,11 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
 
     public function test_existing_activedic_store_from_operator_dashboard_remains_backward_compatible(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => '0850d@daijo.co.id',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'role_id' => $role->id,
         ]);
@@ -319,10 +343,11 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
 
     public function test_target_automatically_multiplies_by_pair_or_cavity(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => '0850d@daijo.co.id',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'role_id' => $role->id,
         ]);
@@ -363,10 +388,11 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
 
     public function test_update_remark_can_update_target_and_is_achieve(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => '0850d@daijo.co.id',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'role_id' => $role->id,
         ]);
@@ -404,10 +430,11 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
 
     public function test_admin_operator_can_create_daily_item_with_cycle_time_and_cavity(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => '0850d@daijo.co.id',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'role_id' => $role->id,
         ]);
@@ -445,10 +472,11 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
 
     public function test_admin_operator_can_update_cycle_time_and_cavity_and_recalculate_targets(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => '0850d@daijo.co.id',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'role_id' => $role->id,
         ]);
@@ -489,7 +517,7 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
 
     public function test_updating_cavity_to_one_on_paired_item_produces_single_cavity_target(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Mesin 0850D',
             'email' => 'mesin_paired@daijo.co.id',

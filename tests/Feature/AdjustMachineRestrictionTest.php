@@ -102,7 +102,7 @@ class AdjustMachineRestrictionTest extends TestCase
 
     private function seedTestData(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
 
         // Karawang adjusters
         OperatorUser::create(['name' => 'Haerul Anwar', 'password' => '123', 'position' => 'Adjuster']);

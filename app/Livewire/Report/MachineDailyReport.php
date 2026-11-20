@@ -206,12 +206,14 @@ class MachineDailyReport extends Component
             }
         } else {
             // Access control for Operator view
-            if (! $user->hasRole('OPERATOR')) {
-                abort(403, 'Unauthorized. Access is restricted to Operators.');
+            if (! $user->hasRole('OPERATOR') && ! $user->hasRole('ADMIN') && ! $user->hasRole('SUPER-ADMIN')) {
+                abort(403, 'Unauthorized. Access is restricted to Operators and Administrators.');
             }
 
             // Operators are locked to their own user/machine record
-            $this->selectedMachineId = $user->id;
+            if ($user->hasRole('OPERATOR')) {
+                $this->selectedMachineId = $user->id;
+            }
 
             if (! $this->selectedDate) {
                 $this->selectedDate = Carbon::today('Asia/Jakarta')->format('Y-m-d');
