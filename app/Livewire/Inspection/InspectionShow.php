@@ -10,11 +10,19 @@ class InspectionShow extends Component
 {
     public InspectionReport $report;
 
-    public function mount(InspectionReport $inspection_report): void
+    public function mount($report = null): void
     {
-        $this->authorize('view', $inspection_report);
+        if (! $report) {
+            abort(404);
+        }
 
-        $inspection_report->load([
+        if (! ($report instanceof InspectionReport)) {
+            $report = InspectionReport::findOrFail($report);
+        }
+
+        $this->authorize('view', $report);
+
+        $report->load([
             'detailInspectionReports' => function ($q) {
                 $q->orderBy('period');
             },
@@ -28,14 +36,13 @@ class InspectionShow extends Component
             'problemData',
         ]);
 
-        $this->report = $inspection_report;
+        $this->report = $report;
     }
 
     public function render(): View
     {
         return view('livewire.inspection.show', [
             'report' => $this->report,
-            'inspectionReport' => $this->report,
         ])->layout('layouts.app');
     }
 }

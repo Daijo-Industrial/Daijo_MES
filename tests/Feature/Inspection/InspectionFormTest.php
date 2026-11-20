@@ -871,7 +871,7 @@ class InspectionFormTest extends TestCase
         session()->flush();
 
         Livewire::actingAs($this->user)
-            ->test(InspectionForm::class, ['inspection_report' => $report->id])
+            ->test(InspectionForm::class, ['report' => $report->id])
             ->assertOk()
             ->assertSet('inspection_report_document_number', 'INSP-RESUME-001');
 

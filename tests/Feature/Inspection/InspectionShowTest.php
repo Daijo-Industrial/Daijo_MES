@@ -167,7 +167,7 @@ class InspectionShowTest extends TestCase
     public function test_show_renders_all_inspection_sections(): void
     {
         Livewire::actingAs($this->user)
-            ->test(InspectionShow::class, ['inspection_report' => $this->report])
+            ->test(InspectionShow::class, ['report' => $this->report])
             ->assertSee('First Piece Inspection')
             ->assertSee('Dimension Data')
             ->assertSee('Second Inspection')
@@ -177,5 +177,23 @@ class InspectionShowTest extends TestCase
             ->assertSee('1,490')
             ->assertSee('99.3%')
             ->assertSee('0.7%');
+    }
+
+    public function test_unauthorized_user_cannot_view_report_detail(): void
+    {
+        $nonQcRole = Role::firstOrCreate(['name' => 'GUEST_OPERATOR']);
+        $unauthorizedUser = User::factory()->create([
+            'role_id' => $nonQcRole->id,
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($unauthorizedUser)->get(route('inspection-reports.show', $this->report));
+        $response->assertForbidden();
+    }
+
+    public function test_viewing_non_existent_report_returns_404(): void
+    {
+        $response = $this->actingAs($this->user)->get('/inspection-reports/999999');
+        $response->assertNotFound();
     }
 }
