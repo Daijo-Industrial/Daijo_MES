@@ -40,7 +40,7 @@ class InspectionForm extends Component
         'setStep' => 'setStep',
     ];
 
-    public function mount($inspection_report = null): void
+    public function mount($report = null): void
     {
         $this->resetToken = Str::random(6);
 
@@ -51,10 +51,10 @@ class InspectionForm extends Component
             4 => 'stepFinalSubmit',
         ];
 
-        if ($inspection_report) {
-            $this->report = $inspection_report instanceof InspectionReport
-                ? $inspection_report
-                : InspectionReport::find($inspection_report);
+        if ($report) {
+            $this->report = $report instanceof InspectionReport
+                ? $report
+                : InspectionReport::find($report);
         }
 
         if ($this->report) {

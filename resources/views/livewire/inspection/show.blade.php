@@ -1,6 +1,6 @@
 @php
     /** @var \App\Models\Inspection\InspectionReport $r */
-    $r = $report ?? $inspectionReport;
+    $r = $report;
     $periods = $r->detailInspectionReports->pluck('period')->sort()->values();
     $defaultPeriod = $periods->first() ?? 1;
 @endphp
