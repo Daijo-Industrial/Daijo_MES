@@ -34,6 +34,9 @@ services:
             - daijo-net
 
     queue:
+        build:
+            context: .
+            dockerfile: Dockerfile
         image: daijo-mes-app:latest
         container_name: daijo-mes-queue
         restart: unless-stopped
@@ -48,6 +51,9 @@ services:
             - daijo-net
 
     scheduler:
+        build:
+            context: .
+            dockerfile: Dockerfile
         image: daijo-mes-app:latest
         container_name: daijo-mes-scheduler
         restart: unless-stopped
