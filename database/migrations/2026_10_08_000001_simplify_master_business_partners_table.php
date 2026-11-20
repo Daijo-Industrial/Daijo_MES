@@ -12,8 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('master_business_partners', function (Blueprint $table) {
-            $table->string('group_code', 20)->nullable()->after('bp_name')->index();
-            $table->dropColumn(['balance', 'sales_employee']);
+            if (! Schema::hasColumn('master_business_partners', 'group_code')) {
+                $table->string('group_code', 20)->nullable()->after('bp_name')->index();
+            }
+
+            $columnsToDrop = [];
+            foreach (['balance', 'sales_employee'] as $col) {
+                if (Schema::hasColumn('master_business_partners', $col)) {
+                    $columnsToDrop[] = $col;
+                }
+            }
+            if (! empty($columnsToDrop)) {
+                $table->dropColumn($columnsToDrop);
+            }
         });
     }
 
