@@ -10,7 +10,7 @@ COMPOSE_FILE="docker-compose.prod.yml"
 # 1. Pull latest code (if git repository)
 if [ -d .git ]; then
     echo ">> Pulling latest code from Git..."
-    git pull origin main_dev || echo "Git pull skipped or failed, proceeding with local files..."
+    git pull origin main || echo "Git pull skipped or failed, proceeding with local files..."
 fi
 
 # 2. Build Docker images
