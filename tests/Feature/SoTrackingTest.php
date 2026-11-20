@@ -85,7 +85,7 @@ class SoTrackingTest extends TestCase
 
     public function test_can_render_so_tracking_page(): void
     {
-        $role = \App\Models\Role::create(['name' => 'ADMIN']);
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
             'name' => 'Store Admin',
             'email' => 'store@daijo.co.id',

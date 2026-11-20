@@ -411,7 +411,7 @@ class ProductionStoreHandoverIndex extends Component
             }
 
             // Temukan record handover yang cocok untuk part number ini pada tanggal terpilih
-            $handoverQuery = ProductionStoreHandover::where('production_date', $this->selectedDate);
+            $handoverQuery = ProductionStoreHandover::whereDate('production_date', $this->selectedDate);
             if ($pallet->part_no !== 'MIXED') {
                 $handoverQuery->where('item_code', $pallet->part_no);
             } else {
@@ -476,7 +476,7 @@ class ProductionStoreHandoverIndex extends Component
         // Cari handover yang cocok (prioritaskan machine_name jika ada relasi DIC)
         $machineName = strtoupper(trim($box->ParentDailyItemCode?->user?->name ?: ''));
         
-        $handoverQuery = ProductionStoreHandover::where('production_date', $this->selectedDate)
+        $handoverQuery = ProductionStoreHandover::whereDate('production_date', $this->selectedDate)
             ->where('item_code', $box->item_code);
 
         if (! empty($machineName)) {
@@ -539,7 +539,7 @@ class ProductionStoreHandoverIndex extends Component
         }
 
         // Cari handover yang sesuai
-        $handoverQuery = ProductionStoreHandover::where('production_date', $this->selectedDate);
+        $handoverQuery = ProductionStoreHandover::whereDate('production_date', $this->selectedDate);
         if ($pallet->part_no !== 'MIXED') {
             $handoverQuery->where('item_code', $pallet->part_no);
         } else {

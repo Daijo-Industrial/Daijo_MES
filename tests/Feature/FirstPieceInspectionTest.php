@@ -19,7 +19,7 @@ class FirstPieceInspectionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->adminRole = Role::create(['name' => 'ADMIN']);
+        $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
         $this->user = User::factory()->create(['role_id' => $this->adminRole->id]);
     }
 
@@ -62,7 +62,7 @@ class FirstPieceInspectionTest extends TestCase
         $this->assertEquals('OK', $inspection->overall_judgement);
         $this->assertEquals('401-41019967', $inspection->part_number);
 
-        $response->assertRedirect(route('first-piece-inspections.show', $inspection->id));
+        $response->assertRedirect(route('first-piece-inspections.index'));
     }
 
     public function test_can_create_first_piece_inspection_without_model(): void

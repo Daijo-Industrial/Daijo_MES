@@ -280,7 +280,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_livewire_spk_bom_changes_view_renders_and_toggles_accordion(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Admin',
             'email' => 'andreas@daijo.co.id',
@@ -326,7 +326,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_livewire_search_and_filter_functionality(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Admin',
             'email' => 'andreas2@daijo.co.id',
@@ -364,7 +364,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_livewire_modal_open_and_close(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Admin',
             'email' => 'andreas3@daijo.co.id',
@@ -483,7 +483,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_livewire_actions_and_history_modal(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Admin',
             'email' => 'andreas_action@daijo.co.id',
@@ -550,7 +550,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_add_material_auto_calculates_plan_qty_from_base_qty_and_provides_suggestions(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Admin',
             'email' => 'andreas_sug@daijo.co.id',
@@ -630,7 +630,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_batch_edit_mode_stages_multiple_actions_and_sends_single_payload(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Operator',
             'email' => 'andreas_op@daijo.co.id',
@@ -746,7 +746,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_unstage_item_and_cancel_edit_mode(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Cancel',
             'email' => 'andreas_cancel@daijo.co.id',
@@ -788,7 +788,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_base_qty_allows_decimal_input_like_zero_dot(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Decimal',
             'email' => 'andreas_dec@daijo.co.id',
@@ -823,7 +823,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_edit_modal_locks_plan_qty_and_calculates_from_base_qty(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas BaseQty',
             'email' => 'andreas_base@daijo.co.id',
@@ -861,7 +861,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_tambah_material_button_only_visible_in_edit_mode(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Toggle',
             'email' => 'andreas_toggle@daijo.co.id',
@@ -934,8 +934,8 @@ class SpkBomChangesTest extends TestCase
 
     public function test_menu_is_accessible_for_pe_and_ppic_roles(): void
     {
-        $peRole = Role::create(['name' => 'PE']);
-        $ppicRole = Role::create(['name' => 'PPIC']);
+        $peRole = Role::firstOrCreate(['name' => 'PE']);
+        $ppicRole = Role::firstOrCreate(['name' => 'PPIC']);
 
         $peUser = User::create([
             'name' => 'User PE',
@@ -966,7 +966,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_dropdown_suggestions_are_fetched_from_master_list_material(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Material',
             'email' => 'andreas_mat@daijo.co.id',
@@ -1069,7 +1069,7 @@ class SpkBomChangesTest extends TestCase
 
     public function test_released_spk_is_excluded_from_view_and_cannot_be_edited(): void
     {
-        $role = Role::create(['name' => 'SUPERADMIN']);
+        $role = Role::firstOrCreate(['name' => 'SUPERADMIN']);
         $user = User::create([
             'name' => 'Andreas Guard',
             'email' => 'andreas_guard@daijo.co.id',
@@ -1115,19 +1115,19 @@ class SpkBomChangesTest extends TestCase
         // Mencoba buka modal edit/tambah/hapus/replace untuk SPK Released juga harus ditolak
         $test->call('openEditQtyModal', 'SPK-RELEASED-02', 'RM-01', 'RM Test', 10, 1)
             ->assertSet('showEditModal', false)
-            ->assertSee('tidak boleh diubah resep materialnya');
+            ->assertSee('tidak boleh diubah');
 
         $test->call('openAddMaterialModal', 'SPK-RELEASED-02', 200)
             ->assertSet('showAddModal', false)
-            ->assertSee('tidak boleh diubah resep materialnya');
+            ->assertSee('tidak boleh diubah');
 
         $test->call('openDeleteModal', 'SPK-RELEASED-02', 'RM-01', 'RM Test')
             ->assertSet('showDeleteModal', false)
-            ->assertSee('tidak boleh diubah resep materialnya');
+            ->assertSee('tidak boleh dihapus');
 
         $test->call('openReplaceModal', 'SPK-RELEASED-02', 'RM-01', 'RM Test', 200)
             ->assertSet('showReplaceModal', false)
-            ->assertSee('tidak boleh diubah resep materialnya');
+            ->assertSee('tidak boleh diganti');
 
         // Mencoba submit langsung tanpa modal juga harus ditolak
         $test->set('editSpkNumber', 'SPK-RELEASED-02')

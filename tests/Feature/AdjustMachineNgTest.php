@@ -112,7 +112,7 @@ class AdjustMachineNgTest extends TestCase
 
     private function seedTestData(): void
     {
-        Role::create(['name' => 'OPERATOR']);
+        Role::firstOrCreate(['name' => 'OPERATOR']);
 
         OperatorUser::create(['name' => 'Budi Santoso', 'password' => '123', 'position' => 'Adjuster']);
         OperatorUser::create(['name' => 'Haerul Anwar', 'password' => '123', 'position' => 'Adjuster']);
@@ -400,10 +400,11 @@ class AdjustMachineNgTest extends TestCase
         $breakdown = $refMethod->invoke($service, $hourlyRemarks, null, $adjustLogs);
 
         // Assert Short Shot is in breakdown
-        $this->assertArrayHasKey('Short Shot', $breakdown);
-        $this->assertEquals(6, $breakdown['Short Shot']['total']);
-        $this->assertCount(1, $breakdown['Short Shot']['models']);
-        $this->assertEquals('ITEM-01', $breakdown['Short Shot']['models'][0]['item_code']);
-        $this->assertStringContainsString('[Adjuster: Budi Santoso]', $breakdown['Short Shot']['models'][0]['records'][0]['remark']);
+        $shortShot = collect($breakdown)->firstWhere('name', 'Short Shot');
+        $this->assertNotNull($shortShot);
+        $this->assertEquals(6, $shortShot['total']);
+        $this->assertCount(1, $shortShot['models']);
+        $this->assertEquals('ITEM-01', $shortShot['models'][0]['item_code']);
+        $this->assertStringContainsString('[Adjuster: Budi Santoso]', $shortShot['models'][0]['records'][0]['remark']);
     }
 }

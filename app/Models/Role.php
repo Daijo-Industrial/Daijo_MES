@@ -35,21 +35,39 @@ class Role extends Model
         return in_array(strtoupper(trim($this->name)), ['SUPER-ADMIN', 'ADMIN']);
     }
 
+    public static function canonicalizePermissionName(string $permissionName): string
+    {
+        return match ($permissionName) {
+            'view-second-process-work-orders', 'manage-sp-work-orders', 'view-second-process-links' => 'second-process-work-orders',
+            'view-second-process-reports', 'manage-second-process-reports' => 'second-process-reports',
+            'view-second-process-approvals', 'approve-sp-sessions' => 'second-process-approvals',
+            'view-second-process-first-piece' => 'second-process-first-piece',
+            'view-second-process-ipqc' => 'second-process-ipqc',
+            'view-second-process-dashboard', 'view-second-process-ops' => 'second-process-dashboard',
+            'view-second-process-sessions' => 'second-process-sessions',
+            'view-second-process-analytics' => 'second-process-analytics',
+            default => $permissionName,
+        };
+    }
+
     public function hasPermission(string $permissionName): bool
     {
         if (strtoupper(trim($this->name)) === 'SUPER-ADMIN') {
             return true;
         }
 
+        $canonical = self::canonicalizePermissionName($permissionName);
+
         if ($this->permissions_configured) {
             if (! $this->relationLoaded('permissions')) {
                 $this->load('permissions');
             }
 
-            return $this->permissions->contains('name', $permissionName);
+            return $this->permissions->contains('name', $canonical)
+                || $this->permissions->contains('name', $permissionName);
         }
 
-        return $this->defaultPermissionFallback($permissionName);
+        return $this->defaultPermissionFallback($canonical);
     }
 
     public function syncPermissions(array $permissionIds): void
@@ -92,18 +110,7 @@ class Role extends Model
         }
 
         // Canonical alias mapping for legacy permission names
-        $canonicalPermission = match ($permissionName) {
-            'view-second-process-work-orders', 'manage-sp-work-orders', 'view-second-process-links' => 'second-process-work-orders',
-            'view-second-process-reports', 'manage-second-process-reports' => 'second-process-reports',
-            'view-second-process-approvals', 'approve-sp-sessions' => 'second-process-approvals',
-            'view-second-process-first-piece' => 'second-process-first-piece',
-            'view-second-process-ipqc' => 'second-process-ipqc',
-            'view-second-process-dashboard' => 'second-process-dashboard',
-            'view-second-process-sessions' => 'second-process-sessions',
-            'view-second-process-analytics' => 'second-process-analytics',
-            'view-second-process-ops' => 'second-process-dashboard',
-            default => $permissionName,
-        };
+        $canonicalPermission = self::canonicalizePermissionName($permissionName);
 
         $defaults = [
             'ADMIN' => [

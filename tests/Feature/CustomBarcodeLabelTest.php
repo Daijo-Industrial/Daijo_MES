@@ -49,6 +49,7 @@ class CustomBarcodeLabelTest extends TestCase
             $table->id();
             $table->string('item_code')->unique();
             $table->string('item_name')->nullable();
+            $table->string('tipe_mesin')->nullable();
             $table->string('description_in_foreign_lang')->nullable();
             $table->string('family')->nullable();
             $table->decimal('part_weight', 10, 3)->nullable()->default(0);
@@ -100,7 +101,7 @@ class CustomBarcodeLabelTest extends TestCase
 
     public function test_custom_barcode_print_with_empty_date()
     {
-        $role = Role::create(['name' => 'ADMIN']);
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
             'name' => 'Test User',
             'email' => 'test@example.com',

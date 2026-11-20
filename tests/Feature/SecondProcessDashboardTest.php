@@ -21,7 +21,7 @@ class SecondProcessDashboardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->adminRole = Role::create(['name' => 'ADMIN']);
+        $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
         $this->user = User::factory()->create(['role_id' => $this->adminRole->id]);
     }
 

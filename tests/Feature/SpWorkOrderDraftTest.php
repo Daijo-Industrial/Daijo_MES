@@ -17,7 +17,8 @@ class SpWorkOrderDraftTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->user = User::factory()->create();
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
+        $this->user = User::factory()->create(['role_id' => $role->id]);
     }
 
     public function test_can_create_work_order_as_draft()
@@ -102,10 +103,9 @@ class SpWorkOrderDraftTest extends TestCase
         // Release WO
         $draftWo->update(['status' => 'planned']);
 
-        // Try edit planned WO -> Should be blocked and redirected with error
+        // Try edit planned WO -> Should be blocked with 403 Forbidden by SpWorkOrderPolicy
         $response = $this->get(route('sp-work-orders.edit', $draftWo->id));
-        $response->assertRedirect(route('sp-work-orders.show', $draftWo->id));
-        $response->assertSessionHas('error');
+        $response->assertStatus(403);
     }
 
     public function test_can_release_draft_work_order_to_production()
@@ -169,10 +169,9 @@ class SpWorkOrderDraftTest extends TestCase
             'started_at' => now(),
         ]);
 
-        // Attempt revert when session exists -> Should be blocked
+        // Attempt revert when session exists -> Should be blocked with 403 Forbidden by SpWorkOrderPolicy
         $response = $this->post(route('sp-work-orders.revert-to-draft', $wo->id));
-        $response->assertRedirect(route('sp-work-orders.show', $wo->id));
-        $response->assertSessionHas('error');
+        $response->assertStatus(403);
         $this->assertEquals('planned', $wo->fresh()->status);
     }
 

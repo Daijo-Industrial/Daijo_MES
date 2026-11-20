@@ -28,6 +28,7 @@ class MwhOutgoing extends Model
         'received_by_name',
         'received_at',
         'received_notes',
+        'created_at',
     ];
 
     protected $casts = [

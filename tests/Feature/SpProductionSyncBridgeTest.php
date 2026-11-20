@@ -19,9 +19,8 @@ class SpProductionSyncBridgeTest extends TestCase
 
     public function test_approving_session_syncs_to_legacy_second_process_report()
     {
-        Gate::define('approve-sp-sessions', fn () => true);
-
-        $user = User::factory()->create();
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::factory()->create(['role_id' => $role->id]);
         $this->actingAs($user);
 
         $workOrder = SpWorkOrder::create([
@@ -132,9 +131,8 @@ class SpProductionSyncBridgeTest extends TestCase
 
     public function test_multiple_approved_sessions_on_same_line_and_shift_create_distinct_reports(): void
     {
-        Gate::define('approve-sp-sessions', fn () => true);
-
-        $user = User::factory()->create();
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::factory()->create(['role_id' => $role->id]);
         $this->actingAs($user);
 
         $wo = SpWorkOrder::create([
@@ -213,9 +211,8 @@ class SpProductionSyncBridgeTest extends TestCase
 
     public function test_hourly_progression_aligns_with_configured_shift_schedule(): void
     {
-        Gate::define('approve-sp-sessions', fn () => true);
-
-        $user = User::factory()->create();
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::factory()->create(['role_id' => $role->id]);
         $this->actingAs($user);
 
         $tz = config('mes.timezone', 'Asia/Jakarta');

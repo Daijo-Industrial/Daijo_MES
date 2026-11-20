@@ -631,7 +631,7 @@ class DashboardController extends Controller
 
         $remark->save();
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'Remark updated successfully']);
         }
 
@@ -643,7 +643,7 @@ class DashboardController extends Controller
     {
         $machineJob = MachineJob::where('user_id', auth()->user()->id)->first();
         if (! $machineJob) {
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['message' => 'Machine job not found'], 404);
             }
 
@@ -683,7 +683,7 @@ class DashboardController extends Controller
             }
         }
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Employee name updated successfully.',
@@ -1147,25 +1147,26 @@ class DashboardController extends Controller
         $slotEnd = $base->copy()->addMinutes(($slotIndex + 1) * 60);
 
         // Jika endTime lebih kecil dari startTime, berarti slot melewati midnight
+        $timeTz = $this->timeConvertTzSql();
         if ($endTime < $startTime) {
             // Contoh: startTime = 23:30:00, endTime = 00:30:00
             // Query split jadi 2 bagian: 23:30-23:59 dan 00:00-00:30
             $totalActual = ProductionScannedData::where('dic_id', $dicId)
-                ->where(function ($query) use ($startTime) {
-                    $query->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) >= ?", [$startTime])
-                        ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) <= '23:59:59'");
+                ->where(function ($query) use ($startTime, $timeTz) {
+                    $query->whereRaw("{$timeTz} >= ?", [$startTime])
+                        ->whereRaw("{$timeTz} <= '23:59:59'");
                 })
-                ->orWhere(function ($query) use ($dicId, $endTime) {
+                ->orWhere(function ($query) use ($dicId, $endTime, $timeTz) {
                     $query->where('dic_id', $dicId)
-                        ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) >= '00:00:00'")
-                        ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) < ?", [$endTime]);
+                        ->whereRaw("{$timeTz} >= '00:00:00'")
+                        ->whereRaw("{$timeTz} < ?", [$endTime]);
                 })
                 ->sum('quantity');
         } else {
             // Slot normal dalam satu hari
             $totalActual = ProductionScannedData::where('dic_id', $dicId)
-                ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) >= ?", [$startTime])
-                ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) < ?", [$endTime])
+                ->whereRaw("{$timeTz} >= ?", [$startTime])
+                ->whereRaw("{$timeTz} < ?", [$endTime])
                 ->sum('quantity');
         }
 
@@ -2224,7 +2225,7 @@ class DashboardController extends Controller
         $dicId = $request->input('dic_id') ?: ($activedic['id'] ?? null);
 
         if (! $dicId) {
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Daily Item Code tidak ditemukan.'], 422);
             }
             return back()->with('error', 'Daily Item Code tidak ditemukan.');
@@ -2267,7 +2268,7 @@ class DashboardController extends Controller
             ->exists();
 
         if ($exists) {
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Data dengan jam tersebut sudah ada untuk DIC yang sama.',
@@ -2289,9 +2290,10 @@ class DashboardController extends Controller
         $pic3 = $request->input('pic_3') ?: ($assignedOps[2] ?? null);
 
         // Hitung total scan actual jika sudah ada scan pada rentang jam tersebut
+        $timeTz = $this->timeConvertTzSql();
         $totalActual = ProductionScannedData::where('dic_id', $dicId)
-            ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) >= ?", [$startTime->format('H:i:s')])
-            ->whereRaw("TIME(CONVERT_TZ(created_at, '+00:00', '+07:00')) < ?", [$endTime->format('H:i:s')])
+            ->whereRaw("{$timeTz} >= ?", [$startTime->format('H:i:s')])
+            ->whereRaw("{$timeTz} < ?", [$endTime->format('H:i:s')])
             ->sum('quantity');
 
         $actualProduction = $request->has('actual_production') && $request->actual_production !== null && $request->actual_production !== ''
@@ -2326,7 +2328,7 @@ class DashboardController extends Controller
             'updated_at' => $slotDateTime,
         ]);
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Hourly Remark berhasil ditambahkan!',
@@ -2468,7 +2470,7 @@ class DashboardController extends Controller
             $validated['remark'] ?? null
         );
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => "{$createdCount} slot jam untuk Shift {$daily->shift} berhasil dibuat.",
@@ -2588,8 +2590,9 @@ class DashboardController extends Controller
         $end = Carbon::parse($remark->end_time);
 
         // Cek apakah sudah ada yang diproses
+        $tz = $this->convertTzSql();
         $hasProcessed = ProductionScannedData::where('dic_id', $remark->dic_id)
-            ->whereRaw('CONVERT_TZ(created_at, "+00:00", "+07:00") BETWEEN ? AND ?', [$start, $end])
+            ->whereRaw("{$tz} BETWEEN ? AND ?", [$start, $end])
             ->where('processed', true)
             ->exists();
 
@@ -2599,7 +2602,7 @@ class DashboardController extends Controller
 
         // Hapus scanned data dalam rentang waktu itu
         $test = ProductionScannedData::where('dic_id', $remark->dic_id)
-            ->whereRaw('CONVERT_TZ(created_at, "+00:00", "+07:00") BETWEEN ? AND ?', [$start, $end])
+            ->whereRaw("{$tz} BETWEEN ? AND ?", [$start, $end])
             // ->get();
             ->delete();
         // dd($test);
@@ -2900,5 +2903,19 @@ class DashboardController extends Controller
                 'barcodes'
             )
         );
+    }
+
+    private function timeConvertTzSql(): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "TIME(datetime(created_at, '+7 hours'))"
+            : "TIME(CONVERT_TZ(created_at, '+00:00', '+07:00'))";
+    }
+
+    private function convertTzSql(): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "datetime(created_at, '+7 hours')"
+            : "CONVERT_TZ(created_at, '+00:00', '+07:00')";
     }
 }

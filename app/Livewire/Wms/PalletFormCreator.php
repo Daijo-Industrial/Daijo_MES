@@ -455,7 +455,7 @@ class PalletFormCreator extends Component
             $idempotencyKey = "wms_pallet_gen_hash_{$fingerprint}";
             if ($existingPalletId = Cache::get($idempotencyKey)) {
                 $existingPallet = WmsPalletForm::where('pallet_id', $existingPalletId)->whereNull('deleted_at')->first();
-                if ($existingPallet && $existingPallet->created_at >= now()->subSeconds(15)) {
+                if ($existingPallet && $existingPallet->created_at >= now()->subMinutes(5)) {
                     $this->lastGeneratedPalletId = $existingPalletId;
                     $this->showSuccessModal = true;
 
@@ -521,7 +521,7 @@ class PalletFormCreator extends Component
             DB::commit();
 
             // Simpan hash idempotency agar request duplikat dalam 5 menit berikutnya tidak membuat pallet baru
-            Cache::put($idempotencyKey, $palletId, now()->addSeconds(30));
+            Cache::put($idempotencyKey, $palletId, now()->addMinutes(5));
 
             $this->lastGeneratedPalletId = $palletId;
             $this->showSuccessModal = true;

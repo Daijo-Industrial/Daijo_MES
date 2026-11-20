@@ -98,7 +98,7 @@ class SpkChangesAccessTest extends TestCase
 
     public function test_non_production_role_gets_forbidden(): void
     {
-        $role = Role::create(['name' => 'WORKSHOP']);
+        $role = Role::firstOrCreate(['name' => 'WORKSHOP']);
         $user = User::create([
             'name' => 'Workshop User',
             'email' => 'workshop@example.com',
@@ -112,7 +112,7 @@ class SpkChangesAccessTest extends TestCase
 
     public function test_production_role_can_access_spk_changes(): void
     {
-        $role = Role::create(['name' => 'PRODUCTION']);
+        $role = Role::firstOrCreate(['name' => 'PRODUCTION']);
         $user = User::create([
             'name' => 'Production User',
             'email' => 'prod@example.com',

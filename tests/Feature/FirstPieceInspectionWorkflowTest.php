@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\FirstPieceInspection;
+use App\Models\Role;
 use App\Models\SpWorkOrder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,7 +15,8 @@ class FirstPieceInspectionWorkflowTest extends TestCase
 
     public function test_create_form_prefills_work_order_parameters()
     {
-        $user = User::factory()->create();
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::factory()->create(['role_id' => $role->id]);
         $this->actingAs($user);
 
         $workOrder = SpWorkOrder::create([
@@ -46,7 +48,8 @@ class FirstPieceInspectionWorkflowTest extends TestCase
 
     public function test_store_with_auto_approve_sets_qc_approval_and_redirects_to_work_order()
     {
-        $user = User::factory()->create(['name' => 'QC Inspector John']);
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::factory()->create(['name' => 'QC Inspector John', 'role_id' => $role->id]);
         $this->actingAs($user);
 
         $workOrder = SpWorkOrder::create([

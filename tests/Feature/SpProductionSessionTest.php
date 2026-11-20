@@ -22,7 +22,8 @@ class SpProductionSessionTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
+        $this->user = User::factory()->create(['role_id' => $role->id]);
 
         $this->workOrder = SpWorkOrder::create([
             'wo_number' => 'WO-TEST-001',

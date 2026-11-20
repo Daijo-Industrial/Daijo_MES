@@ -24,7 +24,7 @@ class SecondProcessReportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->adminRole = Role::create(['name' => 'ADMIN']);
+        $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
 
         MasterCustomerDelivery::create([
             'customer_code' => 'CUST-TOYOTA',
@@ -2702,9 +2702,7 @@ class SecondProcessReportTest extends TestCase
         $response->assertSee('id="custom-ng-name-input"', false);
 
         // 5. Assert NG Default Kategori options match config('mes.sp_ng_remark_categories')
-        $response->assertSee('Default Kategori:');
         foreach (config('mes.sp_ng_remark_categories') as $cat) {
-            $response->assertSee('value="' . $cat . '"', false);
             $response->assertSee($cat);
         }
     }

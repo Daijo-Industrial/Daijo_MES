@@ -17,9 +17,8 @@ class SpProductionManpowerTest extends TestCase
 
     public function test_operator_can_add_and_remove_line_manpower()
     {
-        Gate::define('approve-sp-sessions', fn () => true);
-
-        $user = User::factory()->create();
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::factory()->create(['role_id' => $role->id]);
         $this->actingAs($user);
 
         $workOrder = SpWorkOrder::create([

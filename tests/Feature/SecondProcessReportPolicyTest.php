@@ -31,6 +31,7 @@ class SecondProcessReportPolicyTest extends TestCase
         $leaderRole = Role::firstOrCreate(['name' => 'LEADER']);
         $checkerRole = Role::firstOrCreate(['name' => 'CHECKER']);
         $operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $operatorRole->givePermission('second-process-reports');
 
         $this->adminUser = User::factory()->create(['role_id' => $adminRole->id, 'name' => 'Admin User']);
         $this->supervisorUser = User::factory()->create(['role_id' => $supervisorRole->id, 'name' => 'Supervisor Dave']);
