@@ -14,6 +14,7 @@ class ProductionDayDashboardMachineListTest extends TestCase
     public function test_production_day_dashboard_contains_all_specified_machines(): void
     {
         $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::factory()->create([
             'role_id' => $role->id,
         ]);
@@ -33,7 +34,14 @@ class ProductionDayDashboardMachineListTest extends TestCase
                 [
                     'email' => strtolower($name) . '@daijo.co.id',
                     'password' => bcrypt('password'),
-                    'role_id' => $role->id,
+                    'role_id' => $operatorRole->id,
+                ]
+            );
+            \App\Models\MasterMachine::firstOrCreate(
+                ['name' => $name],
+                [
+                    'plant' => str_starts_with($name, 'K') ? 'KARAWANG' : 'KBN',
+                    'is_active' => true,
                 ]
             );
         }
@@ -116,8 +124,8 @@ class ProductionDayDashboardMachineListTest extends TestCase
         );
 
         // Uncheck / nonaktifkan 0450H
-        \App\Models\MasterMachine::where('name', '0450H')->update(['is_active' => false]);
-        \App\Models\MasterMachine::where('name', 'K1400C')->update(['is_active' => true]);
+        \App\Models\MasterMachine::updateOrCreate(['name' => '0450H'], ['plant' => 'KBN', 'is_active' => false]);
+        \App\Models\MasterMachine::updateOrCreate(['name' => 'K1400C'], ['plant' => 'KARAWANG', 'is_active' => true]);
 
         $response = $this->actingAs($admin)->get(route('djoni.dashboard'));
         $response->assertStatus(200);
@@ -144,7 +152,7 @@ class ProductionDayDashboardMachineListTest extends TestCase
             ->test(\App\Livewire\MasterMachineManager::class)
             ->assertSee('0350F')
             ->call('toggleActive', $machine->id)
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'info');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'info');
 
         $this->assertFalse($machine->fresh()->is_active);
 
@@ -152,7 +160,7 @@ class ProductionDayDashboardMachineListTest extends TestCase
         \Livewire\Livewire::actingAs($admin)
             ->test(\App\Livewire\MasterMachineManager::class)
             ->call('toggleActive', $machine->id)
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'success');
 
         $this->assertTrue($machine->fresh()->is_active);
     }
@@ -173,7 +181,7 @@ class ProductionDayDashboardMachineListTest extends TestCase
             ->set('brand', 'JSW')
             ->set('is_active', true)
             ->call('saveMachine')
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'success');
 
         $this->assertDatabaseHas('master_machines', [
             'name' => 'K1500Z',
@@ -251,7 +259,7 @@ class ProductionDayDashboardMachineListTest extends TestCase
         \Livewire\Livewire::actingAs($admin)
             ->test(\App\Livewire\MasterMachineManager::class)
             ->call('deleteMachine', $machine->id)
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'info');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'info');
 
         // Pastikan mesin terhapus secara soft delete
         $this->assertSoftDeleted('master_machines', ['name' => 'AMANDA']);

@@ -34,6 +34,8 @@ class SapTimeoutAlertCommandTest extends TestCase
                 $table->timestamps();
             });
         }
+
+        ApiLog::truncate();
     }
 
     public function test_alert_timeout_command_sends_email_when_timeouts_exist(): void

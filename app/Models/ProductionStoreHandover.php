@@ -32,7 +32,7 @@ class ProductionStoreHandover extends Model
     ];
 
     protected $casts = [
-        'production_date' => 'date',
+        'production_date' => 'date:Y-m-d',
         'shift' => 'integer',
         'operator_actual_qty' => 'integer',
         'scanned_qty' => 'integer',
@@ -41,6 +41,11 @@ class ProductionStoreHandover extends Model
         'store_received_qty' => 'integer',
         'last_verified_at' => 'datetime',
     ];
+
+    public function setProductionDateAttribute($value): void
+    {
+        $this->attributes['production_date'] = \Carbon\Carbon::parse($value)->format('Y-m-d');
+    }
 
     public function logs()
     {

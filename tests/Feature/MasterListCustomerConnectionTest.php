@@ -169,6 +169,8 @@ class MasterListCustomerConnectionTest extends TestCase
             'customer_code' => 'CUST-004',
         ]);
 
+        $this->actingAs($this->user);
+
         $controller = new SecondProcessReportController;
         $request = new Request(['q' => 'SP-PART-001']);
 

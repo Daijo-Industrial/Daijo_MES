@@ -298,6 +298,11 @@ class SecondProcessReportController extends Controller
             $catalogNgTypes = config('mes.sp_default_ng_types', []);
         }
 
+        $historical = SecondProcessNgRecord::select('ng_name')->distinct()->pluck('ng_name')->toArray();
+        if (! empty($historical)) {
+            $catalogNgTypes = array_values(array_unique(array_merge($catalogNgTypes, $historical)));
+        }
+
         return $catalogNgTypes;
     }
 

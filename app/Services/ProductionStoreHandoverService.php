@@ -439,7 +439,7 @@ class ProductionStoreHandoverService
         // Pastikan sinkronisasi awal berjalan
         $this->syncDailyProduction($date, $shift);
 
-        $baseQuery = ProductionStoreHandover::where('production_date', $date);
+        $baseQuery = ProductionStoreHandover::whereDate('production_date', $date);
 
         // Filter: jangan tampilkan yang tidak ada mesinnya DAN actual mesin 0 (serta tidak ada box scan)
         $baseQuery->where(function ($q) {

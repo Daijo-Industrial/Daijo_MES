@@ -12,10 +12,25 @@ class SyncMachineJobsCommandTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $existing = Role::where('name', 'OPERATOR')->first();
+        if ($existing && $existing->id !== 4) {
+            Role::where('id', 4)->delete();
+            $existing->id = 4;
+            $existing->save();
+        } elseif (! $existing) {
+            Role::where('id', 4)->delete();
+            Role::create(['id' => 4, 'name' => 'OPERATOR']);
+        }
+    }
+
     public function test_sync_machine_jobs_creates_missing_jobs_for_role_4(): void
     {
         // Setup role ID 4
-        $role4 = Role::firstOrCreate(['id' => 4], ['name' => 'OPERATOR']);
+        $role4 = Role::firstOrCreate(['name' => 'OPERATOR']);
 
         // Create 2 users with role_id 4
         $user1 = User::factory()->create([
@@ -31,9 +46,9 @@ class SyncMachineJobsCommandTest extends TestCase
         MachineJob::create(['user_id' => $user2->id]);
 
         // User 3 has a different role (e.g. 1)
-        $role1 = Role::firstOrCreate(['id' => 1], ['name' => 'SUPER-ADMIN']);
+        $role1 = Role::firstOrCreate(['name' => 'SUPER-ADMIN']);
         $user3 = User::factory()->create([
-            'role_id' => 1,
+            'role_id' => $role1->id,
             'name' => 'admin_user',
         ]);
 
@@ -55,7 +70,7 @@ class SyncMachineJobsCommandTest extends TestCase
 
     public function test_sync_machine_jobs_dry_run_does_not_create_records(): void
     {
-        Role::firstOrCreate(['id' => 4], ['name' => 'OPERATOR']);
+        Role::firstOrCreate(['name' => 'OPERATOR']);
 
         $user = User::factory()->create([
             'role_id' => 4,
@@ -71,7 +86,7 @@ class SyncMachineJobsCommandTest extends TestCase
 
     public function test_sync_machine_jobs_when_all_users_already_have_jobs(): void
     {
-        Role::firstOrCreate(['id' => 4], ['name' => 'OPERATOR']);
+        Role::firstOrCreate(['name' => 'OPERATOR']);
 
         $user = User::factory()->create([
             'role_id' => 4,

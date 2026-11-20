@@ -32,6 +32,8 @@ class RoleManagerTest extends TestCase
         $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
         $this->operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
 
+        $this->ensurePermissionsSeeded();
+
         $this->superAdmin = User::create([
             'name' => 'Super Admin',
             'email' => 'superadmin@test.com',
@@ -65,7 +67,7 @@ class RoleManagerTest extends TestCase
 
         Livewire::test(RoleManager::class)
             ->assertStatus(200)
-            ->assertSee('System Roles')
+            ->assertSee('Roles')
             ->assertSee('SUPER-ADMIN')
             ->assertSee('ADMIN')
             ->assertSee('OPERATOR');
@@ -377,5 +379,27 @@ class RoleManagerTest extends TestCase
         $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($refreshedUser)->allows('second-process-reports'));
         $this->assertTrue(\Illuminate\Support\Facades\Gate::forUser($refreshedUser)->allows('second-process-work-orders'));
         $this->assertTrue(\Illuminate\Support\Facades\Gate::forUser($refreshedUser)->allows('manage-sp-work-orders'));
+    }
+
+    private function ensurePermissionsSeeded(): void
+    {
+        $perms = [
+            ['name' => 'view-warehouse-links', 'label' => 'View Warehouse Links', 'group' => 'Warehouse & Inventory'],
+            ['name' => 'view-store-links', 'label' => 'View Store Links', 'group' => 'Warehouse & Inventory'],
+            ['name' => 'view-operator-links', 'label' => 'View Operator Links', 'group' => 'Production & Operations'],
+            ['name' => 'execute-qc-inspections', 'label' => 'Execute QC Inspections', 'group' => 'Engineering & Quality'],
+            ['name' => 'second-process-work-orders', 'label' => 'Second Process Work Orders', 'group' => 'Second Process'],
+            ['name' => 'second-process-reports', 'label' => 'Second Process Reports', 'group' => 'Second Process'],
+            ['name' => 'second-process-approvals', 'label' => 'Second Process Approvals', 'group' => 'Second Process'],
+            ['name' => 'second-process-dashboard', 'label' => 'Second Process Dashboard', 'group' => 'Second Process'],
+            ['name' => 'second-process-first-piece', 'label' => 'Second Process First Piece', 'group' => 'Second Process'],
+            ['name' => 'second-process-ipqc', 'label' => 'Second Process IPQC', 'group' => 'Second Process'],
+            ['name' => 'second-process-sessions', 'label' => 'Second Process Sessions', 'group' => 'Second Process'],
+            ['name' => 'second-process-analytics', 'label' => 'Second Process Analytics', 'group' => 'Second Process'],
+        ];
+
+        foreach ($perms as $perm) {
+            \App\Models\Permission::firstOrCreate(['name' => $perm['name']], $perm);
+        }
     }
 }

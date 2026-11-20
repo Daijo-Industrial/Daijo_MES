@@ -144,7 +144,7 @@ class MaterialWarehouseRackMappingTest extends TestCase
 
     public function test_can_render_material_warehouse_rack_mapping()
     {
-        $role = \App\Models\Role::create(['name' => 'ADMIN']);
+        $role = \App\Models\Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',

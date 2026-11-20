@@ -37,6 +37,9 @@ class UserActivityAuditTest extends TestCase
     {
         parent::setUp();
 
+        config(['activitylog.enabled' => true]);
+        app(\Spatie\Activitylog\ActivityLogStatus::class)->enable();
+
         $this->superAdminRole = Role::firstOrCreate(['name' => 'SUPER-ADMIN']);
         $this->operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
 
@@ -57,6 +60,12 @@ class UserActivityAuditTest extends TestCase
             'role_id' => $this->operatorRole->id,
             'is_active' => true,
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        app(\Spatie\Activitylog\ActivityLogStatus::class)->disable();
+        parent::tearDown();
     }
 
     public function test_non_superadmin_cannot_access_user_activity_dashboard(): void

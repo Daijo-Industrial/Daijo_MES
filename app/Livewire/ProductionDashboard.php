@@ -95,38 +95,79 @@ class ProductionDashboard extends Component
             9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December',
         ];
 
-        // ✅ Get users with IDs for machine mapping
-        $machineUsers = \App\Models\User::where(function ($q) {
-            $q->whereIn('name', [
+        // Prioritaskan daftar mesin resmi dari MasterMachine jika tabel dan data tersedia
+        $masterMachines = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('master_machines')) {
+            $masterMachines = \App\Models\MasterMachine::where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+        }
+
+        if ($masterMachines->isNotEmpty()) {
+            $machineNames = $masterMachines->pluck('name')->toArray();
+            $usersByName = \App\Models\User::whereIn('name', $machineNames)
+                ->with('branch')
+                ->get()
+                ->keyBy('name');
+
+            $this->allMachines = $masterMachines->map(function ($mm) use ($usersByName) {
+                $user = $usersByName->get($mm->name);
+                $isKarawang = strtoupper($mm->plant) === 'KARAWANG'
+                    || ($user && $user->branch && $user->branch->code === 'KRW')
+                    || preg_match('/^K\d{3,4}[A-Z]?$/i', $mm->name);
+
+                return [
+                    'id' => $user?->id ?? $mm->id,
+                    'name' => $mm->name,
+                    'plant' => $isKarawang ? 'karawang' : 'kbn',
+                ];
+            })->sortBy('name')->values()->toArray();
+        } else {
+            // Fallback jika MasterMachine kosong: ambil hanya akun mesin dengan nama mesin valid
+            $knownMachines = [
                 '0150E', '0150F', '0300A', '0300B', '0350F', '0360A', '0360B', '0360C', '0360D', '0450B',
                 '0450F', '0450G', '0450H', '0450I', '0450J',
                 '0550B', '0650D', '0650E', '0850D', '1050D', '1300B', '1300C',
                 'K2800A', 'K2100A', 'K1400A', 'K1400B', 'K1400C',
                 'K0900A', 'K0900B', 'K0650A', 'K0650B',
                 'K0750A', 'K0750B', 'K0450A',
-            ])
-                ->orWhere('name', 'LIKE', 'K%')
-                ->orWhere('name', 'LIKE', '0%')
-                ->orWhere('name', 'LIKE', '1%')
-                ->orWhere('name', 'LIKE', '2%')
-                ->orWhere('name', 'LIKE', '3%')
-                ->orWhere('name', 'LIKE', '4%')
-                ->orWhere('name', 'LIKE', '5%')
-                ->orWhere('name', 'LIKE', '6%')
-                ->orWhere('name', 'LIKE', '7%')
-                ->orWhere('name', 'LIKE', '8%')
-                ->orWhere('name', 'LIKE', '9%');
-        })->with('branch')->get(['id', 'name', 'branch_id']);
-
-        $this->allMachines = $machineUsers->map(function ($user) {
-            $isKarawang = ($user->branch && $user->branch->code === 'KRW') || str_starts_with(strtoupper($user->name), 'K');
-
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'plant' => $isKarawang ? 'karawang' : 'kbn',
+                'VTC', 'AMANDA',
             ];
-        })->sortBy('name')->values()->toArray();
+
+            $machineUsers = \App\Models\User::where(function ($q) use ($knownMachines) {
+                $q->whereIn('name', $knownMachines)
+                    ->orWhere(function ($sub) {
+                        $sub->whereHas('role', fn ($rq) => $rq->where('name', 'OPERATOR'))
+                            ->where(function ($rsub) {
+                                $rsub->where('name', 'LIKE', 'K0%')
+                                    ->orWhere('name', 'LIKE', 'K1%')
+                                    ->orWhere('name', 'LIKE', 'K2%')
+                                    ->orWhere('name', 'LIKE', '0%')
+                                    ->orWhere('name', 'LIKE', '1%')
+                                    ->orWhere('name', 'LIKE', '2%')
+                                    ->orWhere('name', 'LIKE', '3%')
+                                    ->orWhere('name', 'LIKE', '4%')
+                                    ->orWhere('name', 'LIKE', '5%')
+                                    ->orWhere('name', 'LIKE', '6%')
+                                    ->orWhere('name', 'LIKE', '7%')
+                                    ->orWhere('name', 'LIKE', '8%')
+                                    ->orWhere('name', 'LIKE', '9%');
+                            });
+                    });
+            })->with('branch')->get(['id', 'name', 'branch_id']);
+
+            $this->allMachines = $machineUsers->map(function ($user) {
+                $isKarawang = ($user->branch && $user->branch->code === 'KRW')
+                    || preg_match('/^K\d{3,4}[A-Z]?$/i', $user->name);
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'plant' => $isKarawang ? 'karawang' : 'kbn',
+                ];
+            })->sortBy('name')->values()->toArray();
+        }
 
         $this->updateFilteredMachines();
         $this->updateWeeks();

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\FirstPieceInspection;
+use App\Models\Role;
 use App\Models\SpWorkOrder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,7 +15,8 @@ class FirstPieceInspectionGateTest extends TestCase
 
     public function test_cannot_start_production_session_without_first_piece_inspection()
     {
-        $user = User::factory()->create();
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::factory()->create(['role_id' => $role->id]);
         $this->actingAs($user);
 
         $workOrder = SpWorkOrder::create([
@@ -43,7 +45,8 @@ class FirstPieceInspectionGateTest extends TestCase
 
     public function test_can_start_production_session_when_first_piece_inspection_is_qc_approved()
     {
-        $user = User::factory()->create();
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
+        $user = User::factory()->create(['role_id' => $role->id]);
         $this->actingAs($user);
 
         $workOrder = SpWorkOrder::create([

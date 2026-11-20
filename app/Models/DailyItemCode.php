@@ -15,6 +15,30 @@ class DailyItemCode extends Model
     use HasFactory;
     use SoftDeletes;
 
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $schema = $model->getConnection()->getSchemaBuilder();
+            $table = $model->getTable();
+
+            if (! isset($model->attributes['actual_quantity']) && $schema->hasColumn($table, 'actual_quantity')) {
+                $model->actual_quantity = 0;
+            }
+            if (empty($model->start_date) && $schema->hasColumn($table, 'start_date')) {
+                $model->start_date = $model->schedule_date ?? now()->toDateString();
+            }
+            if (empty($model->end_date) && $schema->hasColumn($table, 'end_date')) {
+                $model->end_date = $model->schedule_date ?? now()->toDateString();
+            }
+            if (empty($model->start_time) && $schema->hasColumn($table, 'start_time')) {
+                $model->start_time = '07:30:00';
+            }
+            if (empty($model->end_time) && $schema->hasColumn($table, 'end_time')) {
+                $model->end_time = '15:30:00';
+            }
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'branch_id',

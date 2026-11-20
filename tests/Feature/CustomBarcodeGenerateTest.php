@@ -89,7 +89,7 @@ class CustomBarcodeGenerateTest extends TestCase
 
     public function test_custom_generate_form_renders_with_items_and_snp(): void
     {
-        $role = Role::create(['name' => 'ADMIN']);
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
             'name' => 'Admin Test',
             'email' => 'admin@example.com',
@@ -121,7 +121,7 @@ class CustomBarcodeGenerateTest extends TestCase
 
     public function test_custom_generate_print_allows_quantity_zero(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Operator Test',
             'email' => 'operator@example.com',
@@ -161,7 +161,7 @@ class CustomBarcodeGenerateTest extends TestCase
 
     public function test_custom_generate_print_rejects_negative_quantity(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Operator Test',
             'email' => 'operator2@example.com',
@@ -186,7 +186,7 @@ class CustomBarcodeGenerateTest extends TestCase
 
     public function test_custom_generate_print_accepts_positive_snp_quantity(): void
     {
-        $role = Role::create(['name' => 'OPERATOR']);
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
         $user = User::create([
             'name' => 'Operator Test',
             'email' => 'operator3@example.com',

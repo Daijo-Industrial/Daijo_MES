@@ -148,7 +148,7 @@ class ProductionDashboardOptimizationTest extends TestCase
 
     public function test_production_dashboard_single_query_pipeline()
     {
-        $role = Role::create(['name' => 'ADMIN']);
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
@@ -636,7 +636,7 @@ class ProductionDashboardOptimizationTest extends TestCase
 
     public function test_ng_breakdown_contains_models_breakdown_and_remarks(): void
     {
-        $role = Role::create(['name' => 'ADMIN']);
+        $role = Role::firstOrCreate(['name' => 'ADMIN']);
         $user = User::create([
             'name' => 'Admin NG',
             'email' => 'admin_ng@example.com',
@@ -1010,6 +1010,34 @@ class ProductionDashboardOptimizationTest extends TestCase
             ->assertOk()
             ->assertSee('NG Production')
             ->assertSee('Total NG');
+    }
+
+    public function test_production_dashboard_machine_dropdown_excludes_human_operators_starting_with_k(): void
+    {
+        $roleChecker = Role::firstOrCreate(['name' => 'CHECKER']);
+        $roleQuality = Role::firstOrCreate(['name' => 'QUALITY']);
+        $roleOperator = Role::firstOrCreate(['name' => 'OPERATOR']);
+
+        // Human employees starting with 'K'
+        User::create(['name' => 'Kamalludin', 'email' => 'kamalludin@test.com', 'password' => bcrypt('pass'), 'role_id' => $roleChecker->id]);
+        User::create(['name' => 'Kemas Kurniatur Akbar', 'email' => 'kemas@test.com', 'password' => bcrypt('pass'), 'role_id' => $roleQuality->id]);
+        User::create(['name' => 'Kholifah', 'email' => 'kholifah@test.com', 'password' => bcrypt('pass'), 'role_id' => $roleChecker->id]);
+
+        // Real machine starting with 'K'
+        User::create(['name' => 'K2800A', 'email' => 'k2800a@test.com', 'password' => bcrypt('pass'), 'role_id' => $roleOperator->id]);
+
+        $admin = User::firstOrCreate(['name' => 'Admin Test'], ['email' => 'adm@test.com', 'password' => bcrypt('pass'), 'role_id' => 1]);
+        $this->actingAs($admin);
+
+        $component = Livewire::test(ProductionDashboard::class)
+            ->set('plant', 'karawang');
+
+        $machineNames = collect($component->get('machines'))->pluck('name')->toArray();
+
+        $this->assertContains('K2800A', $machineNames);
+        $this->assertNotContains('Kamalludin', $machineNames);
+        $this->assertNotContains('Kemas Kurniatur Akbar', $machineNames);
+        $this->assertNotContains('Kholifah', $machineNames);
     }
 }
 

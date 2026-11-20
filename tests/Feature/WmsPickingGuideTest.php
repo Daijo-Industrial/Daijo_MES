@@ -42,7 +42,7 @@ class WmsPickingGuideTest extends TestCase
 
         $this->createTestSchema();
 
-        $this->adminRole = Role::create(['name' => 'ADMIN']);
+        $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
 
         $this->adminUser = new User([
             'name' => 'Admin User',
@@ -118,6 +118,8 @@ class WmsPickingGuideTest extends TestCase
             $table->string('item_code')->unique();
             $table->string('item_name');
             $table->string('customer_code')->nullable();
+            $table->string('tipe_mesin')->nullable();
+            $table->integer('standart_packaging_list')->nullable();
             $table->timestamps();
         });
 

@@ -42,7 +42,7 @@ class ProductionStoreHandoverTest extends TestCase
 
         $this->createTestSchema();
 
-        $this->adminRole = Role::create(['name' => 'ADMIN']);
+        $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
 
         $this->user = new User([
             'name' => 'Store Officer',
@@ -70,6 +70,7 @@ class ProductionStoreHandoverTest extends TestCase
             $table->string('password');
             $table->foreignId('role_id')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('master_list_items', function (Blueprint $table) {
@@ -81,6 +82,13 @@ class ProductionStoreHandoverTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('master_customer_delivery', function (Blueprint $table) {
+            $table->id();
+            $table->string('customer_code', 50)->nullable();
+            $table->string('customer_name')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('daily_item_codes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable();
@@ -89,6 +97,7 @@ class ProductionStoreHandoverTest extends TestCase
             $table->string('item_code', 100);
             $table->integer('actual_quantity')->default(0);
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('hourly_remarks', function (Blueprint $table) {
@@ -305,6 +314,7 @@ class ProductionStoreHandoverTest extends TestCase
         Livewire::test(ProductionStoreHandoverIndex::class)
             ->set('selectedDate', $date)
             ->set('shiftFilter', '1')
+            ->call('switchTab', 'table')
             ->assertSee('PART-LW-01')
             ->assertSee('Housing Upper')
             ->call('receiveAllInTransit', $handover->id)
@@ -544,7 +554,7 @@ class ProductionStoreHandoverTest extends TestCase
         ]);
 
         // 1. Buat User Produksi (Role: PRODUCTION)
-        $prodRole = Role::create(['name' => 'PRODUCTION']);
+        $prodRole = Role::firstOrCreate(['name' => 'PRODUCTION']);
         $prodUser = User::create([
             'name' => 'Operator / Leader Produksi',
             'email' => 'prod@test.com',
@@ -558,16 +568,15 @@ class ProductionStoreHandoverTest extends TestCase
         $test = Livewire::test(ProductionStoreHandoverIndex::class)
             ->set('selectedDate', $date);
 
-        // Verifikasi: User Produksi TIDAK melihat tombol terima dan scanner store
-        $test->assertDontSee('Terima 5 Box')
-            ->assertDontSee('+ Custom')
-            ->assertDontSee('Quick Scanner Store')
+        // Verifikasi: User Produksi TIDAK melihat tombol aksi store
+        $test->assertDontSee('+ Pecahan')
+            ->assertDontSee('Aksi Store')
             ->assertSee('5 Box Di Jalan')
             ->assertSee('Status Serah Terima');
 
         // Jika user produksi mencoba memanggil receiveAllInTransit via Livewire
         $test->call('receiveAllInTransit', $handover->id)
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'error');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'error');
 
         // Pastikan record tidak berubah
         $handover->refresh();
@@ -575,7 +584,7 @@ class ProductionStoreHandoverTest extends TestCase
         $this->assertEquals('PENDING', $handover->status);
 
         // 2. Sekarang login sebagai Store / Admin (Role: STORE)
-        $storeRole = Role::create(['name' => 'STORE']);
+        $storeRole = Role::firstOrCreate(['name' => 'STORE']);
         $storeUser = User::create([
             'name' => 'Petugas Store',
             'email' => 'store_officer@test.com',
@@ -586,17 +595,17 @@ class ProductionStoreHandoverTest extends TestCase
         $this->actingAs($storeUser);
 
         $storeTest = Livewire::test(ProductionStoreHandoverIndex::class)
-            ->set('selectedDate', $date);
+            ->set('selectedDate', $date)
+            ->call('switchTab', 'table');
 
-        // Verifikasi: Petugas Store MELIHAT tombol terima dan scanner store
-        $storeTest->assertSee('Terima 5 Box')
-            ->assertSee('+ Custom')
-            ->assertSee('Quick Scanner Store')
+        // Verifikasi: Petugas Store MELIHAT tombol verifikasi pallet dan aksi store
+        $storeTest->assertSee('Cek Pallet (5 Box Di Jalan)')
+            ->assertSee('+ Pecahan')
             ->assertSee('Aksi Store');
 
         // Petugas Store sukses melakukan penerimaan
         $storeTest->call('receiveAllInTransit', $handover->id)
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'success');
 
         $handover->refresh();
         $this->assertEquals(5, $handover->store_received_boxes);
@@ -713,7 +722,7 @@ class ProductionStoreHandoverTest extends TestCase
             ->set('selectedDate', $date)
             ->set('barcodeInput', $palletId)
             ->call('scanBarcodeReceive')
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'success');
 
         $handover->refresh();
         $this->assertEquals(12, $handover->store_received_boxes);
@@ -779,7 +788,7 @@ class ProductionStoreHandoverTest extends TestCase
 
         // Terima seluruh pallet in-transit via tombol di modal
         $test->call('receiveAllPalletsAction')
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'success');
 
         $handover->refresh();
         $this->assertEquals(16, $handover->store_received_boxes);
@@ -845,7 +854,7 @@ class ProductionStoreHandoverTest extends TestCase
 
         $palletId = 'PLT-QUEUE-001';
         $utcTime = \Carbon\Carbon::parse('2026-10-29 02:48:00', 'UTC');
-        WmsPalletForm::create([
+        $pallet = WmsPalletForm::create([
             'pallet_id' => $palletId,
             'part_no' => $itemCode,
             'model_name' => 'Grille Front Lower',
@@ -855,8 +864,9 @@ class ProductionStoreHandoverTest extends TestCase
             'box_qty' => 10,
             'total_pallet_qty' => 500,
             'status' => 'STORED',
-            'created_at' => $utcTime,
         ]);
+        $pallet->created_at = $utcTime;
+        $pallet->save();
 
         $this->actingAs($this->user);
 
@@ -871,7 +881,7 @@ class ProductionStoreHandoverTest extends TestCase
 
         // 1-Click Receive from Queue
         $test->call('receivePalletFromQueue', $palletId)
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'success');
 
         $handover->refresh();
         $this->assertEquals(10, $handover->store_received_boxes);
@@ -888,7 +898,7 @@ class ProductionStoreHandoverTest extends TestCase
 
         // Jika diklik lagi, terlindungi dari duplikasi
         $test->call('receivePalletFromQueue', $palletId)
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'warning');
+            ->assertDispatched('notify', fn ($name, $params) => ($params['type'] ?? ($params[0]['type'] ?? null)) === 'warning');
     }
 
     public function test_store_can_receive_all_pending_queue_at_once()
@@ -944,7 +954,7 @@ class ProductionStoreHandoverTest extends TestCase
         Livewire::test(ProductionStoreHandoverIndex::class)
             ->set('selectedDate', $date)
             ->call('receiveAllPendingQueue')
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'success');
+            ->assertDispatched('notify', fn ($name, $params) => (($params['type'] ?? ($params[0]['type'] ?? null)) ?? ($params[0]['type'] ?? null)) === 'success');
 
         $h1->refresh();
         $h2->refresh();

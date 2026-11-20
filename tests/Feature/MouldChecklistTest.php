@@ -36,11 +36,11 @@ class MouldChecklistTest extends TestCase
     {
         parent::setUp();
 
-        $this->superAdminRole = Role::create(['name' => 'SUPER-ADMIN']);
-        $this->adminRole = Role::create(['name' => 'ADMIN']);
-        $this->leaderRole = Role::create(['name' => 'LEADER']);
-        $this->operatorRole = Role::create(['name' => 'OPERATOR']);
-        $this->mouldLeaderRole = Role::create(['name' => 'MOULD-MAINTENANCE-LEADER']);
+        $this->superAdminRole = Role::firstOrCreate(['name' => 'SUPER-ADMIN']);
+        $this->adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
+        $this->leaderRole = Role::firstOrCreate(['name' => 'LEADER']);
+        $this->operatorRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $this->mouldLeaderRole = Role::firstOrCreate(['name' => 'MOULD-MAINTENANCE-LEADER']);
 
         $this->superAdminUser = User::factory()->create(['name' => 'Super Admin User', 'role_id' => $this->superAdminRole->id]);
         $this->adminUser = User::factory()->create(['name' => 'Admin User', 'role_id' => $this->adminRole->id]);
@@ -118,7 +118,7 @@ class MouldChecklistTest extends TestCase
             ->assertSet('part_no', '401-76934B001P')
             ->assertSet('customer', 'IKUYO')
             ->assertSet('machine_number', '1300T')
-            ->assertSee('Master Mould Terverifikasi')
+            ->assertSee('IK-MM-005-010')
             ->assertSee('Ganti Mould')
             ->set('technician_name', 'Maulana + Sorie')
             ->set('start_time', '14:00')
@@ -149,9 +149,9 @@ class MouldChecklistTest extends TestCase
 
         Livewire::test(MouldChecklistForm::class)
             ->assertSee('Pilih Mould dari Master Mould')
-            ->assertSee('Mould belum terdaftar? Input Manual')
+            ->assertSee('Mould belum terdaftar? Input manual')
             ->call('selectMould', $mould->id)
-            ->assertSee('Master Mould Terverifikasi')
+            ->assertSee('IK-MM-005-010')
             ->assertSee('Ganti Mould')
             ->call('clearSelectedMould')
             ->assertSet('mould_no', '')
@@ -415,7 +415,7 @@ class MouldChecklistTest extends TestCase
         $response->assertSee('Maulana + Sorie');
         $response->assertSee('COOLING CIRCULATION');
         $response->assertSee('EJECTOR PIN');
-        $response->assertSee('14:00 s/d 20:00');
+        $response->assertSee('14:00 - 20:00');
     }
 
     public function test_mould_maintenance_leader_auto_signs_check_by_on_creation(): void
@@ -582,7 +582,7 @@ class MouldChecklistTest extends TestCase
 
         Livewire::test(MouldChecklistShow::class, ['id' => $checklist->id])
             ->call('deleteChecklist')
-            ->assertSessionHas('error');
+            ->assertSee('Hanya dokumen berstatus DRAFT atau Admin yang dapat dihapus.');
 
         $this->assertDatabaseHas('mould_checklists', ['id' => $checklist->id]);
     }
@@ -738,7 +738,7 @@ class MouldChecklistTest extends TestCase
             ->set('technician_name', 'Teknisi Test')
             ->set('is_ongoing', true)
             ->call('submitAndSign')
-            ->assertSessionHas('error');
+            ->assertSee('Pekerjaan yang masih berlangsung (Ongoing) hanya dapat disimpan sebagai Draft');
 
         $this->assertDatabaseMissing('mould_checklists', ['mould_no' => 'MLD-SUBMIT-ONG-01']);
     }
