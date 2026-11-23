@@ -90,15 +90,15 @@ services:
         restart: unless-stopped
         environment:
             MYSQL_DATABASE: "${DB_DATABASE:-DAIJO_MES}"
-            MYSQL_USER: "${DB_USERNAME:-sail}"
-            MYSQL_PASSWORD: "${DB_PASSWORD:-password}"
-            MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:-password}"
+            MYSQL_USER: "${DB_USERNAME}"
+            MYSQL_PASSWORD: "${DB_PASSWORD}"
+            MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
         volumes:
             - mysql-data:/var/lib/mysql
         networks:
             - daijo-net
         healthcheck:
-            test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME:-sail}", "-p${DB_PASSWORD:-password}"]
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME}", "-p${DB_PASSWORD}"]
             interval: 10s
             timeout: 5s
             retries: 5
