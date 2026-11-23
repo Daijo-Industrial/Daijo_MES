@@ -50,7 +50,10 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
         $unauthorizedUser = $this->createMockUser('OPERATOR', []);
 
         $draftWo = new SpWorkOrder(['status' => 'draft']);
+        $draftWo->setRelation('sessions', collect());
+
         $plannedWo = new SpWorkOrder(['status' => 'planned']);
+        $plannedWo->setRelation('sessions', collect());
 
         // viewAny & create
         $this->assertTrue($policy->viewAny($authorizedUser));
@@ -66,6 +69,19 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
         // release: draft allowed
         $this->assertTrue($policy->release($authorizedUser, $draftWo)->allowed());
         $this->assertTrue($policy->release($authorizedUser, $plannedWo)->denied());
+        $this->assertTrue($policy->release($unauthorizedUser, $draftWo)->denied());
+
+        // revertToDraft: planned allowed, draft denied
+        $this->assertTrue($policy->revertToDraft($authorizedUser, $plannedWo)->allowed());
+        $this->assertTrue($policy->revertToDraft($authorizedUser, $draftWo)->denied());
+        $this->assertTrue($policy->revertToDraft($unauthorizedUser, $plannedWo)->denied());
+
+        // delete: draft & planned allowed, completed denied
+        $completedWo = new SpWorkOrder(['status' => 'completed']);
+        $this->assertTrue($policy->delete($authorizedUser, $draftWo)->allowed());
+        $this->assertTrue($policy->delete($authorizedUser, $plannedWo)->allowed());
+        $this->assertTrue($policy->delete($authorizedUser, $completedWo)->denied());
+        $this->assertTrue($policy->delete($unauthorizedUser, $draftWo)->denied());
     }
 
     public function test_first_piece_inspection_policy_enforces_qc_signatures()

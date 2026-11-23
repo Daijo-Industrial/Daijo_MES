@@ -24,17 +24,21 @@
             @endphp
 
             <div class="flex flex-wrap items-center gap-2">
-                @if($workOrder->status === 'draft')
+                @can('update', $workOrder)
                     <a href="{{ route('sp-work-orders.edit', $workOrder->id) }}" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
                         Edit Draft
                     </a>
+                @endcan
+                @can('release', $workOrder)
                     <form action="{{ route('sp-work-orders.release', $workOrder->id) }}" method="POST" class="inline">
                         @csrf
                         <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black text-xs rounded-xl shadow-md transition uppercase tracking-wider">
                             Release Order
                         </button>
                     </form>
-                @elseif($activeSession)
+                @endcan
+
+                @if($activeSession)
                     <a href="{{ route('app.sp-sessions.show', $activeSession->id) }}"
                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-md transition uppercase tracking-wider">
                         Open Operator Screen
@@ -49,14 +53,14 @@
                         </form>
                     @endif
 
-                    @if($workOrder->sessions->count() === 0)
+                    @can('revertToDraft', $workOrder)
                         <form action="{{ route('sp-work-orders.revert-to-draft', $workOrder->id) }}" method="POST" class="inline">
                             @csrf
                             <button type="submit" class="px-3 py-2 bg-gray-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 shadow-sm transition uppercase tracking-wider" title="Revert to draft mode to unlock editing">
                                 Revert to Draft
                             </button>
                         </form>
-                    @endif
+                    @endcan
                 @endif
 
                 <a href="{{ route('sp-work-orders.index') }}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl border border-gray-300 shadow-sm transition uppercase tracking-wider">

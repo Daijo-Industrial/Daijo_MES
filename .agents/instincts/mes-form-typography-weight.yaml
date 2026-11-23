@@ -1,0 +1,23 @@
+---
+id: mes-form-typography-weight
+trigger: "when styling forms, labels, headings, or inputs in MES views"
+confidence: 0.85
+domain: "ui-style"
+source: "user-correction"
+scope: project
+project_id: "25e82bb09c68"
+project_name: "Daijo_MES"
+---
+
+# Avoid Heavy Font Weights in MES Views
+
+## Action
+Avoid using `font-black` (weight 900) across MES form views, labels, inputs, and action buttons. Keep the typography clean and balanced:
+- **Headings (H2/H3)**: Use `font-bold` (700) or `font-semibold` (600).
+- **Field Labels & Badges**: Use `font-semibold text-zinc-600` (600) rather than `font-black`.
+- **Form Inputs & Selects**: Use `font-normal text-zinc-800` (400) for standard typing readability.
+- **Action Buttons**: Use `font-semibold` (600).
+- **Quantitative Emphasis**: Use `font-semibold text-emerald-700` (600) for target quantities rather than `font-black`.
+
+## Evidence
+- User explicitly corrected heavy font weight usage on 2026-11-23: "current all font weights used too heavy, please reduce it".

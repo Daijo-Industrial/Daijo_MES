@@ -1,0 +1,22 @@
+---
+id: catalog-lookup-progressive-disclosure
+trigger: "when implementing master catalog lookup or dispatch forms"
+confidence: 0.80
+domain: "ui-architecture"
+source: "user-feedback"
+scope: project
+project_id: "25e82bb09c68"
+project_name: "Daijo_MES"
+---
+
+# Progressive Auto-Collapsing Catalog Lookup
+
+## Action
+When implementing item selection linked to a master item catalog:
+1. Provide a prominent search input searching both part number and part name with instant debounced autocompletion.
+2. Once an item is selected from the dropdown, automatically collapse the catalog search into a compact, read-only summary card displaying key specifications (Part Number, Part Name, Model, Customer) with a secondary "Change Part" button.
+3. Automatically advance focus (`$nextTick`) to the subsequent logical input in the form sequence.
+4. Always provide an "Enter details manually" fallback option for parts not yet registered in the master catalog.
+
+## Evidence
+- User requested progressive top-to-down card flow with auto-collapsing catalog lookup on 2026-11-23.

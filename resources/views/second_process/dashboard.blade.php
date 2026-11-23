@@ -522,7 +522,7 @@
                                 <a href="{{ route('second-process.line-dashboard', ['line' => $lineSlug, 'date' => $date, 'shift' => $shift]) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="w-1/3 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-2 rounded-xl text-xs transition uppercase tracking-wider">
                                     Analytics
                                 </a>
-                                @can('manage-sp-work-orders')
+                                @can('create', App\Models\SpWorkOrder::class)
                                     <a href="{{ route('sp-work-orders.create', ['unit_line' => $lineName]) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="block w-2/3 text-center bg-gray-700 hover:bg-gray-800 active:bg-gray-900 text-white font-black px-4 rounded-xl shadow-sm text-xs transition uppercase tracking-wider">
                                         Create Work Order
                                     </a>

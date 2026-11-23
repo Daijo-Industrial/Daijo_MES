@@ -48,8 +48,8 @@ class SpWorkOrderController extends Controller
             ->groupBy('part_number');
 
         $lines = array_values(config('mes.sp_lines', []));
-        $processes = ['Assembly', 'Painting', 'Buffing', 'Amplas', 'Trimming', 'Printing', 'Packing', 'Rework', 'Repair'];
-
+        $processes = array_values(config('mes.sp_processes'));
+        
         return view('sp_work_orders.index', compact('workOrders', 'firstPieceMap', 'lines', 'processes'));
     }
 
@@ -59,7 +59,7 @@ class SpWorkOrderController extends Controller
 
         $woNumber = SpWorkOrder::generateWoNumber();
         $lines = array_values(config('mes.sp_lines', []));
-        $processes = ['Assembly', 'Painting', 'Buffing', 'Amplas', 'Trimming', 'Printing', 'Packing', 'Rework', 'Repair'];
+        $processes = array_values(config('mes.sp_processes'));
 
         return view('sp_work_orders.create', compact('woNumber', 'lines', 'processes'));
     }
@@ -148,7 +148,7 @@ class SpWorkOrderController extends Controller
         }
 
         $lines = array_values(config('mes.sp_lines', []));
-        $processes = ['Assembly', 'Painting', 'Buffing', 'Amplas', 'Trimming', 'Printing', 'Packing', 'Rework', 'Repair'];
+        $processes = array_values(config('mes.sp_processes'));
 
         return view('sp_work_orders.edit', compact('workOrder', 'lines', 'processes'));
     }

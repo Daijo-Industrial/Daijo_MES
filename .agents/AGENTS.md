@@ -63,11 +63,15 @@ Setiap kali menjalankan pengujian dan mencapai status 100% checks pass:
    - **Zero Decorative Emojis**: DILARANG keras menggunakan emoji dekoratif atau simbol panah teks pada header, status, atau tabel.
    - **Zero Purple/Violet Pastels**: Hindari gradasi atau aksen ungu/violet/indigo (`violet-*`, `purple-*`, `indigo-*`). Gunakan palet industrial berkontras tinggi (monochrome zinc/slate + status aksen fungsional emerald/rose).
    - **Zero Sparkly / Shiny Badges**: DILARANG menggunakan pill bulat pastel dengan titik indikator menyala/berkedip. Gunakan tag status berteks tegas dan rapi (`Active`, `Inactive`, `System`, `Custom`).
+   - **Zero Ultra-Heavy Font Weights**: DILARANG menggunakan `font-black` (900) pada teks, label formulir, input, atau tombol aksi. Gunakan `font-bold` (700) untuk heading utama, `font-semibold` (600) untuk label/aksi, dan `font-normal` (400) untuk input formulir.
 7. **Simple, Plain English & Direct Copy**:
    - Gunakan terminologi aplikasi yang standar, jelas, dan umum dikenal (`Access Management`, `Users`, `Roles`, `Permissions`, `Permission Matrix`, `Add User`, `Add Role`, `Active`, `Inactive`, `Save`, `Cancel`).
    - DILARANG menggunakan jargon sci-fi/aerospace berlebihan (misal: "POLICY ENFORCEMENT: ACTIVE", "GATE COMMIT", "AUDIT PLANE") maupun template marketing fluff.
 8. **Single Source of Truth Navigation (No Redundant Switchers)**:
    - Jika halaman induk sudah memiliki segmented navigation bar (seperti `tab=users`, `tab=roles`, `tab=permissions`, `tab=matrix`), komponen anak DILARANG membuat toolbar switcher sekunder yang menduplikasi navigasi tersebut.
+9. **Master Catalog Lookup (Auto-Collapsing Progressive Disclosure)**:
+   - Input pencarian katalog produk menggunakan pencarian terpadu (part number & name) dengan autocompletion debounced.
+   - Setelah item dipilih, bagian lookup WAJIB menciutkan (auto-collapse) tampilannya menjadi kartu ringkasan read-only yang ringkas dengan tombol `[Change Part]` dan memajukan fokus keyboard ke input berikutnya secara mulus. Sediakan juga opsi input manual jika part belum terdaftar di katalog.
 
 ---
 

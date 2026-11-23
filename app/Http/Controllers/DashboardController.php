@@ -39,14 +39,13 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         // ── Early returns untuk role non-OPERATOR ────────────────────────────
-        if ($user->hasRole('ADMIN') || $user->hasRole('SUPER-ADMIN')) {
-            return view('dashboards.dashboard-admin');
-        }
         if ($user->hasRole('WORKSHOP')) {
             return view('dashboards.dashboard-workshop', compact('user'));
         }
         if (! $user->hasRole('OPERATOR')) {
-            return view('dashboard', compact('user'));
+            $menuGroups = app(\App\Services\NavigationService::class)->getMenuGroups($user, true);
+
+            return view('dashboard', compact('user', 'menuGroups'));
         }
 
         // ════════════════════════════════════════════════════════════════════
@@ -489,6 +488,14 @@ class DashboardController extends Controller
             'allOperators',
             'assignedOperators'
         ));
+    }
+
+    /**
+     * Dedicated Moulding BOM Progress Dashboard (previously dashboard-admin).
+     */
+    public function mouldingBomDashboard()
+    {
+        return view('dashboards.dashboard-admin');
     }
 
     // function untuk add NG (operator)
