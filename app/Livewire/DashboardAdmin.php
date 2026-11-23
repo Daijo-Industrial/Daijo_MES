@@ -58,6 +58,16 @@ class DashboardAdmin extends Component
         $this->resetPage(); // Reset pagination when filter changes
     }
 
+    public function updatedChildStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSelectedProcess()
+    {
+        $this->resetPage();
+    }
+
     public function calculateParentCompletion($parent)
     {
         $finishedChildren = $parent->children
