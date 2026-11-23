@@ -51,6 +51,11 @@ class SecondProcessReportPolicy
             return Response::allow();
         }
 
+        // Synced reports from digital tablet sessions are locked for non-admins
+        if ($report->sp_production_session_id) {
+            return Response::deny('Laporan ini terhubung otomatis dengan Sesi Tablet Digital. Perubahan harus dilakukan melalui revisi sesi oleh Supervisor di menu Approvals.');
+        }
+
         if ($report->status === 'acknowledged') {
             return Response::deny('Laporan yang telah di-Acknowledge tidak dapat diubah.');
         }

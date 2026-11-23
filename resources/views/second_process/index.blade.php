@@ -62,6 +62,24 @@
                 </div>
             @endif
 
+            {{-- Digital Transition Banner --}}
+            <div class="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
+                    <p class="text-blue-900 font-medium">
+                        <strong class="font-bold text-blue-950">Transisi Sesi Digital:</strong> Pencatatan produksi kini dialihkan ke Sesi Tablet berbasis Work Order PPIC. Laporan harian akan terbit otomatis saat sesi disetujui.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a href="{{ route('sp-work-orders.index') }}" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition uppercase tracking-wider">
+                        Buka Work Orders
+                    </a>
+                    <a href="{{ route('second-process.dashboard') }}" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-lg border border-slate-300 transition uppercase tracking-wider">
+                        Floor Overview
+                    </a>
+                </div>
+            </div>
+
             {{-- Summary KPI Cards --}}
             <div id="report-summary-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
@@ -114,7 +132,7 @@
             <form id="report-filter-form" method="GET" action="{{ route('second-process-reports.index') }}"
                   @submit.prevent="liveApplyFilters()"
                   x-data="{
-                      filtersOpen: {{ ($activePreset ?? '') === 'custom' || request()->anyFilled(['unit_line', 'shift', 'process_prod', 'industry', 'customer', 'status', 'sisa_filter', 'search']) ? 'true' : 'false' }},
+                      filtersOpen: {{ ($activePreset ?? '') === 'custom' || request()->anyFilled(['unit_line', 'shift', 'process_prod', 'industry', 'customer', 'status', 'sisa_filter', 'search', 'source']) ? 'true' : 'false' }},
                       showCustomDates: {{ ($activePreset ?? '') === 'custom' ? 'true' : 'false' }},
                       activePreset: '{{ $activePreset ?? (request('preset') === 'all' ? 'all' : 'this_month') }}',
                       setPreset(preset) {
@@ -249,11 +267,24 @@
                                     </button>
                                 </span>
                             @endif
+
+                            {{-- 10. Source Active Pill --}}
+                            @if(request()->filled('source'))
+                                @php
+                                    $sourceLabels = ['digital' => 'Digital Sesi', 'manual' => 'Manual Form'];
+                                @endphp
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                                    <span class="text-blue-600 font-normal">Source:</span> {{ $sourceLabels[request('source')] ?? request('source') }}
+                                    <button type="button" onclick="removeFilter('source')" class="text-blue-600 hover:text-blue-800 ml-0.5" title="Hapus filter source">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </span>
+                            @endif
                         </div>
 
                         {{-- Right: Reset All (if modified) & Toggle Open/Close Button --}}
                         <div class="flex items-center gap-2 ml-auto">
-                            @if(request()->anyFilled(['search', 'unit_line', 'shift', 'process_prod', 'industry', 'customer', 'status', 'sisa_filter']) || (request('preset') !== 'this_month' && request()->filled('preset')) || request()->filled('date_from') || request()->filled('date_to'))
+                            @if(request()->anyFilled(['search', 'unit_line', 'shift', 'process_prod', 'industry', 'customer', 'status', 'sisa_filter', 'source']) || (request('preset') !== 'this_month' && request()->filled('preset')) || request()->filled('date_from') || request()->filled('date_to'))
                                 <a href="{{ route('second-process-reports.index') }}"
                                    class="px-2.5 py-1 text-xs rounded-lg font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-dashed border-slate-300 transition"
                                    title="Reset semua filter ke default">
@@ -473,6 +504,16 @@
                                     <option value="deficit" {{ request('sisa_filter') === 'deficit' ? 'selected' : '' }}>Defisit</option>
                                 </select>
                             </div>
+
+                            {{-- Source Filter --}}
+                            <div class="xl:col-span-1">
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Source</label>
+                                <select name="source" class="w-full border-slate-300 rounded-lg text-xs font-medium focus:ring-blue-500 focus:border-blue-500 py-1.5 bg-slate-50 focus:bg-white transition">
+                                    <option value="">All</option>
+                                    <option value="digital" {{ request('source') === 'digital' ? 'selected' : '' }}>Digital</option>
+                                    <option value="manual" {{ request('source') === 'manual' ? 'selected' : '' }}>Manual</option>
+                                </select>
+                            </div>
                         </div>
 
                         {{-- Action Bar: Single Batch Submission for All Filters --}}
@@ -560,6 +601,15 @@
                                             <span class="font-mono text-slate-700">{{ $report->part_number }}</span>
                                             @if($report->model)
                                                 <span class="text-slate-400">({{ $report->model }})</span>
+                                            @endif
+                                        </div>
+                                        <div class="mt-1 flex items-center gap-1.5">
+                                            @if($report->sp_production_session_id && $report->session?->workOrder)
+                                                <a href="{{ route('sp-work-orders.show', $report->session->work_order_id) }}" class="inline-flex items-center gap-1 font-mono text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded hover:underline" title="Dibuat otomatis dari Sesi Tablet #{{ $report->sp_production_session_id }}">
+                                                    <span>WO #{{ $report->session->workOrder->wo_number }}</span>
+                                                </a>
+                                            @else
+                                                <span class="font-mono text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Manual</span>
                                             @endif
                                         </div>
                                     </td>

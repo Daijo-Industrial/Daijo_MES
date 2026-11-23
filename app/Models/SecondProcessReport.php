@@ -102,6 +102,11 @@ class SecondProcessReport extends Model
         return $this->belongsTo(SpProductionSession::class, 'sp_production_session_id');
     }
 
+    public function session()
+    {
+        return $this->spProductionSession();
+    }
+
     public function materials()
     {
         return $this->hasMany(SecondProcessMaterial::class, 'report_id');

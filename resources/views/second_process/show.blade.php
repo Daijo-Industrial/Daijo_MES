@@ -171,6 +171,51 @@
         </form>
     </dialog>
 
+    {{-- Digital Tablet Session Info Card --}}
+    @if ($report->sp_production_session_id)
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 no-print mb-6">
+            <div class="bg-blue-50/70 border border-blue-200 rounded-lg p-5 shadow-2xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex items-start md:items-center space-x-3.5">
+                    <div class="p-2.5 rounded-lg bg-blue-100 text-blue-700 shrink-0 mt-0.5 md:mt-0">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white uppercase tracking-wider">Digital Sesi Tablet</span>
+                            <span class="text-xs font-semibold text-blue-900 font-mono">Sesi #{{ $report->sp_production_session_id }}</span>
+                        </div>
+                        <p class="text-xs text-slate-700 font-medium mt-1">
+                            Laporan ini di-generate otomatis dari penutupan sesi tablet shop-floor Second Process.
+                            @if($report->session?->workOrder)
+                                Terkait dengan <strong class="font-bold text-slate-900">WO #{{ $report->session->workOrder->wo_number }}</strong>.
+                            @endif
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0 self-end md:self-auto">
+                    @if($report->session?->workOrder)
+                        <a href="{{ route('sp-work-orders.show', $report->session->work_order_id) }}"
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition shadow-2xs">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                            </svg>
+                            <span>Lihat Work Order</span>
+                        </a>
+                    @endif
+                    @if(Route::has('app.sp-sessions.show'))
+                        <a href="{{ route('app.sp-sessions.show', $report->sp_production_session_id) }}"
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-lg border border-slate-300 transition shadow-2xs">
+                            <span>Detail Sesi</span>
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- First Piece Gate Status Card -->
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 no-print mb-6">
         <div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">

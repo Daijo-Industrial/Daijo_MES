@@ -33,56 +33,7 @@ class SecondProcessReportSyncBridge
                 'materials',
             ]);
 
-            $wo = $session->workOrder;
-
-            $dateStr = $session->started_at?->setTimezone(config('mes.timezone', 'Asia/Jakarta'))->format('Y-m-d') ?? Carbon::now(config('mes.timezone', 'Asia/Jakarta'))->format('Y-m-d');
-            $unitLine = $session->unit_line ?: ($wo->unit_line ?? 'Line 1');
-            $shift = $session->shift ?: ($wo->shift ?? '1');
-            $partNumber = $wo->part_number ?? '-';
-
-            // Calculate WIP vs Reworkable input
-            $inputReworkable = (int) $session->inputEntries->where('source', 'reworkable')->sum('quantity');
-            $inputWip = (int) $session->inputEntries->where(function ($entry) {
-                return ($entry->source ?? '') !== 'reworkable';
-            })->sum('quantity');
-            if ($inputWip === 0 && $session->total_input > 0 && $inputReworkable === 0) {
-                $inputWip = (int) $session->total_input;
-            }
-            $repairan = max($inputReworkable, (int) $session->total_rework_recovered);
-
-            $reportData = [
-                'sp_production_session_id' => $session->id,
-                'date' => $dateStr,
-                'unit_line' => $unitLine,
-                'shift' => $shift,
-                'part_number' => $partNumber,
-                'process_prod' => $wo->process_prod ?? 'Second Process',
-                'status' => 'Approved',
-                'model' => $wo->model ?? '-',
-                'part_name' => $wo->part_name ?? '-',
-                'customer' => $wo->customer ?? '-',
-                'target_per_hour' => (int) ceil(($wo->target_qty ?? 0) / 8),
-                'jml_input_wip' => $inputWip,
-                'repairan' => $repairan,
-                'jumlah_output' => $session->total_good + $session->total_reject,
-                'jumlah_ok' => $session->total_good,
-                'jumlah_ng' => $session->total_reject,
-                'ng_prosentase' => $session->yield > 0 ? round(100 - $session->yield, 2) : 0,
-                'jml_ng_lebur' => $session->total_scrap,
-                'leader_name' => $session->operator->name ?? null,
-                'leader_signed_at' => $session->finished_at,
-                'created_by_name' => $session->operator->name ?? null,
-                'created_by_signed_at' => $session->finished_at,
-                'production_notes' => $session->production_notes ?? $session->remarks,
-                'ng_remarks' => $session->ng_remarks,
-                'absent_employees' => $session->absent_employees,
-                'next_production_schedule' => (! empty($session->next_production_schedule) && is_array($session->next_production_schedule))
-                    ? (array_values(array_filter(array_map('trim', $session->next_production_schedule), fn ($v) => ! empty($v))) ?: null)
-                    : null,
-                'output_destination' => $session->output_destination,
-                'acknowledged_by_name' => $session->approvedBy->name ?? null,
-                'acknowledged_signed_at' => $session->approved_at,
-            ];
+            $reportData = $this->buildReportData($session);
 
             // Strictly 1-to-1: update existing linked report if re-approving, otherwise create new
             if ($session->second_process_report_id) {
@@ -204,8 +155,75 @@ class SecondProcessReportSyncBridge
     }
 
     /**
-     * Handle reversion when a supervisor sends a report back for correction.
+     * Build the legacy SecondProcessReport data payload from an SpProductionSession.
+     *
+     * @return array<string, mixed>
      */
+    public function buildReportData(SpProductionSession $session): array
+    {
+        $wo = $session->workOrder;
+
+        $dateStr = $session->started_at?->setTimezone(config('mes.timezone', 'Asia/Jakarta'))->format('Y-m-d') ?? Carbon::now(config('mes.timezone', 'Asia/Jakarta'))->format('Y-m-d');
+        $unitLine = $session->unit_line ?: ($wo->unit_line ?? 'Line 1');
+        $shift = $session->shift ?: ($wo->shift ?? '1');
+        $partNumber = $wo->part_number ?? '-';
+
+        // Calculate WIP vs Reworkable input
+        $inputEntries = $session->relationLoaded('inputEntries') ? $session->inputEntries : collect();
+        $inputReworkable = (int) $inputEntries->where('source', 'reworkable')->sum('quantity');
+        $inputWip = (int) $inputEntries->where(function ($entry) {
+            return ($entry->source ?? '') !== 'reworkable';
+        })->sum('quantity');
+        if ($inputWip === 0 && $session->total_input > 0 && $inputReworkable === 0) {
+            $inputWip = (int) $session->total_input;
+        }
+        $repairan = max($inputReworkable, (int) $session->total_rework_recovered);
+
+        // Material Reconciliation (Input - Output)
+        $totalInput = $inputWip + $repairan;
+        $totalOutput = (int) $session->total_good + (int) $session->total_reject + (int) $session->total_scrap;
+        $sisaInput = $totalInput - $totalOutput;
+        $sisaRemark = $sisaInput > 0
+            ? ($session->remarks ?: ($session->production_notes ?: 'Sisa WIP dari sesi tablet'))
+            : null;
+
+        return [
+            'sp_production_session_id' => $session->id,
+            'date' => $dateStr,
+            'unit_line' => $unitLine,
+            'shift' => $shift,
+            'part_number' => $partNumber,
+            'process_prod' => $wo->process_prod ?? 'Second Process',
+            'status' => 'acknowledged',
+            'model' => $wo->model ?? '-',
+            'part_name' => $wo->part_name ?? '-',
+            'customer' => $wo->customer ?? '-',
+            'target_per_hour' => (int) ceil(($wo->target_qty ?? 0) / 8),
+            'jml_input_wip' => $inputWip,
+            'repairan' => $repairan,
+            'jumlah_output' => $session->total_good + $session->total_reject,
+            'jumlah_ok' => $session->total_good,
+            'jumlah_ng' => $session->total_reject,
+            'ng_prosentase' => $session->yield > 0 ? round(100 - $session->yield, 2) : 0,
+            'jml_ng_lebur' => $session->total_scrap,
+            'sisa_input' => $sisaInput,
+            'sisa_input_remark' => $sisaRemark,
+            'leader_name' => $session->operator->name ?? null,
+            'leader_signed_at' => $session->finished_at,
+            'created_by_name' => $session->operator->name ?? null,
+            'created_by_signed_at' => $session->finished_at,
+            'production_notes' => $session->production_notes ?? $session->remarks,
+            'ng_remarks' => $session->ng_remarks,
+            'absent_employees' => $session->absent_employees,
+            'next_production_schedule' => (! empty($session->next_production_schedule) && is_array($session->next_production_schedule))
+                ? (array_values(array_filter(array_map('trim', $session->next_production_schedule), fn ($v) => ! empty($v))) ?: null)
+                : null,
+            'output_destination' => $session->output_destination,
+            'acknowledged_by_name' => $session->approvedBy->name ?? null,
+            'acknowledged_signed_at' => $session->approved_at,
+        ];
+    }
+
     /**
      * Get the scheduled start datetime for a session's shift based on config/mes.php.
      */
@@ -288,7 +306,7 @@ class SecondProcessReportSyncBridge
         if ($session->second_process_report_id) {
             $report = SecondProcessReport::find($session->second_process_report_id);
             if ($report) {
-                $report->update(['status' => 'Draft']);
+                $report->update(['status' => 'draft']);
             }
         }
     }
