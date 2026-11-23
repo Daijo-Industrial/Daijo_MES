@@ -7,7 +7,7 @@
                 </h2>
                 <p class="text-xs font-semibold text-gray-500 mt-0.5">Manage, release, and track production Work Orders & QC Gate status</p>
             </div>
-            @can('manage-sp-work-orders')
+            @can('create', App\Models\SpWorkOrder::class)
                 <div class="flex flex-wrap items-center gap-2">
                     <a href="{{ route('second-process.dashboard') }}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl border border-gray-300 shadow-sm transition uppercase tracking-wider">
                         Floor Overview Dashboard
@@ -172,16 +172,20 @@
                                     <td class="px-4 py-3 text-right whitespace-nowrap">
                                         <div class="flex items-center justify-end gap-1.5">
                                             @if($wo->status === 'draft')
-                                                <a href="{{ route('sp-work-orders.edit', $wo->id) }}"
-                                                    class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg transition uppercase tracking-wider">
-                                                    Edit
-                                                </a>
-                                                <form action="{{ route('sp-work-orders.release', $wo->id) }}" method="POST" class="inline">
-                                                    @csrf
-                                                    <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded-lg transition uppercase tracking-wider">
-                                                        Release
-                                                    </button>
-                                                </form>
+                                                @can('update', $wo)
+                                                    <a href="{{ route('sp-work-orders.edit', $wo->id) }}"
+                                                        class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg transition uppercase tracking-wider">
+                                                        Edit
+                                                    </a>
+                                                @endcan
+                                                @can('release', $wo)
+                                                    <form action="{{ route('sp-work-orders.release', $wo->id) }}" method="POST" class="inline">
+                                                        @csrf
+                                                        <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded-lg transition uppercase tracking-wider">
+                                                            Release
+                                                        </button>
+                                                    </form>
+                                                @endcan
                                             @elseif($runningSession)
                                                 <a href="{{ route('app.sp-sessions.show', $runningSession->id) }}"
                                                     class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg transition uppercase tracking-wider">
@@ -204,14 +208,14 @@
                                                     @endcan
                                                 @endif
 
-                                                @if($wo->sessions->count() === 0)
+                                                @can('revertToDraft', $wo)
                                                     <form action="{{ route('sp-work-orders.revert-to-draft', $wo->id) }}" method="POST" class="inline">
                                                         @csrf
                                                         <button type="submit" class="px-2 py-1 bg-gray-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg border border-slate-300 transition uppercase tracking-wider" title="Revert to draft mode">
                                                             Revert
                                                         </button>
                                                     </form>
-                                                @endif
+                                                @endcan
                                             @else
                                                 <a href="{{ route('sp-work-orders.show', $wo->id) }}"
                                                     class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11px] rounded-lg border border-gray-300 transition uppercase tracking-wider">

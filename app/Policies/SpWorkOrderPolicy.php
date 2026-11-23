@@ -77,7 +77,11 @@ class SpWorkOrderPolicy
             return Response::deny('Only planned Work Orders can be reverted to draft.');
         }
 
-        if ($workOrder->sessions()->count() > 0) {
+        $sessionsCount = $workOrder->relationLoaded('sessions')
+            ? $workOrder->sessions->count()
+            : $workOrder->sessions()->count();
+
+        if ($sessionsCount > 0) {
             return Response::deny('Cannot revert Work Order to draft because production sessions have already been logged.');
         }
 
