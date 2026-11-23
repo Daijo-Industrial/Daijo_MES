@@ -81,7 +81,7 @@
 
                             <div>
                                 <label class="block text-[11px] font-black text-gray-500 uppercase tracking-wider mb-1">Planned Date *</label>
-                                <input type="date" name="planned_date" value="{{ old('planned_date', date('Y-m-d')) }}" required
+                                <input type="date" name="planned_date" value="{{ old('planned_date') }}" required
                                     class="w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm font-bold text-gray-800">
                             </div>
 
@@ -108,7 +108,7 @@
 
                         <div>
                             <label class="block text-[11px] font-black text-gray-500 uppercase tracking-wider mb-1">Target Production Qty (Pcs) *</label>
-                            <input type="number" name="target_qty" id="target_qty" value="{{ old('target_qty', 1000) }}" min="1" required
+                            <input type="number" name="target_qty" id="target_qty" value="{{ old('target_qty') }}" min="1" required
                                 class="w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm font-bold text-emerald-700">
                         </div>
                     </div>
