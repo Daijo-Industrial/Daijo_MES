@@ -25,19 +25,23 @@ class SecondProcessDashboardController extends Controller
         $now = Carbon::now('Asia/Jakarta');
         $date = $now->format('Y-m-d');
         $currentShift = $this->getCurrentShift($now);
-        $shift = $request->input('shift', $currentShift);
+        $shift = $currentShift;
+        $shiftsConfig = config('mes.sp_shifts', config('mes.shifts', []));
+        $currentShiftConfig = $shiftsConfig[$currentShift] ?? [
+            'name' => "Shift {$currentShift}",
+            'start' => '07:30',
+            'end' => '15:30',
+        ];
 
         // Define all valid lines from config
         $lines = array_values(config('mes.sp_lines', []));
 
-        // 2. Fetch sessions for today's date/shift + ALL currently running sessions
+        // 2. Fetch sessions for today's active shift + ALL currently running sessions
         $sessions = SpProductionSession::with(['workOrder', 'productionEntries', 'manpowerEntries'])
             ->where(function ($query) use ($date, $shift) {
                 $query->where(function ($q) use ($date, $shift) {
-                    $q->whereDate('started_at', $date);
-                    if ((string) $shift !== 'all') {
-                        $q->where('shift', $shift);
-                    }
+                    $q->whereDate('started_at', $date)
+                        ->where('shift', $shift);
                 })->orWhere('status', 'running');
             })
             ->get();
@@ -95,6 +99,7 @@ class SecondProcessDashboardController extends Controller
             'date',
             'shift',
             'currentShift',
+            'currentShiftConfig',
             'runningSessionsCount',
             'pendingWoCount',
             'totalShiftGood',
