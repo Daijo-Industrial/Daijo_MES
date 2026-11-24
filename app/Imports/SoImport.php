@@ -4,34 +4,49 @@ namespace App\Imports;
 
 use App\Models\SoData;
 use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 
-class SoImport implements ToModel
+class SoImport extends DefaultValueBinder implements ToModel, WithCustomValueBinder
 {
+    /**
+     * Bind value ensuring strings with trailing dots or numeric-like item codes are preserved as strings.
+     * Prevents PhpSpreadsheet from casting '31099125084.' to float/int (which strips the trailing dot).
+     */
+    public function bindValue(Cell $cell, $value)
+    {
+        if (is_string($value) && str_ends_with($value, '.')) {
+            $cell->setValueExplicit($value, DataType::TYPE_STRING);
+            return true;
+        }
+
+        return parent::bindValue($cell, $value);
+    }
+
     public function model(array $row)
     {
-        // // Check if a record with the same doc_num and item_code already exists
+        $itemCode = isset($row[3]) ? trim((string) $row[3]) : '';
+
+        // Check if a record with the same doc_num and item_code already exists
         $existingRecord = SoData::where('doc_num', $row[0])
-            ->where('item_code', $row[3])
+            ->where('item_code', $itemCode)
             ->first();
 
         // If record exists, skip it by returning null
         if ($existingRecord) {
-            // \Log::info('Duplicate found for doc_num: ' . $row[0] . ' and item_code: ' . $row[3]);
-
             if ($existingRecord->is_finish == 1 || $existingRecord->is_done == 1) {
-                // \Log::debug('Skipping record for doc_num: ' . $row[0] . ' and item_code: ' . $row[3] . ' because it is finished or done.');
                 return; // Skip this record
             }
         }
 
-        // dd($row);
-
         return new SoData([
-            'doc_num' => $row[0],
-            'customer' => $row[1],
+            'doc_num' => (string) $row[0],
+            'customer' => (string) $row[1],
             'posting_date' => $row[2],
-            'item_code' => $row[3],
-            'item_name' => $row[4],
+            'item_code' => $itemCode,
+            'item_name' => (string) $row[4],
             'quantity' => $row[5],
             'sales_uom' => $row[6],
             'packaging_quantity' => $row[7],

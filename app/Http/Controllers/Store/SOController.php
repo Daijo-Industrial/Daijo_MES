@@ -430,8 +430,9 @@ class SOController extends Controller
         $uploadedFile = $request->file('import_file')->store('temp');
         $filePath = storage_path('app/' . $uploadedFile);
 
-        // Read the Excel file and process the data
-        $data = Excel::toArray([], $filePath)[0];
+        // Read the Excel file and process the data using SoImport's custom value binder
+        // to preserve strings with trailing dots (e.g. '31099125084.') without numeric coercion
+        $data = Excel::toArray(new SoImport, $filePath)[0];
 
         // Remove the first row (header)
         array_shift($data);
@@ -441,6 +442,12 @@ class SOController extends Controller
         // Loop through the data to check for duplicates
         foreach ($data as &$row) {
             array_shift($row);
+
+            // Ensure item_code (index 3) is strictly treated as string (preserving trailing dot if present)
+            if (isset($row[3])) {
+                $row[3] = trim((string) $row[3]);
+            }
+
             // Format the date in column 3 (index 2) to yyyy-mm-dd
             if (isset($row[2]) && ! empty($row[2])) {
                 $row[2] = \Carbon\Carbon::createFromFormat('d/m/Y', $row[2])->format('Y-m-d');
