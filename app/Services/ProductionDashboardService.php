@@ -1937,4 +1937,343 @@ class ProductionDashboardService
 
         return $weeks;
     }
+
+    /**
+     * Get aggregated annual production dashboard data designed specifically for Board of Directors (BOD).
+     * Single unified pass across 12 months with machine breakdown and top defect analysis.
+     */
+    public function getYearlyDashboardData(
+        int $year,
+        ?string $plant = null,
+        ?int $machineUserId = null,
+        bool $forceRefresh = false
+    ): array {
+        $cacheKey = "production_yearly_dashboard_{$year}_{$plant}_{$machineUserId}";
+
+        if ($forceRefresh) {
+            Cache::forget($cacheKey);
+        }
+
+        return Cache::remember($cacheKey, 300, function () use ($year, $plant, $machineUserId) {
+            $startDateStr = "{$year}-01-01";
+            $endDateStr = "{$year}-12-31";
+
+            // 1. Filter Machine IDs by Plant (Karawang vs KBN)
+            $plantMachineIds = null;
+            if ($plant === 'karawang') {
+                $plantMachineIds = User::where(function ($q) {
+                    $q->where('name', 'LIKE', 'K%')->orWhere('name', 'LIKE', 'k%');
+                })->pluck('id')->toArray();
+            } elseif ($plant === 'kbn') {
+                $plantMachineIds = User::where(function ($q) {
+                    $q->where('name', 'NOT LIKE', 'K%')->where('name', 'NOT LIKE', 'k%');
+                })->pluck('id')->toArray();
+            }
+
+            // 2. Fetch Annual DailyItemCodes
+            $dicQuery = DailyItemCode::query()
+                ->with([
+                    'hourlyRemarks.ngDetails.ngType',
+                    'user:id,name',
+                ])
+                ->whereBetween('start_date', [$startDateStr, $endDateStr]);
+
+            if ($machineUserId) {
+                $dicQuery->where('user_id', $machineUserId);
+            } elseif ($plantMachineIds !== null) {
+                $dicQuery->whereIn('user_id', $plantMachineIds);
+            }
+
+            $dailyData = $dicQuery->get();
+
+            // 3. Fetch Annual Downtime & Adjust Logs
+            $windowStartUtc = Carbon::parse("{$year}-01-01 07:30:00", 'Asia/Jakarta')->setTimezone('UTC');
+            $windowEndUtc = Carbon::parse(($year + 1) . '-01-01 07:30:00', 'Asia/Jakarta')->setTimezone('UTC');
+
+            $mouldQuery = MouldChangeLog::query()
+                ->where('created_at', '>=', $windowStartUtc)
+                ->where('created_at', '<', $windowEndUtc);
+
+            $repairQuery = RepairMachineLog::query()
+                ->where('created_at', '>=', $windowStartUtc)
+                ->where('created_at', '<', $windowEndUtc);
+
+            $adjustQuery = AdjustMachineLog::query()
+                ->with('ngDetails.ngType')
+                ->where('created_at', '>=', $windowStartUtc)
+                ->where('created_at', '<', $windowEndUtc);
+
+            if ($machineUserId) {
+                $mouldQuery->where('user_id', $machineUserId);
+                $repairQuery->where('user_id', $machineUserId);
+                $adjustQuery->where('user_id', $machineUserId);
+            } elseif ($plantMachineIds !== null) {
+                $mouldQuery->whereIn('user_id', $plantMachineIds);
+                $repairQuery->whereIn('user_id', $plantMachineIds);
+                $adjustQuery->whereIn('user_id', $plantMachineIds);
+            }
+
+            $mouldLogs = $mouldQuery->get(['id', 'user_id', 'created_at', 'end_time']);
+            $repairLogs = $repairQuery->get(['id', 'user_id', 'created_at', 'finish_repair']);
+            $adjustLogs = $adjustQuery->get(['id', 'user_id', 'created_at', 'end_time']);
+
+            // 4. Initialize 12 Monthly Buckets
+            $monthNames = [
+                1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+            ];
+            $monthShortNames = [
+                1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr',
+                5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agu',
+                9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des',
+            ];
+
+            $monthlyMetrics = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $monthlyMetrics[$m] = [
+                    'month_number' => $m,
+                    'month_name' => $monthNames[$m],
+                    'month_short' => $monthShortNames[$m],
+                    'target' => 0,
+                    'actual' => 0,
+                    'achievement_rate' => 0.0,
+                    'ng_pcs' => 0,
+                    'ng_rate' => 0.0,
+                    'status' => 'Belum Berjalan',
+                ];
+            }
+
+            // Machine tracking
+            $machineMap = [];
+            // Defect types tracking
+            $defectTypeMap = [];
+
+            // 5. Aggregate DailyItemCodes across months and machines
+            foreach ($dailyData as $dic) {
+                $m = Carbon::parse($dic->start_date)->month;
+
+                // Calculate Target, Actual Output & NG consistently from hourly remarks
+                $dicTarget = 0;
+                $dicActual = 0;
+                $dicNg = 0;
+                foreach ($dic->hourlyRemarks as $remark) {
+                    $dicTarget += (int) ($remark->target ?? 0);
+                    $dicActual += (int) ($remark->actual_production ?? 0);
+                    foreach ($remark->ngDetails as $ngDetail) {
+                        $qty = (int) ($ngDetail->ng_quantity ?? 0);
+                        if ($qty > 0) {
+                            $dicNg += $qty;
+                            $typeName = $ngDetail->ngType?->ng_type ?? 'Lain-lain';
+                            $defectTypeMap[$typeName] = ($defectTypeMap[$typeName] ?? 0) + $qty;
+                        }
+                    }
+                }
+                $target = $dicTarget > 0 ? $dicTarget : (int) ($dic->quantity ?? 0);
+                $actual = $dicActual;
+
+                // Add to monthly bucket
+                if (isset($monthlyMetrics[$m])) {
+                    $monthlyMetrics[$m]['target'] += $target;
+                    $monthlyMetrics[$m]['actual'] += $actual;
+                    $monthlyMetrics[$m]['ng_pcs'] += $dicNg;
+                }
+
+                // Add to machine bucket
+                $userId = $dic->user_id ?? 0;
+                $userName = $dic->user?->name ?? 'Unknown Machine';
+                if (! isset($machineMap[$userId])) {
+                    $isKarawang = str_starts_with(strtoupper($userName), 'K');
+                    $machineMap[$userId] = [
+                        'machine_id' => $userId,
+                        'machine_name' => $userName,
+                        'plant' => $isKarawang ? 'Karawang' : 'KBN',
+                        'target' => 0,
+                        'actual' => 0,
+                        'ng_pcs' => 0,
+                        'downtime_minutes' => 0,
+                    ];
+                }
+
+                $machineMap[$userId]['target'] += $target;
+                $machineMap[$userId]['actual'] += $actual;
+                $machineMap[$userId]['ng_pcs'] += $dicNg;
+            }
+
+            // 6. Incorporate Adjust Logs NG & Downtime
+            foreach ($adjustLogs as $adj) {
+                $m = Carbon::parse($adj->created_at)->timezone('Asia/Jakarta')->month;
+                $userId = $adj->user_id;
+
+                // Adjust NG
+                foreach ($adj->ngDetails as $adjNg) {
+                    $qty = (int) ($adjNg->ng_quantity ?? 0);
+                    if ($qty > 0) {
+                        if (isset($monthlyMetrics[$m])) {
+                            $monthlyMetrics[$m]['ng_pcs'] += $qty;
+                        }
+                        if (isset($machineMap[$userId])) {
+                            $machineMap[$userId]['ng_pcs'] += $qty;
+                        }
+                        $typeName = $adjNg->ngType?->ng_type ?? 'NG Adjuster';
+                        $defectTypeMap[$typeName] = ($defectTypeMap[$typeName] ?? 0) + $qty;
+                    }
+                }
+
+                // Adjust Downtime
+                if ($adj->created_at && $adj->end_time) {
+                    $diffMins = max(0, Carbon::parse($adj->created_at)->diffInMinutes(Carbon::parse($adj->end_time)));
+                    if (isset($machineMap[$userId])) {
+                        $machineMap[$userId]['downtime_minutes'] += $diffMins;
+                    }
+                }
+            }
+
+            // 7. Incorporate Mould Change & Repair Downtime
+            foreach ($mouldLogs as $mLog) {
+                if ($mLog->created_at && $mLog->end_time) {
+                    $diffMins = max(0, Carbon::parse($mLog->created_at)->diffInMinutes(Carbon::parse($mLog->end_time)));
+                    if (isset($machineMap[$mLog->user_id])) {
+                        $machineMap[$mLog->user_id]['downtime_minutes'] += $diffMins;
+                    }
+                }
+            }
+
+            foreach ($repairLogs as $rLog) {
+                if ($rLog->created_at && $rLog->finish_repair) {
+                    $diffMins = max(0, Carbon::parse($rLog->created_at)->diffInMinutes(Carbon::parse($rLog->finish_repair)));
+                    if (isset($machineMap[$rLog->user_id])) {
+                        $machineMap[$rLog->user_id]['downtime_minutes'] += $diffMins;
+                    }
+                }
+            }
+
+            // 8. Finalize Monthly Calculations & Status
+            $currentYear = now()->year;
+            $currentMonth = now()->month;
+            $totalYearTarget = 0;
+            $totalYearActual = 0;
+            $totalYearNg = 0;
+            $bestMonthActual = 0;
+            $bestMonthName = '-';
+
+            foreach ($monthlyMetrics as $m => &$mMetric) {
+                $target = $mMetric['target'];
+                $actual = $mMetric['actual'];
+                $ng = $mMetric['ng_pcs'];
+
+                $totalYearTarget += $target;
+                $totalYearActual += $actual;
+                $totalYearNg += $ng;
+
+                $achRate = $target > 0 ? round(($actual / $target) * 100, 1) : 0.0;
+                $ngRate = ($actual + $ng) > 0 ? round(($ng / ($actual + $ng)) * 100, 2) : 0.0;
+
+                $mMetric['achievement_rate'] = $achRate;
+                $mMetric['ng_rate'] = $ngRate;
+
+                // Status Evaluation (>= 90% Tercapai, 80-89.9% Kurang, <80% Kritis)
+                if ($year > $currentYear || ($year === $currentYear && $m > $currentMonth)) {
+                    $mMetric['status'] = 'Mendatang';
+                } elseif ($target === 0 && $actual === 0) {
+                    $mMetric['status'] = 'Tidak Ada Jadwal';
+                } elseif ($achRate >= 90.0) {
+                    $mMetric['status'] = 'Tercapai';
+                } elseif ($achRate >= 80.0) {
+                    $mMetric['status'] = 'Kurang';
+                } else {
+                    $mMetric['status'] = 'Kritis';
+                }
+
+                if ($actual > $bestMonthActual) {
+                    $bestMonthActual = $actual;
+                    $bestMonthName = $mMetric['month_name'];
+                }
+            }
+            unset($mMetric);
+
+            // 9. Finalize Machine Performance Matrix
+            $machineList = [];
+            foreach ($machineMap as $mInfo) {
+                $target = $mInfo['target'];
+                $actual = $mInfo['actual'];
+                $ng = $mInfo['ng_pcs'];
+                $achRate = $target > 0 ? round(($actual / $target) * 100, 1) : 0.0;
+                $ngRate = ($actual + $ng) > 0 ? round(($ng / ($actual + $ng)) * 100, 2) : 0.0;
+                $downtimeHours = round($mInfo['downtime_minutes'] / 60, 1);
+
+                $status = 'Perlu Evaluasi';
+                if ($achRate >= 90.0) {
+                    $status = 'Optimal';
+                } elseif ($achRate >= 80.0) {
+                    $status = 'Stabil';
+                }
+
+                $machineList[] = [
+                    'machine_id' => $mInfo['machine_id'],
+                    'machine_name' => $mInfo['machine_name'],
+                    'plant' => $mInfo['plant'],
+                    'target' => $target,
+                    'actual' => $actual,
+                    'achievement_rate' => $achRate,
+                    'ng_pcs' => $ng,
+                    'ng_rate' => $ngRate,
+                    'downtime_hours' => $downtimeHours,
+                    'status' => $status,
+                ];
+            }
+
+            // Sort machines by Actual Output descending
+            usort($machineList, fn ($a, $b) => $b['actual'] <=> $a['actual']);
+
+            // Top 3 Machines
+            $topMachines = array_slice($machineList, 0, 3);
+
+            // Attention Machines (Achievement < 80% with target > 0)
+            $attentionMachines = array_values(array_filter($machineList, function ($m) {
+                return $m['target'] > 0 && ($m['achievement_rate'] < 80.0 || $m['ng_rate'] > 3.0);
+            }));
+
+            // 10. Top 5 Defect Types
+            arsort($defectTypeMap);
+            $topDefects = [];
+            $rank = 1;
+            foreach (array_slice($defectTypeMap, 0, 5, true) as $type => $qty) {
+                $pct = $totalYearNg > 0 ? round(($qty / $totalYearNg) * 100, 1) : 0.0;
+                $topDefects[] = [
+                    'rank' => $rank++,
+                    'type_name' => $type,
+                    'quantity' => $qty,
+                    'percentage' => $pct,
+                ];
+            }
+
+            // 11. Executive Summary Totals
+            $overallAchRate = $totalYearTarget > 0 ? round(($totalYearActual / $totalYearTarget) * 100, 1) : 0.0;
+            $overallNgRate = ($totalYearActual + $totalYearNg) > 0 ? round(($totalYearNg / ($totalYearActual + $totalYearNg)) * 100, 2) : 0.0;
+
+            $executiveSummary = [
+                'year' => $year,
+                'plant' => $plant ? strtoupper($plant) : 'SEMUA PLANT (KBN & KARAWANG)',
+                'total_target' => $totalYearTarget,
+                'total_actual' => $totalYearActual,
+                'overall_achievement_rate' => $overallAchRate,
+                'total_ng' => $totalYearNg,
+                'overall_ng_rate' => $overallNgRate,
+                'total_machines' => count($machineList),
+                'best_month_name' => $bestMonthName,
+                'best_month_output' => $bestMonthActual,
+                'health_status' => $overallAchRate >= 90.0 ? 'Baik / Sesuai Target' : ($overallAchRate >= 80.0 ? 'Cukup / Perlu Optimasi' : 'Perlu Perhatian Khusus'),
+            ];
+
+            return [
+                'summary' => $executiveSummary,
+                'monthly_metrics' => array_values($monthlyMetrics),
+                'machine_metrics' => $machineList,
+                'top_machines' => $topMachines,
+                'attention_machines' => $attentionMachines,
+                'top_defects' => $topDefects,
+            ];
+        });
+    }
 }

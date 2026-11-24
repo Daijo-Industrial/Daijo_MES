@@ -76,7 +76,7 @@ class SecondProcessReportController extends Controller
             $request->merge(['preset' => 'this_month', 'date_from' => $dateFrom, 'date_to' => $dateTo]);
         }
 
-        $query = SecondProcessReport::query();
+        $query = SecondProcessReport::with(['session.workOrder']);
 
         // Date range filter
         if ($request->filled('date_from')) {
@@ -128,6 +128,15 @@ class SecondProcessReportController extends Controller
         }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+
+        // Data source filter (all, digital sessions, manual reports)
+        if ($request->filled('source')) {
+            if ($request->source === 'digital') {
+                $query->whereNotNull('sp_production_session_id');
+            } elseif ($request->source === 'manual') {
+                $query->whereNull('sp_production_session_id');
+            }
         }
 
         // Keyword search (model, part_number, customer, part_name)
@@ -247,6 +256,9 @@ class SecondProcessReportController extends Controller
             'manpowers',
             'ngRecords.hourlyDetails',
             'troubles',
+            'session.workOrder',
+            'session.operator',
+            'session.approvedBy',
         ])->findOrFail($id);
 
         $this->authorize('view', $report);
@@ -275,6 +287,9 @@ class SecondProcessReportController extends Controller
             'manpowers',
             'ngRecords.hourlyDetails',
             'troubles',
+            'session.workOrder',
+            'session.operator',
+            'session.approvedBy',
         ])->findOrFail($id);
 
         $gate = Gate::inspect('update', $report);

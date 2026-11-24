@@ -432,4 +432,26 @@ class ProductionScanCrosscheckTest extends TestCase
         $this->assertEquals($this->user->id, $scan->store_checked_by);
         $this->assertEquals('Agus (Store)', session('store_crosscheck_verifier_name'));
     }
+
+    public function test_filter_date_with_slash_format_or_empty_does_not_throw_500_error(): void
+    {
+        $this->actingAs($this->user);
+
+        // Normal test with slash date like 24/11/2026 or empty
+        Livewire::test(ProductionScanCrosscheck::class, ['selectedDate' => '24/11/2026', 'plantTab' => 'KBN'])
+            ->assertStatus(200)
+            ->set('selectedDate', '24/11/2026')
+            ->assertStatus(200)
+            ->set('selectedDate', '')
+            ->assertStatus(200)
+            ->set('selectedDate', 'invalid-date-string')
+            ->assertStatus(200);
+
+        // Print route also handles slash date gracefully
+        $response = $this->get(route('wms.production-scan-crosscheck.print', [
+            'date' => '24/11/2026',
+            'plant' => 'KBN',
+        ]));
+        $response->assertStatus(200);
+    }
 }

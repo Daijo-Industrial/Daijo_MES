@@ -14,11 +14,17 @@ use Illuminate\Support\Facades\Schema;
 
 class StoreCrosscheckService
 {
+    protected static bool $schemaChecked = false;
+
     /**
      * Memastikan skema tabel dan kolom crosscheck store sudah siap (idempotent & defensive)
      */
     public static function ensureSchema(): void
     {
+        if (self::$schemaChecked) {
+            return;
+        }
+
         try {
             if (Schema::hasTable('production_scanned_data')) {
                 if (! Schema::hasColumn('production_scanned_data', 'store_check_status')) {
@@ -57,15 +63,38 @@ class StoreCrosscheckService
                     $table->unique(['report_date', 'plant', 'shift'], 'uniq_report_date_plant_shift');
                 });
             }
+
+            self::$schemaChecked = true;
         } catch (\Throwable $e) {
             // Log or ignore if already running concurrently
         }
     }
 
     /**
+     * Normalisasi string input tanggal menjadi format Y-m-d yang valid & anti-crash.
+     * Mencegah 500 error jika user mengetik partial date, slash format (24/11/2026), atau string kosong.
+     */
+    public static function normalizeDate(?string $date): string
+    {
+        $clean = trim((string) $date);
+        if (empty($clean)) {
+            return self::getCurrentProductionDate();
+        }
+
+        // Tangani format slash dd/mm/yyyy atau yyyy/mm/dd -> ganti slash dengan dash
+        $clean = str_replace('/', '-', $clean);
+
+        try {
+            return Carbon::parse($clean, 'Asia/Jakarta')->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return self::getCurrentProductionDate();
+        }
+    }
+
+    /**
      * Dapatkan tanggal produksi saat ini (Cutoff 07:30 WIB)
      */
-    public function getCurrentProductionDate(): string
+    public static function getCurrentProductionDate(): string
     {
         return WmsDeliveryRecapService::getCurrentProductionDate();
     }
@@ -75,7 +104,8 @@ class StoreCrosscheckService
      */
     public function getTimeWindow(string $selectedDate): array
     {
-        return WmsDeliveryRecapService::getTimeWindow($selectedDate);
+        $validDate = self::normalizeDate($selectedDate);
+        return WmsDeliveryRecapService::getTimeWindow($validDate);
     }
 
     /**
@@ -91,6 +121,7 @@ class StoreCrosscheckService
     ): Builder {
         self::ensureSchema();
 
+        $selectedDate = self::normalizeDate($selectedDate);
         [$startTime, $endTime] = $this->getTimeWindow($selectedDate);
 
         $query = ProductionScannedData::with([
@@ -202,6 +233,7 @@ class StoreCrosscheckService
      */
     public function getAvailableMachines(string $selectedDate, string $plant = 'ALL'): array
     {
+        $selectedDate = self::normalizeDate($selectedDate);
         [$startTime, $endTime] = $this->getTimeWindow($selectedDate);
 
         $query = DailyItemCode::with('user')
@@ -234,6 +266,8 @@ class StoreCrosscheckService
     public function getSummaryMetrics(string $selectedDate, string $plant = 'ALL'): array
     {
         self::ensureSchema();
+
+        $selectedDate = self::normalizeDate($selectedDate);
 
         // Query seluruh data tanpa filter status untuk kalkulasi KPI akurat
         $query = $this->getBaseQuery($selectedDate, $plant, 'ALL', 'ALL', '');

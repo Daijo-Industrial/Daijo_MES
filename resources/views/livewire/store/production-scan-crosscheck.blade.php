@@ -87,7 +87,7 @@
 
                 <div class="relative">
                     <input type="date"
-                           wire:model.live="selectedDate"
+                           wire:model.live.debounce.400ms="selectedDate"
                            class="w-40 sm:w-44 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs focus:ring-2 focus:ring-emerald-500" />
                 </div>
 
@@ -101,7 +101,7 @@
                     Export Excel
                 </button>
 
-                <a href="{{ route('wms.production-scan-crosscheck.print', ['date' => $selectedDate, 'plant' => $plantTab, 'machine' => $machineFilter]) }}"
+                <a href="{{ route('wms.production-scan-crosscheck.print', ['date' => $this->getEffectiveDate(), 'plant' => $plantTab, 'machine' => $machineFilter]) }}"
                    target="_blank"
                    class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-slate-700 hover:bg-slate-800 text-white shadow-sm transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,9 +123,17 @@
 
         <!-- Cutoff Info Banner -->
         <div class="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2.5">
+            @php
+                try {
+                    $cleanDate = str_replace('/', '-', $selectedDate ?: now()->toDateString());
+                    $parsedCarbon = \Carbon\Carbon::parse($cleanDate);
+                } catch (\Throwable $e) {
+                    $parsedCarbon = \Carbon\Carbon::now();
+                }
+            @endphp
             <div class="flex items-center gap-2">
                 <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span>Cutoff Produksi: <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d M Y') }} (07:30 WIB)</strong> s/d <strong>{{ \Carbon\Carbon::parse($selectedDate)->addDay()->format('d M Y') }} (07:29 WIB)</strong></span>
+                <span>Cutoff Produksi: <strong>{{ $parsedCarbon->format('d M Y') }} (07:30 WIB)</strong> s/d <strong>{{ $parsedCarbon->copy()->addDay()->format('d M Y') }} (07:29 WIB)</strong></span>
             </div>
             @if ($lastSavedSnapshotAt)
                 <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
@@ -630,7 +638,7 @@
                 <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3.5 space-y-2 text-xs">
                     <div class="flex justify-between">
                         <span class="text-slate-500">Tanggal Produksi:</span>
-                        <strong class="text-slate-900 dark:text-white">{{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}</strong>
+                        <strong class="text-slate-900 dark:text-white">{{ \Carbon\Carbon::parse(str_replace('/', '-', $selectedDate ?: now()->toDateString()))->format('d F Y') }}</strong>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">Plant:</span>

@@ -69,7 +69,7 @@ new class extends Component {
         <div class="space-y-2 mt-4">
             <!-- Core Dashboard Link -->
             <livewire:sidebar-link href="{{ route('dashboard') }}" label="Dashboard"
-                :active="request()->routeIs('dashboard')" wire:navigate />
+                :active="request()->routeIs('dashboard') || request()->routeIs('production-dashboard') || request()->routeIs('production-yearly-dashboard')" wire:navigate />
 
             <!-- Operator Daily Report (Shop floor machine operator interface) -->
             @if (auth()->user()?->can('view-operator-links') || auth()->user()?->hasRole('OPERATOR'))

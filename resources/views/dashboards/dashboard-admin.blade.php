@@ -1,3 +1,3 @@
 <x-app-layout>
-    <livewire:dashboard-admin />
+    <livewire:production-dashboard />
 </x-app-layout>
