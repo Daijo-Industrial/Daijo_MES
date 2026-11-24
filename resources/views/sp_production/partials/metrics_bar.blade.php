@@ -1,6 +1,6 @@
         {{-- ULTRA-KISS CORE METRICS BAR (Equal Height KPI Cards) --}}
         <div class="bg-white border-b border-gray-200 px-4 py-2.5 shadow-sm flex items-stretch justify-between gap-3 sm:gap-4 flex-shrink-0">
-            {{-- Metric 1: Available Balance (Live) — Positioned at the very left for immediate operator visibility --}}
+            {{-- Metric 1: Available Balance — Positioned at the very left for immediate operator visibility --}}
             <button type="button" @click="tab = 'input'; document.getElementById('modalHistory').showModal()"
                     class="px-3 py-2 rounded-2xl border transition-all cursor-pointer text-left shadow-xs flex-1 max-w-xs relative overflow-hidden"
                     :class="[
@@ -9,18 +9,12 @@
                     ]"
                     title="Click to view Input WIP / Reworkable Logs">
                 <div class="min-w-0">
-                    <div class="flex items-center gap-1.5 mb-0.5">
-                        <span class="relative flex h-1.5 w-1.5">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-600"></span>
-                        </span>
-                        <span class="text-[10px] font-semibold uppercase tracking-wider block truncate" :class="availableWip > 0 ? 'text-blue-700' : 'text-amber-800'">Available Balance (Live)</span>
-                    </div>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider block truncate mb-0.5" :class="availableWip > 0 ? 'text-blue-700' : 'text-amber-800'">Available Balance</span>
                     <div class="text-base sm:text-lg font-bold leading-tight" :class="availableWip > 0 ? 'text-blue-950' : 'text-amber-950'">
-                        <span x-text="formatNum(availableWip) + ' Pcs Remaining'"></span>
+                        <span x-text="formatNum(availableWip) + ' Pcs'"></span>
                     </div>
                     <div class="text-[9px] font-bold text-blue-800/80 truncate" x-show="(totals.input || 0) > 0">
-                        <span x-text="'Cumulative In: ' + formatNum(totals.input) + ' (' + formatNum(totals.input_wip || (totals.input - (totals.input_reworkable || 0))) + ' WIP • ' + formatNum(totals.input_reworkable || 0) + ' Rework)'"></span>
+                        <span x-text="formatNum(totals.input) + ' Pcs In' + (totals.input_reworkable > 0 ? (' (' + formatNum(totals.input_wip || (totals.input - totals.input_reworkable)) + ' WIP • ' + formatNum(totals.input_reworkable) + ' Rework)') : '')"></span>
                     </div>
                 </div>
             </button>

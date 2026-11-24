@@ -221,7 +221,6 @@
                                 }
                                 if (data.totals) {
                                     this.totals = { ...this.totals, ...data.totals };
-                                    this.triggerBalanceFlash();
                                 }
                                 form.closest('dialog').close();
                                 form.reset();
@@ -426,7 +425,9 @@
                             const data = await response.json();
                             if (data.success) {
                                 this.totals = { ...this.totals, ...data.totals };
-                                this.triggerBalanceFlash();
+                                if (['production', 'reject', 'input', 'rework'].includes(type)) {
+                                    this.triggerBalanceFlash();
+                                }
 
                                 const tabMap = {
                                     'production': 'production',
@@ -527,7 +528,6 @@
                             if (data.success) {
                                 if (data.totals) {
                                     this.totals = { ...this.totals, ...data.totals };
-                                    this.triggerBalanceFlash();
                                 }
                                 if (data.entries && data.entries.length) {
                                     data.entries.forEach(e => this.rejectEntries.unshift(e));
