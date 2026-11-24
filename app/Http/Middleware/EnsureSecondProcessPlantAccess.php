@@ -42,6 +42,7 @@ class EnsureSecondProcessPlantAccess
 
         $isAuthorized = match (true) {
             str_starts_with($routeName, 'second-process.report-analytics') => Gate::forUser($user)->allows('second-process-analytics'),
+            $routeName === 'second-process.defect-manager' => Gate::forUser($user)->allows('second-process-defects'),
             str_starts_with($routeName, 'second-process-reports') => Gate::forUser($user)->allows('second-process-reports'),
             str_starts_with($routeName, 'sp-work-orders') => Gate::forUser($user)->allows('second-process-work-orders'),
             str_starts_with($routeName, 'first-piece-inspections') => Gate::forUser($user)->allows('second-process-first-piece') || Gate::forUser($user)->allows('execute-qc-inspections'),

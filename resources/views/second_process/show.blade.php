@@ -328,7 +328,7 @@
             <div
                 class="border-2 border-black grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-black text-sm">
                 <div class="p-4 flex flex-col justify-center items-center col-span-2">
-                    <h1 class="text-xl font-black text-center tracking-tight">PT. DAIJO INDUSTRIAL</h1>
+                    <h1 class="text-xl font-bold text-center tracking-tight">PT. DAIJO INDUSTRIAL</h1>
                     <p class="text-xs font-bold text-center mt-1">Second Process Departement</p>
                 </div>
                 <div class="p-2 grid grid-cols-2 gap-x-2 text-[11px] leading-tight col-span-2">
@@ -435,7 +435,7 @@
                         <td class="border border-black p-2 font-bold bg-gray-50">Status Carryover</td>
                         <td class="border border-black p-2 text-xs">
                             @if ($recon['type'] === 'reconciled')
-                                <span class="text-emerald-700 font-bold">✓ Tertutup:</span> {{ $recon['message'] }}
+                                <span class="text-emerald-700 font-bold">Tertutup:</span> {{ $recon['message'] }}
                                 @if ($recon['linked_report_id'])
                                     <a href="{{ route('second-process-reports.show', $recon['linked_report_id']) }}" class="text-blue-600 underline font-semibold ml-1">(Laporan #{{ $recon['linked_report_id'] }})</a>
                                 @endif
@@ -772,20 +772,20 @@
                                                 <td class="border border-black p-1 font-bold text-red-600">{{ number_format($rec->reject_rate, 2) }}%</td>
                                                 <td class="border border-black p-1 text-green-700 font-bold">{{ number_format($rec->pass_qty) }}</td>
                                                 <td class="border border-black p-1 text-red-700 font-bold">{{ number_format($rec->reject_qty) }}</td>
-                                                <td class="border border-black p-1 font-extrabold {{ ($rec->judgement ?? '') === 'NG' ? 'text-red-700' : 'text-green-700' }}">{{ $rec->judgement ?? 'OK' }}</td>
+                                                <td class="border border-black p-1 font-bold {{ ($rec->judgement ?? '') === 'NG' ? 'text-red-700' : 'text-green-700' }}">{{ $rec->judgement ?? 'OK' }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                     <tfoot>
                                         <tr class="bg-gray-100 font-bold">
                                             <td colspan="3" class="border border-black p-1 text-right">TOTAL / OVERALL:</td>
-                                            <td class="border border-black p-1 font-black">{{ number_format($ipqcInspection->total_output) }}</td>
-                                            <td class="border border-black p-1 font-black">{{ number_format($ipqcInspection->total_sample) }}</td>
-                                            <td class="border border-black p-1 font-black text-red-600">{{ number_format($ipqcInspection->total_reject_sample) }}</td>
-                                            <td class="border border-black p-1 font-black text-red-600">{{ number_format($ipqcInspection->total_reject_rate, 2) }}%</td>
-                                            <td class="border border-black p-1 font-black text-green-700">{{ number_format($ipqcInspection->total_pass) }}</td>
-                                            <td class="border border-black p-1 font-black text-red-700">{{ number_format($ipqcInspection->total_reject) }}</td>
-                                            <td class="border border-black p-1 font-black {{ ($ipqcInspection->overall_judgement ?? '') === 'NG' ? 'text-red-700' : 'text-green-700' }}">{{ $ipqcInspection->overall_judgement ?? 'OK' }}</td>
+                                            <td class="border border-black p-1 font-bold">{{ number_format($ipqcInspection->total_output) }}</td>
+                                            <td class="border border-black p-1 font-bold">{{ number_format($ipqcInspection->total_sample) }}</td>
+                                            <td class="border border-black p-1 font-bold text-red-600">{{ number_format($ipqcInspection->total_reject_sample) }}</td>
+                                            <td class="border border-black p-1 font-bold text-red-600">{{ number_format($ipqcInspection->total_reject_rate, 2) }}%</td>
+                                            <td class="border border-black p-1 font-bold text-green-700">{{ number_format($ipqcInspection->total_pass) }}</td>
+                                            <td class="border border-black p-1 font-bold text-red-700">{{ number_format($ipqcInspection->total_reject) }}</td>
+                                            <td class="border border-black p-1 font-bold {{ ($ipqcInspection->overall_judgement ?? '') === 'NG' ? 'text-red-700' : 'text-green-700' }}">{{ $ipqcInspection->overall_judgement ?? 'OK' }}</td>
                                         </tr>
                                     </tfoot>
                                 </table>

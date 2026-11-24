@@ -231,7 +231,7 @@ class NavigationService
                     ['name' => 'second-process.dashboard', 'label' => 'Floor Overview Dashboard', 'can' => ['second-process-dashboard', 'view-admin-links']],
                     ['name' => 'sp-approvals.index', 'label' => 'Production Approvals', 'can' => ['second-process-approvals', 'view-admin-links']],
                     ['name' => 'second-process.report-analytics', 'label' => 'Daily Report Analytics', 'can' => ['second-process-analytics', 'view-admin-links']],
-                    ['name' => 'second-process.defect-manager', 'label' => 'Defect Catalog & Aliases', 'can' => ['second-process-reports', 'view-admin-links']],
+                    ['name' => 'second-process.defect-manager', 'label' => 'Defect Catalog & Aliases', 'can' => ['second-process-defects']],
                     ['name' => 'second-process-reports.index', 'label' => 'Second Process Daily Report', 'can' => ['second-process-reports', 'view-admin-links']],
                 ],
             ],

@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h2 class="font-black text-xl text-gray-800 uppercase tracking-wide">
+                <h2 class="font-bold text-xl text-gray-800 uppercase tracking-wide">
                     {{ __('First Piece Sample / Inspection Reports') }}
                 </h2>
                 <p class="text-xs font-semibold text-gray-500 mt-0.5">QC Gate-Check records before production start • Document DI-F-P/PR/07/SP-013</p>
@@ -12,7 +12,7 @@
                     Overview Dashboard
                 </a>
                 @can('execute-qc-inspections')
-                    <a href="{{ route('first-piece-inspections.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
+                    <a href="{{ route('first-piece-inspections.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
                         New First Piece Inspection
                     </a>
                 @endcan
@@ -40,15 +40,15 @@
                 <form method="GET" action="{{ route('first-piece-inspections.index') }}" class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                         <div class="flex items-center gap-2">
-                            <label class="font-black text-xs uppercase text-gray-500">From:</label>
+                            <label class="font-semibold text-xs uppercase text-gray-500">From:</label>
                             <input type="date" name="date_from" value="{{ request('date_from') }}" class="rounded-xl border-gray-300 text-xs font-bold py-1.5 focus:ring-blue-500">
                         </div>
                         <div class="flex items-center gap-2">
-                            <label class="font-black text-xs uppercase text-gray-500">To:</label>
+                            <label class="font-semibold text-xs uppercase text-gray-500">To:</label>
                             <input type="date" name="date_to" value="{{ request('date_to') }}" class="rounded-xl border-gray-300 text-xs font-bold py-1.5 focus:ring-blue-500">
                         </div>
                         <div class="flex items-center gap-2">
-                            <label class="font-black text-xs uppercase text-gray-500">Judgement:</label>
+                            <label class="font-semibold text-xs uppercase text-gray-500">Judgement:</label>
                             <select name="overall_judgement" class="rounded-xl border-gray-300 text-xs font-bold py-1.5 focus:ring-blue-500">
                                 <option value="">All Judgements</option>
                                 <option value="OK" {{ request('overall_judgement') === 'OK' ? 'selected' : '' }}>OK Only</option>
@@ -60,7 +60,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
+                        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
                             Filter
                         </button>
                         <a href="{{ route('first-piece-inspections.index') }}" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl border border-gray-300 transition uppercase tracking-wider">
@@ -74,7 +74,7 @@
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                     <div>
-                        <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest">Inspection Records Log</h3>
+                        <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-widest">Inspection Records Log</h3>
                         <p class="text-xs text-gray-500 font-medium">Historical QC sign-offs and checkpoint evaluations</p>
                     </div>
                 </div>
@@ -82,7 +82,7 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                            <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                                 <th class="px-6 py-3">Date</th>
                                 <th class="px-6 py-3">Work Order</th>
                                 <th class="px-6 py-3">Model</th>
@@ -119,11 +119,11 @@
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         @if($insp->overall_judgement === 'OK')
-                                            <span class="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 uppercase tracking-wider border border-emerald-200">
+                                            <span class="px-3 py-1 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 uppercase tracking-wider border border-emerald-200">
                                                 OK
                                             </span>
                                         @else
-                                            <span class="px-3 py-1 rounded-full text-[10px] font-black bg-red-100 text-red-800 uppercase tracking-wider border border-red-200">
+                                            <span class="px-3 py-1 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 uppercase tracking-wider border border-red-200">
                                                 NG
                                             </span>
                                         @endif

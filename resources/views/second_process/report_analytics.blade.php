@@ -243,7 +243,7 @@
                         <select name="sisa_filter" class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500 py-1.5">
                             <option value="">Semua Sisa</option>
                             <option value="open" {{ request('sisa_filter') === 'open' ? 'selected' : '' }}>⚠️ Open Sisa</option>
-                            <option value="reconciled" {{ request('sisa_filter') === 'reconciled' ? 'selected' : '' }}>✓ Sisa Tertutup</option>
+                            <option value="reconciled" {{ request('sisa_filter') === 'reconciled' ? 'selected' : '' }}>Sisa Tertutup</option>
                             <option value="has_sisa" {{ request('sisa_filter') === 'has_sisa' ? 'selected' : '' }}>Ada Sisa (&gt; 0)</option>
                             <option value="ideal" {{ request('sisa_filter') === 'ideal' ? 'selected' : '' }}>Ideal (= 0)</option>
                             <option value="deficit" {{ request('sisa_filter') === 'deficit' ? 'selected' : '' }}>Defisit (&lt; 0)</option>
@@ -279,7 +279,7 @@
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Reports</div>
-                            <div class="text-3xl font-black text-gray-900 mt-1">{{ number_format($summary->total_reports) }}</div>
+                            <div class="text-3xl font-bold text-gray-900 mt-1">{{ number_format($summary->total_reports) }}</div>
                             <div class="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1.5">
                                 <span>Submitted &amp; recorded</span>
                                 <a href="{{ route('second-process-reports.index', array_filter([
@@ -306,7 +306,7 @@
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Production vs Target</div>
-                            <div class="text-3xl font-black text-blue-600 mt-1 flex items-baseline gap-2">
+                            <div class="text-3xl font-bold text-blue-600 mt-1 flex items-baseline gap-2">
                                 {{ number_format($summary->total_output) }}
                                 @if($targetAchievementRate !== null)
                                     <span class="text-xs font-bold px-2 py-0.5 rounded-full {{ $targetAchievementRate >= 100 ? 'bg-emerald-100 text-emerald-800' : ($targetAchievementRate >= 85 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800') }}">
@@ -331,7 +331,7 @@
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total OK Qty</div>
-                            <div class="text-3xl font-black text-green-600 mt-1 flex items-baseline gap-2">
+                            <div class="text-3xl font-bold text-green-600 mt-1 flex items-baseline gap-2">
                                 {{ number_format($summary->total_ok) }}
                                 <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800">
                                     {{ $yieldRate }}% Yield
@@ -348,7 +348,7 @@
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total NG & Rate</div>
-                            <div class="text-3xl font-black text-red-600 mt-1 flex items-baseline gap-2">
+                            <div class="text-3xl font-bold text-red-600 mt-1 flex items-baseline gap-2">
                                 {{ number_format($summary->total_ng) }}
                                 <span class="text-xs font-bold px-2 py-0.5 rounded-full {{ $avgNgRate >= 3 ? 'bg-red-100 text-red-800' : ($avgNgRate >= $targetNgRate ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800') }}">
                                     {{ $avgNgRate }}%
@@ -371,7 +371,7 @@
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Input WIP</div>
-                            <div class="text-2xl font-black text-indigo-600 mt-1">{{ number_format($summary->total_input_wip) }}</div>
+                            <div class="text-2xl font-bold text-indigo-600 mt-1">{{ number_format($summary->total_input_wip) }}</div>
                             <div class="text-[11px] text-gray-400 mt-0.5">Raw WIP fed into line</div>
                         </div>
                         <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl no-print">
@@ -383,7 +383,7 @@
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Repairan</div>
-                            <div class="text-2xl font-black text-purple-600 mt-1">{{ number_format($summary->total_repairan) }}</div>
+                            <div class="text-2xl font-bold text-purple-600 mt-1">{{ number_format($summary->total_repairan) }}</div>
                             <div class="text-[11px] text-gray-400 mt-0.5">Rework / repair fed</div>
                         </div>
                         <div class="p-2.5 bg-purple-50 text-purple-600 rounded-xl no-print">
@@ -395,7 +395,7 @@
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Scrap (Lebur)</div>
-                            <div class="text-2xl font-black text-rose-600 mt-1 flex items-baseline gap-1.5">
+                            <div class="text-2xl font-bold text-rose-600 mt-1 flex items-baseline gap-1.5">
                                 {{ number_format($summary->total_scrap) }}
                                 <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
                                     {{ $scrapRate }}%
@@ -412,7 +412,7 @@
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">WIP Reconciliation (Open Sisa)</div>
-                            <div class="text-2xl font-black mt-1 flex items-baseline gap-2">
+                            <div class="text-2xl font-bold mt-1 flex items-baseline gap-2">
                                 @if($wipVariance === 0)
                                     <span class="text-emerald-600">0</span>
                                     <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
@@ -447,7 +447,7 @@
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between break-inside-avoid">
                         <div>
                             <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Downtime</div>
-                            <div class="text-2xl font-black text-slate-700 mt-1 flex items-baseline gap-1.5">
+                            <div class="text-2xl font-bold text-slate-700 mt-1 flex items-baseline gap-1.5">
                                 {{ number_format($totalDowntimeMinutes) }}<span class="text-sm font-bold text-slate-500">m</span>
                                 <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                                     {{ $totalDowntimeHours }} hrs
@@ -509,7 +509,7 @@
                                 @if(!empty($selectedNgCategory))
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">
                                         {{ $selectedNgCategory }}
-                                        <a href="{{ request()->fullUrlWithQuery(['ng_category' => null]) }}#top-ng-card" class="hover:text-purple-900 ml-0.5 font-black leading-none" title="Clear category filter">&times;</a>
+                                        <a href="{{ request()->fullUrlWithQuery(['ng_category' => null]) }}#top-ng-card" class="hover:text-purple-900 ml-0.5 font-bold leading-none" title="Clear category filter">&times;</a>
                                     </span>
                                 @endif
                             </div>
@@ -649,7 +649,7 @@
                                     </td>
                                     <td class="px-5 py-3 text-sm text-gray-800">{{ $prod->part_name }}</td>
                                     <td class="px-5 py-3 text-sm text-gray-500">{{ $prod->customer }}</td>
-                                    <td class="px-5 py-3 text-sm text-right font-black text-gray-900">{{ number_format($prod->total_output) }}</td>
+                                    <td class="px-5 py-3 text-sm text-right font-semibold text-gray-900">{{ number_format($prod->total_output) }}</td>
                                     <td class="px-5 py-3 text-sm text-right font-bold text-green-600">{{ number_format($prod->total_ok) }}</td>
                                     <td class="px-5 py-3 text-sm text-right font-bold text-red-600">{{ number_format($prod->total_ng) }}</td>
                                     <td class="px-5 py-3 text-sm text-right font-bold {{ $pNgRate >= 3 ? 'text-red-500' : ($pNgRate >= $targetNgRate ? 'text-yellow-600' : 'text-green-600') }}">
@@ -710,8 +710,8 @@
                                     <td class="px-5 py-3 text-sm text-gray-500">{{ $defProd->customer }}</td>
                                     <td class="px-5 py-3 text-sm text-right text-gray-700 font-semibold">{{ number_format($defProd->total_output) }}</td>
                                     <td class="px-5 py-3 text-sm text-right text-green-600 font-semibold">{{ number_format($defProd->total_ok) }}</td>
-                                    <td class="px-5 py-3 text-sm text-right font-black text-red-600">{{ number_format($defProd->total_ng) }}</td>
-                                    <td class="px-5 py-3 text-sm text-right font-black {{ $dNgRate >= 3 ? 'text-red-600' : 'text-amber-600' }}">
+                                    <td class="px-5 py-3 text-sm text-right font-semibold text-red-600">{{ number_format($defProd->total_ng) }}</td>
+                                    <td class="px-5 py-3 text-sm text-right font-semibold {{ $dNgRate >= 3 ? 'text-red-600' : 'text-amber-600' }}">
                                         {{ $dNgRate }}%
                                     </td>
                                     <td class="px-5 py-3 text-sm text-right text-rose-600 font-bold">{{ number_format($defProd->total_scrap) }}</td>
@@ -790,7 +790,7 @@
                                     <td class="px-5 py-3 text-sm font-medium text-gray-900 max-w-xs break-words">
                                         {{ $trouble->masalah ?: ($trouble->penyebab ?: '-') }}
                                     </td>
-                                    <td class="px-5 py-3 text-sm text-right font-black text-red-600 whitespace-nowrap">
+                                    <td class="px-5 py-3 text-sm text-right font-semibold text-red-600 whitespace-nowrap">
                                         {{ $trouble->loss_time_minutes ?? 0 }} <span class="text-xs font-normal text-gray-500">mins</span>
                                     </td>
                                     <td class="px-5 py-3 text-sm text-gray-700 max-w-md break-words">
@@ -851,13 +851,13 @@
                             <div class="grid grid-cols-2 gap-3 mb-4">
                                 <div class="bg-purple-50/60 border border-purple-100 rounded-lg p-3">
                                     <div class="text-[11px] font-semibold text-purple-700">Total Paint Consumed</div>
-                                    <div class="text-xl font-extrabold text-purple-900 mt-1">
+                                    <div class="text-xl font-bold text-purple-900 mt-1">
                                         {{ number_format($totalPaintQty, 2) }} <span class="text-xs font-normal text-purple-600">Qty</span>
                                     </div>
                                 </div>
                                 <div class="bg-indigo-50/60 border border-indigo-100 rounded-lg p-3">
                                     <div class="text-[11px] font-semibold text-indigo-700">Specific Usage Index</div>
-                                    <div class="text-xl font-extrabold text-indigo-900 mt-1">
+                                    <div class="text-xl font-bold text-indigo-900 mt-1">
                                         {{ $paintIndexPer1000 > 0 ? number_format($paintIndexPer1000, 2) : '-' }}
                                         <span class="text-xs font-normal text-indigo-600">Qty / 1k OK</span>
                                     </div>
@@ -881,7 +881,7 @@
                                                 <td class="px-3 py-2 font-semibold text-gray-800">{{ $paint->item_name }}</td>
                                                 <td class="px-2 py-2 text-center text-gray-500 font-mono">{{ $paint->uom ?: '-' }}</td>
                                                 <td class="px-2 py-2 text-center text-gray-600 font-mono">{{ $paint->reports_count }}</td>
-                                                <td class="px-3 py-2 text-right font-black text-purple-900 font-mono">{{ number_format($paint->total_qty, 2) }}</td>
+                                                <td class="px-3 py-2 text-right font-bold text-purple-900 font-mono">{{ number_format($paint->total_qty, 2) }}</td>
                                             </tr>
                                         @empty
                                             <tr>
@@ -913,13 +913,13 @@
                             <div class="grid grid-cols-2 gap-3 mb-4">
                                 <div class="bg-blue-50/60 border border-blue-100 rounded-lg p-3">
                                     <div class="text-[11px] font-semibold text-blue-700">Part Yield Rate</div>
-                                    <div class="text-xl font-extrabold text-blue-900 mt-1">
+                                    <div class="text-xl font-bold text-blue-900 mt-1">
                                         {{ $yieldRate }}%
                                     </div>
                                 </div>
                                 <div class="bg-amber-50/60 border border-amber-100 rounded-lg p-3">
                                     <div class="text-[11px] font-semibold text-amber-700">WIP Line Variance</div>
-                                    <div class="text-xl font-extrabold {{ $wipVariance == 0 ? 'text-green-700' : 'text-amber-900' }} mt-1">
+                                    <div class="text-xl font-bold {{ $wipVariance == 0 ? 'text-green-700' : 'text-amber-900' }} mt-1">
                                         {{ $wipVariance > 0 ? '+' . number_format($wipVariance) : number_format($wipVariance) }}
                                         <span class="text-xs font-normal text-gray-500">Pcs</span>
                                     </div>
@@ -943,7 +943,7 @@
                                                 <td class="px-3 py-2 font-semibold text-gray-800">{{ $part->item_name }}</td>
                                                 <td class="px-2 py-2 text-center text-gray-500 font-mono">{{ $part->uom ?: 'Pcs' }}</td>
                                                 <td class="px-2 py-2 text-center text-gray-600 font-mono">{{ $part->reports_count }}</td>
-                                                <td class="px-3 py-2 text-right font-black text-blue-900 font-mono">{{ number_format($part->total_qty) }}</td>
+                                                <td class="px-3 py-2 text-right font-bold text-blue-900 font-mono">{{ number_format($part->total_qty) }}</td>
                                             </tr>
                                         @empty
                                             <tr>

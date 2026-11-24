@@ -313,11 +313,11 @@
                         <a href="{{ route('sp-work-orders.index') }}" class="px-4 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold text-xs rounded-xl border border-zinc-300 transition uppercase tracking-wider">
                             Cancel
                         </a>
-                        <button type="submit" name="action" value="draft" class="px-5 py-2.5 bg-zinc-700 hover:bg-zinc-800 text-white font-semibold text-xs rounded-xl shadow-xs transition uppercase tracking-wider">
-                            Save as Draft
-                        </button>
-                        <button type="submit" name="action" value="release" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition uppercase tracking-wider">
+                        <button type="submit" name="action" value="release" onclick="return confirm('Release Work Order ini ke lantai produksi? Order yang dirilis akan masuk ke antrean produksi.')" class="px-4 py-2.5 bg-white hover:bg-zinc-100 text-zinc-700 font-semibold text-xs rounded-xl border border-zinc-300 transition uppercase tracking-wider">
                             Release Order
+                        </button>
+                        <button type="submit" name="action" value="draft" class="px-6 py-2.5 bg-zinc-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
+                            Save as Draft
                         </button>
                     </div>
 

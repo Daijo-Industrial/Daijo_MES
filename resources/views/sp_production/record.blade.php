@@ -50,15 +50,15 @@
 
                 <div class="min-w-0 flex flex-col">
                     <div class="flex items-center gap-2 leading-tight">
-                        <span class="font-black text-slate-900 text-sm tracking-tight">
+                        <span class="font-bold text-slate-900 text-sm tracking-tight">
                             {{ $session->unit_line }}
                         </span>
                         <span class="text-slate-300 font-light">•</span>
-                        <a href="{{ route('sp-work-orders.show', $session->work_order_id) }}" class="font-black text-blue-700 hover:text-blue-900 text-sm">
+                        <a href="{{ route('sp-work-orders.show', $session->work_order_id) }}" class="font-semibold text-blue-700 hover:text-blue-900 text-sm">
                             {{ $session->workOrder->wo_number }}
                         </a>
                         @if($session->is_qc_bypassed)
-                            <span class="px-1.5 py-0.2 text-[10px] font-black rounded-md bg-amber-100 text-amber-800 uppercase" title="QC Bypassed: {{ $session->qc_bypass_reason }}">
+                            <span class="px-1.5 py-0.2 text-[10px] font-semibold rounded-md bg-amber-100 text-amber-800 uppercase" title="QC Bypassed: {{ $session->qc_bypass_reason }}">
                                 BYPASSED
                             </span>
                         @endif
@@ -80,23 +80,23 @@
             <div class="flex items-center gap-2 flex-shrink-0">
                 {{-- Team Roster Trigger Pill --}}
                 <button type="button" onclick="document.getElementById('modalTeamRoster').showModal()"
-                        class="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 active:bg-purple-200 text-purple-800 font-bold text-xs rounded-xl border border-purple-200 transition cursor-pointer flex items-center gap-1.5">
+                        class="px-3.5 py-2 min-h-[40px] bg-purple-50 hover:bg-purple-100 active:bg-purple-200 text-purple-800 font-bold text-xs rounded-xl border border-purple-200 transition cursor-pointer flex items-center gap-1.5">
                     <span>Team</span>
-                    <span class="bg-purple-600 text-white px-1.5 py-0.2 rounded-md text-[10px] font-black" x-text="teamCount">
+                    <span class="bg-purple-600 text-white px-2 py-0.5 rounded-md text-[10px] font-bold" x-text="teamCount">
                         {{ $session->manpowerEntries->count() }}
                     </span>
                 </button>
 
                 {{-- Gateway Link --}}
                 <a href="{{ route('sp-sessions.line-gateway', ['lineSlug' => $lineSlug]) }}"
-                   class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition">
+                   class="px-3.5 py-2 min-h-[40px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition flex items-center">
                     Gateway
                 </a>
 
                 {{-- Finish Button --}}
                 @if($session->status === 'running')
                     <button type="button" onclick="document.getElementById('modalFinish').showModal()"
-                            class="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-black text-xs rounded-xl shadow-xs transition uppercase tracking-wider">
+                            class="px-4 py-2 min-h-[40px] bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition uppercase tracking-wider flex items-center">
                         Finish
                     </button>
                 @endif
@@ -730,8 +730,8 @@
                     class="px-3 py-2 bg-emerald-50/70 hover:bg-emerald-100/80 active:bg-emerald-200 border border-emerald-200/80 rounded-2xl transition cursor-pointer text-left shadow-xs flex-1 max-w-xs"
                     title="Click to view Good Output Logs">
                 <div class="min-w-0">
-                    <span class="text-[10px] font-black uppercase tracking-wider text-emerald-700 block">Good Output</span>
-                    <div class="text-base sm:text-lg font-black text-emerald-950 leading-tight">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 block">Good Output</span>
+                    <div class="text-base sm:text-lg font-bold text-emerald-950 leading-tight">
                         <span x-text="formatNum(totals.good) + ' Pcs'"></span>
                     </div>
                     <div class="text-[9px] font-bold text-emerald-800/80 truncate">
@@ -745,8 +745,8 @@
                     class="px-3 py-2 bg-red-50/70 hover:bg-red-100/80 active:bg-red-200 border border-red-200/80 rounded-2xl transition cursor-pointer text-left shadow-xs flex-1 max-w-xs"
                     title="Click to view Defect Logs">
                 <div class="min-w-0">
-                    <span class="text-[10px] font-black uppercase tracking-wider text-red-700 block">Total Defects</span>
-                    <div class="text-base sm:text-lg font-black text-red-950 leading-tight">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-red-700 block">Total Defects</span>
+                    <div class="text-base sm:text-lg font-bold text-red-950 leading-tight">
                         <span x-text="formatNum(totals.raw_reject || totals.reject) + ' Pcs'"></span>
                     </div>
                     <div class="text-[9px] font-bold text-red-800/80 truncate">
@@ -761,8 +761,8 @@
                     class="px-3 py-2 bg-yellow-50/70 hover:bg-yellow-100/80 active:bg-yellow-200 border border-yellow-200/80 rounded-2xl transition cursor-pointer text-left shadow-xs flex-1 max-w-xs"
                     title="Click to view Rework Logs">
                 <div class="min-w-0">
-                    <span class="text-[10px] font-black uppercase tracking-wider text-yellow-800 block">Issued Rework</span>
-                    <div class="text-base sm:text-lg font-black text-yellow-950 leading-tight">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-yellow-800 block">Issued Rework</span>
+                    <div class="text-base sm:text-lg font-bold text-yellow-950 leading-tight">
                         <span x-text="formatNum(totals.rework_in) + ' Pcs'"></span>
                     </div>
                 </div>
@@ -774,8 +774,8 @@
                     :class="availableWip > 0 ? 'bg-blue-50/70 hover:bg-blue-100/80 border-blue-200/80' : 'bg-amber-100/80 hover:bg-amber-200/90 border-amber-300 animate-pulse'"
                     title="Click to view Input WIP / Reworkable Logs">
                 <div class="min-w-0">
-                    <span class="text-[10px] font-black uppercase tracking-wider block" :class="availableWip > 0 ? 'text-blue-700' : 'text-amber-800'">Available Input</span>
-                    <div class="text-base sm:text-lg font-black leading-tight" :class="availableWip > 0 ? 'text-blue-950' : 'text-amber-950'">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider block" :class="availableWip > 0 ? 'text-blue-700' : 'text-amber-800'">Available Input</span>
+                    <div class="text-base sm:text-lg font-bold leading-tight" :class="availableWip > 0 ? 'text-blue-950' : 'text-amber-950'">
                         <span x-text="formatNum(availableWip) + ' Pcs'"></span>
                     </div>
                     <div class="text-[9px] font-bold text-blue-800/80 truncate" x-show="totals.input_reworkable > 0">
@@ -789,8 +789,8 @@
                     class="px-3 py-2 bg-amber-50/70 hover:bg-amber-100/80 active:bg-amber-200 border border-amber-200/80 rounded-2xl transition cursor-pointer text-left shadow-xs flex-1 max-w-xs"
                     title="Click to view Downtime Logs">
                 <div class="min-w-0">
-                    <span class="text-[10px] font-black uppercase tracking-wider text-amber-800 block">Downtime</span>
-                    <div class="text-base sm:text-lg font-black text-amber-950 leading-tight">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-amber-800 block">Downtime</span>
+                    <div class="text-base sm:text-lg font-bold text-amber-950 leading-tight">
                         <span x-text="formatNum(totals.downtime_minutes) + ' Mins'"></span>
                     </div>
                 </div>
@@ -798,9 +798,9 @@
 
             {{-- Metric 5: Rich WO Target Progress Card --}}
             <div class="flex-1 max-w-xs hidden md:flex flex-col justify-between bg-slate-50 border border-slate-200/80 rounded-2xl px-3 py-2 shadow-xs">
-                <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-600 mb-1">
+                <div class="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
                     <span>WO Target</span>
-                    <span class="text-slate-900 font-black" x-text="progressPct + '%'"></span>
+                    <span class="text-slate-900 font-bold" x-text="progressPct + '%'"></span>
                 </div>
                 <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden my-auto">
                     <div class="h-full rounded-full transition-all duration-500"
@@ -820,8 +820,8 @@
                 Active Rework Bench: <strong x-text="formatNum(reworkPending) + ' Pcs'"></strong> undergoing offline repair
             </div>
             <button type="button" onclick="document.getElementById('modalCompleteRework').showModal()"
-                    class="px-3 py-1 bg-white text-amber-900 hover:bg-amber-100 active:bg-amber-200 font-black text-xs rounded-xl shadow-xs transition cursor-pointer uppercase tracking-wider">
-                Complete Rework Outcome →
+                    class="px-3 py-1 bg-white text-amber-900 hover:bg-amber-100 active:bg-amber-200 font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer uppercase tracking-wider">
+                Complete Rework Outcome
             </button>
         </div>
 
@@ -831,7 +831,7 @@
                 Line Team Warning: No operators assigned to this running line team yet!
             </div>
             <button type="button" onclick="document.getElementById('modalManpower').showModal()"
-                    class="px-3 py-1 bg-white text-amber-950 hover:bg-amber-100 active:bg-amber-200 font-black text-xs rounded-xl shadow-xs transition cursor-pointer uppercase tracking-wider">
+                    class="px-3 py-1 bg-white text-amber-950 hover:bg-amber-100 active:bg-amber-200 font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer uppercase tracking-wider">
                 + Add Line Team Member
             </button>
         </div>
@@ -849,24 +849,24 @@
                         
                         {{-- Top Integrated Quick Batch Size Selector --}}
                         <div class="w-full flex items-center justify-between gap-1 bg-emerald-700/60 p-1.5 rounded-2xl backdrop-blur-xs flex-shrink-0 z-10" @click.stop>
-                            <span class="text-[10px] font-black uppercase tracking-wider text-emerald-200 ml-1 hidden sm:inline">Batch:</span>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-200 ml-1 hidden sm:inline">Batch:</span>
                             <div class="flex items-center gap-1 flex-1 justify-around">
                                 <template x-for="size in [1, 5, 10, 50, 100]" :key="size">
                                     <button type="button" @click="setBatchSize(size)"
-                                            :class="batchSize === size && !isCustomBatch ? 'bg-white text-emerald-900 font-black shadow-md scale-105' : 'bg-emerald-800/80 hover:bg-emerald-700 text-white font-bold'"
+                                            :class="batchSize === size && !isCustomBatch ? 'bg-white text-emerald-900 font-bold shadow-md scale-105' : 'bg-emerald-800/80 hover:bg-emerald-700 text-white font-bold'"
                                             class="px-2 py-1 rounded-xl transition text-xs sm:text-sm flex-1 text-center cursor-pointer border border-emerald-500/40"
                                             x-text="'+' + size"></button>
                                 </template>
                                 {{-- Inline Configurable Custom Batch Pill (Auto-save) --}}
                                 <div class="flex items-center px-1.5 py-0.5 rounded-xl border transition flex-1 justify-center"
-                                     :class="isCustomBatch ? 'bg-amber-400 text-emerald-950 font-black shadow-md border-amber-300' : 'bg-emerald-800/80 text-white border-emerald-500/40 focus-within:bg-white focus-within:text-emerald-950'">
-                                    <span class="text-xs font-black mr-0.5">+</span>
+                                     :class="isCustomBatch ? 'bg-amber-400 text-emerald-950 font-bold shadow-md border-amber-300' : 'bg-emerald-800/80 text-white border-emerald-500/40 focus-within:bg-white focus-within:text-emerald-950'">
+                                    <span class="text-xs font-semibold mr-0.5">+</span>
                                     <input type="number" min="1" max="9999"
                                            :value="customBatchSize"
                                            placeholder="Custom"
                                            @focus="if (customBatchSize) setBatchSize(customBatchSize); $event.target.select()"
                                            @input="if ($event.target.value > 0) applyCustomBatchSize($event.target.value)"
-                                           class="w-10 sm:w-12 text-center text-xs sm:text-sm font-black bg-transparent border-0 p-0 focus:ring-0 text-inherit placeholder:text-emerald-200 placeholder:text-[10px]">
+                                           class="w-10 sm:w-12 text-center text-xs sm:text-sm font-semibold bg-transparent border-0 p-0 focus:ring-0 text-inherit placeholder:text-emerald-200 placeholder:text-[10px]">
                                 </div>
                             </div>
                         </div>
@@ -874,7 +874,7 @@
                         {{-- Main Tap Target --}}
                         <button type="button" @click="quickAddGood()"
                                 class="w-full flex-1 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform py-2">
-                            <h1 class="text-3xl sm:text-5xl font-black tracking-tight drop-shadow-md uppercase" x-text="quickFlash ? 'SAVED!' : ('+' + batchSize + ' GOOD')"></h1>
+                            <h1 class="text-3xl sm:text-5xl font-bold tracking-tight drop-shadow-md uppercase" x-text="quickFlash ? 'SAVED!' : ('+' + batchSize + ' GOOD')"></h1>
                             <p class="text-xs sm:text-sm font-bold text-emerald-100 mt-1" x-text="'Tap to log ' + batchSize + ' OK piece(s)'"></p>
                         </button>
                     </div>
@@ -882,7 +882,7 @@
                     {{-- Card 2: Log Defect --}}
                     <button type="button" onclick="document.getElementById('modalReject').showModal()"
                             class="rounded-3xl p-4 sm:p-6 bg-red-600 hover:bg-red-500 active:bg-red-700 border-4 border-red-400 text-white shadow-xl transition-all flex flex-col items-center justify-center text-center cursor-pointer active:scale-95 min-h-0">
-                        <h1 class="text-2xl sm:text-4xl font-black tracking-tight uppercase drop-shadow-md">LOG DEFECT</h1>
+                        <h1 class="text-2xl sm:text-4xl font-bold tracking-tight uppercase drop-shadow-md">LOG DEFECT</h1>
                         <p class="text-xs sm:text-sm font-bold text-red-100 mt-2">Log rejects & scrap entries</p>
                     </button>
 
@@ -890,10 +890,10 @@
                     <div class="rounded-3xl p-4 sm:p-5 bg-blue-600 border-4 border-blue-400 text-white shadow-xl flex flex-col justify-between items-center text-center transition-all relative overflow-hidden min-h-0">
                         {{-- Top Type Selector Bar --}}
                         <div class="w-full flex items-center justify-between gap-1.5 bg-blue-700/60 p-1.5 rounded-2xl backdrop-blur-xs flex-shrink-0 z-10" @click.stop>
-                            <span class="text-[10px] font-black uppercase tracking-wider text-blue-200 ml-1">Receive:</span>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-blue-200 ml-1">Receive:</span>
                             <div class="flex items-center gap-1 flex-1 justify-around">
                                 <button type="button" @click="openInputModal('wip')"
-                                        class="px-2.5 py-1 rounded-xl transition text-xs sm:text-sm flex-1 text-center cursor-pointer border border-blue-400/40 bg-white text-blue-900 font-black shadow-md hover:bg-blue-50">
+                                        class="px-2.5 py-1 rounded-xl transition text-xs sm:text-sm flex-1 text-center cursor-pointer border border-blue-400/40 bg-white text-blue-900 font-semibold shadow-md hover:bg-blue-50">
                                     +WIP
                                 </button>
                                 <button type="button" @click="openInputModal('reworkable')"
@@ -906,7 +906,7 @@
                         {{-- Main Tap Target --}}
                         <button type="button" @click="openInputModal('wip')"
                                 class="w-full flex-1 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform py-2">
-                            <h1 class="text-2xl sm:text-4xl font-black tracking-tight uppercase drop-shadow-md">RECEIVE INPUT</h1>
+                            <h1 class="text-2xl sm:text-4xl font-bold tracking-tight uppercase drop-shadow-md">RECEIVE INPUT</h1>
                             <p class="text-xs sm:text-sm font-bold text-blue-100 mt-1">Add WIP or Reworkable to line balance</p>
                         </button>
                     </div>
@@ -915,37 +915,37 @@
                     <button type="button" @click="togglePause()"
                             :class="isPaused ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-400 animate-pulse' : 'bg-amber-600 hover:bg-amber-500 border-amber-400'"
                             class="rounded-3xl p-4 sm:p-6 border-4 text-white shadow-xl transition-all flex flex-col items-center justify-center text-center cursor-pointer active:scale-95 min-h-0">
-                        <h1 class="text-2xl sm:text-4xl font-black tracking-tight uppercase drop-shadow-md" x-text="isPaused ? 'RESUME LINE' : 'PAUSE LINE'"></h1>
+                        <h1 class="text-2xl sm:text-4xl font-bold tracking-tight uppercase drop-shadow-md" x-text="isPaused ? 'RESUME LINE' : 'PAUSE LINE'"></h1>
                         <p class="text-xs sm:text-sm font-bold text-amber-100 mt-2" x-text="isPaused ? 'Restart line & select reason' : 'Stop line & log downtime'"></p>
                     </button>
 
                 </div>
 
-                {{-- Sub-Hero Action Strip (Action Triggers Only) --}}
+                {{-- Sub-Hero Action Strip (Enhanced touch hit targets for tablet) --}}
                 <div class="flex items-center justify-end gap-3 mt-3 flex-shrink-0">
                     <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
                         {{-- Issue to Rework Trigger --}}
                         <button type="button" x-show="availableDefectsForRework > 0" x-cloak
                                 onclick="document.getElementById('modalIssueRework').showModal()"
                                 title="Issue unsorted defect stock to rework bench"
-                                class="px-3.5 py-2 bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-white font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer">
+                                class="px-4 py-2.5 min-h-[44px] bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-white font-semibold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer">
                             <span>Issue to Rework</span>
-                            <span class="bg-yellow-600 text-white px-1.5 py-0.5 rounded-md text-[10px] font-black" x-text="availableDefectsForRework + ' Pcs'"></span>
+                            <span class="bg-yellow-600 text-white px-2 py-0.5 rounded-md text-[10px] font-bold" x-text="availableDefectsForRework + ' Pcs'"></span>
                         </button>
 
                         {{-- Log Downtime Trigger (Manual Stoppages) --}}
                         <button type="button" onclick="document.getElementById('modalDowntime').showModal()"
                                 title="Log Micro-stoppages or Past Downtime"
-                                class="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer">
+                                class="px-4 py-2.5 min-h-[44px] bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-semibold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer">
                             <span>Log Downtime</span>
                         </button>
 
                         {{-- Logs History Drawer Trigger --}}
                         <button type="button" @click="tab = 'all'; document.getElementById('modalHistory').showModal()"
                                 title="View Full Shift Log History"
-                                class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white font-black text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer">
+                                class="px-4 py-2.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white font-semibold text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer">
                             <span>Logs History</span>
-                            <span class="bg-slate-700 text-white px-1.5 py-0.5 rounded-md text-[10px] font-black" x-text="allRecords.length"></span>
+                            <span class="bg-slate-700 text-white px-2 py-0.5 rounded-md text-[10px] font-bold" x-text="allRecords.length"></span>
                         </button>
                     </div>
                 </div>
@@ -958,7 +958,7 @@
             <div class="bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
                 <div class="bg-slate-900 px-6 py-4 flex justify-between items-center text-white flex-shrink-0">
                     <div>
-                        <h3 class="text-lg font-black">Full Operational Event History</h3>
+                        <h3 class="text-lg font-bold">Full Operational Event History</h3>
                         <p class="text-xs text-slate-400 font-medium">Complete chronological activity log for Session #{{ $session->id }}</p>
                     </div>
                     <button type="button" onclick="document.getElementById('modalHistory').close()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
@@ -966,19 +966,19 @@
 
                 {{-- Filter Tabs (Fixed height row, flex-shrink-0) --}}
                 <div class="bg-slate-100 border-b border-slate-200 px-6 flex items-center gap-2.5 text-xs font-bold py-3 overflow-x-auto whitespace-nowrap flex-shrink-0">
-                    <button type="button" @click="tab = 'all'" :class="tab === 'all' ? 'bg-blue-600 text-white border-blue-600 shadow-sm font-black' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">All (<span x-text="allRecords.length"></span>)</button>
-                    <button type="button" @click="tab = 'production'" :class="tab === 'production' ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm font-black' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Good Output (<span x-text="productionEntries.length"></span>)</button>
-                    <button type="button" @click="tab = 'defects'" :class="tab === 'defects' ? 'bg-red-600 text-white border-red-600 shadow-sm font-black' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Defects (<span x-text="rejectEntries.length"></span>)</button>
-                    <button type="button" @click="tab = 'downtime'" :class="tab === 'downtime' ? 'bg-amber-600 text-white border-amber-600 shadow-sm font-black' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Downtime (<span x-text="downtimeEntries.length"></span>)</button>
-                    <button type="button" @click="tab = 'rework'" :class="tab === 'rework' ? 'bg-yellow-600 text-white border-yellow-600 shadow-sm font-black' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Rework (<span x-text="reworkEntries.length"></span>)</button>
-                    <button type="button" @click="tab = 'input'" :class="tab === 'input' ? 'bg-blue-600 text-white border-blue-600 shadow-sm font-black' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Input (<span x-text="inputEntries.length"></span>)</button>
-                    <button type="button" @click="tab = 'manpower'" :class="tab === 'manpower' ? 'bg-purple-600 text-white border-purple-600 shadow-sm font-black' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Team (<span x-text="manpowerEntries.length"></span>)</button>
+                    <button type="button" @click="tab = 'all'" :class="tab === 'all' ? 'bg-blue-600 text-white border-blue-600 shadow-sm font-semibold' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">All (<span x-text="allRecords.length"></span>)</button>
+                    <button type="button" @click="tab = 'production'" :class="tab === 'production' ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm font-semibold' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Good Output (<span x-text="productionEntries.length"></span>)</button>
+                    <button type="button" @click="tab = 'defects'" :class="tab === 'defects' ? 'bg-red-600 text-white border-red-600 shadow-sm font-semibold' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Defects (<span x-text="rejectEntries.length"></span>)</button>
+                    <button type="button" @click="tab = 'downtime'" :class="tab === 'downtime' ? 'bg-amber-600 text-white border-amber-600 shadow-sm font-semibold' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Downtime (<span x-text="downtimeEntries.length"></span>)</button>
+                    <button type="button" @click="tab = 'rework'" :class="tab === 'rework' ? 'bg-yellow-600 text-white border-yellow-600 shadow-sm font-semibold' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Rework (<span x-text="reworkEntries.length"></span>)</button>
+                    <button type="button" @click="tab = 'input'" :class="tab === 'input' ? 'bg-blue-600 text-white border-blue-600 shadow-sm font-semibold' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Input (<span x-text="inputEntries.length"></span>)</button>
+                    <button type="button" @click="tab = 'manpower'" :class="tab === 'manpower' ? 'bg-purple-600 text-white border-purple-600 shadow-sm font-semibold' : 'bg-white text-slate-700 hover:bg-slate-200 border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex-shrink-0 cursor-pointer border">Team (<span x-text="manpowerEntries.length"></span>)</button>
                 </div>
 
                 {{-- Table Area --}}
                 <div class="flex-1 overflow-y-auto p-0">
                     <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 text-xs font-black text-slate-500 uppercase tracking-wider border-b border-slate-200 sticky top-0">
+                        <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 sticky top-0">
                             <tr>
                                 <th class="px-4 py-3">Timestamp</th>
                                 <th class="px-4 py-3">Type</th>
@@ -992,15 +992,15 @@
                                 <tr class="hover:bg-slate-50 transition">
                                     <td class="px-4 py-2.5 font-mono text-xs text-slate-500" x-text="formatTime(item.recorded_at || item.created_at)"></td>
                                     <td class="px-4 py-2.5">
-                                        <span x-show="item.good_qty !== undefined || item.streamType === 'production'" class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">GOOD</span>
-                                        <span x-show="item.defect_type !== undefined || item.streamType === 'reject'" class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-red-100 text-red-800 border border-red-200">DEFECT</span>
-                                        <span x-show="item.duration_minutes !== undefined || item.streamType === 'downtime'" class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-200">DOWNTIME</span>
-                                        <span x-show="item.recovered_qty !== undefined || item.streamType === 'rework'" class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-yellow-100 text-yellow-800 border border-yellow-200">REWORK</span>
+                                        <span x-show="item.good_qty !== undefined || item.streamType === 'production'" class="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">GOOD</span>
+                                        <span x-show="item.defect_type !== undefined || item.streamType === 'reject'" class="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase bg-red-100 text-red-800 border border-red-200">DEFECT</span>
+                                        <span x-show="item.duration_minutes !== undefined || item.streamType === 'downtime'" class="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase bg-amber-100 text-amber-800 border border-amber-200">DOWNTIME</span>
+                                        <span x-show="item.recovered_qty !== undefined || item.streamType === 'rework'" class="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase bg-yellow-100 text-yellow-800 border border-yellow-200">REWORK</span>
                                         <span x-show="item.source !== undefined || item.streamType === 'input'"
                                               :class="item.source === 'reworkable' ? 'bg-purple-100 text-purple-800 border-purple-200' : 'bg-blue-100 text-blue-800 border-blue-200'"
-                                              class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase border"
+                                              class="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase border"
                                               x-text="item.source === 'reworkable' ? 'REWORKABLE' : 'INPUT'"></span>
-                                        <span x-show="item.role !== undefined || item.streamType === 'manpower'" class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-purple-100 text-purple-800 border border-purple-200">TEAM</span>
+                                        <span x-show="item.role !== undefined || item.streamType === 'manpower'" class="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase bg-purple-100 text-purple-800 border border-purple-200">TEAM</span>
                                     </td>
                                     <td class="px-4 py-2.5 text-xs font-semibold text-slate-800">
                                         <template x-if="item.good_qty !== undefined || item.streamType === 'production'">
@@ -1028,13 +1028,13 @@
                                             <span>Team Member Added: <strong class="text-purple-800" x-text="item.operator_name || ('Worker #' + (item.user_id || item.id))"></strong> <span class="text-slate-400 font-normal" x-text="item.role ? '(' + (roleLabels[item.role] || item.role) + ')' : ''"></span></span>
                                         </template>
                                     </td>
-                                    <td class="px-4 py-2.5 text-right font-black text-xs">
+                                    <td class="px-4 py-2.5 text-right font-semibold text-xs">
                                         <span x-show="item.good_qty !== undefined || item.streamType === 'production'" class="text-emerald-700" x-text="'+' + formatNum(item.good_qty || 0) + ' Pcs'"></span>
                                         <span x-show="item.defect_type !== undefined || item.streamType === 'reject'" class="text-red-600" x-text="formatNum(item.quantity || 0) + ' Pcs'"></span>
                                         <span x-show="item.duration_minutes !== undefined || item.streamType === 'downtime'" class="text-amber-700" x-text="(item.duration_minutes || 0) + 'm'"></span>
                                         
                                         <template x-if="item.recovered_qty !== undefined || item.streamType === 'rework'">
-                                            <div class="flex items-center justify-end gap-1.5 font-mono text-xs font-black">
+                                            <div class="flex items-center justify-end gap-1.5 font-mono text-xs font-semibold">
                                                 <span x-show="item.input_qty > 0 && (item.recovered_qty || 0) === 0 && (item.scrapped_qty || 0) === 0" class="text-yellow-800" x-text="formatNum(item.input_qty) + ' Issued'"></span>
                                                 <span x-show="(item.recovered_qty || 0) > 0" class="text-emerald-700" x-text="'+' + formatNum(item.recovered_qty) + ' OK'"></span>
                                                 <span x-show="(item.scrapped_qty || 0) > 0" class="text-red-600" x-text="formatNum(item.scrapped_qty) + ' Scrap'"></span>
@@ -1062,7 +1062,7 @@
                 </div>
 
                 <div class="bg-slate-100 p-4 border-t border-slate-200 text-right">
-                    <button type="button" onclick="document.getElementById('modalHistory').close()" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl uppercase">Close History</button>
+                    <button type="button" onclick="document.getElementById('modalHistory').close()" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl uppercase">Close History</button>
                 </div>
             </div>
         </dialog>
@@ -1073,33 +1073,33 @@
     <dialog id="modalProduction" class="rounded-xl p-0 shadow-2xl border-0 w-full max-w-lg backdrop:bg-gray-900/50 bg-transparent">
         <div class="bg-white rounded-xl overflow-hidden shadow-2xl">
             <div class="bg-green-600 px-6 py-4 flex justify-between items-center">
-                <h3 class="text-lg font-black text-white">Log Output</h3>
+                <h3 class="text-lg font-bold text-white">Log Output</h3>
                 <button type="button" onclick="document.getElementById('modalProduction').close()" class="text-green-200 hover:text-white text-xl font-bold">&times;</button>
             </div>
             <form action="{{ route('app.sp-sessions.add-production', $session->id) }}" method="POST" @submit.prevent="submitForm($event, 'production')" x-data="{ good_qty: 0 }" class="p-6">
                 @csrf
                 <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs font-bold text-blue-900">
                     <span>Available Input WIP:</span>
-                    <span class="text-sm font-black" x-text="formatNum(availableWip) + ' Pcs'"></span>
+                    <span class="text-sm font-semibold" x-text="formatNum(availableWip) + ' Pcs'"></span>
                 </div>
 
                 <div class="space-y-6">
                     <div>
                         <label class="block text-sm font-bold text-gray-500 uppercase mb-2">Good Qty (Pcs) *</label>
                         <div class="flex items-stretch h-20 rounded-2xl border-2 border-gray-300 overflow-hidden bg-white shadow-sm">
-                            <button type="button" @click="good_qty = Math.max(0, good_qty - 1)" class="w-24 flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition text-gray-600 text-4xl font-black border-r border-gray-300">
+                            <button type="button" @click="good_qty = Math.max(0, good_qty - 1)" class="w-24 flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition text-gray-600 text-4xl font-bold border-r border-gray-300">
                                 -
                             </button>
-                            <input type="number" name="good_qty" value="0" x-model.number="good_qty" @focus="$event.target.select()" @blur="if (!good_qty && good_qty !== 0) good_qty = 0" required class="flex-1 text-center text-5xl font-black text-green-600 border-0 focus:ring-0 w-full bg-transparent p-0">
-                            <button type="button" @click="good_qty += 1" class="w-24 flex items-center justify-center bg-green-100 hover:bg-green-200 active:bg-green-300 transition text-green-700 text-4xl font-black border-l border-gray-300">
+                            <input type="number" name="good_qty" value="0" x-model.number="good_qty" @focus="$event.target.select()" @blur="if (!good_qty && good_qty !== 0) good_qty = 0" required class="flex-1 text-center text-5xl font-medium text-green-600 border-0 focus:ring-0 w-full bg-transparent p-0">
+                            <button type="button" @click="good_qty += 1" class="w-24 flex items-center justify-center bg-green-100 hover:bg-green-200 active:bg-green-300 transition text-green-700 text-4xl font-bold border-l border-gray-300">
                                 +
                             </button>
                         </div>
                         <div class="grid grid-cols-4 gap-2 mt-4">
-                            <button type="button" @click="good_qty += 5" class="py-4 bg-green-50 active:bg-green-100 text-green-700 font-black rounded-xl text-xl shadow-sm border border-green-200">+5</button>
-                            <button type="button" @click="good_qty += 10" class="py-4 bg-green-50 active:bg-green-100 text-green-700 font-black rounded-xl text-xl shadow-sm border border-green-200">+10</button>
-                            <button type="button" @click="good_qty += 50" class="py-4 bg-green-50 active:bg-green-100 text-green-700 font-black rounded-xl text-xl shadow-sm border border-green-200">+50</button>
-                            <button type="button" @click="good_qty += 100" class="py-4 bg-green-50 active:bg-green-100 text-green-700 font-black rounded-xl text-xl shadow-sm border border-green-200">+100</button>
+                            <button type="button" @click="good_qty += 5" class="py-4 bg-green-50 active:bg-green-100 text-green-700 font-semibold rounded-xl text-xl shadow-sm border border-green-200">+5</button>
+                            <button type="button" @click="good_qty += 10" class="py-4 bg-green-50 active:bg-green-100 text-green-700 font-semibold rounded-xl text-xl shadow-sm border border-green-200">+10</button>
+                            <button type="button" @click="good_qty += 50" class="py-4 bg-green-50 active:bg-green-100 text-green-700 font-semibold rounded-xl text-xl shadow-sm border border-green-200">+50</button>
+                            <button type="button" @click="good_qty += 100" class="py-4 bg-green-50 active:bg-green-100 text-green-700 font-semibold rounded-xl text-xl shadow-sm border border-green-200">+100</button>
                         </div>
                     </div>
 
@@ -1114,7 +1114,7 @@
                 </div>
 
                 <div class="mt-6 pt-4 border-t border-gray-100">
-                    <button type="submit" :disabled="good_qty <= 0 || good_qty > availableWip" :class="good_qty <= 0 || good_qty > availableWip ? 'opacity-50 cursor-not-allowed' : ''" class="w-full bg-green-600 active:bg-green-700 text-white py-4 rounded-xl text-xl font-black shadow-lg transition">SAVE LOG</button>
+                    <button type="submit" :disabled="good_qty <= 0 || good_qty > availableWip" :class="good_qty <= 0 || good_qty > availableWip ? 'opacity-50 cursor-not-allowed' : ''" class="w-full bg-green-600 active:bg-green-700 text-white py-4 rounded-xl text-xl font-bold shadow-lg transition">SAVE LOG</button>
                 </div>
             </form>
         </div>
@@ -1125,7 +1125,7 @@
         <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
             <div class="bg-red-600 px-6 py-4 flex justify-between items-center text-white">
                 <div>
-                    <h3 class="text-xl font-black">Log Defect Entries</h3>
+                    <h3 class="text-xl font-bold">Log Defect Entries</h3>
                     <p class="text-xs text-red-100 font-medium mt-0.5">Tap common defects to add (+1 per tap) or stage multiple</p>
                 </div>
                 <button type="button" onclick="document.getElementById('modalReject').close()" class="text-red-200 hover:text-white text-2xl font-bold">&times;</button>
@@ -1144,12 +1144,12 @@
                 {{-- WIP Balance Pill --}}
                 <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs font-bold text-blue-900">
                     <span>Available Input WIP:</span>
-                    <span class="text-sm font-black" x-text="formatNum(availableWip) + ' Pcs'"></span>
+                    <span class="text-sm font-semibold" x-text="formatNum(availableWip) + ' Pcs'"></span>
                 </div>
 
                 {{-- Quick Grid of Common Defects --}}
                 <div>
-                    <label class="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Common Defects (Tap to add +1)</label>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Common Defects (Tap to add +1)</label>
                     <div class="grid grid-cols-2 gap-2.5">
                         <template x-for="p in presetList" :key="p">
                             <button type="button" @click="addDefect(p)"
@@ -1158,10 +1158,10 @@
                                 <span class="truncate flex-1 pr-1" x-text="p"></span>
                                 <div class="flex items-center gap-1">
                                     <template x-if="getDefectCount(p) > 0">
-                                        <span class="px-2 py-0.5 rounded-lg bg-red-600 text-white font-black text-xs shadow-xs" x-text="getDefectCount(p)"></span>
+                                        <span class="px-2 py-0.5 rounded-lg bg-red-600 text-white font-semibold text-xs shadow-xs" x-text="getDefectCount(p)"></span>
                                     </template>
                                     <template x-if="getDefectCount(p) === 0">
-                                        <span class="text-slate-400 font-black text-base leading-none">+</span>
+                                        <span class="text-slate-400 font-bold text-base leading-none">+</span>
                                     </template>
                                 </div>
                             </button>
@@ -1172,7 +1172,7 @@
                 {{-- Staged Defect Summary --}}
                 <div x-show="stagedItems.length > 0" x-cloak class="pt-2 border-t border-slate-100">
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-black uppercase tracking-wider text-slate-600">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-600">
                             Staged for Submission (<span x-text="totalDefectQty"></span> Pcs across <span x-text="stagedItems.length"></span> types)
                         </label>
                         <button type="button" @click="resetCounts()" class="text-[11px] font-bold text-slate-400 hover:text-red-600 cursor-pointer">Clear All</button>
@@ -1181,22 +1181,22 @@
                     <div class="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
                         <template x-for="(item, idx) in stagedItems" :key="item.defect_type + '-' + idx">
                             <div class="p-2 bg-red-50/70 border border-red-200 rounded-xl flex items-center justify-between gap-2">
-                                <span class="font-black text-xs sm:text-sm text-red-950 truncate flex-1" x-text="item.defect_type"></span>
+                                <span class="font-semibold text-xs sm:text-sm text-red-950 truncate flex-1" x-text="item.defect_type"></span>
 
-                                {{-- Stepper Controls --}}
-                                <div class="flex items-center gap-1 flex-shrink-0">
+                                {{-- Stepper Controls (Enhanced touch targets for tablet) --}}
+                                <div class="flex items-center gap-1.5 flex-shrink-0">
                                     <button type="button" @click="decrementDefect(item.defect_type)"
-                                            class="w-7 h-7 rounded-lg bg-white border border-red-200 text-red-700 font-black text-sm flex items-center justify-center hover:bg-red-100 transition cursor-pointer select-none">
+                                            class="w-9 h-9 rounded-xl bg-white border border-red-200 text-red-700 font-bold text-base flex items-center justify-center hover:bg-red-100 active:bg-red-200 transition cursor-pointer select-none">
                                         -
                                     </button>
                                     <input type="number" min="1" x-model.number="item.quantity" @focus="$event.target.select()"
-                                           class="w-12 h-7 text-center font-black text-xs sm:text-sm border border-red-200 rounded-lg bg-white text-red-700 p-0 focus:ring-red-500">
+                                           class="w-14 h-9 text-center font-bold text-sm border border-red-200 rounded-xl bg-white text-red-700 p-0 focus:ring-red-500">
                                     <button type="button" @click="item.quantity = (parseInt(item.quantity) || 0) + 1"
-                                            class="w-7 h-7 rounded-lg bg-red-600 text-white font-black text-sm flex items-center justify-center hover:bg-red-500 transition cursor-pointer select-none">
+                                            class="w-9 h-9 rounded-xl bg-red-600 text-white font-bold text-base flex items-center justify-center hover:bg-red-500 active:bg-red-700 transition cursor-pointer select-none">
                                         +
                                     </button>
                                     <button type="button" @click="removeDefect(idx)"
-                                            class="w-7 h-7 text-slate-400 hover:text-red-600 font-bold text-base flex items-center justify-center transition cursor-pointer" title="Remove">
+                                            class="w-9 h-9 text-slate-400 hover:text-red-600 font-bold text-lg flex items-center justify-center transition cursor-pointer" title="Remove">
                                         &times;
                                     </button>
                                 </div>
@@ -1224,7 +1224,7 @@
                                placeholder="Type unlisted defect name..."
                                class="flex-1 text-xs font-bold border-slate-300 rounded-xl p-2.5 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 text-slate-900">
                         <button type="button" @click="addCustomDefect()"
-                                class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-black text-xs rounded-xl transition cursor-pointer">
+                                class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs rounded-xl transition cursor-pointer">
                             + Add
                         </button>
                     </div>
@@ -1246,7 +1246,7 @@
                     <button type="submit"
                             :disabled="totalDefectQty <= 0 || stagedItems.length === 0 || totalDefectQty > availableWip"
                             :class="(totalDefectQty <= 0 || stagedItems.length === 0 || totalDefectQty > availableWip) ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'bg-red-600 hover:bg-red-500 active:bg-red-700 shadow-lg cursor-pointer'"
-                            class="w-full text-white py-4 rounded-xl text-base font-black uppercase tracking-wider transition flex items-center justify-center gap-2">
+                            class="w-full text-white py-4 rounded-xl text-base font-bold uppercase tracking-wider transition flex items-center justify-center gap-2">
                         <span x-text="totalDefectQty > 0 ? ('SUBMIT ' + totalDefectQty + ' DEFECT(S) (' + stagedItems.length + ' TYPES)') : 'TAP COMMON DEFECT TO LOG'"></span>
                     </button>
                 </div>
@@ -1258,7 +1258,7 @@
     <dialog id="modalDowntime" class="rounded-xl p-0 shadow-2xl border-0 w-full max-w-lg backdrop:bg-gray-900/50 bg-transparent">
         <div class="bg-white rounded-xl overflow-hidden shadow-2xl">
             <div class="bg-amber-600 px-6 py-4 flex justify-between items-center">
-                <h3 class="text-lg font-black text-white">Log Downtime</h3>
+                <h3 class="text-lg font-bold text-white">Log Downtime</h3>
                 <button type="button" onclick="document.getElementById('modalDowntime').close()" class="text-amber-200 hover:text-white text-xl font-bold">&times;</button>
             </div>
             <form action="{{ route('app.sp-sessions.add-downtime', $session->id) }}" method="POST" @submit.prevent="submitForm($event, 'downtime')" x-data="{ reason: '' }" class="p-6">
@@ -1292,7 +1292,7 @@
                     </div>
                 </div>
                 <div class="mt-6 pt-4 border-t border-gray-100">
-                    <button type="submit" :disabled="!reason" :class="!reason ? 'opacity-50 cursor-not-allowed' : ''" class="w-full bg-amber-600 active:bg-amber-700 text-white py-4 rounded-xl text-xl font-black shadow-lg transition">SAVE DOWNTIME</button>
+                    <button type="submit" :disabled="!reason" :class="!reason ? 'opacity-50 cursor-not-allowed' : ''" class="w-full bg-amber-600 active:bg-amber-700 text-white py-4 rounded-xl text-xl font-semibold shadow-lg transition">SAVE DOWNTIME</button>
                 </div>
             </form>
         </div>
@@ -1305,7 +1305,7 @@
             class="rounded-2xl p-0 shadow-2xl border-0 w-full max-w-md backdrop:bg-gray-900/60 bg-transparent">
         <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
             <div class="bg-yellow-500 px-6 py-4 flex justify-between items-center text-white">
-                <h3 class="text-xl font-black">Issue to Rework Bench</h3>
+                <h3 class="text-xl font-bold">Issue to Rework Bench</h3>
                 <button type="button" onclick="document.getElementById('modalIssueRework').close()" class="text-yellow-200 hover:text-white text-2xl font-bold">&times;</button>
             </div>
 
@@ -1316,25 +1316,25 @@
 
                 <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl flex items-center justify-between gap-3 text-xs font-bold text-yellow-900">
                     <div>
-                        <span class="block text-[10px] text-yellow-700 uppercase font-black">Unsorted Defect Stock</span>
-                        <span class="text-xl font-black" x-text="formatNum(availableDefectsForRework) + ' Pcs'"></span>
+                        <span class="block text-[10px] text-yellow-700 uppercase font-semibold">Unsorted Defect Stock</span>
+                        <span class="text-xl font-bold" x-text="formatNum(availableDefectsForRework) + ' Pcs'"></span>
                     </div>
                     <button type="button" @click="issue_qty = availableDefectsForRework"
-                            class="px-3.5 py-2 bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer">
+                            class="px-3.5 py-2 bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-700 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer">
                         ISSUE ALL
                     </button>
                 </div>
 
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-xs font-black text-slate-600 uppercase tracking-wider">Rework Quantity</label>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Rework Quantity</label>
                         <span class="text-xs font-bold text-amber-700" x-text="issue_qty + ' Pcs'"></span>
                     </div>
                     <div class="flex items-center gap-2 min-w-0">
-                        <button type="button" @click="issue_qty = Math.max(0, issue_qty - 1)" class="w-12 sm:w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-black text-3xl flex items-center justify-center transition cursor-pointer border border-slate-300 flex-shrink-0">-</button>
+                        <button type="button" @click="issue_qty = Math.max(0, issue_qty - 1)" class="w-12 sm:w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold text-3xl flex items-center justify-center transition cursor-pointer border border-slate-300 flex-shrink-0">-</button>
                         <input type="number" name="issue_qty" x-model.number="issue_qty" :max="availableDefectsForRework" @focus="$event.target.select()" required
-                               class="flex-1 min-w-0 w-full h-14 text-center text-3xl font-black text-slate-950 border-2 border-amber-300 rounded-2xl bg-amber-50/40 focus:bg-white focus:ring-2 focus:ring-amber-500">
-                        <button type="button" @click="if (issue_qty < availableDefectsForRework) issue_qty += 1" class="w-12 sm:w-14 h-14 rounded-2xl bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-white font-black text-3xl flex items-center justify-center transition cursor-pointer flex-shrink-0">+</button>
+                               class="flex-1 min-w-0 w-full h-14 text-center text-3xl font-bold text-slate-950 border-2 border-amber-300 rounded-2xl bg-amber-50/40 focus:bg-white focus:ring-2 focus:ring-amber-500">
+                        <button type="button" @click="if (issue_qty < availableDefectsForRework) issue_qty += 1" class="w-12 sm:w-14 h-14 rounded-2xl bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-white font-bold text-3xl flex items-center justify-center transition cursor-pointer flex-shrink-0">+</button>
                     </div>
                 </div>
 
@@ -1346,7 +1346,7 @@
                     <button type="submit"
                             :disabled="issue_qty <= 0 || issue_qty > availableDefectsForRework"
                             :class="issue_qty <= 0 || issue_qty > availableDefectsForRework ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 shadow-xl'"
-                            class="w-full text-white py-4 rounded-2xl text-lg font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-2">
+                            class="w-full text-white py-4 rounded-2xl text-lg font-bold uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-2">
                         ISSUE TO REWORK BENCH
                     </button>
                 </div>
@@ -1372,7 +1372,7 @@
             class="rounded-2xl p-0 shadow-2xl border-0 w-full max-w-lg backdrop:bg-gray-900/60 bg-transparent">
         <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
             <div class="bg-emerald-600 px-6 py-4 flex justify-between items-center text-white">
-                <h3 class="text-xl font-black">Complete Rework Outcome</h3>
+                <h3 class="text-xl font-bold">Complete Rework Outcome</h3>
                 <button type="button" onclick="document.getElementById('modalCompleteRework').close()" class="text-emerald-200 hover:text-white text-2xl font-bold">&times;</button>
             </div>
 
@@ -1384,18 +1384,18 @@
                 {{-- Active Bench Banner + 1-Tap Quick Action Pills --}}
                 <div class="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col gap-3 text-xs font-bold text-emerald-900">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-black uppercase text-emerald-800">Active Rework Bench</span>
-                        <span class="text-xl font-black text-emerald-950" x-text="formatNum(reworkPending) + ' Pcs'"></span>
+                        <span class="text-xs font-semibold uppercase text-emerald-800">Active Rework Bench</span>
+                        <span class="text-xl font-bold text-emerald-950" x-text="formatNum(reworkPending) + ' Pcs'"></span>
                     </div>
 
                     <div class="flex items-center gap-2 pt-2 border-t border-emerald-200/60">
                         <span class="text-[11px] font-bold text-emerald-700">Quick Fill:</span>
                         <button type="button" @click="set100Recovered()"
-                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex-1 text-center">
+                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer flex-1 text-center">
                             100% RECOVERED
                         </button>
                         <button type="button" @click="set100Scrapped()"
-                                class="px-3 py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex-1 text-center">
+                                class="px-3 py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer flex-1 text-center">
                             100% SCRAPPED
                         </button>
                     </div>
@@ -1405,28 +1405,28 @@
                     {{-- 1. Recovered OK Pcs Stepper --}}
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
-                            <label class="block text-xs font-black text-emerald-800 uppercase tracking-wider">Recovered OK</label>
+                            <label class="block text-xs font-semibold text-emerald-800 uppercase tracking-wider">Recovered OK</label>
                             <span class="text-xs font-bold text-emerald-600" x-text="recovered_qty + ' OK Pcs'"></span>
                         </div>
                         <div class="flex items-center gap-2 min-w-0">
-                            <button type="button" @click="recovered_qty = Math.max(0, recovered_qty - 1)" class="w-12 sm:w-14 h-14 rounded-2xl bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 text-emerald-800 font-black text-3xl flex items-center justify-center transition cursor-pointer border border-emerald-300 flex-shrink-0">-</button>
+                            <button type="button" @click="recovered_qty = Math.max(0, recovered_qty - 1)" class="w-12 sm:w-14 h-14 rounded-2xl bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 text-emerald-800 font-bold text-3xl flex items-center justify-center transition cursor-pointer border border-emerald-300 flex-shrink-0">-</button>
                             <input type="number" name="recovered_qty" x-model.number="recovered_qty" @focus="$event.target.select()" required
-                                   class="flex-1 min-w-0 w-full h-14 text-center text-3xl font-black text-emerald-950 border-2 border-emerald-300 rounded-2xl bg-emerald-50/40 focus:bg-white focus:ring-2 focus:ring-emerald-500">
-                            <button type="button" @click="if (!reworkPending || (recovered_qty + scrapped_qty) < reworkPending) recovered_qty += 1" class="w-12 sm:w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black text-3xl flex items-center justify-center transition cursor-pointer border border-emerald-300 flex-shrink-0">+</button>
+                                   class="flex-1 min-w-0 w-full h-14 text-center text-3xl font-bold text-emerald-950 border-2 border-emerald-300 rounded-2xl bg-emerald-50/40 focus:bg-white focus:ring-2 focus:ring-emerald-500">
+                            <button type="button" @click="if (!reworkPending || (recovered_qty + scrapped_qty) < reworkPending) recovered_qty += 1" class="w-12 sm:w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-3xl flex items-center justify-center transition cursor-pointer border border-emerald-300 flex-shrink-0">+</button>
                         </div>
                     </div>
 
                     {{-- 2. Scrapped Pcs Stepper --}}
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
-                            <label class="block text-xs font-black text-red-800 uppercase tracking-wider">Scrapped</label>
+                            <label class="block text-xs font-semibold text-red-800 uppercase tracking-wider">Scrapped</label>
                             <span class="text-xs font-bold text-red-600" x-text="scrapped_qty + ' Scrap Pcs'"></span>
                         </div>
                         <div class="flex items-center gap-2 min-w-0">
-                            <button type="button" @click="scrapped_qty = Math.max(0, scrapped_qty - 1)" class="w-12 sm:w-14 h-14 rounded-2xl bg-red-100 hover:bg-red-200 active:bg-red-300 text-red-800 font-black text-3xl flex items-center justify-center transition cursor-pointer border border-red-300 flex-shrink-0">-</button>
+                            <button type="button" @click="scrapped_qty = Math.max(0, scrapped_qty - 1)" class="w-12 sm:w-14 h-14 rounded-2xl bg-red-100 hover:bg-red-200 active:bg-red-300 text-red-800 font-bold text-3xl flex items-center justify-center transition cursor-pointer border border-red-300 flex-shrink-0">-</button>
                             <input type="number" name="scrapped_qty" x-model.number="scrapped_qty" @focus="$event.target.select()" required
-                                   class="flex-1 min-w-0 w-full h-14 text-center text-3xl font-black text-red-950 border-2 border-red-300 rounded-2xl bg-red-50/40 focus:bg-white focus:ring-2 focus:ring-red-500">
-                            <button type="button" @click="if (!reworkPending || (recovered_qty + scrapped_qty) < reworkPending) scrapped_qty += 1" class="w-12 sm:w-14 h-14 rounded-2xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-black text-3xl flex items-center justify-center transition cursor-pointer border border-red-300 flex-shrink-0">+</button>
+                                   class="flex-1 min-w-0 w-full h-14 text-center text-3xl font-bold text-red-950 border-2 border-red-300 rounded-2xl bg-red-50/40 focus:bg-white focus:ring-2 focus:ring-red-500">
+                            <button type="button" @click="if (!reworkPending || (recovered_qty + scrapped_qty) < reworkPending) scrapped_qty += 1" class="w-12 sm:w-14 h-14 rounded-2xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-3xl flex items-center justify-center transition cursor-pointer border border-red-300 flex-shrink-0">+</button>
                         </div>
                     </div>
                 </div>
@@ -1440,7 +1440,7 @@
                     <button type="submit"
                             :disabled="(recovered_qty + scrapped_qty) <= 0 || ((recovered_qty + scrapped_qty) > reworkPending && reworkPending > 0)"
                             :class="(recovered_qty + scrapped_qty) <= 0 || ((recovered_qty + scrapped_qty) > reworkPending && reworkPending > 0) ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 shadow-xl'"
-                            class="w-full text-white py-4 rounded-2xl text-lg font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-2">
+                            class="w-full text-white py-4 rounded-2xl text-lg font-bold uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-2">
                         SAVE REWORK OUTCOME
                     </button>
                 </div>
@@ -1453,7 +1453,7 @@
         <div class="bg-white rounded-2xl overflow-hidden shadow-2xl" x-data="{ qty: 0, source: 'wip' }">
             <div :class="source === 'reworkable' ? 'bg-purple-700' : 'bg-blue-600'" class="px-6 py-4 flex justify-between items-center text-white transition-colors">
                 <div>
-                    <h3 class="text-lg font-black tracking-tight" x-text="source === 'reworkable' ? 'Receive Reworkable (Repairan)' : 'Receive Input WIP'"></h3>
+                    <h3 class="text-lg font-bold tracking-tight" x-text="source === 'reworkable' ? 'Receive Reworkable (Repairan)' : 'Receive Input WIP'"></h3>
                     <p class="text-xs font-medium" :class="source === 'reworkable' ? 'text-purple-200' : 'text-blue-100'" x-text="source === 'reworkable' ? 'Add reworkable stock back into line production flow' : 'Add standard raw/semi-finished WIP to line'"></p>
                 </div>
                 <button type="button" onclick="document.getElementById('modalInput').close()" class="opacity-80 hover:opacity-100 text-2xl font-bold leading-none cursor-pointer">&times;</button>
@@ -1464,15 +1464,15 @@
 
                 {{-- Stock Type Toggle --}}
                 <div class="mb-5">
-                    <label class="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">Stock Category</label>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Stock Category</label>
                     <div class="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
                         <button type="button" @click="source = 'wip'"
-                                :class="source === 'wip' ? 'bg-blue-600 text-white shadow-md font-black' : 'text-slate-600 hover:text-slate-900 font-bold'"
+                                :class="source === 'wip' ? 'bg-blue-600 text-white shadow-md font-bold' : 'text-slate-600 hover:text-slate-900 font-bold'"
                                 class="py-2.5 rounded-xl text-xs sm:text-sm uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5">
                             <span>Standard WIP</span>
                         </button>
                         <button type="button" @click="source = 'reworkable'"
-                                :class="source === 'reworkable' ? 'bg-purple-600 text-white shadow-md font-black' : 'text-slate-600 hover:text-slate-900 font-bold'"
+                                :class="source === 'reworkable' ? 'bg-purple-600 text-white shadow-md font-bold' : 'text-slate-600 hover:text-slate-900 font-bold'"
                                 class="py-2.5 rounded-xl text-xs sm:text-sm uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5">
                             <span>Reworkable</span>
                         </button>
@@ -1481,35 +1481,35 @@
 
                 <div class="space-y-6">
                     <div>
-                        <label class="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">Quantity (Pcs) *</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Quantity (Pcs) *</label>
                         <div class="flex items-stretch h-20 rounded-2xl border-2 overflow-hidden bg-white shadow-xs transition"
                              :class="source === 'reworkable' ? 'border-purple-300 focus-within:border-purple-500' : 'border-blue-300 focus-within:border-blue-500'">
                             <button type="button" @click="qty = Math.max(0, (parseInt(qty) || 0) - 1)"
-                                    class="w-24 flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition text-gray-600 text-4xl font-black border-r border-gray-300 cursor-pointer select-none">
+                                    class="w-24 flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition text-gray-600 text-4xl font-bold border-r border-gray-300 cursor-pointer select-none">
                                 -
                             </button>
                             <input type="number" name="quantity" value="0" x-model.number="qty" @focus="$event.target.select()" @blur="if (!qty && qty !== 0) qty = 0" required
                                    :class="source === 'reworkable' ? 'text-purple-700' : 'text-blue-600'"
-                                   class="flex-1 text-center text-5xl font-black border-0 focus:ring-0 w-full bg-transparent p-0">
+                                   class="flex-1 text-center text-5xl font-bold border-0 focus:ring-0 w-full bg-transparent p-0">
                             <button type="button" @click="qty = (parseInt(qty) || 0) + 1"
                                     :class="source === 'reworkable' ? 'bg-purple-100 hover:bg-purple-200 active:bg-purple-300 text-purple-700 border-purple-200' : 'bg-blue-100 hover:bg-blue-200 active:bg-blue-300 text-blue-700 border-gray-300'"
-                                    class="w-24 flex items-center justify-center transition text-4xl font-black border-l cursor-pointer select-none">
+                                    class="w-24 flex items-center justify-center transition text-4xl font-bold border-l cursor-pointer select-none">
                                 +
                             </button>
                         </div>
                         <div class="grid grid-cols-4 gap-2 mt-4">
                             <button type="button" @click="qty = (parseInt(qty) || 0) + 10"
                                     :class="source === 'reworkable' ? 'bg-purple-50 active:bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-50 active:bg-blue-100 text-blue-700 border-blue-200'"
-                                    class="py-4 font-black rounded-xl text-xl shadow-xs border transition cursor-pointer">+10</button>
+                                    class="py-4 font-bold rounded-xl text-xl shadow-xs border transition cursor-pointer">+10</button>
                             <button type="button" @click="qty = (parseInt(qty) || 0) + 50"
                                     :class="source === 'reworkable' ? 'bg-purple-50 active:bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-50 active:bg-blue-100 text-blue-700 border-blue-200'"
-                                    class="py-4 font-black rounded-xl text-xl shadow-xs border transition cursor-pointer">+50</button>
+                                    class="py-4 font-bold rounded-xl text-xl shadow-xs border transition cursor-pointer">+50</button>
                             <button type="button" @click="qty = (parseInt(qty) || 0) + 100"
                                     :class="source === 'reworkable' ? 'bg-purple-50 active:bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-50 active:bg-blue-100 text-blue-700 border-blue-200'"
-                                    class="py-4 font-black rounded-xl text-xl shadow-xs border transition cursor-pointer">+100</button>
+                                    class="py-4 font-bold rounded-xl text-xl shadow-xs border transition cursor-pointer">+100</button>
                             <button type="button" @click="qty = (parseInt(qty) || 0) + 500"
                                     :class="source === 'reworkable' ? 'bg-purple-50 active:bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-50 active:bg-blue-100 text-blue-700 border-blue-200'"
-                                    class="py-4 font-black rounded-xl text-xl shadow-xs border transition cursor-pointer">+500</button>
+                                    class="py-4 font-bold rounded-xl text-xl shadow-xs border transition cursor-pointer">+500</button>
                         </div>
                     </div>
                     <div>
@@ -1522,7 +1522,7 @@
                             :disabled="qty <= 0"
                             :class="[
                                 qty <= 0 ? 'opacity-50 cursor-not-allowed bg-slate-400' : (source === 'reworkable' ? 'bg-purple-600 hover:bg-purple-500 active:bg-purple-700' : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700'),
-                                'w-full text-white py-4 rounded-xl text-xl font-black shadow-lg transition flex items-center justify-center gap-2 cursor-pointer'
+                                'w-full text-white py-4 rounded-xl text-xl font-bold shadow-lg transition flex items-center justify-center gap-2 cursor-pointer'
                             ]">
                         <span x-text="source === 'reworkable' ? 'SAVE REWORKABLE INPUT' : 'SAVE WIP INPUT'"></span>
                     </button>
@@ -1536,7 +1536,7 @@
         <div class="bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
             <div class="bg-purple-700 px-6 py-4 flex justify-between items-center text-white flex-shrink-0">
                 <div>
-                    <h3 class="text-xl font-black flex items-center gap-2">Active Line Team</h3>
+                    <h3 class="text-xl font-bold flex items-center gap-2">Active Line Team</h3>
                     <p class="text-xs text-purple-200 font-medium mt-0.5" x-text="manpowerEntries.length + ' Worker(s) assigned to {{ $session->unit_line }} Shift {{ $session->shift }}'"></p>
                 </div>
                 <button type="button" onclick="document.getElementById('modalTeamRoster').close()" class="text-purple-200 hover:text-white text-2xl font-bold">&times;</button>
@@ -1553,12 +1553,12 @@
                 <template x-for="m in manpowerEntries" :key="m.id">
                     <div class="flex items-center justify-between p-3.5 bg-purple-50/60 border border-purple-200/80 rounded-2xl">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-purple-600 text-white font-black text-sm flex items-center justify-center shadow-xs"
+                            <div class="w-10 h-10 rounded-xl bg-purple-600 text-white font-semibold text-sm flex items-center justify-center shadow-xs"
                                  x-text="(m.operator_name || 'W').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()"></div>
                             <div>
-                                <h4 class="font-black text-purple-950 text-sm" x-text="m.operator_name"></h4>
+                                <h4 class="font-semibold text-purple-950 text-sm" x-text="m.operator_name"></h4>
                                 <div class="flex items-center gap-2 mt-0.5">
-                                    <span class="px-2 py-0.5 bg-purple-200/80 text-purple-900 text-[10px] font-black uppercase rounded-md" x-text="m.role || 'Member'"></span>
+                                    <span class="px-2 py-0.5 bg-purple-200/80 text-purple-900 text-[10px] font-semibold uppercase rounded-md" x-text="m.role || 'Member'"></span>
                                     <span x-show="m.employee_no" class="text-[11px] font-mono text-purple-700" x-text="'#' + m.employee_no"></span>
                                 </div>
                             </div>
@@ -1575,7 +1575,7 @@
             @if($session->status === 'running')
                 <div class="p-4 bg-gray-50 border-t border-gray-100 flex-shrink-0">
                     <button type="button" onclick="document.getElementById('modalTeamRoster').close(); document.getElementById('modalManpower').showModal();"
-                            class="w-full bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white py-3.5 rounded-xl font-black text-sm uppercase tracking-wider shadow-md transition">
+                            class="w-full bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white py-3.5 rounded-xl font-semibold text-sm uppercase tracking-wider shadow-md transition">
                         + ADD TEAM MEMBER
                     </button>
                 </div>
@@ -1587,7 +1587,7 @@
     <dialog id="modalManpower" class="rounded-xl p-0 shadow-2xl border-0 w-full max-w-lg backdrop:bg-gray-900/50 bg-transparent">
         <div class="bg-white rounded-xl overflow-hidden shadow-2xl">
             <div class="bg-purple-600 px-6 py-4 flex justify-between items-center">
-                <h3 class="text-lg font-black text-white">+ Add Line Team Member</h3>
+                <h3 class="text-lg font-bold text-white">+ Add Line Team Member</h3>
                 <button type="button" onclick="document.getElementById('modalManpower').close()" class="text-purple-200 hover:text-white text-xl font-bold">&times;</button>
             </div>
             <form action="{{ route('app.sp-sessions.add-manpower', $session->id) }}" method="POST"
@@ -1631,7 +1631,7 @@
                 </div>
                 <div class="mt-6 pt-4 border-t border-gray-100 flex gap-3">
                     <button type="button" onclick="document.getElementById('modalManpower').close()" class="w-1/3 bg-gray-200 active:bg-gray-300 text-gray-800 py-4 rounded-xl text-lg font-bold">Cancel</button>
-                    <button type="submit" class="w-2/3 bg-purple-600 active:bg-purple-700 text-white py-4 rounded-xl text-xl font-black shadow-lg">ADD MEMBER</button>
+                    <button type="submit" class="w-2/3 bg-purple-600 active:bg-purple-700 text-white py-4 rounded-xl text-xl font-semibold shadow-lg">ADD MEMBER</button>
                 </div>
             </form>
         </div>
@@ -1642,7 +1642,7 @@
         <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
             <div class="bg-red-700 px-6 py-4 flex justify-between items-center text-white">
                 <div>
-                    <h3 class="text-lg font-black flex items-center gap-2">Finish Production Shift</h3>
+                    <h3 class="text-lg font-bold flex items-center gap-2">Finish Production Shift</h3>
                     <p class="text-xs text-red-100 font-medium mt-0.5">Work Order #{{ $session->workOrder->wo_number }}</p>
                 </div>
                 <button type="button" onclick="document.getElementById('modalFinish').close()" class="text-red-200 hover:text-white text-2xl font-bold">&times;</button>
@@ -1655,7 +1655,7 @@
                 <div x-show="reworkPending > 0" class="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2 text-xs font-bold text-amber-900">
                     <span class="text-base leading-none">⚠️</span>
                     <div>
-                        <strong class="font-black">Active Rework Warning:</strong>
+                        <strong class="font-bold">Active Rework Warning:</strong>
                         <p class="font-medium text-amber-800 mt-0.5">
                             <span x-text="reworkPending"></span> Pcs are still sitting at the Rework Bench.
                         </p>
@@ -1668,11 +1668,11 @@
 
                 <div class="flex gap-3">
                     <button type="button" onclick="document.getElementById('modalFinish').close()"
-                            class="w-1/3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider transition cursor-pointer">
+                            class="w-1/3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 py-3.5 rounded-2xl text-xs font-semibold uppercase tracking-wider transition cursor-pointer">
                         Cancel
                     </button>
                     <button type="submit"
-                            class="w-2/3 bg-red-700 hover:bg-red-600 active:bg-red-800 text-white py-3.5 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5">
+                            class="w-2/3 bg-red-700 hover:bg-red-600 active:bg-red-800 text-white py-3.5 rounded-2xl text-xs sm:text-sm font-semibold uppercase tracking-wider shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5">
                         <span>PROCEED TO CLOSE-OUT →</span>
                     </button>
                 </div>
@@ -1685,7 +1685,7 @@
         <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
             <div class="bg-amber-600 px-6 py-4 flex justify-between items-center text-white">
                 <div>
-                    <h3 class="text-xl font-black flex items-center gap-2">Resume Line Production</h3>
+                    <h3 class="text-xl font-bold flex items-center gap-2">Resume Line Production</h3>
                     <p class="text-xs text-amber-100 font-medium mt-0.5" x-text="'Line stopped for ' + pausedDurationMinutes + ' Minute(s). Please select Downtime Reason to resume.'"></p>
                 </div>
                 <button type="button" onclick="document.getElementById('modalResumeDowntime').close()" class="text-amber-200 hover:text-white text-2xl font-bold">&times;</button>
@@ -1697,7 +1697,7 @@
 
                 <div class="space-y-6">
                     <div>
-                        <label class="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">Select Downtime Reason *</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Select Downtime Reason *</label>
                         <div class="grid grid-cols-2 gap-3">
                             @foreach($downtimeReasons as $r)
                                 <button type="button" @click="selectedReason = '{{ $r }}'"
@@ -1710,14 +1710,14 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Optional Remarks / Action Taken</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Optional Remarks / Action Taken</label>
                         <input type="text" name="remarks" placeholder="Countermeasure or breakdown details..." class="w-full border-gray-300 rounded-xl text-sm p-3 bg-gray-50 focus:bg-white">
                     </div>
                 </div>
 
                 <div class="mt-6 pt-4 border-t border-gray-100">
                     <button type="submit" :disabled="!selectedReason" :class="!selectedReason ? 'opacity-50 cursor-not-allowed' : ''"
-                            class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white py-4 rounded-xl text-lg font-black shadow-lg transition uppercase tracking-wider">
+                            class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white py-4 rounded-xl text-lg font-bold shadow-lg transition uppercase tracking-wider">
                         RESUME PRODUCTION & SAVE DOWNTIME
                     </button>
                 </div>

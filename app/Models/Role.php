@@ -46,6 +46,7 @@ class Role extends Model
             'view-second-process-dashboard', 'view-second-process-ops' => 'second-process-dashboard',
             'view-second-process-sessions' => 'second-process-sessions',
             'view-second-process-analytics' => 'second-process-analytics',
+            'view-second-process-defects', 'manage-second-process-defects', 'second-process-defect-manager' => 'second-process-defects',
             default => $permissionName,
         };
     }
@@ -131,6 +132,7 @@ class Role extends Model
                 'second-process-approvals',
                 'second-process-reports',
                 'second-process-analytics',
+                'second-process-defects',
                 'view-assembly-process-links',
                 'view-business-links',
                 'view-production-links',
@@ -146,6 +148,7 @@ class Role extends Model
                 'second-process-dashboard',
                 'second-process-reports',
                 'second-process-analytics',
+                'second-process-defects',
             ],
             'STORE' => ['view-store-links'],
             'PPIC' => [
@@ -169,6 +172,7 @@ class Role extends Model
                 'second-process-ipqc',
                 'second-process-reports',
                 'second-process-dashboard',
+                'second-process-defects',
             ],
             'CHECKER' => [
                 'view-operator-links',
@@ -185,6 +189,7 @@ class Role extends Model
                 'second-process-approvals',
                 'second-process-sessions',
                 'second-process-analytics',
+                'second-process-defects',
             ],
             'SUPERVISOR' => [
                 'view-operator-links',
@@ -195,6 +200,7 @@ class Role extends Model
                 'second-process-approvals',
                 'second-process-sessions',
                 'second-process-analytics',
+                'second-process-defects',
                 'second-process-delete',
             ],
         ];

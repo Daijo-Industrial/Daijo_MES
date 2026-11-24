@@ -49,9 +49,9 @@
                 <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">QC Gate Status</h3>
                 <div class="flex items-center space-x-2 mt-1">
                     @if($inspection->overall_judgement === 'OK')
-                        <span class="px-3 py-1 text-xs font-extrabold rounded bg-green-100 text-green-800 border border-green-300 uppercase">OK — APPROVED FOR PRODUCTION</span>
+                        <span class="px-3 py-1 text-xs font-semibold rounded bg-green-100 text-green-800 border border-green-300 uppercase">OK — APPROVED FOR PRODUCTION</span>
                     @else
-                        <span class="px-3 py-1 text-xs font-extrabold rounded bg-red-100 text-red-800 border border-red-300 uppercase">NG — NOT APPROVED</span>
+                        <span class="px-3 py-1 text-xs font-semibold rounded bg-red-100 text-red-800 border border-red-300 uppercase">NG — NOT APPROVED</span>
                     @endif
                 </div>
             </div>
@@ -94,7 +94,7 @@
             <!-- Document Header -->
             <div class="border-2 border-black grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-black text-sm">
                 <div class="p-4 flex flex-col justify-center items-center col-span-2">
-                    <h1 class="text-xl font-black text-center tracking-tight">PT. DAIJO INDUSTRIAL</h1>
+                    <h1 class="text-xl font-bold text-center tracking-tight">PT. DAIJO INDUSTRIAL</h1>
                     <p class="text-xs font-bold text-center mt-1">Second Process Department</p>
                 </div>
                 <div class="p-2 grid grid-cols-2 gap-x-2 text-[11px] leading-tight col-span-2">
@@ -103,7 +103,7 @@
                     <div class="font-bold">Form:</div>
                     <div>FIRST PIECE SAMPLE / INSPECTION</div>
                     <div class="font-bold">Overall Judgment:</div>
-                    <div class="font-extrabold {{ $inspection->overall_judgement === 'OK' ? 'text-green-700' : 'text-red-700' }}">{{ $inspection->overall_judgement }}</div>
+                    <div class="font-bold {{ $inspection->overall_judgement === 'OK' ? 'text-green-700' : 'text-red-700' }}">{{ $inspection->overall_judgement }}</div>
                 </div>
             </div>
 
@@ -168,12 +168,12 @@
                                     <td class="border border-black p-2 text-center">{{ $res['method'] ?? 'Visual' }}</td>
                                     <td class="border border-black p-2 text-center font-bold">
                                         @if(($res['result'] ?? 'OK') === 'OK')
-                                            <span class="text-green-700">✓ OK</span>
+                                            <span class="text-green-700">OK</span>
                                         @else
                                             <span class="text-red-700">✗ NG</span>
                                         @endif
                                     </td>
-                                    <td class="border border-black p-2 text-center font-extrabold">
+                                    <td class="border border-black p-2 text-center font-bold">
                                         @if(($res['judgement'] ?? 'OK') === 'OK')
                                             <span class="text-green-700">OK</span>
                                         @else

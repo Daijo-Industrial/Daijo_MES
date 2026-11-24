@@ -3,7 +3,7 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <div class="flex items-center gap-3">
-                    <h2 class="font-black text-2xl text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                    <h2 class="font-bold text-2xl text-slate-900 uppercase tracking-wide flex items-center gap-2">
                         <span>{{ $line }}</span>
                         <span class="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg">Historical Line Analytics</span>
                     </h2>
@@ -50,18 +50,18 @@
                 {{-- Date Range Inputs (Start & End) --}}
                 <div class="flex items-center gap-2">
                     <div class="flex items-center gap-1.5">
-                        <label class="font-black text-xs uppercase text-slate-500">From:</label>
+                        <label class="font-semibold text-xs uppercase text-slate-500">From:</label>
                         <input type="date" name="date_from" value="{{ $dateFrom }}" class="rounded-xl border-slate-300 text-xs font-bold py-1.5 focus:ring-blue-500" onchange="this.form.submit()">
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <label class="font-black text-xs uppercase text-slate-500">To:</label>
+                        <label class="font-semibold text-xs uppercase text-slate-500">To:</label>
                         <input type="date" name="date_to" value="{{ $dateTo }}" class="rounded-xl border-slate-300 text-xs font-bold py-1.5 focus:ring-blue-500" onchange="this.form.submit()">
                     </div>
                 </div>
 
                 {{-- Shift Select --}}
                 <div class="flex items-center gap-1.5">
-                    <label class="font-black text-xs uppercase text-slate-500">Shift:</label>
+                    <label class="font-semibold text-xs uppercase text-slate-500">Shift:</label>
                     <select name="shift" class="rounded-xl border-slate-300 text-xs font-bold py-1.5 focus:ring-blue-500" onchange="this.form.submit()">
                         <option value="all" {{ (string)$shift === 'all' ? 'selected' : '' }}>All Shifts</option>
                         @foreach(config('mes.sp_shifts', config('mes.shifts', [])) as $sId => $sConf)
@@ -73,7 +73,7 @@
 
             <div class="flex items-center gap-2 text-xs font-bold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
                 <span>📅 Window: 
-                    <strong class="text-slate-900 font-black">
+                    <strong class="text-slate-900 font-bold">
                         @if($dateFrom === $dateTo)
                             {{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }}
                         @else
@@ -88,43 +88,43 @@
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {{-- KPI 1: Good Output --}}
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Good Output</div>
-                <div class="text-2xl font-black text-emerald-600">{{ number_format($totalGood) }}</div>
+                <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Good Output</div>
+                <div class="text-2xl font-bold text-emerald-600">{{ number_format($totalGood) }}</div>
                 <div class="text-[10px] text-gray-400 font-semibold mt-1">Pcs produced</div>
             </div>
 
             {{-- KPI 2: Defect Output --}}
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Defects (NG)</div>
-                <div class="text-2xl font-black text-red-600">{{ number_format($totalReject) }}</div>
+                <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Defects (NG)</div>
+                <div class="text-2xl font-bold text-red-600">{{ number_format($totalReject) }}</div>
                 <div class="text-[10px] text-gray-400 font-semibold mt-1">Pcs rejected</div>
             </div>
 
             {{-- KPI 3: NG Rate --}}
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">NG Rate</div>
-                <div class="text-2xl font-black {{ $ngRate > 2 ? 'text-red-600' : 'text-emerald-600' }}">{{ $ngRate }}%</div>
+                <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">NG Rate</div>
+                <div class="text-2xl font-bold {{ $ngRate > 2 ? 'text-red-600' : 'text-emerald-600' }}">{{ $ngRate }}%</div>
                 <div class="text-[10px] text-gray-400 font-semibold mt-1">Target: &le; 2.0%</div>
             </div>
 
             {{-- KPI 4: Yield --}}
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Process Yield</div>
-                <div class="text-2xl font-black text-blue-600">{{ $yieldPct }}%</div>
+                <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Process Yield</div>
+                <div class="text-2xl font-bold text-blue-600">{{ $yieldPct }}%</div>
                 <div class="text-[10px] text-gray-400 font-semibold mt-1">Good / Total output</div>
             </div>
 
             {{-- KPI 5: Input WIP --}}
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Total Input Received</div>
-                <div class="text-2xl font-black text-gray-900">{{ number_format($totalInput) }}</div>
+                <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Input Received</div>
+                <div class="text-2xl font-bold text-gray-900">{{ number_format($totalInput) }}</div>
                 <div class="text-[10px] text-gray-400 font-semibold mt-1">Pcs from molding/WIP</div>
             </div>
 
             {{-- KPI 6: Downtime Minutes --}}
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Downtime Loss</div>
-                <div class="text-2xl font-black {{ $totalDowntimeMinutes > 30 ? 'text-amber-600' : 'text-gray-900' }}">{{ $totalDowntimeMinutes }} <span class="text-xs text-gray-400 font-normal">min</span></div>
+                <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Downtime Loss</div>
+                <div class="text-2xl font-bold {{ $totalDowntimeMinutes > 30 ? 'text-amber-600' : 'text-gray-900' }}">{{ $totalDowntimeMinutes }} <span class="text-xs text-gray-400 font-normal">min</span></div>
                 <div class="text-[10px] text-gray-400 font-semibold mt-1">{{ $downtimeBreakdown->sum('occurrences') }} stop event(s)</div>
             </div>
         </div>
@@ -135,10 +135,10 @@
             <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
                 <div class="flex justify-between items-center border-b border-gray-100 pb-3">
                     <div>
-                        <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest">Hourly Production Output</h3>
+                        <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-widest">Hourly Production Output</h3>
                         <p class="text-xs text-gray-400 font-medium">Good vs Reject distribution by hour</p>
                     </div>
-                    <span class="text-[10px] font-black uppercase text-gray-400 bg-gray-50 border px-2 py-0.5 rounded-lg">Shift {{ $shift }}</span>
+                    <span class="text-[10px] font-semibold uppercase text-gray-400 bg-gray-50 border px-2 py-0.5 rounded-lg">Shift {{ $shift }}</span>
                 </div>
                 <div class="relative h-64 w-full">
                     <canvas id="chartHourlyOutput"></canvas>
@@ -149,10 +149,10 @@
             <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
                 <div class="flex justify-between items-center border-b border-gray-100 pb-3">
                     <div>
-                        <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest">Defect Breakdown (Pareto)</h3>
+                        <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-widest">Defect Breakdown (Pareto)</h3>
                         <p class="text-xs text-gray-400 font-medium">Rejects grouped by defect classification</p>
                     </div>
-                    <span class="text-[10px] font-black uppercase text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-lg">Total: {{ number_format($totalReject) }} Pcs</span>
+                    <span class="text-[10px] font-semibold uppercase text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-lg">Total: {{ number_format($totalReject) }} Pcs</span>
                 </div>
                 <div class="relative h-64 w-full">
                     <canvas id="chartDefectPareto"></canvas>
@@ -167,10 +167,10 @@
                 <div>
                     <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
-                            <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest">Downtime Loss Log</h3>
+                            <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-widest">Downtime Loss Log</h3>
                             <p class="text-xs text-gray-400 font-medium">Stop events recorded during shift</p>
                         </div>
-                        <span class="px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-200">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-200">
                             Total: {{ $totalDowntimeMinutes }} Min
                         </span>
                     </div>
@@ -181,7 +181,7 @@
                             @foreach($downtimeBreakdown as $dt)
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-white border border-amber-200 text-amber-950 shadow-2xs">
                                     <span>{{ $dt->reason }}:</span>
-                                    <strong class="text-amber-700 font-black">{{ $dt->total_minutes }} min</strong>
+                                    <strong class="text-amber-700 font-bold">{{ $dt->total_minutes }} min</strong>
                                     <span class="text-[10px] text-gray-400">({{ $dt->occurrences }}x)</span>
                                 </span>
                             @endforeach
@@ -191,7 +191,7 @@
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                                <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                                     <th class="px-6 py-3">Reason</th>
                                     <th class="px-6 py-3">Start Time</th>
                                     <th class="px-6 py-3">Resume Time</th>
@@ -205,7 +205,7 @@
                                         <td class="px-6 py-3 font-bold text-gray-900">{{ $dtEntry->reason }}</td>
                                         <td class="px-6 py-3 text-gray-600 font-mono">{{ $dtEntry->start_time?->setTimezone(config('mes.timezone', 'Asia/Jakarta'))->format('H:i') ?? '-' }}</td>
                                         <td class="px-6 py-3 text-gray-600 font-mono">{{ $dtEntry->resume_time?->setTimezone(config('mes.timezone', 'Asia/Jakarta'))->format('H:i') ?? '-' }}</td>
-                                        <td class="px-6 py-3 text-right font-black text-amber-700">{{ $dtEntry->duration_minutes }} min</td>
+                                        <td class="px-6 py-3 text-right font-bold text-amber-700">{{ $dtEntry->duration_minutes }} min</td>
                                         <td class="px-6 py-3 text-gray-500 italic max-w-xs truncate">{{ $dtEntry->remarks ?? '-' }}</td>
                                     </tr>
                                 @empty
@@ -223,33 +223,33 @@
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5 flex flex-col justify-between">
                 <div>
                     <div class="border-b border-gray-100 pb-3 mb-4">
-                        <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest">Rework Recovery</h3>
+                        <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-widest">Rework Recovery</h3>
                         <p class="text-xs text-gray-400 font-medium">Defects processed for recovery</p>
                     </div>
 
                     <div class="space-y-4">
                         <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
                             <div>
-                                <div class="text-[10px] font-black text-blue-800 uppercase">Input to Rework</div>
+                                <div class="text-[10px] font-semibold text-blue-800 uppercase">Input to Rework</div>
                                 <div class="text-xs text-blue-600 font-semibold">Parts sent for rework</div>
                             </div>
-                            <div class="text-xl font-black text-blue-950">{{ number_format($totalReworkIn) }} <span class="text-xs text-blue-700">Pcs</span></div>
+                            <div class="text-xl font-bold text-blue-950">{{ number_format($totalReworkIn) }} <span class="text-xs text-blue-700">Pcs</span></div>
                         </div>
 
                         <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100 flex justify-between items-center">
                             <div>
-                                <div class="text-[10px] font-black text-emerald-800 uppercase">Successfully Recovered</div>
+                                <div class="text-[10px] font-semibold text-emerald-800 uppercase">Successfully Recovered</div>
                                 <div class="text-xs text-emerald-600 font-semibold">Saved & passed QC</div>
                             </div>
-                            <div class="text-xl font-black text-emerald-950">{{ number_format($totalReworkRecovered) }} <span class="text-xs text-emerald-700">Pcs</span></div>
+                            <div class="text-xl font-bold text-emerald-950">{{ number_format($totalReworkRecovered) }} <span class="text-xs text-emerald-700">Pcs</span></div>
                         </div>
 
                         <div class="bg-red-50/60 p-4 rounded-xl border border-red-100 flex justify-between items-center">
                             <div>
-                                <div class="text-[10px] font-black text-red-800 uppercase">Scrapped / Irrecoverable</div>
+                                <div class="text-[10px] font-semibold text-red-800 uppercase">Scrapped / Irrecoverable</div>
                                 <div class="text-xs text-red-600 font-semibold">Final scrap count</div>
                             </div>
-                            <div class="text-xl font-black text-red-950">{{ number_format($totalScrap) }} <span class="text-xs text-red-700">Pcs</span></div>
+                            <div class="text-xl font-bold text-red-950">{{ number_format($totalScrap) }} <span class="text-xs text-red-700">Pcs</span></div>
                         </div>
                     </div>
                 </div>
@@ -258,8 +258,8 @@
                     $reworkRecoveryRate = $totalReworkIn > 0 ? round(($totalReworkRecovered / $totalReworkIn) * 100, 1) : 0;
                 @endphp
                 <div class="pt-4 border-t border-gray-100 text-center">
-                    <div class="text-[10px] font-black text-gray-400 uppercase mb-1">Rework Recovery Rate</div>
-                    <div class="text-lg font-black text-gray-800">{{ $reworkRecoveryRate }}%</div>
+                    <div class="text-[10px] font-semibold text-gray-400 uppercase mb-1">Rework Recovery Rate</div>
+                    <div class="text-lg font-bold text-gray-800">{{ $reworkRecoveryRate }}%</div>
                 </div>
             </div>
         </div>
@@ -270,17 +270,17 @@
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <div>
-                        <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest">Shift Manpower Team</h3>
+                        <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-widest">Shift Manpower Team</h3>
                         <p class="text-xs text-gray-400 font-medium">Assigned operators and line leaders</p>
                     </div>
-                    <span class="px-2.5 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 border border-blue-200">
+                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
                         {{ $manpower->count() }} Members
                     </span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                            <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                                 <th class="px-6 py-3">Operator Name</th>
                                 <th class="px-6 py-3">Employee No.</th>
                                 <th class="px-6 py-3">Role</th>
@@ -307,14 +307,14 @@
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <div>
-                        <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest">Recent Session History</h3>
+                        <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-widest">Recent Session History</h3>
                         <p class="text-xs text-gray-400 font-medium">Last 10 sessions on {{ $line }}</p>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                            <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                                 <th class="px-6 py-3">Date / Shift</th>
                                 <th class="px-6 py-3">WO Number</th>
                                 <th class="px-6 py-3 text-right">Good Output</th>
@@ -329,15 +329,15 @@
                                         <div>{{ $sHist->started_at?->setTimezone(config('mes.timezone', 'Asia/Jakarta'))->format('d M Y, H:i') }}</div>
                                         <div class="text-[10px] text-gray-400">Shift {{ $sHist->shift }}</div>
                                     </td>
-                                    <td class="px-6 py-3 font-black text-blue-700">
+                                    <td class="px-6 py-3 font-bold text-blue-700">
                                         <a href="{{ route('sp-work-orders.show', $sHist->work_order_id) }}" class="hover:underline">
                                             {{ $sHist->workOrder->wo_number ?? '-' }}
                                         </a>
                                     </td>
-                                    <td class="px-6 py-3 text-right font-black text-emerald-600">{{ number_format($sHist->total_good) }}</td>
-                                    <td class="px-6 py-3 text-right font-black text-red-600">{{ number_format($sHist->total_reject) }}</td>
+                                    <td class="px-6 py-3 text-right font-bold text-emerald-600">{{ number_format($sHist->total_good) }}</td>
+                                    <td class="px-6 py-3 text-right font-bold text-red-600">{{ number_format($sHist->total_reject) }}</td>
                                     <td class="px-6 py-3 text-center">
-                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider border
                                             {{ $sHist->status === 'running' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-gray-100 text-gray-700 border-gray-200' }}">
                                             {{ $sHist->status }}
                                         </span>

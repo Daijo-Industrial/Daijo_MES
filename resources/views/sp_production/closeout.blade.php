@@ -2,12 +2,12 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <div>
-                <h2 class="font-black text-xl text-slate-900 leading-tight uppercase tracking-wider">
+                <h2 class="font-bold text-xl text-slate-900 leading-tight uppercase tracking-wider">
                     Production Session Close-Out
                 </h2>
                 <p class="text-xs text-slate-500 font-medium">Finalize material consumption, downtime categorization, and shift handover</p>
             </div>
-            <span class="text-xs font-black bg-blue-100 text-blue-900 px-3.5 py-1.5 rounded-xl border border-blue-200 uppercase tracking-wider shadow-xs">
+            <span class="text-xs font-semibold bg-blue-100 text-blue-900 px-3.5 py-1.5 rounded-xl border border-blue-200 uppercase tracking-wider shadow-xs">
                 Session #{{ $session->id }}
             </span>
         </div>
@@ -81,17 +81,17 @@
             <div>
                 <div class="flex items-center gap-2 mb-1">
                     @if($session->status === 'running')
-                        <span class="px-2.5 py-0.5 rounded-md bg-amber-500/30 text-amber-300 border border-amber-400/40 text-[10px] font-black uppercase tracking-wider">
-                            ⏳ SHIFT CLOSE-OUT IN PROGRESS
+                        <span class="px-2.5 py-0.5 rounded-md bg-amber-500/30 text-amber-300 border border-amber-400/40 text-[10px] font-semibold uppercase tracking-wider">
+                            SHIFT CLOSE-OUT IN PROGRESS
                         </span>
                     @else
-                        <span class="px-2.5 py-0.5 rounded-md bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-[10px] font-black uppercase tracking-wider">
-                            ✓ SESSION COMPLETED
+                        <span class="px-2.5 py-0.5 rounded-md bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-[10px] font-semibold uppercase tracking-wider">
+                            SESSION COMPLETED
                         </span>
                     @endif
                     <span class="text-xs font-mono text-slate-400">{{ $session->unit_line }} — Shift {{ $session->shift }}</span>
                 </div>
-                <h3 class="text-xl sm:text-2xl font-black tracking-tight text-white">
+                <h3 class="text-xl sm:text-2xl font-bold tracking-tight text-white">
                     WO #{{ $wo->wo_number ?? 'N/A' }} <span class="text-slate-400 font-medium text-base">({{ $wo->part_name ?? 'Part' }})</span>
                 </h3>
                 <p class="text-xs text-slate-300 font-medium mt-1">
@@ -100,7 +100,7 @@
             </div>
 
             <a href="{{ route('app.sp-sessions.show', $session->id) }}" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
-                <span>← Back to Live Session</span>
+                <span>Back to Live Session</span>
             </a>
         </div>
 
@@ -110,7 +110,7 @@
             {{-- Validation Error Alert Banner --}}
             @if ($errors->any())
                 <div class="p-5 bg-red-50 border-2 border-red-200 rounded-3xl text-red-950 text-xs shadow-md space-y-2.5">
-                    <div class="flex items-center gap-2.5 font-black text-red-900 uppercase tracking-wider text-sm">
+                    <div class="flex items-center gap-2.5 font-semibold text-red-900 uppercase tracking-wider text-sm">
                         <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
                         <span>Please correct the following before completing close-out:</span>
                     </div>
@@ -126,10 +126,10 @@
             <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-5">
                 <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
                     <div>
-                        <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">1. Shift Performance Scorecard</h3>
+                        <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider">1. Shift Performance Scorecard</h3>
                         <p class="text-xs text-slate-500 font-medium">Read-only final session metrics captured during operation</p>
                     </div>
-                    <span class="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
                         Final Audit View
                     </span>
                 </div>
@@ -138,36 +138,36 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                     {{-- Target Qty --}}
                     <div class="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80">
-                        <span class="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Target Qty</span>
-                        <span class="text-lg font-black text-slate-900 leading-tight block">{{ number_format($wo->target_qty ?? 0) }} Pcs</span>
+                        <span class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Target Qty</span>
+                        <span class="text-lg font-bold text-slate-900 leading-tight block">{{ number_format($wo->target_qty ?? 0) }} Pcs</span>
                         <span class="text-[9px] font-bold text-slate-400">Work Order Target</span>
                     </div>
 
                     {{-- Total Input --}}
                     <div class="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200/80">
-                        <span class="block text-[10px] font-black text-blue-700 uppercase tracking-wider">Total Input WIP</span>
-                        <span class="text-lg font-black text-blue-950 leading-tight block">{{ number_format($session->total_input) }} Pcs</span>
+                        <span class="block text-[10px] font-semibold text-blue-700 uppercase tracking-wider">Total Input WIP</span>
+                        <span class="text-lg font-bold text-blue-950 leading-tight block">{{ number_format($session->total_input) }} Pcs</span>
                         <span class="text-[9px] font-bold text-blue-700/80">Received Stock</span>
                     </div>
 
                     {{-- Leftover WIP Stock --}}
                     <div class="bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200/80">
-                        <span class="block text-[10px] font-black text-amber-800 uppercase tracking-wider">Leftover WIP</span>
-                        <span class="text-lg font-black text-amber-950 leading-tight block">{{ number_format($unusedWip) }} Pcs</span>
+                        <span class="block text-[10px] font-semibold text-amber-800 uppercase tracking-wider">Leftover WIP</span>
+                        <span class="text-lg font-bold text-amber-950 leading-tight block">{{ number_format($unusedWip) }} Pcs</span>
                         <span class="text-[9px] font-bold text-amber-700/80">Unprocessed Balance</span>
                     </div>
 
                     {{-- Good Output --}}
                     <div class="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200/80">
-                        <span class="block text-[10px] font-black text-emerald-700 uppercase tracking-wider">Good Output</span>
-                        <span class="text-lg font-black text-emerald-950 leading-tight block">{{ number_format($session->total_good) }} Pcs</span>
+                        <span class="block text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">Good Output</span>
+                        <span class="text-lg font-bold text-emerald-950 leading-tight block">{{ number_format($session->total_good) }} Pcs</span>
                         <span class="text-[9px] font-bold text-emerald-800/80 truncate block">{{ number_format($directGood) }} Direct • {{ number_format($session->total_rework_recovered) }} Rec.</span>
                     </div>
 
                     {{-- Final Scrap --}}
                     <div class="bg-red-50/70 p-3.5 rounded-2xl border border-red-200/80">
-                        <span class="block text-[10px] font-black text-red-700 uppercase tracking-wider">Final Scrap</span>
-                        <span class="text-lg font-black text-red-950 leading-tight block">{{ number_format($finalScrap) }} Pcs</span>
+                        <span class="block text-[10px] font-semibold text-red-700 uppercase tracking-wider">Final Scrap</span>
+                        <span class="text-lg font-bold text-red-950 leading-tight block">{{ number_format($finalScrap) }} Pcs</span>
                         <span class="text-[9px] font-bold text-red-700/80 truncate block">
                             @if($session->total_scrap > 0 && ($finalScrap - $session->total_scrap) > 0)
                                 {{ number_format($session->total_scrap) }} Scrapped • {{ number_format($finalScrap - $session->total_scrap) }} Line Defect
@@ -181,16 +181,16 @@
 
                     {{-- Total Downtime --}}
                     <div class="bg-yellow-50/70 p-3.5 rounded-2xl border border-yellow-200/80">
-                        <span class="block text-[10px] font-black text-yellow-800 uppercase tracking-wider">Total Downtime</span>
-                        <span class="text-lg font-black text-yellow-950 leading-tight block">{{ number_format($session->downtimeEntries->sum('duration_minutes')) }} Mins</span>
+                        <span class="block text-[10px] font-semibold text-yellow-800 uppercase tracking-wider">Total Downtime</span>
+                        <span class="text-lg font-bold text-yellow-950 leading-tight block">{{ number_format($session->downtimeEntries->sum('duration_minutes')) }} Mins</span>
                         <span class="text-[9px] font-bold text-yellow-700">{{ $session->downtimeEntries->count() }} Stoppage Log(s)</span>
                     </div>
 
                     {{-- Yield Rate --}}
                     <div class="bg-purple-50/70 p-3.5 rounded-2xl border border-purple-200/80 md:col-span-2">
-                        <span class="block text-[10px] font-black text-purple-700 uppercase tracking-wider">Process Yield Rate</span>
+                        <span class="block text-[10px] font-semibold text-purple-700 uppercase tracking-wider">Process Yield Rate</span>
                         <div class="flex items-baseline gap-2">
-                            <span class="text-xl font-black text-purple-950">{{ number_format($session->yield, 1) }}%</span>
+                            <span class="text-xl font-bold text-purple-950">{{ number_format($session->yield, 1) }}%</span>
                             <span class="text-[10px] font-bold text-purple-700">({{ number_format($session->total_good) }} / {{ number_format($session->total_good + $finalScrap) }} Processed)</span>
                         </div>
                     </div>
@@ -200,22 +200,22 @@
             {{-- SECTION 2: Material Consumption (Paint & Parts) --}}
             <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
                 <div class="border-b border-slate-100 pb-3">
-                    <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">2. Material Consumption & Lot Tracking</h3>
+                    <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider">2. Material Consumption & Lot Tracking</h3>
                     <p class="text-xs text-slate-500 font-medium">Record lot numbers, viscosity, mixing ratio, and raw material quantities used during shift</p>
                 </div>
 
                 {{-- Paint Materials Sub-table --}}
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
-                        <span class="text-[11px] font-black text-slate-700 uppercase tracking-wider">Paint Items (Viscosity & Mixing Ratio)</span>
-                        <button type="button" @click="addPaintRow()" class="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-800 font-black text-xs rounded-xl border border-blue-200 transition cursor-pointer">
+                        <span class="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">Paint Items (Viscosity & Mixing Ratio)</span>
+                        <button type="button" @click="addPaintRow()" class="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-800 font-semibold text-xs rounded-xl border border-blue-200 transition cursor-pointer">
                             + Add Paint Item
                         </button>
                     </div>
 
                     <div class="overflow-x-auto border border-slate-200/80 rounded-2xl">
                         <table class="w-full text-left text-xs">
-                            <thead class="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                            <thead class="bg-slate-50 text-[10px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                                 <tr>
                                     <th class="px-3.5 py-2.5">Item Name</th>
                                     <th class="px-3.5 py-2.5">Lot Number</th>
@@ -249,7 +249,7 @@
                                             <input type="text" :name="'materials[' + mat.globalIndex + '][uom]'" x-model="mat.uom" placeholder="Kg/L" class="w-full text-xs font-medium rounded-xl border-slate-300 py-1.5 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500">
                                         </td>
                                         <td class="px-2 py-2 text-center">
-                                            <button type="button" @click="removePaintRow(idx)" class="text-slate-400 hover:text-red-600 font-black text-base px-1 transition cursor-pointer" title="Remove">&times;</button>
+                                            <button type="button" @click="removePaintRow(idx)" class="text-slate-400 hover:text-red-600 font-bold text-base px-1 transition cursor-pointer" title="Remove">&times;</button>
                                         </td>
                                     </tr>
                                 </template>
@@ -262,21 +262,21 @@
                 <div class="space-y-3 pt-2">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-2">
-                            <span class="text-[11px] font-black text-slate-700 uppercase tracking-wider">Item Parts / WIP Lots</span>
+                            <span class="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">Item Parts / WIP Lots</span>
                             @if($session->inputEntries && $session->inputEntries->isNotEmpty())
                                 <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                    ✓ Pre-filled from {{ $session->inputEntries->count() }} Input Log{{ $session->inputEntries->count() > 1 ? 's' : '' }}
+                                    Pre-filled from {{ $session->inputEntries->count() }} Input Log{{ $session->inputEntries->count() > 1 ? 's' : '' }}
                                 </span>
                             @endif
                         </div>
-                        <button type="button" @click="addPartRow()" class="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-800 font-black text-xs rounded-xl border border-blue-200 transition cursor-pointer">
+                        <button type="button" @click="addPartRow()" class="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-800 font-semibold text-xs rounded-xl border border-blue-200 transition cursor-pointer">
                             + Add Part / WIP Item
                         </button>
                     </div>
 
                     <div class="overflow-x-auto border border-slate-200/80 rounded-2xl">
                         <table class="w-full text-left text-xs">
-                            <thead class="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                            <thead class="bg-slate-50 text-[10px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                                 <tr>
                                     <th class="px-3.5 py-2.5">Item Name</th>
                                     <th class="px-3.5 py-2.5">Lot Number</th>
@@ -302,7 +302,7 @@
                                             <input type="text" :name="'materials[' + mat.globalIndex + '][uom]'" x-model="mat.uom" placeholder="Pcs/Box" class="w-full text-xs font-medium rounded-xl border-slate-300 py-1.5 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500">
                                         </td>
                                         <td class="px-2 py-2 text-center">
-                                            <button type="button" @click="removePartRow(idx)" class="text-slate-400 hover:text-red-600 font-black text-base px-1 transition cursor-pointer" title="Remove">&times;</button>
+                                            <button type="button" @click="removePartRow(idx)" class="text-slate-400 hover:text-red-600 font-bold text-base px-1 transition cursor-pointer" title="Remove">&times;</button>
                                         </td>
                                     </tr>
                                 </template>
@@ -315,14 +315,14 @@
             {{-- SECTION 3: Downtime Categorization & Shift Handover --}}
             <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
                 <div class="border-b border-slate-100 pb-3">
-                    <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">3. Downtime Categorization & Shift Handover</h3>
+                    <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider">3. Downtime Categorization & Shift Handover</h3>
                     <p class="text-xs text-slate-500 font-medium">Categorize downtime root causes, record countermeasures, and enter handover notes</p>
                 </div>
 
                 {{-- Trouble / Downtime Enrichment List --}}
                 @if($session->downtimeEntries->isNotEmpty())
                     <div class="space-y-3">
-                        <span class="text-[11px] font-black text-slate-700 uppercase tracking-wider block">Logged Downtime Events ({{ $session->downtimeEntries->count() }})</span>
+                        <span class="text-[11px] font-semibold text-slate-700 uppercase tracking-wider block">Logged Downtime Events ({{ $session->downtimeEntries->count() }})</span>
 
                         <div class="border border-slate-200/80 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-white">
                             @foreach($session->downtimeEntries as $idx => $dt)
@@ -331,8 +331,8 @@
                                     
                                     <div class="flex flex-wrap justify-between items-center text-xs gap-2">
                                         <div class="flex items-center gap-2">
-                                            <span class="font-black text-slate-900">{{ $dt->reason }}</span>
-                                            <span class="text-[10px] font-black bg-amber-100 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-200">
+                                            <span class="font-bold text-slate-900">{{ $dt->reason }}</span>
+                                            <span class="text-[10px] font-semibold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-200">
                                                 {{ $dt->duration_minutes }} mins
                                             </span>
                                         </div>
@@ -343,7 +343,7 @@
 
                                      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                                         <div>
-                                            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Category *</label>
+                                            <label class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Category *</label>
                                             <select name="troubles[{{ $idx }}][category]" class="w-full rounded-xl border-slate-300 text-xs font-bold text-slate-800 py-1.5 focus:ring-2 focus:ring-blue-500 bg-white @error("troubles.{$idx}.category") border-red-500 ring-1 ring-red-500 bg-red-50/20 @enderror">
                                                 <option value="">-- Select Category --</option>
                                                 @foreach($troubleCategories as $cat)
@@ -356,7 +356,7 @@
                                         </div>
 
                                         <div class="md:col-span-2">
-                                            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Countermeasure (Penanganan)</label>
+                                            <label class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Countermeasure (Penanganan)</label>
                                             <input type="text" name="troubles[{{ $idx }}][countermeasure]" value="{{ old("troubles.{$idx}.countermeasure", $dt->countermeasure) }}" placeholder="Describe action taken to resolve..." class="w-full rounded-xl border-slate-300 text-xs font-medium text-slate-800 py-1.5 focus:ring-2 focus:ring-blue-500 bg-white">
                                         </div>
                                     </div>
@@ -366,7 +366,7 @@
                     </div>
                 @else
                     <div class="text-xs text-slate-500 font-medium bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
-                        ✓ No downtime events were logged during this session.
+                        No downtime events were logged during this session.
                     </div>
                 @endif
 
@@ -374,24 +374,24 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">Production Notes</label>
+                            <label class="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">Production Notes</label>
                             <textarea name="production_notes" rows="3" placeholder="General production notes or remarks..." class="w-full rounded-2xl border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 bg-slate-50/40 focus:bg-white">{{ old('production_notes', $session->production_notes ?? $session->remarks) }}</textarea>
                         </div>
 
                         <div>
-                            <label class="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">NG Remarks</label>
+                            <label class="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">NG Remarks</label>
                             <textarea name="ng_remarks" rows="2" placeholder="Remarks regarding defect causes..." class="w-full rounded-2xl border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 bg-slate-50/40 focus:bg-white">{{ old('ng_remarks', $session->ng_remarks) }}</textarea>
                         </div>
 
                         <div>
-                            <label class="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">Absent Employees</label>
+                            <label class="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">Absent Employees</label>
                             <input type="text" name="absent_employees" value="{{ old('absent_employees', $session->absent_employees) }}" placeholder="e.g. John (Sakit), Jane (Izin)..." class="w-full rounded-2xl border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 bg-slate-50/40 focus:bg-white py-2">
                         </div>
                     </div>
 
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">Output Destination *</label>
+                            <label class="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">Output Destination *</label>
                             <select name="output_destination" required class="w-full rounded-2xl border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 bg-slate-50/40 focus:bg-white py-2 @error('output_destination') border-red-500 ring-1 ring-red-500 bg-red-50/20 @enderror">
                                 <option value="">-- Select Destination --</option>
                                 <option value="fg" {{ old('output_destination', $session->output_destination) == 'fg' ? 'selected' : '' }}>Finished Goods (FG)</option>
@@ -404,7 +404,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">Next Production Schedule</label>
+                            <label class="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">Next Production Schedule</label>
                             <div class="space-y-2">
                                 @for($i = 0; $i < 4; $i++)
                                     @php
@@ -424,10 +424,10 @@
             {{-- Form Actions Footer (Mandatory Close-Out) --}}
             <div class="flex justify-between items-center pt-3 border-t border-slate-200">
                 <a href="{{ route('app.sp-sessions.show', $session->id) }}" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold text-xs rounded-2xl border border-slate-300 transition uppercase tracking-wider cursor-pointer">
-                    ← Back to Live Session
+                    Back to Live Session
                 </a>
 
-                <button type="submit" class="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black text-xs rounded-2xl shadow-lg transition uppercase tracking-wider cursor-pointer flex items-center gap-2">
+                <button type="submit" class="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs rounded-2xl shadow-lg transition uppercase tracking-wider cursor-pointer flex items-center gap-2">
                     <span>SUBMIT CLOSE-OUT REPORT & FINISH SHIFT</span>
                 </button>
             </div>

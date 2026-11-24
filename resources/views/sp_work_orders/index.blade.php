@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h2 class="font-black text-xl text-gray-800 uppercase tracking-wide">
+                <h2 class="font-bold text-xl text-gray-800 uppercase tracking-wide">
                     {{ __('Second Process Work Orders') }}
                 </h2>
                 <p class="text-xs font-semibold text-gray-500 mt-0.5">Manage, release, and track production Work Orders & QC Gate status</p>
@@ -12,7 +12,7 @@
                     <a href="{{ route('second-process.dashboard') }}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl border border-gray-300 shadow-sm transition uppercase tracking-wider">
                         Floor Overview Dashboard
                     </a>
-                    <a href="{{ route('sp-work-orders.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
+                    <a href="{{ route('sp-work-orders.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
                         New Work Order
                     </a>
                 </div>
@@ -22,18 +22,6 @@
 
     <div class="py-6 space-y-6">
         <div class="max-w-7xl mx-auto space-y-6">
-
-            @if(session('success'))
-                <div class="bg-emerald-50 border border-emerald-300 text-emerald-900 px-5 py-4 rounded-2xl text-xs font-bold shadow-sm" role="alert">
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="bg-red-50 border border-red-300 text-red-900 px-5 py-4 rounded-2xl text-xs font-bold shadow-sm" role="alert">
-                    {{ session('error') }}
-                </div>
-            @endif
 
             {{-- Compact 1-Row Inline Filter Bar --}}
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
@@ -79,7 +67,7 @@
 
                     {{-- Actions --}}
                     <div class="flex items-center gap-1.5 ml-auto">
-                        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
+                        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
                             Filter
                         </button>
                         @if(request()->hasAny(['search', 'unit_line', 'status', 'date_from', 'date_to']))
@@ -95,7 +83,7 @@
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <div>
-                        <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest">Work Orders</h3>
+                        <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-widest">Work Orders</h3>
                         <p class="text-xs text-gray-500 font-medium">Production planning and real-time execution status</p>
                     </div>
                     <span class="text-xs font-bold bg-white px-3 py-1 rounded-full border border-gray-200 text-gray-600 shadow-sm">
@@ -106,7 +94,7 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                            <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                                 <th class="px-4 py-3">WO Number</th>
                                 <th class="px-4 py-3">Planned Date</th>
                                 <th class="px-4 py-3">Line</th>
@@ -126,7 +114,7 @@
                                     $runningSession = $wo->sessions->where('status', 'running')->first();
                                 @endphp
                                 <tr class="hover:bg-gray-50/50 transition">
-                                    <td class="px-4 py-3 font-black text-blue-700 whitespace-nowrap">
+                                    <td class="px-4 py-3 font-bold text-blue-700 whitespace-nowrap">
                                         <a href="{{ route('sp-work-orders.show', $wo->id) }}" class="hover:underline">
                                             {{ $wo->wo_number }}
                                         </a>
@@ -141,7 +129,7 @@
                                         <div class="font-bold text-gray-900 leading-tight">{{ $wo->part_name }}</div>
                                         <div class="text-[10px] text-gray-400 font-mono">{{ $wo->part_number }}</div>
                                     </td>
-                                    <td class="px-4 py-3 text-right font-black text-gray-900 whitespace-nowrap">
+                                    <td class="px-4 py-3 text-right font-bold text-gray-900 whitespace-nowrap">
                                         {{ number_format($wo->target_qty) }} Pcs
                                     </td>
                                     <td class="px-4 py-3 text-center whitespace-nowrap">
@@ -150,21 +138,21 @@
                                                 Unreleased
                                             </span>
                                         @elseif($fpApproved)
-                                            <a href="{{ route('first-piece-inspections.show', $fp->id) }}" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 uppercase tracking-wider border border-emerald-200 hover:bg-emerald-200 transition">
+                                            <a href="{{ route('first-piece-inspections.show', $fp->id) }}" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 uppercase tracking-wider border border-emerald-200 hover:bg-emerald-200 transition">
                                                 QC Approved
                                             </a>
                                         @elseif($fp)
-                                            <a href="{{ route('first-piece-inspections.show', $fp->id) }}" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 uppercase tracking-wider border border-amber-200 hover:bg-amber-200 transition">
+                                            <a href="{{ route('first-piece-inspections.show', $fp->id) }}" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 uppercase tracking-wider border border-amber-200 hover:bg-amber-200 transition">
                                                 Pending Sign-off
                                             </a>
                                         @else
-                                            <a href="{{ route('first-piece-inspections.create', ['work_order_id' => $wo->id, 'part_number' => $wo->part_number, 'part_name' => $wo->part_name, 'model' => $wo->model]) }}" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black bg-red-100 text-red-800 uppercase tracking-wider border border-red-200 hover:bg-red-200 transition">
+                                            <a href="{{ route('first-piece-inspections.create', ['work_order_id' => $wo->id, 'part_number' => $wo->part_number, 'part_name' => $wo->part_name, 'model' => $wo->model]) }}" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 uppercase tracking-wider border border-red-200 hover:bg-red-200 transition">
                                                 Gate Required
                                             </a>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-center whitespace-nowrap">
-                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border
+                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border
                                             {{ $wo->status === 'draft' ? 'bg-slate-100 text-slate-700 border-slate-200' : ($wo->status === 'in_progress' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : ($wo->status === 'planned' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-gray-100 text-gray-700 border-gray-200')) }}">
                                             {{ str_replace('_', ' ', $wo->status) }}
                                         </span>
@@ -174,15 +162,24 @@
                                             @if($wo->status === 'draft')
                                                 @can('update', $wo)
                                                     <a href="{{ route('sp-work-orders.edit', $wo->id) }}"
-                                                        class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg transition uppercase tracking-wider">
+                                                        class="px-2.5 py-1 bg-zinc-800 hover:bg-black text-white font-bold text-[11px] rounded-lg transition uppercase tracking-wider">
                                                         Edit
                                                     </a>
                                                 @endcan
                                                 @can('release', $wo)
                                                     <form action="{{ route('sp-work-orders.release', $wo->id) }}" method="POST" class="inline">
                                                         @csrf
-                                                        <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded-lg transition uppercase tracking-wider">
+                                                        <button type="submit" onclick="return confirm('Release order {{ $wo->wo_number }} ke produksi?')" class="px-2.5 py-1 bg-white hover:bg-zinc-100 text-zinc-700 font-semibold text-[11px] rounded-lg border border-zinc-300 transition uppercase tracking-wider">
                                                             Release
+                                                        </button>
+                                                    </form>
+                                                @endcan
+                                                @can('delete', $wo)
+                                                    <form action="{{ route('sp-work-orders.destroy', $wo->id) }}" method="POST" class="inline" onsubmit="return confirm('Hapus draft Work Order {{ $wo->wo_number }}? Tindakan ini tidak dapat dibatalkan.')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-[11px] rounded-lg border border-rose-200 transition uppercase tracking-wider">
+                                                            Delete
                                                         </button>
                                                     </form>
                                                 @endcan

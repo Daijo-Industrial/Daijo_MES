@@ -76,12 +76,16 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
         $this->assertTrue($policy->revertToDraft($authorizedUser, $draftWo)->denied());
         $this->assertTrue($policy->revertToDraft($unauthorizedUser, $plannedWo)->denied());
 
-        // delete: draft & planned allowed, completed denied
+        // delete: draft & planned allowed, completed denied, WO with sessions denied
         $completedWo = new SpWorkOrder(['status' => 'completed']);
         $this->assertTrue($policy->delete($authorizedUser, $draftWo)->allowed());
         $this->assertTrue($policy->delete($authorizedUser, $plannedWo)->allowed());
         $this->assertTrue($policy->delete($authorizedUser, $completedWo)->denied());
         $this->assertTrue($policy->delete($unauthorizedUser, $draftWo)->denied());
+
+        $plannedWoWithSessions = new SpWorkOrder(['status' => 'planned']);
+        $plannedWoWithSessions->setRelation('sessions', collect([new SecondProcessReport()]));
+        $this->assertTrue($policy->delete($authorizedUser, $plannedWoWithSessions)->denied());
     }
 
     public function test_first_piece_inspection_policy_enforces_qc_signatures()
@@ -170,10 +174,17 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
         $this->assertTrue($quality->defaultPermissionFallback('second-process-first-piece'));
         $this->assertTrue($quality->defaultPermissionFallback('second-process-ipqc'));
         $this->assertTrue($quality->defaultPermissionFallback('second-process-reports'));
+        $this->assertTrue($quality->defaultPermissionFallback('second-process-defects'));
 
         $production = new Role(['name' => 'PRODUCTION']);
         $this->assertTrue($production->defaultPermissionFallback('second-process-reports'));
         $this->assertTrue($production->defaultPermissionFallback('second-process-sessions'));
+        $this->assertFalse($production->defaultPermissionFallback('second-process-defects'));
+        $this->assertFalse($checker->defaultPermissionFallback('second-process-defects'));
+
+        // Canonical alias resolution
+        $this->assertEquals('second-process-defects', Role::canonicalizePermissionName('second-process-defect-manager'));
+        $this->assertEquals('second-process-defects', Role::canonicalizePermissionName('manage-second-process-defects'));
     }
 }
 

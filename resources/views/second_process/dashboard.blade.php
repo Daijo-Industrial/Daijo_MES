@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h2 class="font-black text-xl text-gray-800 uppercase tracking-wide">
+                <h2 class="font-bold text-xl text-gray-800 uppercase tracking-wide">
                     {{ __('Second Process Operator & Shop Floor Dashboard') }}
                 </h2>
                 <p class="text-xs font-semibold text-gray-500 mt-0.5">Real-time line status, First Piece QC gate tracking, and active session management</p>
@@ -22,12 +22,7 @@
     </x-slot>
 
     <div class="py-6 space-y-6" x-data="{ 
-            activeTab: 'all',
-            detailedMode: localStorage.getItem('sp_dashboard_detailed_mode') === 'true',
-            toggleDetailedMode() {
-                this.detailedMode = !this.detailedMode;
-                localStorage.setItem('sp_dashboard_detailed_mode', this.detailedMode);
-            },
+            activeTab: '{{ request('tab', 'all') }}',
             init() { 
                 setInterval(() => { 
                     if(!document.hidden) window.location.reload(); 
@@ -38,8 +33,9 @@
         {{-- Filter Control Bar --}}
         <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
             <form action="{{ route('second-process.dashboard') }}" method="GET" class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <input type="hidden" name="tab" :value="activeTab">
                 <div class="flex items-center gap-2">
-                    <label class="font-black text-xs uppercase text-gray-500">Shift:</label>
+                    <label class="font-semibold text-xs uppercase text-gray-500">Shift:</label>
                     <select name="shift" class="rounded-xl border-gray-300 text-xs font-bold py-1.5 focus:ring-blue-500" onchange="this.form.submit()">
                         <option value="all" {{ (string)$shift === 'all' ? 'selected' : '' }}>All Today's Shifts</option>
                         @foreach(config('mes.sp_shifts', config('mes.shifts', [])) as $sId => $sConf)
@@ -50,109 +46,70 @@
                 <noscript><button type="submit" class="bg-gray-100 px-3 py-1 text-xs font-bold rounded-xl border border-gray-300">Filter</button></noscript>
             </form>
 
-            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-                <button type="button" @click="toggleDetailedMode()"
-                    :class="detailedMode ? 'bg-blue-600 text-white shadow-sm font-black' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 font-bold'"
-                    class="px-3.5 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 uppercase tracking-wider">
-                    <span x-text="detailedMode ? 'Compact View' : 'Detailed View'"></span>
-                </button>
-                <div class="flex items-center gap-2 text-xs font-bold text-gray-500">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Live Floor View</span>
-                </div>
+            <div class="flex items-center gap-2 text-xs font-bold text-gray-500">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Live Floor View</span>
             </div>
         </div>
 
-        {{-- Default Compact Metric Strip (shows when !detailedMode) --}}
-        <div x-show="!detailedMode" x-transition class="bg-gray-900 text-white px-5 py-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs font-bold shadow-md">
-            <div class="flex flex-wrap items-center gap-3">
-                <button type="button" @click="activeTab = (activeTab === 'running' ? 'all' : 'running')" 
-                        :class="activeTab === 'running' ? 'bg-emerald-500 text-white font-black' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'" 
-                        class="px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Running: {{ $runningSessionsCount }}/{{ count($lines) }}</span>
-                    @php $bypassedCount = $reports->filter(fn($r) => $r->status === 'running' && $r->is_qc_bypassed)->count(); @endphp
-                    @if($bypassedCount > 0)
-                        <span class="text-purple-300 font-mono text-[10px]">({{ $bypassedCount }} Bypassed)</span>
-                    @endif
-                </button>
-
-                <button type="button" @click="activeTab = (activeTab === 'ready' ? 'all' : 'ready')" 
-                        :class="activeTab === 'ready' ? 'bg-blue-600 text-white font-black' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'" 
-                        class="px-3 py-1.5 rounded-xl transition">
-                    <span>Queued: {{ $pendingWoCount }}</span>
-                </button>
-
-                <button type="button" @click="activeTab = (activeTab === 'qc_gate' ? 'all' : 'qc_gate')" 
-                        :class="activeTab === 'qc_gate' ? 'bg-amber-600 text-white font-black' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'" 
-                        class="px-3 py-1.5 rounded-xl transition">
-                    <span>QC Gate: {{ $pendingQcGateCount }} Pending</span>
-                </button>
-
-                <div class="text-gray-300 border-l border-gray-700 pl-3">
-                    <span>Output: <strong class="text-white font-black font-mono">{{ number_format($totalShiftGood) }} Pcs</strong></span>
-                    <span class="ml-2 font-mono font-bold {{ $overallNgRate > 2 ? 'text-red-400' : 'text-emerald-400' }}">({{ $overallNgRate }}% NG)</span>
-                </div>
-            </div>
-
-            <button type="button" @click="toggleDetailedMode()" class="text-[11px] font-black text-gray-400 hover:text-white uppercase tracking-wider flex items-center gap-1">
-                Expand Detailed Cards ↗
-            </button>
-        </div>
-
-        {{-- Top KPI Metric Cards (Detailed Expanded View - shows when detailedMode is ON) --}}
-        <div x-show="detailedMode" x-transition class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+        {{-- Top KPI Metric Cards (Compact & Minimized) --}}
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
             {{-- KPI Tab 1: Active Production Lines --}}
             <button type="button" @click="activeTab = (activeTab === 'running' ? 'all' : 'running')"
-                :class="activeTab === 'running' ? 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-400 shadow-md' : 'border-gray-200 bg-white hover:border-emerald-300 shadow-sm'"
-                class="p-3.5 sm:p-4 md:p-5 rounded-2xl border text-left transition cursor-pointer select-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
-                <div>
-                    <div class="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5 sm:mb-1">Active Production Lines</div>
-                    <div class="text-lg sm:text-xl md:text-2xl font-black text-gray-900">{{ $runningSessionsCount }} <span class="text-xs text-gray-400 font-bold">/ {{ count($lines) }} Lines</span></div>
+                :class="activeTab === 'running' ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-400 shadow-xs' : 'border-slate-200 bg-white hover:border-emerald-300 shadow-xs'"
+                class="px-3.5 py-2.5 rounded-xl border text-left transition cursor-pointer select-none flex items-center justify-between gap-2 w-full">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate">Running Lines</div>
+                    <div class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                        {{ $runningSessionsCount }} <span class="text-xs font-semibold text-slate-400">/ {{ count($lines) }}</span>
+                    </div>
                 </div>
-                <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black bg-emerald-100 text-emerald-800 uppercase tracking-widest border border-emerald-200">
-                    Running
-                </span>
+                <span class="w-2.5 h-2.5 rounded-full {{ $runningSessionsCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300' }} shrink-0"></span>
             </button>
 
             {{-- KPI Tab 2: Queued Work Orders --}}
             <button type="button" @click="activeTab = (activeTab === 'ready' ? 'all' : 'ready')"
-                :class="activeTab === 'ready' ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-400 shadow-md' : 'border-gray-200 bg-white hover:border-blue-300 shadow-sm'"
-                class="p-3.5 sm:p-4 md:p-5 rounded-2xl border text-left transition cursor-pointer select-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
-                <div>
-                    <div class="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5 sm:mb-1">Queued Work Orders</div>
-                    <div class="text-lg sm:text-xl md:text-2xl font-black text-gray-900">{{ $pendingWoCount }} <span class="text-xs text-gray-400 font-bold">Orders</span></div>
+                :class="activeTab === 'ready' ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-400 shadow-xs' : 'border-slate-200 bg-white hover:border-blue-300 shadow-xs'"
+                class="px-3.5 py-2.5 rounded-xl border text-left transition cursor-pointer select-none flex items-center justify-between gap-2 w-full">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate">Queued Orders</div>
+                    <div class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                        {{ $pendingWoCount }} <span class="text-xs font-semibold text-slate-400">Orders</span>
+                    </div>
                 </div>
-                <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black bg-blue-100 text-blue-800 uppercase tracking-widest border border-blue-200">
-                    Pending
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 shrink-0">
+                    Queue
                 </span>
             </button>
 
             {{-- KPI Tab 3: First Piece Inspections --}}
             <button type="button" @click="activeTab = (activeTab === 'qc_gate' ? 'all' : 'qc_gate')"
-                :class="activeTab === 'qc_gate' ? 'border-amber-500 bg-amber-50/70 ring-2 ring-amber-400 shadow-md' : 'border-gray-200 bg-white hover:border-amber-300 shadow-sm'"
-                class="p-3.5 sm:p-4 md:p-5 rounded-2xl border text-left transition cursor-pointer select-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
-                <div>
-                    <div class="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5 sm:mb-1">First Piece QC Gate</div>
-                    <div class="text-lg sm:text-xl md:text-2xl font-black text-gray-900">{{ $pendingQcGateCount }} <span class="text-xs text-gray-400 font-bold">Pending QC</span></div>
+                :class="activeTab === 'qc_gate' ? 'border-amber-500 bg-amber-50/80 ring-2 ring-amber-400 shadow-xs' : 'border-slate-200 bg-white hover:border-amber-300 shadow-xs'"
+                class="px-3.5 py-2.5 rounded-xl border text-left transition cursor-pointer select-none flex items-center justify-between gap-2 w-full">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate">QC Gate</div>
+                    <div class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                        {{ $pendingQcGateCount }} <span class="text-xs font-semibold text-slate-400">Pending</span>
+                    </div>
                 </div>
-                <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black bg-amber-100 text-amber-800 uppercase tracking-widest border border-amber-200">
-                    {{ $approvedFirstPieceCount }} Approved
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                    {{ $approvedFirstPieceCount }} Appr
                 </span>
             </button>
 
             {{-- KPI Tab 4: Shift Total Output --}}
             <button type="button" @click="activeTab = 'all'"
-                :class="activeTab === 'all' ? 'border-gray-300 bg-gray-50/80 ring-1 ring-gray-300 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 shadow-sm'"
-                class="p-3.5 sm:p-4 md:p-5 rounded-2xl border text-left transition cursor-pointer select-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
-                <div>
-                    <div class="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5 sm:mb-1">Shift Total Output</div>
-                    <div class="text-lg sm:text-xl md:text-2xl font-black text-gray-900">{{ number_format($totalShiftGood) }} <span class="text-xs text-gray-400 font-bold">Pcs</span></div>
+                :class="activeTab === 'all' ? 'border-slate-300 bg-slate-50 ring-1 ring-slate-300 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'"
+                class="px-3.5 py-2.5 rounded-xl border text-left transition cursor-pointer select-none flex items-center justify-between gap-2 w-full">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate">Shift Output</div>
+                    <div class="text-base sm:text-lg font-bold text-slate-900 leading-tight font-mono">
+                        {{ number_format($totalShiftGood) }} <span class="text-xs font-normal text-slate-500">Pcs</span>
+                    </div>
                 </div>
-                <div class="text-left sm:text-right">
-                    <div class="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5 sm:mb-1">NG Rate</div>
-                    <div class="text-xs sm:text-sm font-black {{ $overallNgRate > 2 ? 'text-red-600' : 'text-emerald-600' }}">{{ $overallNgRate }}%</div>
-                </div>
+                <span class="text-xs font-mono font-bold {{ $overallNgRate > 2 ? 'text-rose-600' : 'text-emerald-600' }} shrink-0">
+                    {{ $overallNgRate }}% NG
+                </span>
             </button>
         </div>
 
@@ -162,7 +119,7 @@
                 <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
                 <span>Filtered Grid View: <strong class="uppercase text-blue-950" x-text="activeTab === 'running' ? 'Active Running Lines' : (activeTab === 'ready' ? 'Queued / Ready Work Orders' : (activeTab === 'qc_gate' ? 'QC Gate Pending Lines' : activeTab))"></strong></span>
             </div>
-            <button type="button" @click="activeTab = 'all'" class="px-3 py-1 bg-white hover:bg-blue-100 text-blue-800 font-black rounded-lg border border-blue-200 transition uppercase tracking-wider text-[10px]">
+            <button type="button" @click="activeTab = 'all'" class="px-3 py-1 bg-white hover:bg-blue-100 text-blue-800 font-semibold rounded-lg border border-blue-200 transition uppercase tracking-wider text-[10px] cursor-pointer">
                 Show All Lines
             </button>
         </div>
@@ -170,8 +127,8 @@
         {{-- Shop Floor Line Status Grid --}}
         <div>
             <div class="mb-4">
-                <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest">Shop Floor Lines Overview</h3>
-                <p class="text-xs text-gray-500 font-medium">Click any line card to enter its Line Gateway screen</p>
+                <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-widest">Shop Floor Lines Overview</h3>
+                <p class="text-xs text-gray-500 font-medium">Real-time compact action cards for second process manufacturing lines</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -186,6 +143,7 @@
                         $spLines = config('mes.sp_lines', []);
                         $lineSlug = array_search($lineName, $spLines) ?: \Illuminate\Support\Str::slug($lineName);
                         $gatewayUrl = route('sp-sessions.line-gateway', ['lineSlug' => $lineSlug, 'shift' => $shift]);
+                        $analyticsUrl = route('second-process.line-dashboard', ['line' => $lineSlug, 'date' => $date, 'shift' => $shift]);
                     @endphp
 
                     @if($report)
@@ -202,185 +160,134 @@
                         @endphp
                         {{-- STATE 1: RUNNING / FINISHED SESSION --}}
                         <div x-show="activeTab === 'all' || (activeTab === 'running' && '{{ $report->status }}' === 'running')" x-transition 
-                             class="bg-white rounded-2xl border {{ $isRunning ? ($report->is_qc_bypassed ? 'border-l-4 border-l-purple-500 border-slate-200' : 'border-l-4 border-l-emerald-500 border-slate-200') : 'border-slate-200' }} shadow-sm overflow-hidden flex flex-col justify-between transition hover:shadow-md hover:border-slate-300">
-                            {{-- Clickable Header & Content Body (Line Gateway Trigger) --}}
-                            <a href="{{ $gatewayUrl }}" class="block group">
-                                <div class="{{ $isRunning ? 'bg-emerald-50 border-emerald-100 group-hover:bg-emerald-100/70' : 'bg-slate-100 border-slate-200 group-hover:bg-slate-200/70' }} px-4 py-2.5 border-b flex justify-between items-center transition">
-                                    <h4 class="font-black {{ $isRunning ? 'text-emerald-950' : 'text-slate-800' }} uppercase tracking-wider text-sm flex items-center gap-1.5">
+                             class="bg-white rounded-2xl border {{ $isRunning ? 'border-emerald-200 border-l-4 border-l-emerald-500' : 'border-slate-200' }} shadow-sm overflow-hidden flex flex-col justify-between transition hover:shadow-md hover:border-slate-300">
+                            
+                            {{-- Card Header --}}
+                            <div class="{{ $isRunning ? 'bg-emerald-50/60 border-emerald-100' : 'bg-slate-50 border-slate-200' }} px-4 py-2.5 border-b flex justify-between items-center">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <h4 class="font-bold {{ $isRunning ? 'text-emerald-950' : 'text-slate-800' }} uppercase tracking-wider text-xs truncate">
                                         {{ $lineName }}
                                     </h4>
-                                    <div class="flex items-center gap-1.5">
+                                    @if($isRunning)
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-200 text-emerald-900 uppercase tracking-wider animate-pulse border border-emerald-300 shrink-0">
+                                            Running
+                                        </span>
+                                    @else
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-slate-200 text-slate-700 uppercase tracking-wider border border-slate-300 shrink-0">
+                                            Finished
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <a href="{{ $analyticsUrl }}" title="Line Analytics" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Analytics">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                    </a>
+                                    <a href="{{ $gatewayUrl }}" title="Line Gateway" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Gateway">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {{-- Card Body --}}
+                            <div class="p-4 space-y-3 flex-1">
+                                <div>
+                                    <div class="flex items-center justify-between text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                        <span class="text-blue-700 font-mono">{{ $report->workOrder->wo_number ?? '-' }}</span>
                                         @if($report->is_qc_bypassed)
-                                            <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-100 text-purple-900 uppercase tracking-wider border border-purple-300">
-                                                QC Bypassed
-                                            </span>
+                                            <span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-100 text-amber-900 border border-amber-200" title="{{ $report->qc_bypass_reason }}">QC Bypassed</span>
                                         @endif
-                                        @if($isRunning)
-                                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-200 text-emerald-900 uppercase tracking-widest animate-pulse border border-emerald-300">
-                                                Running
-                                            </span>
-                                        @else
-                                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-200 text-slate-700 uppercase tracking-widest border border-slate-300">
-                                                Finished
-                                            </span>
-                                        @endif
+                                    </div>
+                                    <div class="font-bold text-xs text-slate-800 truncate mt-0.5" title="{{ $report->workOrder->part_name ?? '-' }}">
+                                        {{ $report->workOrder->part_name ?? '-' }}
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 font-mono">{{ $report->workOrder->part_number ?? '-' }}</div>
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between items-center text-[10px] font-semibold text-slate-500 mb-1">
+                                        <span>Progress ({{ $pct }}%)</span>
+                                        <span class="font-mono">{{ number_format($woGood) }} / {{ number_format($targetQty) }}</span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 rounded-full h-1.5 border border-slate-200 overflow-hidden">
+                                        <div class="{{ $isRunning ? 'bg-emerald-500' : 'bg-slate-400' }} h-1.5 rounded-full transition-all duration-300" style="width: {{ $pct }}%"></div>
                                     </div>
                                 </div>
 
-                                {{-- Standard Expanded Content (shows when detailedMode is ON) --}}
-                                <div x-show="detailedMode" class="p-5 space-y-4">
+                                <div class="grid grid-cols-3 gap-1 pt-2 border-t border-slate-100 text-center">
                                     <div>
-                                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Work Order & Part</div>
-                                        <div class="font-black text-xs text-blue-700">{{ $report->workOrder->wo_number ?? '-' }}</div>
-                                        <div class="font-bold text-sm text-gray-800 truncate" title="{{ $report->workOrder->part_name ?? '-' }}">{{ $report->workOrder->part_name ?? '-' }}</div>
-                                        <div class="text-xs text-gray-500 font-mono font-medium">{{ $report->workOrder->part_number ?? '-' }}</div>
+                                        <div class="text-[9px] font-semibold text-slate-400 uppercase">Good</div>
+                                        <div class="font-bold text-xs text-emerald-600 font-mono">{{ number_format($woGood) }}</div>
                                     </div>
-
-                                    @if($report->is_qc_bypassed && $report->qc_bypass_reason)
-                                        <div class="flex items-center justify-between gap-2 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-xl text-xs font-bold text-purple-950">
-                                            <span class="truncate" title="{{ $report->qc_bypass_reason }}"><strong class="font-black uppercase text-purple-700">QC Bypass:</strong> {{ $report->qc_bypass_reason }}</span>
-                                            <a href="{{ route('first-piece-inspections.create', [
-                                                    'work_order_id' => $report->work_order_id,
-                                                    'part_number' => $report->workOrder->part_number ?? '',
-                                                    'part_name' => $report->workOrder->part_name ?? '',
-                                                    'model' => $report->workOrder->model ?? ''
-                                                ]) }}" 
-                                               class="px-2.5 py-1 bg-purple-700 hover:bg-purple-800 text-white font-black text-[10px] rounded-lg shadow-sm transition uppercase tracking-wider whitespace-nowrap">
-                                                + First Piece
-                                            </a>
-                                        </div>
-                                    @endif
-
                                     <div>
-                                        <div class="flex justify-between items-center text-[10px] font-black text-gray-500 uppercase mb-1">
-                                            <span>Progress</span>
-                                            <span>{{ number_format($woGood) }} / {{ number_format($targetQty) }} Pcs ({{ $pct }}%)</span>
-                                        </div>
-                                        <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200">
-                                            <div class="{{ $isRunning ? 'bg-emerald-500' : 'bg-slate-400' }} h-2 rounded-full transition-all duration-500" style="width: {{ $pct }}%"></div>
-                                        </div>
-                                        @if($sessionCount > 1)
-                                            <div class="text-[10px] font-bold text-gray-400 text-right mt-1">
-                                                Cumulative across {{ $sessionCount }} sessions
-                                            </div>
-                                        @endif
+                                        <div class="text-[9px] font-semibold text-slate-400 uppercase">Defect</div>
+                                        <div class="font-bold text-xs text-rose-600 font-mono">{{ number_format($woReject) }}</div>
                                     </div>
-
-                                    <div class="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100 text-center">
-                                        <div>
-                                            <div class="text-[9px] font-black text-gray-400 uppercase">Total Good</div>
-                                            <div class="font-black text-sm text-emerald-600">{{ number_format($woGood) }}</div>
-                                        </div>
-                                        <div>
-                                            <div class="text-[9px] font-black text-gray-400 uppercase">Total Defects</div>
-                                            <div class="font-black text-sm text-red-600">{{ number_format($woReject) }}</div>
-                                        </div>
-                                        <div>
-                                            <div class="text-[9px] font-black text-gray-400 uppercase">NG Rate</div>
-                                            <div class="font-black text-sm {{ $woNgRate > 2 ? 'text-red-600' : 'text-emerald-600' }}">{{ $woNgRate }}%</div>
-                                        </div>
+                                    <div>
+                                        <div class="text-[9px] font-semibold text-slate-400 uppercase">NG Rate</div>
+                                        <div class="font-bold text-xs {{ $woNgRate > 2 ? 'text-rose-600' : 'text-emerald-600' }} font-mono">{{ $woNgRate }}%</div>
                                     </div>
                                 </div>
+                            </div>
 
-                                {{-- Default Compact High-Density Content (shows when !detailedMode) --}}
-                                <div x-show="!detailedMode" class="p-3.5 space-y-2 text-xs">
-                                    <div class="flex justify-between items-center font-bold text-gray-800">
-                                        <span class="text-blue-700 font-black font-mono text-xs">{{ $report->workOrder->wo_number ?? '-' }}</span>
-                                        <span class="truncate ml-2 text-xs font-semibold text-gray-700" title="{{ $report->workOrder->part_name ?? '-' }}">{{ $report->workOrder->part_name ?? '-' }}</span>
-                                    </div>
-
-                                    @if($report->is_qc_bypassed)
-                                        <div class="flex items-center justify-between gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-200 rounded-lg text-[10px] font-bold text-purple-900">
-                                            <span class="truncate" title="{{ $report->qc_bypass_reason }}"><strong class="font-black uppercase text-purple-700">Bypass:</strong> {{ $report->qc_bypass_reason ?? 'QC Bypassed' }}</span>
-                                            <a href="{{ route('first-piece-inspections.create', [
-                                                    'work_order_id' => $report->work_order_id,
-                                                    'part_number' => $report->workOrder->part_number ?? '',
-                                                    'part_name' => $report->workOrder->part_name ?? '',
-                                                    'model' => $report->workOrder->model ?? ''
-                                                ]) }}" 
-                                               class="px-2 py-0.5 bg-purple-700 hover:bg-purple-800 text-white font-black text-[9px] rounded shadow-sm transition uppercase tracking-wider whitespace-nowrap">
-                                                + Log QC
-                                            </a>
-                                        </div>
-                                    @endif
-
-                                    <div>
-                                        <div class="flex justify-between items-center text-[10px] font-black text-gray-500 mb-0.5">
-                                            <span>Progress ({{ $pct }}%)</span>
-                                            <span>{{ number_format($woGood) }} / {{ number_format($targetQty) }}</span>
-                                        </div>
-                                        <div class="w-full bg-gray-100 rounded-full h-1.5 border border-gray-200 overflow-hidden">
-                                            <div class="{{ $isRunning ? 'bg-emerald-500' : 'bg-slate-400' }} h-1.5 rounded-full transition-all" style="width: {{ $pct }}%"></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex justify-between items-center pt-1.5 border-t border-gray-100 text-[10px] font-bold">
-                                        <span>Good: <strong class="text-emerald-600 font-black">{{ number_format($woGood) }}</strong></span>
-                                        <span>Defects: <strong class="text-red-600 font-black">{{ number_format($woReject) }}</strong></span>
-                                        <span>NG: <strong class="{{ $woNgRate > 2 ? 'text-red-600' : 'text-emerald-600' }} font-black">{{ $woNgRate }}%</strong></span>
-                                    </div>
-                                </div>
-                            </a>
-
-                            {{-- Bottom Actions --}}
-                            <div :class="detailedMode ? 'p-3.5' : 'p-2.5'" class="bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-                                <a href="{{ route('second-process.line-dashboard', ['line' => $lineSlug, 'date' => $date, 'shift' => $shift]) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="w-1/3 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-2 rounded-xl text-xs transition uppercase tracking-wider">
-                                    Analytics
-                                </a>
-                                <a href="{{ route('app.sp-sessions.show', $report->id) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="w-2/3 text-center {{ $isRunning ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800' : 'bg-slate-700 hover:bg-slate-800 active:bg-slate-900' }} text-white font-black px-4 rounded-xl shadow-sm text-xs transition uppercase tracking-wider">
-                                    {{ $isRunning ? 'Operator Screen' : 'View Session' }}
-                                </a>
+                            {{-- Single Full-Width Action Button --}}
+                            <div class="p-3 bg-slate-50 border-t border-slate-100">
+                                @if($isRunning)
+                                    <a href="{{ route('app.sp-sessions.show', $report->id) }}" class="w-full min-h-[40px] flex items-center justify-center text-center bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold px-4 rounded-xl shadow-xs text-xs transition uppercase tracking-wider">
+                                        Buka Sesi Operator
+                                    </a>
+                                @else
+                                    <a href="{{ route('app.sp-sessions.show', $report->id) }}" class="w-full min-h-[40px] flex items-center justify-center text-center bg-slate-700 hover:bg-slate-800 active:bg-slate-900 text-white font-semibold px-4 rounded-xl shadow-xs text-xs transition uppercase tracking-wider">
+                                        Lihat Detail Sesi
+                                    </a>
+                                @endif
                             </div>
                         </div>
 
                     @elseif($assignedWo && $assignedWo->status === 'completed')
-                        {{-- STATE 4: COMPLETED WORK ORDER --}}
+                        {{-- STATE 2: COMPLETED WORK ORDER --}}
                         <div x-show="activeTab === 'all'" x-transition class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between transition opacity-85 hover:opacity-100 hover:shadow-md">
-                            <a href="{{ $gatewayUrl }}" class="block group">
-                                <div class="bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex justify-between items-center group-hover:bg-slate-200/70 transition">
-                                    <h4 class="font-black text-slate-800 uppercase tracking-wider text-sm">{{ $lineName }}</h4>
-                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-200 text-slate-700 uppercase tracking-widest border border-slate-300">
+                            {{-- Card Header --}}
+                            <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex justify-between items-center">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <h4 class="font-bold text-slate-800 uppercase tracking-wider text-xs truncate">{{ $lineName }}</h4>
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-slate-200 text-slate-700 uppercase tracking-wider border border-slate-300 shrink-0">
                                         Completed
                                     </span>
                                 </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <a href="{{ $analyticsUrl }}" title="Line Analytics" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Analytics">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                    </a>
+                                    <a href="{{ $gatewayUrl }}" title="Line Gateway" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Gateway">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    </a>
+                                </div>
+                            </div>
 
-                                <div x-show="detailedMode" class="p-5 space-y-3">
+                            {{-- Card Body --}}
+                            <div class="p-4 space-y-3 flex-1">
+                                <div>
+                                    <div class="text-[10px] font-semibold text-blue-700 font-mono">{{ $assignedWo->wo_number }}</div>
+                                    <div class="font-bold text-xs text-slate-800 truncate mt-0.5" title="{{ $assignedWo->part_name }}">{{ $assignedWo->part_name }}</div>
+                                    <div class="text-[11px] text-slate-500 font-mono">{{ $assignedWo->part_number }}</div>
+                                </div>
+
+                                <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
                                     <div>
-                                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Completed Work Order</div>
-                                        <div class="font-black text-xs text-blue-700">{{ $assignedWo->wo_number }}</div>
-                                        <div class="font-bold text-sm text-slate-800 truncate" title="{{ $assignedWo->part_name }}">{{ $assignedWo->part_name }}</div>
-                                        <div class="text-xs text-slate-500 font-mono font-medium">{{ $assignedWo->part_number }}</div>
+                                        <div class="text-[9px] font-semibold text-slate-400 uppercase">Target</div>
+                                        <div class="font-bold text-slate-900 font-mono">{{ number_format($assignedWo->target_qty) }} Pcs</div>
                                     </div>
-
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center">
-                                        <div>
-                                            <div class="text-[10px] font-black text-slate-400 uppercase">Target</div>
-                                            <div class="text-sm font-black text-slate-900">{{ number_format($assignedWo->target_qty) }} Pcs</div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-[10px] font-black text-slate-400 uppercase">Produced</div>
-                                            <div class="text-sm font-black text-emerald-600">{{ number_format($assignedWo->total_good) }} Pcs</div>
-                                        </div>
+                                    <div class="text-right">
+                                        <div class="text-[9px] font-semibold text-slate-400 uppercase">Produced</div>
+                                        <div class="font-bold text-emerald-600 font-mono">{{ number_format($assignedWo->total_good) }} Pcs</div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div x-show="!detailedMode" class="p-3.5 space-y-2 text-xs">
-                                    <div class="flex justify-between items-center font-bold text-slate-800">
-                                        <span class="text-blue-700 font-black font-mono text-xs">{{ $assignedWo->wo_number }}</span>
-                                        <span class="truncate ml-2 text-xs font-semibold text-slate-700" title="{{ $assignedWo->part_name }}">{{ $assignedWo->part_name }}</span>
-                                    </div>
-                                    <div class="flex justify-between items-center pt-1.5 border-t border-slate-100 text-[10px] font-bold">
-                                        <span>Produced: <strong class="text-emerald-600 font-black">{{ number_format($assignedWo->total_good) }} / {{ number_format($assignedWo->target_qty) }} Pcs</strong></span>
-                                    </div>
-                                </div>
-                            </a>
-
-                            <div :class="detailedMode ? 'p-3.5' : 'p-2.5'" class="bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-                                <a href="{{ route('second-process.line-dashboard', ['line' => $lineSlug, 'date' => $date, 'shift' => $shift]) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="w-1/3 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-2 rounded-xl text-xs transition uppercase tracking-wider">
-                                    Analytics
-                                </a>
-                                <a href="{{ route('sp-work-orders.show', $assignedWo->id) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="w-2/3 text-center bg-slate-700 hover:bg-slate-800 text-white font-black px-4 rounded-xl shadow-sm text-xs transition uppercase tracking-wider">
-                                    View Order
+                            {{-- Single Full-Width Action Button --}}
+                            <div class="p-3 bg-slate-50 border-t border-slate-100">
+                                <a href="{{ route('sp-work-orders.show', $assignedWo->id) }}" class="w-full min-h-[40px] flex items-center justify-center text-center bg-slate-700 hover:bg-slate-800 text-white font-semibold px-4 rounded-xl shadow-xs text-xs transition uppercase tracking-wider">
+                                    Lihat Detail Order
                                 </a>
                             </div>
                         </div>
@@ -391,152 +298,181 @@
                         @endphp
 
                         @if($isApproved)
-                            {{-- STATE 2: READY TO START (QC APPROVED) --}}
-                            <div x-show="activeTab === 'all' || activeTab === 'ready'" x-transition class="bg-white rounded-2xl border border-blue-300 shadow-sm overflow-hidden flex flex-col justify-between transition hover:shadow-md hover:border-blue-400">
-                                <a href="{{ $gatewayUrl }}" class="block group">
-                                    <div class="bg-blue-50 px-4 py-2.5 border-b border-blue-100 flex justify-between items-center group-hover:bg-blue-100/70 transition">
-                                        <h4 class="font-black text-blue-950 uppercase tracking-wider text-sm">{{ $lineName }}</h4>
-                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-200 text-blue-900 uppercase tracking-widest border border-blue-300">
+                            {{-- STATE 3: READY TO START (QC APPROVED) --}}
+                            <div x-show="activeTab === 'all' || activeTab === 'ready'" x-transition class="bg-white rounded-2xl border border-blue-200 shadow-sm overflow-hidden flex flex-col justify-between transition hover:shadow-md hover:border-blue-300">
+                                {{-- Card Header --}}
+                                <div class="bg-blue-50/70 px-4 py-2.5 border-b border-blue-100 flex justify-between items-center">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <h4 class="font-bold text-blue-950 uppercase tracking-wider text-xs truncate">{{ $lineName }}</h4>
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-blue-200 text-blue-900 uppercase tracking-wider border border-blue-300 shrink-0">
                                             QC Approved
                                         </span>
                                     </div>
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        <a href="{{ $analyticsUrl }}" title="Line Analytics" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Analytics">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                        </a>
+                                        <a href="{{ $gatewayUrl }}" title="Line Gateway" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Gateway">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                        </a>
+                                    </div>
+                                </div>
 
-                                    {{-- Standard Expanded Content --}}
-                                    <div x-show="detailedMode" class="p-5 space-y-3">
-                                        <div>
-                                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Assigned Work Order</div>
-                                            <div class="font-black text-xs text-blue-700">{{ $assignedWo->wo_number }}</div>
-                                            <div class="font-bold text-sm text-gray-800 truncate" title="{{ $assignedWo->part_name }}">{{ $assignedWo->part_name }}</div>
-                                            <div class="text-xs text-gray-500 font-mono font-medium">{{ $assignedWo->part_number }}</div>
-                                        </div>
-
-                                        <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                                            <div class="text-[10px] font-black text-blue-800 uppercase">Target Quantity</div>
-                                            <div class="text-base font-black text-blue-950">{{ number_format($assignedWo->target_qty) }} Pcs</div>
-                                        </div>
+                                {{-- Card Body --}}
+                                <div class="p-4 space-y-3 flex-1">
+                                    <div>
+                                        <div class="text-[10px] font-semibold text-blue-700 font-mono">{{ $assignedWo->wo_number }}</div>
+                                        <div class="font-bold text-xs text-slate-800 truncate mt-0.5" title="{{ $assignedWo->part_name }}">{{ $assignedWo->part_name }}</div>
+                                        <div class="text-[11px] text-slate-500 font-mono">{{ $assignedWo->part_number }}</div>
                                     </div>
 
-                                    {{-- Default Compact High-Density Content --}}
-                                    <div x-show="!detailedMode" class="p-3.5 space-y-2 text-xs">
-                                        <div class="flex justify-between items-center font-bold text-gray-800">
-                                            <span class="text-blue-700 font-black font-mono text-xs">{{ $assignedWo->wo_number }}</span>
-                                            <span class="truncate ml-2 text-xs font-semibold text-gray-700" title="{{ $assignedWo->part_name }}">{{ $assignedWo->part_name }}</span>
-                                        </div>
-                                        <div class="px-2.5 py-1 bg-blue-50/70 text-blue-900 text-xs font-black rounded-lg border border-blue-100 text-center">
-                                            Target: {{ number_format($assignedWo->target_qty) }} Pcs
-                                        </div>
+                                    <div class="p-2.5 bg-blue-50/60 rounded-xl border border-blue-100 flex justify-between items-center text-xs">
+                                        <span class="text-[10px] font-semibold text-blue-800 uppercase">Target Order</span>
+                                        <span class="font-bold text-blue-950 font-mono">{{ number_format($assignedWo->target_qty) }} Pcs</span>
                                     </div>
-                                </a>
+                                </div>
 
-                                <div :class="detailedMode ? 'p-3.5' : 'p-2.5'" class="bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-                                    <a href="{{ route('second-process.line-dashboard', ['line' => $lineSlug, 'date' => $date, 'shift' => $shift]) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="w-1/3 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-2 rounded-xl text-xs transition uppercase tracking-wider">
-                                        Analytics
-                                    </a>
-                                    <form action="{{ route('sp-sessions.start', $assignedWo->id) }}" method="POST" class="w-2/3">
+                                {{-- Single Full-Width Action Button --}}
+                                <div class="p-3 bg-slate-50 border-t border-slate-100">
+                                    <form action="{{ route('sp-sessions.start', $assignedWo->id) }}" method="POST">
                                         @csrf
-                                        <button type="submit" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="w-full text-center bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black px-4 rounded-xl shadow-sm text-xs transition uppercase tracking-wider">
-                                            Start Production
+                                        <button type="submit" class="w-full min-h-[40px] flex items-center justify-center text-center bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold px-4 rounded-xl shadow-xs text-xs transition uppercase tracking-wider cursor-pointer">
+                                            Mulai Produksi
                                         </button>
                                     </form>
                                 </div>
                             </div>
                         @else
-                            {{-- STATE 3: GATE BLOCKED (PENDING QC FIRST PIECE) --}}
-                            <div x-show="activeTab === 'all' || activeTab === 'qc_gate'" x-transition class="bg-white rounded-2xl border border-amber-300 shadow-sm overflow-hidden flex flex-col justify-between transition hover:shadow-md hover:border-amber-400">
-                                <a href="{{ $gatewayUrl }}" class="block group">
-                                    <div class="bg-amber-50 px-4 py-2.5 border-b border-amber-100 flex justify-between items-center group-hover:bg-amber-100/70 transition">
-                                        <h4 class="font-black text-amber-950 uppercase tracking-wider text-sm">{{ $lineName }}</h4>
-                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-200 text-amber-900 uppercase tracking-widest border border-amber-300">
+                            {{-- STATE 4: GATE BLOCKED (PENDING QC FIRST PIECE) --}}
+                            <div x-show="activeTab === 'all' || activeTab === 'qc_gate' || activeTab === 'ready'" x-transition class="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden flex flex-col justify-between transition hover:shadow-md hover:border-amber-300">
+                                {{-- Card Header --}}
+                                <div class="bg-amber-50/70 px-4 py-2.5 border-b border-amber-100 flex justify-between items-center">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <h4 class="font-bold text-amber-950 uppercase tracking-wider text-xs truncate">{{ $lineName }}</h4>
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-amber-200 text-amber-900 uppercase tracking-wider border border-amber-300 shrink-0">
                                             QC Gate Pending
                                         </span>
                                     </div>
-
-                                    {{-- Standard Expanded Content --}}
-                                    <div x-show="detailedMode" class="p-5 space-y-3">
-                                        <div>
-                                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Assigned Work Order</div>
-                                            <div class="font-black text-xs text-amber-800">{{ $assignedWo->wo_number }}</div>
-                                            <div class="font-bold text-sm text-gray-800 truncate" title="{{ $assignedWo->part_name }}">{{ $assignedWo->part_name }}</div>
-                                            <div class="text-xs text-gray-500 font-mono font-medium">{{ $assignedWo->part_number }}</div>
-                                        </div>
-
-                                        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-semibold text-amber-900">
-                                            First Piece Inspection is required before starting production session.
-                                        </div>
-                                    </div>
-
-                                    {{-- Default Compact High-Density Content --}}
-                                    <div x-show="!detailedMode" class="p-3.5 space-y-2 text-xs">
-                                        <div class="flex justify-between items-center font-bold text-gray-800">
-                                            <span class="text-amber-800 font-black font-mono text-xs">{{ $assignedWo->wo_number }}</span>
-                                            <span class="truncate ml-2 text-xs font-semibold text-gray-700" title="{{ $assignedWo->part_name }}">{{ $assignedWo->part_name }}</span>
-                                        </div>
-                                        <div class="px-2.5 py-1 bg-amber-50 rounded-lg border border-amber-200 text-[11px] font-bold text-amber-900 text-center flex items-center justify-center gap-1">
-                                            ⚠️ First Piece Inspection Required
-                                        </div>
-                                    </div>
-                                </a>
-
-                                <div :class="detailedMode ? 'p-3.5' : 'p-2.5'" class="bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-                                    <a href="{{ route('second-process.line-dashboard', ['line' => $lineSlug, 'date' => $date, 'shift' => $shift]) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="w-1/3 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-2 rounded-xl text-xs transition uppercase tracking-wider">
-                                        Analytics
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        <a href="{{ $analyticsUrl }}" title="Line Analytics" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Analytics">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                                     </a>
-                                    @can('execute-qc-inspections')
-                                        <a href="{{ route('first-piece-inspections.create', ['work_order_id' => $assignedWo->id, 'part_number' => $assignedWo->part_number, 'part_name' => $assignedWo->part_name, 'model' => $assignedWo->model]) }}"
-                                            :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="block w-2/3 text-center bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-black px-4 rounded-xl shadow-sm text-xs transition uppercase tracking-wider">
-                                            First Piece Inspection
-                                        </a>
-                                    @else
-                                        <a href="{{ $gatewayUrl }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="block w-2/3 text-center bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-black px-4 rounded-xl shadow-sm text-xs transition uppercase tracking-wider">
-                                            Open Gateway
-                                        </a>
-                                    @endcan
+                                    <a href="{{ $gatewayUrl }}" title="Line Gateway" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Gateway">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    </a>
                                 </div>
                             </div>
-                        @endif
 
-                    @else
-                        {{-- STATE 4: IDLE LINE --}}
-                        <div x-show="activeTab === 'all' || activeTab === 'idle'" x-transition class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col justify-between transition hover:shadow-md hover:border-gray-300">
-                            <a href="{{ $gatewayUrl }}" class="block group">
-                                <div class="bg-gray-50 px-4 py-2.5 border-b border-gray-100 flex justify-between items-center group-hover:bg-gray-100/80 transition">
-                                    <h4 class="font-black text-gray-600 uppercase tracking-wider text-sm">{{ $lineName }}</h4>
-                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gray-100 text-gray-500 uppercase tracking-widest border border-gray-200">
-                                        Idle
-                                    </span>
+                            {{-- Card Body --}}
+                            <div class="p-4 space-y-3 flex-1">
+                                <div>
+                                    <div class="text-[10px] font-semibold text-amber-800 font-mono">{{ $assignedWo->wo_number }}</div>
+                                    <div class="font-bold text-xs text-slate-800 truncate mt-0.5" title="{{ $assignedWo->part_name }}">{{ $assignedWo->part_name }}</div>
+                                    <div class="text-[11px] text-slate-500 font-mono">{{ $assignedWo->part_number }}</div>
                                 </div>
 
-                                {{-- Standard Expanded Content --}}
-                                <div x-show="detailedMode" class="p-5 flex flex-col items-center justify-center text-center py-10">
-                                    <p class="text-xs font-black text-gray-400 uppercase tracking-wider mb-1">No Active Production</p>
-                                    <p class="text-[11px] text-gray-500 font-medium">Line is available for assignment</p>
+                                <div class="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-xs font-medium text-amber-900">
+                                    First Piece QC diperlukan sebelum produksi dapat dimulai.
                                 </div>
+                            </div>
 
-                                {{-- Default Compact High-Density Content --}}
-                                <div x-show="!detailedMode" class="py-2.5 px-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                                    Line Available
-                                </div>
-                            </a>
-
-                            <div :class="detailedMode ? 'p-3.5' : 'p-2.5'" class="bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-                                <a href="{{ route('second-process.line-dashboard', ['line' => $lineSlug, 'date' => $date, 'shift' => $shift]) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="w-1/3 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-2 rounded-xl text-xs transition uppercase tracking-wider">
-                                    Analytics
-                                </a>
-                                @can('create', App\Models\SpWorkOrder::class)
-                                    <a href="{{ route('sp-work-orders.create', ['unit_line' => $lineName]) }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="block w-2/3 text-center bg-gray-700 hover:bg-gray-800 active:bg-gray-900 text-white font-black px-4 rounded-xl shadow-sm text-xs transition uppercase tracking-wider">
-                                        Create Work Order
+                            {{-- Single Full-Width Action Button --}}
+                            <div class="p-3 bg-slate-50 border-t border-slate-100">
+                                @can('execute-qc-inspections')
+                                    <a href="{{ route('first-piece-inspections.create', ['work_order_id' => $assignedWo->id, 'part_number' => $assignedWo->part_number, 'part_name' => $assignedWo->part_name, 'model' => $assignedWo->model]) }}"
+                                        class="w-full min-h-[40px] flex items-center justify-center text-center bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-semibold px-4 rounded-xl shadow-xs text-xs transition uppercase tracking-wider">
+                                        Input First Piece QC
                                     </a>
                                 @else
-                                    <a href="{{ $gatewayUrl }}" :class="detailedMode ? 'py-2.5' : 'py-1.5'" class="block w-2/3 text-center bg-gray-700 hover:bg-gray-800 active:bg-gray-900 text-white font-black px-4 rounded-xl shadow-sm text-xs transition uppercase tracking-wider">
-                                        Open Gateway
+                                    <a href="{{ $gatewayUrl }}" class="w-full min-h-[40px] flex items-center justify-center text-center bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-semibold px-4 rounded-xl shadow-xs text-xs transition uppercase tracking-wider">
+                                        Buka Line Gateway
                                     </a>
                                 @endcan
                             </div>
                         </div>
                     @endif
-                @endforeach
-            </div>
-        </div>
 
+                @else
+                    {{-- STATE 5: IDLE LINE --}}
+                    <div x-show="activeTab === 'all' || activeTab === 'idle'" x-transition class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between transition hover:shadow-md hover:border-slate-300">
+                        {{-- Card Header --}}
+                        <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <h4 class="font-bold text-slate-600 uppercase tracking-wider text-xs truncate">{{ $lineName }}</h4>
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-slate-100 text-slate-500 uppercase tracking-wider border border-slate-200 shrink-0">
+                                    Idle
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <a href="{{ $analyticsUrl }}" title="Line Analytics" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Analytics">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                </a>
+                                <a href="{{ $gatewayUrl }}" title="Line Gateway" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" aria-label="Line Gateway">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                </a>
+                            </div>
+                        </div>
+
+                        {{-- Card Body --}}
+                        <div class="p-4 flex flex-col items-center justify-center text-center py-8 flex-1">
+                            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Line Tersedia</p>
+                            <p class="text-[11px] text-slate-400 font-medium">Belum ada work order aktif</p>
+                        </div>
+
+                        {{-- Single Full-Width Action Button --}}
+                        <div class="p-3 bg-slate-50 border-t border-slate-100">
+                            @can('create', App\Models\SpWorkOrder::class)
+                                <a href="{{ route('sp-work-orders.create', ['unit_line' => $lineName]) }}" class="w-full min-h-[40px] flex items-center justify-center text-center bg-slate-700 hover:bg-slate-800 active:bg-slate-900 text-white font-semibold px-4 rounded-xl shadow-xs text-xs transition uppercase tracking-wider">
+                                    Buat Work Order
+                                </a>
+                            @else
+                                <a href="{{ $gatewayUrl }}" class="w-full min-h-[40px] flex items-center justify-center text-center bg-slate-700 hover:bg-slate-800 active:bg-slate-900 text-white font-semibold px-4 rounded-xl shadow-xs text-xs transition uppercase tracking-wider">
+                                    Buka Line Gateway
+                                </a>
+                            @endcan
+                        </div>
+                    </div>
+                @endif
+            @endforeach
+
+            @if($runningSessionsCount === 0)
+                <div x-show="activeTab === 'running'" class="col-span-full p-8 text-center bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-xl font-bold">
+                        0
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Tidak Ada Sesi Produksi yang Sedang Berjalan</h4>
+                        <p class="text-xs text-slate-500 mt-0.5">Saat ini belum ada line produksi yang aktif berjalan di shift ini.</p>
+                    </div>
+                    <div class="pt-1">
+                        <button type="button" @click="activeTab = 'all'" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition uppercase tracking-wider cursor-pointer">
+                            Tampilkan Semua Line
+                        </button>
+                    </div>
+                </div>
+            @endif
+
+            @if($pendingWoCount === 0)
+                <div x-show="activeTab === 'ready'" class="col-span-full p-8 text-center bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-xl font-bold">
+                        0
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Tidak Ada Work Order yang Mengantre</h4>
+                        <p class="text-xs text-slate-500 mt-0.5">Saat ini tidak ada work order terencana yang menunggu untuk diproduksi.</p>
+                    </div>
+                    <div class="pt-1 flex flex-wrap justify-center gap-2">
+                        <a href="{{ route('sp-work-orders.index') }}" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-xs transition uppercase tracking-wider">
+                            Daftar Work Order
+                        </a>
+                        <button type="button" @click="activeTab = 'all'" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition uppercase tracking-wider cursor-pointer">
+                            Tampilkan Semua Line
+                        </button>
+                    </div>
+                </div>
+            @endif
+        </div>
     </div>
+
+</div>
 </x-operator-layout>

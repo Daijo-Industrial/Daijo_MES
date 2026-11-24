@@ -31,7 +31,7 @@
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
                     <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Pending Approval</span>
                     <div class="flex items-baseline gap-2">
-                        <span class="text-2xl font-black text-slate-900 leading-none">
+                        <span class="text-2xl font-bold text-slate-900 leading-none">
                             {{ number_format($kpiPendingCount) }}
                         </span>
                         @if($kpiPendingCount > 0)
@@ -45,7 +45,7 @@
                 {{-- Approved Today --}}
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
                     <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Approved Today</span>
-                    <div class="text-2xl font-black text-emerald-600 leading-none">
+                    <div class="text-2xl font-bold text-emerald-600 leading-none">
                         {{ number_format($kpiApprovedToday) }}
                     </div>
                 </div>
@@ -53,7 +53,7 @@
                 {{-- Pending Output --}}
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
                     <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Pending Good Qty</span>
-                    <div class="text-2xl font-black text-blue-600 leading-none">
+                    <div class="text-2xl font-bold text-blue-600 leading-none">
                         {{ number_format($kpiPendingGood) }} <span class="text-xs font-bold text-slate-400">Pcs</span>
                     </div>
                 </div>
@@ -61,7 +61,7 @@
                 {{-- Average Process Yield --}}
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
                     <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Avg Pending Yield</span>
-                    <div class="text-2xl font-black {{ $kpiAvgYield >= 98 ? 'text-emerald-600' : ($kpiAvgYield >= 95 ? 'text-amber-600' : 'text-rose-600') }} leading-none">
+                    <div class="text-2xl font-bold {{ $kpiAvgYield >= 98 ? 'text-emerald-600' : ($kpiAvgYield >= 95 ? 'text-amber-600' : 'text-rose-600') }} leading-none">
                         {{ number_format($kpiAvgYield, 1) }}%
                     </div>
                 </div>
@@ -210,7 +210,7 @@
                                     {{-- Yield --}}
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         <div class="flex items-center gap-1.5">
-                                            <span class="text-xs font-mono font-black {{ $session->yield >= 98 ? 'text-emerald-700' : ($session->yield >= 95 ? 'text-amber-600' : 'text-rose-600') }}">
+                                            <span class="text-xs font-mono font-semibold {{ $session->yield >= 98 ? 'text-emerald-700' : ($session->yield >= 95 ? 'text-amber-600' : 'text-rose-600') }}">
                                                 {{ number_format($session->yield, 1) }}%
                                             </span>
                                             <span class="text-[9px] font-bold px-1.5 py-0.5 rounded {{ $session->yield >= 98 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : ($session->yield >= 95 ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-rose-50 text-rose-800 border border-rose-200') }}">

@@ -68,13 +68,17 @@ Route::middleware(['auth', 'sp.plant-access'])->group(function () {
         Route::get('second-process-reports/part-cycle', [SecondProcessReportAnalyticsController::class, 'partCycle'])->name('second-process-reports.part-cycle');
     });
 
-    // 6. Daily Production Reports & Defect Catalog
+    // 6. Defect Catalog & Aliases
+    Route::middleware('can:second-process-defects')->group(function () {
+        Route::get('second-process-defect-manager', SecondProcessDefectManager::class)->name('second-process.defect-manager');
+    });
+
+    // 7. Daily Production Reports
     Route::middleware('can:second-process-reports')->group(function () {
         Route::get('second-process-reports/search-items', [SecondProcessReportController::class, 'searchItems'])->name('second-process-reports.search-items');
         Route::get('second-process-reports/search-customers', [SecondProcessReportController::class, 'searchCustomers'])->name('second-process-reports.search-customers');
         Route::post('second-process-reports/{id}/sign/{role}', [SecondProcessReportController::class, 'sign'])->name('second-process-reports.sign');
         Route::post('second-process-reports/{id}/reject', [SecondProcessReportController::class, 'reject'])->name('second-process-reports.reject');
-        Route::get('second-process-defect-manager', SecondProcessDefectManager::class)->name('second-process.defect-manager');
         Route::resource('second-process-reports', SecondProcessReportController::class);
     });
 
