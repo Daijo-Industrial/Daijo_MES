@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sap_delso', function (Blueprint $table) {
-            $table->integer("doc_num")->nullable();
-            $table->string("doc_status")->nullable();
-            $table->string("item_no")->nullable();
-            $table->integer("quantity")->nullable();
-            $table->integer("delivered_qty")->nullable();
-            $table->integer("line_num")->nullable();
-            $table->string("row_status")->nullable();
+            $table->integer('doc_num')->nullable();
+            $table->string('doc_status')->nullable();
+            $table->string('item_no')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->integer('delivered_qty')->nullable();
+            $table->integer('line_num')->nullable();
+            $table->string('row_status')->nullable();
         });
     }
 

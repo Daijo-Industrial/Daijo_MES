@@ -40,4 +40,3 @@ class TelegramAlertServiceTest extends TestCase
         $this->assertFalse($sent);
     }
 }
-

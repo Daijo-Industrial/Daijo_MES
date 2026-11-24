@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\SecondProcessReportSyncBridge;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
 
 class SpProductionSyncBridgeTest extends TestCase

@@ -41,6 +41,7 @@ class MaterialOutgoingCreator extends Component
 
     // Production Material Request Integration
     public ?int $request_id = null;
+
     public ?\App\Models\ProductionMaterialRequest $activeRequest = null;
 
     protected $queryString = ['selected_item_code', 'whse_id', 'request_id'];

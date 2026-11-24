@@ -6,8 +6,6 @@ use App\Livewire\Production\ProductionMaterialStation;
 use App\Models\MasterListMaterial;
 use App\Models\MasterMachine;
 use App\Models\MwhOutgoing;
-use App\Models\MwhPallet;
-use App\Models\ProductionMaterialUsage;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\ProductionMaterialService;
@@ -21,6 +19,7 @@ class ProductionMaterialStationTest extends TestCase
     use RefreshDatabase;
 
     protected User $productionUser;
+
     protected \App\Models\MwhWarehouse $warehouse;
 
     protected function setUp(): void

@@ -4,7 +4,6 @@ namespace App\Livewire\MaterialWarehouse;
 
 use App\Models\ProductionMaterialRequest;
 use App\Services\ProductionMaterialService;
-use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -147,4 +146,3 @@ class MaterialRequestManager extends Component
         ]);
     }
 }
-

@@ -14,18 +14,22 @@ class SecondProcessDefectManager extends Component
     use WithPagination;
 
     public string $search = '';
+
     public string $unmappedSearch = '';
 
     // Create Catalog form
     public string $newCatalogName = '';
+
     public string $newCatalogDescription = '';
 
     // Create Alias modal/form
     public ?int $selectedCatalogId = null;
+
     public string $newAliasInput = '';
 
     // Flash message
     public ?string $statusMessage = null;
+
     public string $statusType = 'success'; // success, error, info
 
     protected $queryString = [
@@ -53,12 +57,14 @@ class SecondProcessDefectManager extends Component
 
         if (SecondProcessDefectCatalog::where('name', $name)->exists()) {
             $this->addError('newCatalogName', "Defect '{$name}' sudah ada di katalog.");
+
             return;
         }
 
         // Also ensure it's not already registered as an alias
         if (SecondProcessDefectAlias::where('alias', $name)->exists()) {
             $this->addError('newCatalogName', "Nama '{$name}' sudah terdaftar sebagai alias.");
+
             return;
         }
 
@@ -117,16 +123,19 @@ class SecondProcessDefectManager extends Component
 
         if ($alias === $catalog->name) {
             $this->addError('newAliasInput', "Alias tidak boleh sama persis dengan nama standar '{$catalog->name}'.");
+
             return;
         }
 
         if (SecondProcessDefectCatalog::where('name', $alias)->exists()) {
             $this->addError('newAliasInput', "Nama '{$alias}' sudah digunakan sebagai nama defect standar lain.");
+
             return;
         }
 
         if (SecondProcessDefectAlias::where('alias', $alias)->exists()) {
             $this->addError('newAliasInput', "Alias '{$alias}' sudah terdaftar.");
+
             return;
         }
 
@@ -172,7 +181,7 @@ class SecondProcessDefectManager extends Component
             $this->notify("Variasi '{$rawName}' berhasil dipetakan ke '{$catalog->name}' ({$updated} record diperbarui).", 'success');
         } catch (\Throwable $e) {
             DB::rollBack();
-            $this->notify("Gagal memetakan variasi: " . $e->getMessage(), 'error');
+            $this->notify('Gagal memetakan variasi: ' . $e->getMessage(), 'error');
         }
     }
 
@@ -195,7 +204,7 @@ class SecondProcessDefectManager extends Component
             $this->notify("'{$clean}' berhasil dipromosikan menjadi defect standar baru ({$updated} record diperbarui).", 'success');
         } catch (\Throwable $e) {
             DB::rollBack();
-            $this->notify("Gagal mempromosikan variasi: " . $e->getMessage(), 'error');
+            $this->notify('Gagal mempromosikan variasi: ' . $e->getMessage(), 'error');
         }
     }
 
@@ -237,7 +246,8 @@ class SecondProcessDefectManager extends Component
         }
 
         if (empty($replacements)) {
-            $this->notify("Semua record NG saat ini sudah standar sesuai katalog. Tidak ada perubahan yang diperlukan.", 'info');
+            $this->notify('Semua record NG saat ini sudah standar sesuai katalog. Tidak ada perubahan yang diperlukan.', 'info');
+
             return;
         }
 
@@ -250,7 +260,7 @@ class SecondProcessDefectManager extends Component
             $this->notify("Berhasil menstandarisasi {$totalRecords} record NG di seluruh database!", 'success');
         } catch (\Throwable $e) {
             DB::rollBack();
-            $this->notify("Gagal menjalankan standarisasi: " . $e->getMessage(), 'error');
+            $this->notify('Gagal menjalankan standarisasi: ' . $e->getMessage(), 'error');
         }
     }
 
@@ -289,15 +299,15 @@ class SecondProcessDefectManager extends Component
         $catalogsQuery = SecondProcessDefectCatalog::with(['aliases' => function ($q) {
             $q->orderBy('alias');
         }])
-        ->when($this->search, function ($q) {
-            $term = '%' . trim($this->search) . '%';
-            $q->where('name', 'like', $term)
-              ->orWhere('description', 'like', $term)
-              ->orWhereHas('aliases', function ($sub) use ($term) {
-                  $sub->where('alias', 'like', $term);
-              });
-        })
-        ->orderBy('name');
+            ->when($this->search, function ($q) {
+                $term = '%' . trim($this->search) . '%';
+                $q->where('name', 'like', $term)
+                    ->orWhere('description', 'like', $term)
+                    ->orWhereHas('aliases', function ($sub) use ($term) {
+                        $sub->where('alias', 'like', $term);
+                    });
+            })
+            ->orderBy('name');
 
         $catalogs = $catalogsQuery->paginate(15);
 

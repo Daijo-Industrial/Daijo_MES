@@ -51,7 +51,7 @@ class SyncMachineJobs extends Command
                 $this->comment('Mode --dry-run: simulasi, duplikat tidak dihapus.');
             } else {
                 \DB::statement('DELETE m1 FROM machine_jobs m1 INNER JOIN machine_jobs m2 WHERE m1.id > m2.id AND m1.user_id = m2.user_id');
-                $this->info("✅ Seluruh duplikat di machine_jobs berhasil dibersihkan!");
+                $this->info('✅ Seluruh duplikat di machine_jobs berhasil dibersihkan!');
             }
         }
 

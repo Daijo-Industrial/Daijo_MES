@@ -65,4 +65,3 @@ class TestSpkPlannedAlert extends Command
         return Command::SUCCESS;
     }
 }
-

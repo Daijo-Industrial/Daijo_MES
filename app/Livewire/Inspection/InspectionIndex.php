@@ -13,7 +13,6 @@ use App\Models\Inspection\InspectionQuantity;
 use App\Models\Inspection\InspectionReport;
 use App\Models\Inspection\InspectionSampling;
 use App\Models\Inspection\SecondInspection;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
@@ -368,6 +367,7 @@ class InspectionIndex extends Component
         if ($draft) {
             $this->pendingDraftInfo = $draft;
             $this->showDraftModal = true;
+
             return;
         }
 
@@ -397,6 +397,7 @@ class InspectionIndex extends Component
 
         if (! $report) {
             session()->flash('error', 'Laporan tidak ditemukan.');
+
             return;
         }
 

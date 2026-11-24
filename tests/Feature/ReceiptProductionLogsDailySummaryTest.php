@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\ReceiptProductionDailySummary;
 use App\Livewire\ReceiptProductionLogs;
-use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;

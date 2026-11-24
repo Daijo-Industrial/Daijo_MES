@@ -13,17 +13,17 @@ return new class extends Migration
     {
         Schema::create('cap_items', function (Blueprint $table) {
             $table->id();
-            $table->string("item_code")->nullable();
-            $table->string("line_category")->nullable();
-            $table->integer("departement")->nullable();
-            $table->integer("quantity")->nullable();
-            $table->decimal("cycle_time_raw", 8,5)->nullable();
-            $table->decimal("cycle_time", 8,5)->nullable();
-            $table->integer("cavity")->nullable();
-            $table->integer("man_power")->nullable();
-            $table->string("pair")->nullable();
-            $table->decimal("total_forecast_time", 10,2)->nullable();
-            $table->integer("counter_forecast")->nullable();
+            $table->string('item_code')->nullable();
+            $table->string('line_category')->nullable();
+            $table->integer('departement')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->decimal('cycle_time_raw', 8, 5)->nullable();
+            $table->decimal('cycle_time', 8, 5)->nullable();
+            $table->integer('cavity')->nullable();
+            $table->integer('man_power')->nullable();
+            $table->string('pair')->nullable();
+            $table->decimal('total_forecast_time', 10, 2)->nullable();
+            $table->integer('counter_forecast')->nullable();
         });
     }
 

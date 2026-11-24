@@ -6,14 +6,9 @@ use App\Livewire\Inspection\InspectionForm;
 use App\Livewire\Inspection\InspectionForm\FinalSubmit;
 use App\Livewire\Inspection\InspectionForm\StepDetail;
 use App\Livewire\Inspection\InspectionForm\StepDimension;
-use App\Livewire\Inspection\InspectionForm\StepFirst;
 use App\Livewire\Inspection\InspectionForm\StepHeader;
-use App\Livewire\Inspection\InspectionForm\StepJudgement;
-use App\Livewire\Inspection\InspectionForm\StepPackaging;
 use App\Livewire\Inspection\InspectionForm\StepPeriodProblem;
 use App\Livewire\Inspection\InspectionForm\StepProblem;
-use App\Livewire\Inspection\InspectionForm\StepSampling;
-use App\Livewire\Inspection\InspectionForm\StepSecond;
 use App\Models\DailyItemCode;
 use App\Models\HourlyRemark;
 use App\Models\Inspection\DetailInspectionReport;
@@ -1029,7 +1024,7 @@ class InspectionFormTest extends TestCase
         session(['stepDetailSaved' => ['period' => 1]]);
 
         // 1. Mutator protection: setting empty string must convert to null
-        $dim = new \App\Models\Inspection\InspectionDimension();
+        $dim = new \App\Models\Inspection\InspectionDimension;
         $dim->lower_limit = '';
         $dim->upper_limit = '';
         $dim->actual_value = '';
@@ -1051,7 +1046,7 @@ class InspectionFormTest extends TestCase
         $this->assertSame([], session('stepDetailSaved.dimensions.p1'));
 
         // 3. Persisting period to database must not throw Data truncated warning
-        $stepDetail = new \App\Livewire\Inspection\InspectionForm\StepDetail();
+        $stepDetail = new \App\Livewire\Inspection\InspectionForm\StepDetail;
         $stepDetail->inspection_report_document_number = $docNum;
         $stepDetail->period = 1;
         $stepDetail->persistPeriodToDatabase(1);
@@ -1122,7 +1117,7 @@ class InspectionFormTest extends TestCase
         $this->assertStringContainsString('1 Masalah (20 mnt)', $subSteps[5]['summary']);
 
         // 3. Persist period to database
-        $stepDetailComponent = new StepDetail();
+        $stepDetailComponent = new StepDetail;
         $stepDetailComponent->inspection_report_document_number = $docNum;
         $stepDetailComponent->document_number = $detailDocNum;
         $stepDetailComponent->period = 1;

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\DailyItemCode;
 use App\Models\HourlyRemark;
-use App\Models\MachineJob;
 use App\Models\OperatorUser;
 use App\Models\Role;
 use App\Models\User;

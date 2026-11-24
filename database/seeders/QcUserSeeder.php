@@ -21,25 +21,25 @@ class QcUserSeeder extends Seeder
         $user = User::withTrashed()->where('email', 'qc@daijo.co.id')->orWhere('username', 'qc')->first();
         if ($user) {
             $user->update([
-                'username'  => 'QC01',
-                'name'      => 'QC01',
-                'email'     => 'qc@daijo.co.id',
-                'password'  => Hash::make('password123'),
-                'role_id'   => $role->id,
+                'username' => 'QC01',
+                'name' => 'QC01',
+                'email' => 'qc@daijo.co.id',
+                'password' => Hash::make('password123'),
+                'role_id' => $role->id,
                 'is_active' => true,
-                'deleted_at'=> null,
+                'deleted_at' => null,
             ]);
         } else {
             User::create([
-                'username'  => 'QC01',
-                'name'      => 'QC01',
-                'email'     => 'qc@daijo.co.id',
-                'password'  => Hash::make('password123'),
-                'role_id'   => $role->id,
+                'username' => 'QC01',
+                'name' => 'QC01',
+                'email' => 'qc@daijo.co.id',
+                'password' => Hash::make('password123'),
+                'role_id' => $role->id,
                 'is_active' => true,
             ]);
         }
 
-        $this->command->info("User QC berhasil dibuat/diupdate (Username: qc, Password: password123, Role: QUALITY).");
+        $this->command->info('User QC berhasil dibuat/diupdate (Username: qc, Password: password123, Role: QUALITY).');
     }
 }

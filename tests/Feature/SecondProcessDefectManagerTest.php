@@ -21,6 +21,7 @@ class SecondProcessDefectManagerTest extends TestCase
     protected function createAdminUser(): User
     {
         $role = Role::firstOrCreate(['name' => 'ADMIN']);
+
         return User::factory()->create([
             'role_id' => $role->id,
         ]);

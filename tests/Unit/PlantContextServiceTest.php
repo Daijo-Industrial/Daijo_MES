@@ -14,7 +14,7 @@ class PlantContextServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new PlantContextService();
+        $this->service = new PlantContextService;
     }
 
     public function test_can_switch_branch_returns_false_for_guest(): void
@@ -24,9 +24,9 @@ class PlantContextServiceTest extends TestCase
 
     public function test_can_switch_branch_returns_true_for_super_admin(): void
     {
-        $superAdmin = new User();
+        $superAdmin = new User;
         $superAdmin->id = 1;
-        $role = new Role();
+        $role = new Role;
         $role->name = 'SUPER-ADMIN';
         $superAdmin->setRelation('role', $role);
 
@@ -35,9 +35,9 @@ class PlantContextServiceTest extends TestCase
 
     public function test_can_switch_branch_returns_false_for_regular_operator(): void
     {
-        $operator = new User();
+        $operator = new User;
         $operator->id = 2;
-        $role = new Role();
+        $role = new Role;
         $role->name = 'OPERATOR';
         $operator->setRelation('role', $role);
 
@@ -46,10 +46,10 @@ class PlantContextServiceTest extends TestCase
 
     public function test_get_effective_branch_id_returns_user_branch_for_regular_user(): void
     {
-        $user = new User();
+        $user = new User;
         $user->id = 3;
         $user->branch_id = 5;
-        $role = new Role();
+        $role = new Role;
         $role->name = 'STAFF';
         $user->setRelation('role', $role);
 
@@ -59,10 +59,10 @@ class PlantContextServiceTest extends TestCase
 
     public function test_get_effective_branch_id_returns_session_override_for_super_admin(): void
     {
-        $superAdmin = new User();
+        $superAdmin = new User;
         $superAdmin->id = 1;
         $superAdmin->branch_id = 1;
-        $role = new Role();
+        $role = new Role;
         $role->name = 'SUPER-ADMIN';
         $superAdmin->setRelation('role', $role);
 
@@ -78,9 +78,9 @@ class PlantContextServiceTest extends TestCase
 
     public function test_is_all_plants_evaluates_correctly(): void
     {
-        $superAdmin = new User();
+        $superAdmin = new User;
         $superAdmin->id = 1;
-        $role = new Role();
+        $role = new Role;
         $role->name = 'SUPER-ADMIN';
         $superAdmin->setRelation('role', $role);
 
@@ -95,9 +95,9 @@ class PlantContextServiceTest extends TestCase
     {
         $this->assertEquals('Guest', $this->service->getActivePlantLabel(null));
 
-        $superAdmin = new User();
+        $superAdmin = new User;
         $superAdmin->id = 1;
-        $role = new Role();
+        $role = new Role;
         $role->name = 'SUPER-ADMIN';
         $superAdmin->setRelation('role', $role);
 
@@ -105,4 +105,3 @@ class PlantContextServiceTest extends TestCase
         $this->assertEquals('All Plants', $this->service->getActivePlantLabel($superAdmin));
     }
 }
-

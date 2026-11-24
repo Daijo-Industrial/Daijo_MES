@@ -388,7 +388,7 @@ class AdjustMachineNgTest extends TestCase
 
         $log->load('ngDetails.ngType');
 
-        $service = new ProductionDashboardService();
+        $service = new ProductionDashboardService;
 
         // Call processNgBreakdown via reflection since it's private/protected
         $refMethod = new \ReflectionMethod(ProductionDashboardService::class, 'processNgBreakdown');

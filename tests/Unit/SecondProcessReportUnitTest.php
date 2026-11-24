@@ -16,7 +16,7 @@ class SecondProcessReportUnitTest extends TestCase
 
     public function test_is_user_authorized_to_sign_allows_super_admin(): void
     {
-        $superAdmin = new User();
+        $superAdmin = new User;
         $role = new Role(['name' => 'SUPER-ADMIN']);
         $superAdmin->setRelation('role', $role);
 
@@ -27,7 +27,7 @@ class SecondProcessReportUnitTest extends TestCase
 
     public function test_is_user_authorized_to_sign_respects_role_mapping(): void
     {
-        $checker = new User();
+        $checker = new User;
         $roleChecker = new Role(['name' => 'CHECKER']);
         $checker->setRelation('role', $roleChecker);
 
@@ -36,4 +36,3 @@ class SecondProcessReportUnitTest extends TestCase
         $this->assertFalse(SecondProcessReport::isUserAuthorizedToSign($checker, 'spv'));
     }
 }
-

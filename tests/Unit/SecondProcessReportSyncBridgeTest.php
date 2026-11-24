@@ -17,11 +17,11 @@ class SecondProcessReportSyncBridgeTest extends TestCase
 {
     private function createMockUser(string $roleName, array $permissions = []): User
     {
-        $user = new User();
+        $user = new User;
         $user->id = rand(100, 999);
         $user->name = "Test {$roleName}";
 
-        $role = new Role();
+        $role = new Role;
         $role->name = $roleName;
         $user->setRelation('role', $role);
 
@@ -41,7 +41,7 @@ class SecondProcessReportSyncBridgeTest extends TestCase
 
     public function test_build_report_data_normalizes_status_to_acknowledged_and_calculates_sisa_input()
     {
-        $bridge = new SecondProcessReportSyncBridge();
+        $bridge = new SecondProcessReportSyncBridge;
 
         $wo = new SpWorkOrder([
             'wo_number' => 'WO-202611-001',
@@ -95,7 +95,7 @@ class SecondProcessReportSyncBridgeTest extends TestCase
 
     public function test_build_report_data_with_zero_sisa_sets_null_remark()
     {
-        $bridge = new SecondProcessReportSyncBridge();
+        $bridge = new SecondProcessReportSyncBridge;
 
         $wo = new SpWorkOrder([
             'wo_number' => 'WO-202611-002',
@@ -125,7 +125,7 @@ class SecondProcessReportSyncBridgeTest extends TestCase
 
     public function test_second_process_report_policy_locks_synced_reports_for_non_admins()
     {
-        $policy = new SecondProcessReportPolicy();
+        $policy = new SecondProcessReportPolicy;
 
         $admin = $this->createMockUser('ADMIN', ['second-process-reports']);
         $leader = $this->createMockUser('LEADER', ['second-process-reports']);
@@ -155,7 +155,7 @@ class SecondProcessReportSyncBridgeTest extends TestCase
 
     public function test_second_process_report_defines_session_relationship()
     {
-        $report = new SecondProcessReport();
+        $report = new SecondProcessReport;
         $this->assertInstanceOf(\Illuminate\Database\Eloquent\Relations\BelongsTo::class, $report->session());
         $this->assertInstanceOf(\Illuminate\Database\Eloquent\Relations\BelongsTo::class, $report->spProductionSession());
     }

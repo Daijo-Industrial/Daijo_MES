@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('production_summary', function (Blueprint $table) {
             // Index for individual qc_status column
-            if (!Schema::hasIndex('production_summary', 'production_summary_qc_status_index')) {
+            if (! Schema::hasIndex('production_summary', 'production_summary_qc_status_index')) {
                 $table->index('qc_status');
             }
 

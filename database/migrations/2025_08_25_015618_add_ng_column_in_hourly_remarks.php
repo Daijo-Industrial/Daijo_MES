@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('hourly_remarks', function (Blueprint $table) {
-            $table->integer('NG')->nullable(); 
+            $table->integer('NG')->nullable();
         });
     }
 

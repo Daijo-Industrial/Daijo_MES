@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ProductionScanCrosscheckPrintController;
 use App\Http\Controllers\Store\SOController;
 use App\Livewire\Barcode\StoreDashboard;
 use App\Livewire\MaterialWarehouse\MasterListMaterialIndex;
@@ -15,7 +16,6 @@ use App\Livewire\MaterialWarehouse\MaterialStockCard;
 use App\Livewire\MaterialWarehouse\PublicRackMapping;
 use App\Livewire\MaterialWarehouse\RackMapping as MwhRackMapping;
 use App\Livewire\ProductionStoreHandoverIndex;
-use App\Http\Controllers\ProductionScanCrosscheckPrintController;
 use App\Livewire\Store\ProductionScanCrosscheck;
 use App\Livewire\Store\SoTracking;
 use App\Livewire\UploadSpkHistory;

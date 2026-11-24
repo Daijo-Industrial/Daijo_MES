@@ -45,4 +45,3 @@ class HourlyRemarkUnitTest extends TestCase
         $this->assertEquals('Solo Operator', $singlePic->pics_string);
     }
 }
-

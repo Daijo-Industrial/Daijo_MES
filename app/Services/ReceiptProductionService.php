@@ -402,7 +402,8 @@ class ReceiptProductionService extends BaseSapService
         $cooldownKey = 'sap_receipt_timeout_alert_cooldown';
 
         if (Cache::has($cooldownKey)) {
-            Log::info("SAP Receipt Production timeout alert dilewati: cooldown aktif.");
+            Log::info('SAP Receipt Production timeout alert dilewati: cooldown aktif.');
+
             return;
         }
 
@@ -438,17 +439,17 @@ class ReceiptProductionService extends BaseSapService
 
                 Mail::to($recipients)->send(new SapTimeoutAlertMail($summary, collect([$logObj]), false));
 
-                Log::warning("[SAP-TIMEOUT-ALERT] Alert email real-time terkirim ke: " . implode(', ', $recipients));
+                Log::warning('[SAP-TIMEOUT-ALERT] Alert email real-time terkirim ke: ' . implode(', ', $recipients));
             }
         } catch (\Throwable $mailEx) {
-            Log::error("Gagal mengirim email alert SAP Timeout: " . $mailEx->getMessage());
+            Log::error('Gagal mengirim email alert SAP Timeout: ' . $mailEx->getMessage());
         }
 
         // 2. Kirim notifikasi Telegram ke Grup
         try {
             \App\Services\TelegramAlertService::sendSapTimeoutAlert($endpoint, $errorMessage, $logId);
         } catch (\Throwable $teleEx) {
-            Log::error("Gagal mengirim Telegram alert: " . $teleEx->getMessage());
+            Log::error('Gagal mengirim Telegram alert: ' . $teleEx->getMessage());
         }
     }
 }

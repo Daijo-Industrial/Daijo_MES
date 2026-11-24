@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('cap_forecast_finals', function (Blueprint $table) {
             $table->id();
-            $table->string("item_code")->nullable();
-            $table->integer("quantity")->nullable();
-            $table->integer("completed")->nullable();
-            $table->integer("outstanding")->nullable();
-            $table->integer("department")->nullable();
-            $table->string("status")->nullable();
+            $table->string('item_code')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->integer('completed')->nullable();
+            $table->integer('outstanding')->nullable();
+            $table->integer('department')->nullable();
+            $table->string('status')->nullable();
         });
     }
 

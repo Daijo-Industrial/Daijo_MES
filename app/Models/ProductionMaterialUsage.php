@@ -48,4 +48,3 @@ class ProductionMaterialUsage extends Model
         return $this->belongsTo(User::class, 'used_by');
     }
 }
-

@@ -11,29 +11,41 @@ use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
 
 class Index extends Component
 {
-    use WithPagination;
     use WithFileUploads;
+    use WithPagination;
 
     public $search = '';
+
     public $selectedCustomer = '';
 
     // Modal state for Add / Edit
     public $showFormModal = false;
+
     public $isEdit = false;
+
     public $mouldId = null;
 
     public $mould_no = '';
+
     public $part_no = '';
+
     public $part_name = '';
+
     public $model = '';
+
     public $customer = '';
+
     public $machine_number = '';
+
     public $material = '';
+
     public $is_active = true;
 
     // Excel Upload modal state
     public $showUploadModal = false;
+
     public $excelFile = null;
+
     public $isUploading = false;
 
     protected $paginationTheme = 'tailwind';
@@ -183,7 +195,7 @@ class Index extends Component
             ini_set('memory_limit', '1024M');
             $path = $this->excelFile->getRealPath();
 
-            $reader = new Xlsx();
+            $reader = new Xlsx;
             $reader->setReadDataOnly(true);
             $worksheetInfo = $reader->listWorksheetInfo($path);
             $targetSheet = 'Sheet3 (3)';

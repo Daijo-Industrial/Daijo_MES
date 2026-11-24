@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('notification_recipients', function (Blueprint $table) {
             $table->id();
             $table->string('email')->unique();
-            $table->boolean('active')->default(true); // Optional: to manage active/inactive recipients 
+            $table->boolean('active')->default(true); // Optional: to manage active/inactive recipients
             $table->timestamps();
         });
     }

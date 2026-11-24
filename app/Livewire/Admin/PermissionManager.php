@@ -120,4 +120,3 @@ class PermissionManager extends Component
         return view('livewire.admin.permission-manager', compact('permissions', 'availableGroups'));
     }
 }
-

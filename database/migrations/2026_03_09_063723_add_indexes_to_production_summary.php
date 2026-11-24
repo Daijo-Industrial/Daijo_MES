@@ -18,11 +18,11 @@ return new class extends Migration
             $table->index('warehouse');
             $table->index('created_date');
             $table->index('sap_sent');
-            
+
             // COMPOSITE INDEX untuk kombinasi filter (paling penting!)
             $table->index(['warehouse', 'created_date', 'sap_sent']);
             $table->index(['warehouse', 'created_date']);
-            
+
             // INDEX untuk JOIN
             $table->index('spk_code');
         });

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('wms_pallet_forms', 'assigned_at')) {
+        if (! Schema::hasColumn('wms_pallet_forms', 'assigned_at')) {
             Schema::table('wms_pallet_forms', function (Blueprint $table) {
                 $table->timestamp('assigned_at')->nullable()->after('position_id');
             });

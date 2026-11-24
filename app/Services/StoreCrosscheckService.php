@@ -3,13 +3,11 @@
 namespace App\Services;
 
 use App\Models\DailyItemCode;
-use App\Models\MasterListItem;
 use App\Models\ProductionScannedData;
 use App\Models\StoreCrosscheckDailyReport;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class StoreCrosscheckService
@@ -105,6 +103,7 @@ class StoreCrosscheckService
     public function getTimeWindow(string $selectedDate): array
     {
         $validDate = self::normalizeDate($selectedDate);
+
         return WmsDeliveryRecapService::getTimeWindow($validDate);
     }
 
@@ -130,37 +129,37 @@ class StoreCrosscheckService
             'masterItem.customer',
             'storeChecker',
         ])
-        ->where(function ($q) use ($startTime, $endTime, $selectedDate) {
-            $q->whereBetween('production_scanned_data.created_at', [$startTime, $endTime])
-              ->orWhereHas('dailyItemCode', fn ($dic) => $dic->where('schedule_date', $selectedDate));
-        });
+            ->where(function ($q) use ($startTime, $endTime, $selectedDate) {
+                $q->whereBetween('production_scanned_data.created_at', [$startTime, $endTime])
+                    ->orWhereHas('dailyItemCode', fn ($dic) => $dic->where('schedule_date', $selectedDate));
+            });
 
         // 1. Filter Plant: KBN vs KARAWANG
         if (strtoupper($plant) === 'KARAWANG') {
             $query->where(function ($q) {
                 $q->where('production_scanned_data.item_code', 'LIKE', 'K-%')
-                  ->orWhere('production_scanned_data.warehouse', 'LIKE', '%KRW%')
-                  ->orWhere('production_scanned_data.warehouse', 'LIKE', '%KARAWANG%')
-                  ->orWhereHas('dailyItemCode.user', function ($uq) {
-                      $uq->where('name', 'LIKE', 'K%');
-                  });
+                    ->orWhere('production_scanned_data.warehouse', 'LIKE', '%KRW%')
+                    ->orWhere('production_scanned_data.warehouse', 'LIKE', '%KARAWANG%')
+                    ->orWhereHas('dailyItemCode.user', function ($uq) {
+                        $uq->where('name', 'LIKE', 'K%');
+                    });
             });
         } elseif (strtoupper($plant) === 'KBN') {
             $query->where(function ($q) {
                 $q->where('production_scanned_data.item_code', 'NOT LIKE', 'K-%')
-                  ->where(function ($wq) {
-                      $wq->whereNull('production_scanned_data.warehouse')
-                         ->orWhere(function ($wq2) {
-                             $wq2->where('production_scanned_data.warehouse', 'NOT LIKE', '%KRW%')
-                                 ->where('production_scanned_data.warehouse', 'NOT LIKE', '%KARAWANG%');
-                         });
-                  })
-                  ->where(function ($uq) {
-                      $uq->whereDoesntHave('dailyItemCode.user')
-                         ->orWhereHas('dailyItemCode.user', function ($uq2) {
-                             $uq2->where('name', 'NOT LIKE', 'K%');
-                         });
-                  });
+                    ->where(function ($wq) {
+                        $wq->whereNull('production_scanned_data.warehouse')
+                            ->orWhere(function ($wq2) {
+                                $wq2->where('production_scanned_data.warehouse', 'NOT LIKE', '%KRW%')
+                                    ->where('production_scanned_data.warehouse', 'NOT LIKE', '%KARAWANG%');
+                            });
+                    })
+                    ->where(function ($uq) {
+                        $uq->whereDoesntHave('dailyItemCode.user')
+                            ->orWhereHas('dailyItemCode.user', function ($uq2) {
+                                $uq2->where('name', 'NOT LIKE', 'K%');
+                            });
+                    });
             });
         }
 
@@ -169,24 +168,24 @@ class StoreCrosscheckService
             $targetShift = (int) $shift;
             $query->where(function ($q) use ($targetShift, $selectedDate) {
                 $q->whereHas('dailyItemCode', fn ($dic) => $dic->where('shift', $targetShift))
-                  ->orWhere(function ($q2) use ($targetShift, $selectedDate) {
-                      $q2->whereDoesntHave('dailyItemCode');
-                      $appTz = config('app.timezone', 'UTC');
+                    ->orWhere(function ($q2) use ($targetShift, $selectedDate) {
+                        $q2->whereDoesntHave('dailyItemCode');
+                        $appTz = config('app.timezone', 'UTC');
 
-                      if ($targetShift === 1) {
-                          $s1Start = Carbon::parse($selectedDate . ' 07:30:00', 'Asia/Jakarta')->setTimezone($appTz);
-                          $s1End = Carbon::parse($selectedDate . ' 15:29:59', 'Asia/Jakarta')->setTimezone($appTz);
-                          $q2->whereBetween('production_scanned_data.created_at', [$s1Start, $s1End]);
-                      } elseif ($targetShift === 2) {
-                          $s2Start = Carbon::parse($selectedDate . ' 15:30:00', 'Asia/Jakarta')->setTimezone($appTz);
-                          $s2End = Carbon::parse($selectedDate . ' 23:29:59', 'Asia/Jakarta')->setTimezone($appTz);
-                          $q2->whereBetween('production_scanned_data.created_at', [$s2Start, $s2End]);
-                      } else {
-                          $s3Start = Carbon::parse($selectedDate . ' 23:30:00', 'Asia/Jakarta')->setTimezone($appTz);
-                          $s3End = Carbon::parse($selectedDate . ' 07:29:59', 'Asia/Jakarta')->addDay()->setTimezone($appTz);
-                          $q2->whereBetween('production_scanned_data.created_at', [$s3Start, $s3End]);
-                      }
-                  });
+                        if ($targetShift === 1) {
+                            $s1Start = Carbon::parse($selectedDate . ' 07:30:00', 'Asia/Jakarta')->setTimezone($appTz);
+                            $s1End = Carbon::parse($selectedDate . ' 15:29:59', 'Asia/Jakarta')->setTimezone($appTz);
+                            $q2->whereBetween('production_scanned_data.created_at', [$s1Start, $s1End]);
+                        } elseif ($targetShift === 2) {
+                            $s2Start = Carbon::parse($selectedDate . ' 15:30:00', 'Asia/Jakarta')->setTimezone($appTz);
+                            $s2End = Carbon::parse($selectedDate . ' 23:29:59', 'Asia/Jakarta')->setTimezone($appTz);
+                            $q2->whereBetween('production_scanned_data.created_at', [$s2Start, $s2End]);
+                        } else {
+                            $s3Start = Carbon::parse($selectedDate . ' 23:30:00', 'Asia/Jakarta')->setTimezone($appTz);
+                            $s3End = Carbon::parse($selectedDate . ' 07:29:59', 'Asia/Jakarta')->addDay()->setTimezone($appTz);
+                            $q2->whereBetween('production_scanned_data.created_at', [$s3Start, $s3End]);
+                        }
+                    });
             });
         }
 
@@ -198,7 +197,7 @@ class StoreCrosscheckService
         } elseif ($status === 'PENDING') {
             $query->where(function ($q) {
                 $q->whereNull('production_scanned_data.store_check_status')
-                  ->orWhere('production_scanned_data.store_check_status', 'PENDING');
+                    ->orWhere('production_scanned_data.store_check_status', 'PENDING');
             });
         }
 
@@ -207,13 +206,13 @@ class StoreCrosscheckService
             $term = '%' . trim($search) . '%';
             $query->where(function ($q) use ($term) {
                 $q->where('production_scanned_data.label', 'LIKE', $term)
-                  ->orWhere('production_scanned_data.item_code', 'LIKE', $term)
-                  ->orWhere('production_scanned_data.spk_code', 'LIKE', $term)
-                  ->orWhere('production_scanned_data.user', 'LIKE', $term)
-                  ->orWhere('production_scanned_data.store_notes', 'LIKE', $term)
-                  ->orWhere('production_scanned_data.store_checked_by_name', 'LIKE', $term)
-                  ->orWhereHas('masterItem', fn ($mq) => $mq->where('item_name', 'LIKE', $term)->orWhere('description', 'LIKE', $term))
-                  ->orWhereHas('dailyItemCode.user', fn ($uq) => $uq->where('name', 'LIKE', $term));
+                    ->orWhere('production_scanned_data.item_code', 'LIKE', $term)
+                    ->orWhere('production_scanned_data.spk_code', 'LIKE', $term)
+                    ->orWhere('production_scanned_data.user', 'LIKE', $term)
+                    ->orWhere('production_scanned_data.store_notes', 'LIKE', $term)
+                    ->orWhere('production_scanned_data.store_checked_by_name', 'LIKE', $term)
+                    ->orWhereHas('masterItem', fn ($mq) => $mq->where('item_name', 'LIKE', $term)->orWhere('description', 'LIKE', $term))
+                    ->orWhereHas('dailyItemCode.user', fn ($uq) => $uq->where('name', 'LIKE', $term));
             });
         }
 
@@ -239,19 +238,19 @@ class StoreCrosscheckService
         $query = DailyItemCode::with('user')
             ->where(function ($q) use ($startTime, $endTime, $selectedDate) {
                 $q->where('schedule_date', $selectedDate)
-                  ->orWhereBetween('created_at', [$startTime, $endTime]);
+                    ->orWhereBetween('created_at', [$startTime, $endTime]);
             })
             ->whereHas('user');
 
         if (strtoupper($plant) === 'KARAWANG') {
             $query->where(function ($q) {
                 $q->where('item_code', 'LIKE', 'K-%')
-                  ->orWhereHas('user', fn ($uq) => $uq->where('name', 'LIKE', 'K%'));
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'LIKE', 'K%'));
             });
         } elseif (strtoupper($plant) === 'KBN') {
             $query->where(function ($q) {
                 $q->where('item_code', 'NOT LIKE', 'K-%')
-                  ->whereHas('user', fn ($uq) => $uq->where('name', 'NOT LIKE', 'K%'));
+                    ->whereHas('user', fn ($uq) => $uq->where('name', 'NOT LIKE', 'K%'));
             });
         }
 
@@ -366,6 +365,7 @@ class StoreCrosscheckService
 
             if ($crossPlantMatch) {
                 $itemPlant = $crossPlantMatch->plant;
+
                 return [
                     'success' => false,
                     'status' => 'wrong_plant',
@@ -444,6 +444,7 @@ class StoreCrosscheckService
         $record = ProductionScannedData::find($id);
         if ($record) {
             $record->update(['store_notes' => trim($note)]);
+
             return true;
         }
 

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::create('maintenance_machines', function (Blueprint $table) {
+        Schema::create('maintenance_machines', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->date('tanggal');
             $table->string('tipe'); // kalau mau tetap ada tipe repair/maintenance

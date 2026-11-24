@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sp_production_sessions', function (Blueprint $table) {
-            if (!Schema::hasColumn('sp_production_sessions', 'is_qc_bypassed')) {
+            if (! Schema::hasColumn('sp_production_sessions', 'is_qc_bypassed')) {
                 $table->boolean('is_qc_bypassed')->default(false)->after('remarks');
                 $table->string('qc_bypass_reason')->nullable()->after('is_qc_bypassed');
                 $table->timestamp('qc_bypassed_at')->nullable()->after('qc_bypass_reason');

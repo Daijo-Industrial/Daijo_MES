@@ -211,6 +211,7 @@ class FinalSubmit extends Component
                 message: 'Tidak ada periode yang lengkap terisi. Minimal satu periode harus lengkap.',
                 type: 'error'
             );
+
             return;
         }
 
@@ -355,6 +356,7 @@ class FinalSubmit extends Component
         ]);
 
         session()->flash('success', 'Laporan IPQC berhasil disimpan ke sistem MES!');
+
         return redirect()->route('inspection-reports.index');
     }
 

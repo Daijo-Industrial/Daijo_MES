@@ -15,9 +15,13 @@ class Index extends Component
     use WithPagination;
 
     public $search = '';
+
     public $filterStatus = '';
+
     public $filterCustomer = '';
+
     public $filterDateFrom = '';
+
     public $filterDateTo = '';
 
     protected $paginationTheme = 'tailwind';
@@ -82,6 +86,7 @@ class Index extends Component
 
         if (! $canDelete) {
             session()->flash('error', 'Hanya dokumen berstatus DRAFT atau Admin yang dapat dihapus.');
+
             return;
         }
 

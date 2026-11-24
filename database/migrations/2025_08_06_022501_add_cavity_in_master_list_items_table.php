@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('master_list_items', function (Blueprint $table) {
-              $table->integer('cavity')->default(0);
+            $table->integer('cavity')->default(0);
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('master_list_items', function (Blueprint $table) {
-             $table->dropColumn('cavity');
+            $table->dropColumn('cavity');
         });
     }
 };

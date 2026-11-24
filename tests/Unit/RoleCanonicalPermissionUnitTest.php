@@ -37,4 +37,3 @@ class RoleCanonicalPermissionUnitTest extends TestCase
         $this->assertFalse($leader->isProtected());
     }
 }
-

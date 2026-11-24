@@ -14,7 +14,9 @@ class SpWorkOrderPermissionTest extends TestCase
     use RefreshDatabase;
 
     protected $authorizedUser;
+
     protected $unauthorizedUser;
+
     protected $superAdmin;
 
     protected function setUp(): void

@@ -4,9 +4,8 @@ namespace App\Services;
 
 class PeriodValidator
 {
-    /** 
-     * @param array $sectionData
-     * @return array<string, array<int>> [section => [1,3]] 
+    /**
+     * @return array<string, array<int>> [section => [1,3]]
      */
     public static function missing(array $sectionData): array
     {

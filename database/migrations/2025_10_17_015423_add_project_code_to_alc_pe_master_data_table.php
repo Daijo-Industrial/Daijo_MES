@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('alc_pe_master_data', function (Blueprint $table) {
-             $table->string('project_code')->nullable()->after('part_code');
+            $table->string('project_code')->nullable()->after('part_code');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('alc_pe_master_data', function (Blueprint $table) {
-             $table->dropColumn('project_code');
+            $table->dropColumn('project_code');
         });
     }
 };

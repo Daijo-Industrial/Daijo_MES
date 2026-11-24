@@ -292,6 +292,7 @@ class StepDetail extends Component
 
         if (! $this->hasPeriodRealData($this->period)) {
             $this->dispatch('toast', message: "Periode {$this->period} belum memiliki data inspeksi yang diisi. Harap masukkan hasil inspeksi sebelum menyelesaikan periode.", type: 'warning');
+
             return;
         }
 
@@ -657,6 +658,7 @@ class StepDetail extends Component
     {
         if (! $this->hasPeriodRealData($this->period)) {
             $this->dispatch('toast', message: "Periode {$this->period} belum memiliki data inspeksi yang diisi. Harap masukkan hasil inspeksi sebelum menyimpan periode.", type: 'warning');
+
             return;
         }
 
@@ -678,6 +680,7 @@ class StepDetail extends Component
     {
         if ($this->period <= 1) {
             $this->dispatch('toast', message: 'Periode 1 adalah periode awal. Tidak ada periode sebelumnya.', type: 'warning');
+
             return;
         }
 
@@ -693,6 +696,7 @@ class StepDetail extends Component
 
         if (! $hasPrev) {
             $this->dispatch('toast', message: "Data Periode {$prevPeriod} belum tersedia untuk disalin.", type: 'warning');
+
             return;
         }
 

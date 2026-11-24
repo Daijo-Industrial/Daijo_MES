@@ -42,6 +42,7 @@ class CheckSapTimeoutAlert extends Command
 
         if (empty($recipients)) {
             $this->info('Notifikasi email timeout dimatikan (tidak ada penerima yang dikonfigurasi).');
+
             return \Illuminate\Console\Command::SUCCESS;
         }
 
@@ -79,7 +80,7 @@ class CheckSapTimeoutAlert extends Command
                 $testTeleMsg = "🧪 *[TEST] NOTIFIKASI UJI COBA BOT TELEGRAM DAIJO MES*\n\n"
                     . "Pengujian integrasi bot Telegram via `php artisan sap:alert-timeout --test` *BERHASIL*.\n"
                     . "Sistem siap mengirimkan alert jika terjadi timeout pada API SAP.\n\n"
-                    . "⏱️ *Waktu Uji:* " . now('Asia/Jakarta')->format('d M Y H:i:s') . " WIB";
+                    . '⏱️ *Waktu Uji:* ' . now('Asia/Jakarta')->format('d M Y H:i:s') . ' WIB';
                 $teleSent = \App\Services\TelegramAlertService::sendMessage($testTeleMsg);
                 if ($teleSent) {
                     $this->info('✅ Notifikasi Telegram uji coba berhasil dikirim ke grup.');

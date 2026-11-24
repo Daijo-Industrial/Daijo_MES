@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Create permissions table
-        if (!Schema::hasTable('permissions')) {
+        if (! Schema::hasTable('permissions')) {
             Schema::create('permissions', function (Blueprint $table) {
                 $table->id();
                 $table->string('name')->unique();
@@ -25,14 +25,14 @@ return new class extends Migration
         }
 
         // 2. Add permissions_configured indicator to roles table
-        if (Schema::hasTable('roles') && !Schema::hasColumn('roles', 'permissions_configured')) {
+        if (Schema::hasTable('roles') && ! Schema::hasColumn('roles', 'permissions_configured')) {
             Schema::table('roles', function (Blueprint $table) {
                 $table->boolean('permissions_configured')->default(false)->after('name');
             });
         }
 
         // 3. Create role_permissions pivot table
-        if (!Schema::hasTable('role_permissions')) {
+        if (! Schema::hasTable('role_permissions')) {
             Schema::create('role_permissions', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
@@ -312,7 +312,7 @@ return new class extends Migration
                     }
                 }
 
-                if (!empty($pivotData)) {
+                if (! empty($pivotData)) {
                     DB::table('role_permissions')->insertOrIgnore($pivotData);
                 }
 

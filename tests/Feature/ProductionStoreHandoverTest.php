@@ -13,8 +13,6 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
-use App\Models\WmsPosition;
-use App\Models\WmsRack;
 use App\Services\ProductionStoreHandoverService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -24,7 +22,9 @@ use Tests\TestCase;
 class ProductionStoreHandoverTest extends TestCase
 {
     protected Role $adminRole;
+
     protected User $user;
+
     protected ProductionStoreHandoverService $service;
 
     protected function setUp(): void
@@ -962,4 +962,3 @@ class ProductionStoreHandoverTest extends TestCase
         $this->assertEquals('COMPLETED', $h2->status);
     }
 }
-

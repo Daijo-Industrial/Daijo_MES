@@ -19,6 +19,7 @@ class TelegramAlertService
 
         if (empty($token) || empty($targetChatId)) {
             Log::warning('Telegram alert skipped: Token atau Chat ID belum dikonfigurasi.');
+
             return false;
         }
 
@@ -38,6 +39,7 @@ class TelegramAlertService
 
             if ($response->successful()) {
                 Log::info("Telegram alert berhasil terkirim ke chat ID: {$targetChatId}" . ($targetTopicId ? " (Topic ID: {$targetTopicId})" : ''));
+
                 return true;
             }
 
@@ -51,14 +53,17 @@ class TelegramAlertService
                 $retry = Http::timeout(8)->post("https://api.telegram.org/bot{$token}/sendMessage", $payload);
                 if ($retry->successful()) {
                     Log::info("Telegram alert berhasil terkirim ke new supergroup chat ID: {$newChatId}");
+
                     return true;
                 }
             }
 
             Log::error('Telegram alert gagal dikirim: ' . $response->body());
+
             return false;
         } catch (\Throwable $e) {
             Log::error('Telegram alert exception: ' . $e->getMessage());
+
             return false;
         }
     }
@@ -78,14 +83,14 @@ class TelegramAlertService
             . "• *Waktu:* `{$timeStr} WIB`\n"
             . "• *API Endpoint:* `{$endpoint}`\n"
             . ($idStr ? "• *Log ID:* `{$idStr}`\n" : '')
-            . "• *Target Gateway:* `" . config('services.sap.base_url', 'http://192.168.6.149:9001') . "`\n\n"
+            . '• *Target Gateway:* `' . config('services.sap.base_url', 'http://192.168.6.149:9001') . "`\n\n"
             . "📝 *Pesan Error:*\n"
             . "```\n{$shortError}\n```\n\n"
             . "🛠️ *Tindakan Disarankan:*\n"
             . "1. Periksa apakah server SAP / service API wrapper aktif.\n"
             . "2. Cek beban antrean / CPU Server SAP Business One.\n"
             . "3. Pastikan routing jaringan MES -> SAP stabil.\n\n"
-            . "🔗 [Buka API Logs Dashboard](" . url('/api-log-dashboard') . ")";
+            . '🔗 [Buka API Logs Dashboard](' . url('/api-log-dashboard') . ')';
 
         return self::sendMessage($text, null, $topicId);
     }

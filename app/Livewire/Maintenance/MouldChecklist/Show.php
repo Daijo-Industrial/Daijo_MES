@@ -8,7 +8,9 @@ use Livewire\Component;
 class Show extends Component
 {
     public $checklistId;
+
     public $showRejectModal = false;
+
     public $rejectionNote = '';
 
     public function mount($id)
@@ -26,17 +28,20 @@ class Show extends Component
         $user = auth()->user();
         if (! $user) {
             session()->flash('error', 'Silakan login terlebih dahulu.');
+
             return;
         }
 
         if (! $user->canSign('mould_checklist', 'checked_by')) {
             session()->flash('error', 'Anda tidak memiliki wewenang untuk verifikasi dan tanda tangan Check By.');
+
             return;
         }
 
         $checklist = $this->checklist;
         if ($checklist->status !== 'SUBMITTED') {
             session()->flash('error', 'Hanya dokumen berstatus SUBMITTED yang dapat diapprove.');
+
             return;
         }
 
@@ -72,11 +77,13 @@ class Show extends Component
         $user = auth()->user();
         if (! $user) {
             session()->flash('error', 'Silakan login terlebih dahulu.');
+
             return;
         }
 
         if (! $user->canSign('mould_checklist', 'checked_by')) {
             session()->flash('error', 'Anda tidak memiliki wewenang untuk menolak dokumen ini.');
+
             return;
         }
 
@@ -99,6 +106,7 @@ class Show extends Component
 
         if (! $canDelete) {
             session()->flash('error', 'Hanya dokumen berstatus DRAFT atau Admin yang dapat dihapus.');
+
             return;
         }
 

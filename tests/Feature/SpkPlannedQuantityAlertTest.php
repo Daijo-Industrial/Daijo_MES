@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Mail\SpkPlannedQuantityChangedMail;
-use App\Models\MasterListItem;
 use App\Models\SpkMaster;
 use App\Services\SpkMasterService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -161,4 +160,3 @@ class SpkPlannedQuantityAlertTest extends TestCase
         });
     }
 }
-

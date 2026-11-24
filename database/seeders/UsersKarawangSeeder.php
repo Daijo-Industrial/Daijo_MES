@@ -3,10 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Role;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Carbon\Carbon;
 
 class UsersKarawangSeeder extends Seeder
 {
@@ -37,13 +37,13 @@ class UsersKarawangSeeder extends Seeder
 
         foreach ($users as $username) {
             DB::table('users')->insert([
-                'name'           => $username,
-                'email'          => strtolower($username) . '@daijo.co.id',
-                'role_id'        => $roleId,
-                'password'       => Hash::make('daijo1234'), // default password
+                'name' => $username,
+                'email' => strtolower($username) . '@daijo.co.id',
+                'role_id' => $roleId,
+                'password' => Hash::make('daijo1234'), // default password
                 'remember_token' => null,
-                'created_at'     => $timestamp,
-                'updated_at'     => $timestamp,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
             ]);
         }
     }

@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\DailyItemCode;
 use App\Models\MachineJob;
 use App\Models\ProductionScannedData;
-use App\Models\Role;
 use App\Models\User;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;

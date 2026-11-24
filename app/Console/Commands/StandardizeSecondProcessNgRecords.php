@@ -33,7 +33,8 @@ class StandardizeSecondProcessNgRecords extends Command
         $isDryRun = (bool) $this->option('dry-run');
         $isForce = (bool) $this->option('force');
 
-        $this->info($isDryRun
+        $this->info(
+            $isDryRun
             ? '🔍 [DRY-RUN] Scanning second_process_ng_records for non-standard records...'
             : '🚀 Scanning second_process_ng_records for non-standard records...'
         );
@@ -41,33 +42,34 @@ class StandardizeSecondProcessNgRecords extends Command
         $query = SecondProcessNgRecord::query()
             ->where(function ($q) {
                 $q->whereIn('ng_category', ['NG-PROCESS', 'NG-PROCES', 'PROCESS', 'PROCES'])
-                  ->orWhere('ng_input_item', 'like', '%PROCESS%')
-                  ->orWhere('ng_input_item', 'like', '%PROCES%')
-                  ->orWhere(function ($sub) {
-                      $sub->whereNull('ng_category')
-                          ->whereNotNull('ng_input_item')
-                          ->where('ng_input_item', '!=', '');
-                  })
-                  ->orWhere(function ($sub) {
-                      $sub->whereNotNull('ng_input_item')
-                          ->where('ng_input_item', '!=', '')
-                          ->where('ng_input_item', 'not like', '%NG-PROSES%')
-                          ->where('ng_input_item', 'not like', '%NG-INPUT%');
-                  })
-                  ->orWhere(function ($sub) {
-                      $sub->where('total_ng', '>', 0)
-                          ->where(function ($missing) {
-                              $missing->whereNull('ng_category')
-                                      ->orWhereNull('ng_input_item')
-                                      ->orWhere('ng_input_item', '');
-                          });
-                  });
+                    ->orWhere('ng_input_item', 'like', '%PROCESS%')
+                    ->orWhere('ng_input_item', 'like', '%PROCES%')
+                    ->orWhere(function ($sub) {
+                        $sub->whereNull('ng_category')
+                            ->whereNotNull('ng_input_item')
+                            ->where('ng_input_item', '!=', '');
+                    })
+                    ->orWhere(function ($sub) {
+                        $sub->whereNotNull('ng_input_item')
+                            ->where('ng_input_item', '!=', '')
+                            ->where('ng_input_item', 'not like', '%NG-PROSES%')
+                            ->where('ng_input_item', 'not like', '%NG-INPUT%');
+                    })
+                    ->orWhere(function ($sub) {
+                        $sub->where('total_ng', '>', 0)
+                            ->where(function ($missing) {
+                                $missing->whereNull('ng_category')
+                                    ->orWhereNull('ng_input_item')
+                                    ->orWhere('ng_input_item', '');
+                            });
+                    });
             });
 
         $totalCandidates = $query->count();
 
         if ($totalCandidates === 0) {
             $this->info('✅ All second_process_ng_records are already standardized. No changes needed.');
+
             return 0;
         }
 
@@ -235,17 +237,20 @@ class StandardizeSecondProcessNgRecords extends Command
 
         if ($totalAffected === 0) {
             $this->info('✅ No records require modification.');
+
             return 0;
         }
 
         if ($isDryRun) {
             $this->info('🔍 [DRY-RUN] No changes were written to the database.');
             $this->info('Run without --dry-run to apply these changes.');
+
             return 0;
         }
 
         if (! $isForce && ! $this->confirm("Are you sure you want to update {$totalAffected} records in the database?", false)) {
             $this->warn('❌ Operation aborted by user. Database was not modified.');
+
             return 1;
         }
 
@@ -272,6 +277,7 @@ class StandardizeSecondProcessNgRecords extends Command
             $updateBar->finish();
             $this->newLine(2);
             $this->info("🎉 Successfully updated {$totalAffected} records in second_process_ng_records!");
+
             return 0;
         } catch (Throwable $e) {
             DB::rollBack();
@@ -279,6 +285,7 @@ class StandardizeSecondProcessNgRecords extends Command
             $this->newLine(2);
             $this->error("💥 An error occurred during database update: {$e->getMessage()}");
             $this->error('Transaction has been rolled back. Database remains untouched.');
+
             return 1;
         }
     }

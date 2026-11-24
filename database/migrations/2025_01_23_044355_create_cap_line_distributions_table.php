@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('cap_line_distributions', function (Blueprint $table) {
             $table->id();
-            $table->string("line_code")->nullable();
-            $table->string("item_code")->nullable();
-            $table->integer("bom_level")->nullable();
-            $table->integer("priority")->nullable();
+            $table->string('line_code')->nullable();
+            $table->string('item_code')->nullable();
+            $table->integer('bom_level')->nullable();
+            $table->integer('priority')->nullable();
         });
     }
 

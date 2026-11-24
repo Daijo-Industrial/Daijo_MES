@@ -6,11 +6,6 @@ class SapErrorParser
 {
     /**
      * Categorize and parse raw SAP error messages / API log messages into user-friendly Indonesian summaries.
-     *
-     * @param string|null $rawMessage
-     * @param int|null $statusCode
-     * @param string|null $spkCode
-     * @return array
      */
     public static function parse(?string $rawMessage, ?int $statusCode = null, ?string $spkCode = null): array
     {
@@ -43,7 +38,7 @@ class SapErrorParser
             str_contains($lower, 'stok tidak cukup')
         ) {
             $bomLine = self::extractBomLine($rawMessage);
-            $lineNote = $bomLine ? " pada baris komponen {$bomLine}" : "";
+            $lineNote = $bomLine ? " pada baris komponen {$bomLine}" : '';
 
             return self::buildResult(
                 category: 'stock_deficit',

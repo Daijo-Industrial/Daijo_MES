@@ -64,4 +64,3 @@ class IpqcInspectionPolicy
         return Response::allow();
     }
 }
-

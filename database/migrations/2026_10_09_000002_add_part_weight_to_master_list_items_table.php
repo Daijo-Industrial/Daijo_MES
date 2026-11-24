@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('master_list_items', function (Blueprint $table) {
-            if (!Schema::hasColumn('master_list_items', 'part_weight')) {
+            if (! Schema::hasColumn('master_list_items', 'part_weight')) {
                 $table->decimal('part_weight', 10, 3)->nullable()->default(0)->after('family');
             }
         });

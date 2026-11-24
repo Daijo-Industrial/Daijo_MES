@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\MasterMould;
 use Illuminate\Console\Command;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
 
 class ImportMasterMouldsCommand extends Command
@@ -32,13 +31,14 @@ class ImportMasterMouldsCommand extends Command
 
         if (! file_exists($filePath)) {
             $this->error("File not found at: {$filePath}");
+
             return Command::FAILURE;
         }
 
         $this->info("Loading Excel file: {$filePath} ...");
         ini_set('memory_limit', '1024M');
 
-        $reader = new Xlsx();
+        $reader = new Xlsx;
         $reader->setReadDataOnly(true);
 
         // Check sheet names

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('status')->default('draft')->after('shift');
             $table->string('output_destination')->nullable()->after('status');
             $table->text('ng_remarks')->nullable()->after('production_notes');
-            
+
             // Signatures timestamps (name columns already exist, we keep them or add others)
             $table->timestamp('created_by_signed_at')->nullable()->after('created_by_name');
             $table->timestamp('pqc_signed_at')->nullable()->after('pqc_name');
@@ -51,11 +51,11 @@ return new class extends Migration
         Schema::table('second_process_ng_records', function (Blueprint $table) {
             $table->string('ng_category')->nullable()->after('report_id'); // 'ng_buffing', 'ng_proses', 'ng_part'
             $table->text('remark')->nullable()->after('ng_input_qty');
-            
+
             // Drop old hour columns
             $table->dropColumn([
                 'hour_1', 'hour_2', 'hour_3', 'hour_4', 'hour_5', 'hour_6',
-                'hour_7', 'hour_8', 'hour_9', 'hour_10', 'hour_11', 'hour_12'
+                'hour_7', 'hour_8', 'hour_9', 'hour_10', 'hour_11', 'hour_12',
             ]);
         });
 
@@ -80,7 +80,7 @@ return new class extends Migration
         // Re-add hour columns to second_process_ng_records and remove new columns
         Schema::table('second_process_ng_records', function (Blueprint $table) {
             $table->dropColumn(['ng_category', 'remark']);
-            
+
             for ($h = 1; $h <= 12; $h++) {
                 $table->integer('hour_' . $h)->default(0);
             }
@@ -104,7 +104,7 @@ return new class extends Migration
             $table->dropColumn([
                 'status', 'output_destination', 'ng_remarks',
                 'created_by_signed_at', 'pqc_signed_at', 'leader_name',
-                'leader_signed_at', 'acknowledged_signed_at'
+                'leader_signed_at', 'acknowledged_signed_at',
             ]);
         });
     }

@@ -49,7 +49,7 @@ class SpWorkOrderController extends Controller
 
         $lines = array_values(config('mes.sp_lines', []));
         $processes = array_values(config('mes.sp_processes'));
-        
+
         return view('sp_work_orders.index', compact('workOrders', 'firstPieceMap', 'lines', 'processes'));
     }
 

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('daily_item_codes', 'material_lot')) {
+        if (! Schema::hasColumn('daily_item_codes', 'material_lot')) {
             Schema::table('daily_item_codes', function (Blueprint $table) {
                 $table->string('material_lot')->nullable()->after('remark');
             });

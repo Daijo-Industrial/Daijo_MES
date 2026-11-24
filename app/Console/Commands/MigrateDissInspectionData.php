@@ -56,11 +56,11 @@ class MigrateDissInspectionData extends Command
         $truncate = (bool) $this->option('truncate');
         $dryRun = (bool) $this->option('dry-run');
 
-        $this->info("=== Starting DISS -> Daijo_MES Inspection Data Migration ===");
+        $this->info('=== Starting DISS -> Daijo_MES Inspection Data Migration ===');
         $this->line("Source Connection: <comment>{$dissConnection}</comment>");
         $this->line("Chunk Size:        <comment>{$chunkSize}</comment>");
-        $this->line("Dry Run:           <comment>" . ($dryRun ? 'YES (No writes)' : 'NO (Live write)') . "</comment>");
-        $this->line("Truncate:          <comment>" . ($truncate ? 'YES' : 'NO') . "</comment>");
+        $this->line('Dry Run:           <comment>' . ($dryRun ? 'YES (No writes)' : 'NO (Live write)') . '</comment>');
+        $this->line('Truncate:          <comment>' . ($truncate ? 'YES' : 'NO') . '</comment>');
         $this->info($dryRun ? '[DRY-RUN] Simulating data migration without writes.' : '[LIVE] Writing migrated data to tables.');
 
         // 1. Verify DISS connection
@@ -69,7 +69,8 @@ class MigrateDissInspectionData extends Command
             $this->info("✓ Successfully connected to source database ({$dissConnection}).");
         } catch (Throwable $e) {
             $this->error("✗ Cannot connect to source database connection '{$dissConnection}': " . $e->getMessage());
-            $this->warn("Please ensure DISS database configuration in config/database.php and .env (DISS_DB_*) are properly set.");
+            $this->warn('Please ensure DISS database configuration in config/database.php and .env (DISS_DB_*) are properly set.');
+
             return Command::FAILURE;
         }
 
@@ -77,6 +78,7 @@ class MigrateDissInspectionData extends Command
         if ($truncate) {
             if (! $this->confirm('Are you sure you want to TRUNCATE all 11 inspection tables in Daijo_MES before migrating?', false)) {
                 $this->warn('Truncate canceled by user.');
+
                 return Command::INVALID;
             }
 
@@ -117,7 +119,7 @@ class MigrateDissInspectionData extends Command
             $this->line("\nMigrating <info>{$targetTable}</info> (Source: {$sourceTable}, Total rows: {$sourceCount})...");
 
             if ($sourceCount === 0) {
-                $this->line("  Source table is empty. Skipping.");
+                $this->line('  Source table is empty. Skipping.');
                 $summary[] = [
                     'table' => $targetTable,
                     'source_rows' => 0,
@@ -165,13 +167,14 @@ class MigrateDissInspectionData extends Command
 
         // 4. Output Summary Table
         $this->newLine();
-        $this->info("=== Migration Summary ===");
+        $this->info('=== Migration Summary ===');
         $this->table(
             ['Table Name', 'Source Rows', 'Processed', 'Target Total', 'Status'],
             $summary
         );
 
-        $this->info("✓ IPQC Inspection Reports migration process completed.");
+        $this->info('✓ IPQC Inspection Reports migration process completed.');
+
         return Command::SUCCESS;
     }
 

@@ -31,4 +31,3 @@ class ApiLoggerTest extends TestCase
         $this->assertEquals('success', $log->status);
     }
 }
-

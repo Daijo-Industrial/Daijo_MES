@@ -4,7 +4,6 @@ namespace App\Livewire\Inspection\InspectionForm;
 
 use App\Models\File;
 use App\Models\Inspection\InspectionDimension;
-use App\Services\FileService;
 use App\Traits\ClearsNestedSession;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;

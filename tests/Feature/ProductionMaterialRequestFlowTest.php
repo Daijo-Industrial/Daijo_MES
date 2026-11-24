@@ -8,10 +8,8 @@ use App\Livewire\Production\ProductionMaterialStation;
 use App\Models\MasterListMaterial;
 use App\Models\MwhPallet;
 use App\Models\MwhWarehouse;
-use App\Models\ProductionMaterialRequest;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\MaterialWarehouseService;
 use App\Services\ProductionMaterialService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -23,6 +21,7 @@ class ProductionMaterialRequestFlowTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected MwhWarehouse $warehouse;
 
     protected function setUp(): void

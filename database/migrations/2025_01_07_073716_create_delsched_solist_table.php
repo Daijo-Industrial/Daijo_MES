@@ -14,12 +14,12 @@ return new class extends Migration
         Schema::create('delsched_solist', function (Blueprint $table) {
             $table->id();
             $table->string('so_number')->nullable();
-			$table->string('so_status')->nullable();
-			$table->string('item_code')->nullable();
-			$table->integer('so_qty')->nullable();
-			$table->integer('delivered_qty')->nullable();
-			$table->string('row_status')->nullable();
-			$table->string('status')->nullable();
+            $table->string('so_status')->nullable();
+            $table->string('item_code')->nullable();
+            $table->integer('so_qty')->nullable();
+            $table->integer('delivered_qty')->nullable();
+            $table->string('row_status')->nullable();
+            $table->string('status')->nullable();
         });
     }
 

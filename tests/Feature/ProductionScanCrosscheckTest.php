@@ -9,7 +9,6 @@ use App\Models\Role;
 use App\Models\StoreCrosscheckDailyReport;
 use App\Models\User;
 use App\Services\StoreCrosscheckService;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -19,8 +18,11 @@ class ProductionScanCrosscheckTest extends TestCase
     use DatabaseTransactions;
 
     protected User $user;
+
     protected User $kbnMachine;
+
     protected User $krwMachine;
+
     protected string $date = '2026-10-30';
 
     protected function setUp(): void

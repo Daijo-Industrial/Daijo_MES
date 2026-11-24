@@ -21,15 +21,23 @@ class MouldChecklistTest extends TestCase
     use RefreshDatabase;
 
     protected Role $superAdminRole;
+
     protected Role $adminRole;
+
     protected Role $leaderRole;
+
     protected Role $operatorRole;
+
     protected Role $mouldLeaderRole;
 
     protected User $superAdminUser;
+
     protected User $adminUser;
+
     protected User $leaderUser;
+
     protected User $operatorUser;
+
     protected User $mouldLeaderUser;
 
     protected function setUp(): void

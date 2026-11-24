@@ -81,4 +81,3 @@ class WmsPalletCameraScanTest extends TestCase
             ->assertDispatched('scan-success');
     }
 }
-

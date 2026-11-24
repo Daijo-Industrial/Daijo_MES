@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\PoReminderIndex;
 use App\Models\MasterBom;
-use App\Models\MasterListItem;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\PoReminderService;
@@ -414,4 +413,3 @@ class PoReminderTest extends TestCase
             ->assertSee('Kurang 500 pcs');
     }
 }
-

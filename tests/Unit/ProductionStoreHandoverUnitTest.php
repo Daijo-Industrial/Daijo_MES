@@ -81,4 +81,3 @@ class ProductionStoreHandoverUnitTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $serviceDate);
     }
 }
-

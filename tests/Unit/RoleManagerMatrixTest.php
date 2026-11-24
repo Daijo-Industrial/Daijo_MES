@@ -3,7 +3,6 @@
 namespace Tests\Unit;
 
 use App\Livewire\Admin\RoleManager;
-use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
@@ -14,12 +13,12 @@ class RoleManagerMatrixTest extends TestCase
     public function test_role_manager_view_mode_toggle_and_initialization()
     {
         // Mock authorized user and gate
-        $user = new User();
+        $user = new User;
         $user->id = 1;
         $this->actingAs($user);
         Gate::define('manage-users-roles', fn () => true);
 
-        $component = new RoleManager();
+        $component = new RoleManager;
         $this->assertEquals('table', $component->viewMode);
 
         $component->setViewMode('matrix');
@@ -33,7 +32,7 @@ class RoleManagerMatrixTest extends TestCase
         $this->assertEquals('table', $component->viewMode);
 
         // Mount with initial matrix mode
-        $matrixComponent = new RoleManager();
+        $matrixComponent = new RoleManager;
         $matrixComponent->mount('matrix');
         $this->assertEquals('matrix', $matrixComponent->viewMode);
     }
@@ -42,7 +41,7 @@ class RoleManagerMatrixTest extends TestCase
     {
         Gate::before(fn () => true);
 
-        $superAdminRole = new Role();
+        $superAdminRole = new Role;
         $superAdminRole->id = 1;
         $superAdminRole->name = 'SUPER-ADMIN';
 
@@ -82,7 +81,7 @@ class RoleManagerMatrixTest extends TestCase
     {
         $roles = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
         $viewData = [
-            'errors' => new \Illuminate\Support\ViewErrorBag(),
+            'errors' => new \Illuminate\Support\ViewErrorBag,
             'viewMode' => 'table',
             'search' => '',
             'name' => '',
@@ -106,7 +105,7 @@ class RoleManagerMatrixTest extends TestCase
 
         // 1. Table View Root Count
         $html = view('livewire.admin.role-manager', $viewData)->render();
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $body = $dom->getElementsByTagName('body')->item(0);
         $tableRoots = 0;
@@ -120,7 +119,7 @@ class RoleManagerMatrixTest extends TestCase
         // 2. Matrix View Root Count
         $viewData['viewMode'] = 'matrix';
         $html2 = view('livewire.admin.role-manager', $viewData)->render();
-        $dom2 = new \DOMDocument();
+        $dom2 = new \DOMDocument;
         @$dom2->loadHTML($html2);
         $body2 = $dom2->getElementsByTagName('body')->item(0);
         $matrixRoots = 0;
@@ -136,7 +135,7 @@ class RoleManagerMatrixTest extends TestCase
     {
         $users = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
         $viewData = [
-            'errors' => new \Illuminate\Support\ViewErrorBag(),
+            'errors' => new \Illuminate\Support\ViewErrorBag,
             'search' => '',
             'showDeprecated' => false,
             'username' => '',
@@ -158,7 +157,7 @@ class RoleManagerMatrixTest extends TestCase
         ];
 
         $html = view('livewire.admin.user-role-manager', $viewData)->render();
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $body = $dom->getElementsByTagName('body')->item(0);
         $roots = 0;
@@ -174,7 +173,7 @@ class RoleManagerMatrixTest extends TestCase
     {
         $permissions = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
         $viewData = [
-            'errors' => new \Illuminate\Support\ViewErrorBag(),
+            'errors' => new \Illuminate\Support\ViewErrorBag,
             'search' => '',
             'groupFilter' => '',
             'editingPermissionId' => null,
@@ -187,7 +186,7 @@ class RoleManagerMatrixTest extends TestCase
         ];
 
         $html = view('livewire.admin.permission-manager', $viewData)->render();
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $body = $dom->getElementsByTagName('body')->item(0);
         $roots = 0;

@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('daily_item_codes') && !Schema::hasColumn('daily_item_codes', 'branch_id')) {
+        if (Schema::hasTable('daily_item_codes') && ! Schema::hasColumn('daily_item_codes', 'branch_id')) {
             Schema::table('daily_item_codes', function (Blueprint $table) {
                 $table->foreignId('branch_id')
                     ->nullable()
@@ -22,7 +22,7 @@ return new class extends Migration
             });
         }
 
-        if (Schema::hasTable('machine_jobs') && !Schema::hasColumn('machine_jobs', 'branch_id')) {
+        if (Schema::hasTable('machine_jobs') && ! Schema::hasColumn('machine_jobs', 'branch_id')) {
             Schema::table('machine_jobs', function (Blueprint $table) {
                 $table->foreignId('branch_id')
                     ->nullable()
@@ -32,7 +32,7 @@ return new class extends Migration
             });
         }
 
-        if (Schema::hasTable('mwh_warehouses') && !Schema::hasColumn('mwh_warehouses', 'branch_id')) {
+        if (Schema::hasTable('mwh_warehouses') && ! Schema::hasColumn('mwh_warehouses', 'branch_id')) {
             Schema::table('mwh_warehouses', function (Blueprint $table) {
                 $table->foreignId('branch_id')
                     ->nullable()

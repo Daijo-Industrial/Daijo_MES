@@ -12,11 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sap_delactual', function (Blueprint $table) {
-            $table->string("item_no")->nullable();
-            $table->date("delivery_date")->nullable();
-            $table->string("item_name")->nullable();
-            $table->integer("quantity")->nullable();
-            $table->string("so_num")->nullable();
+            $table->string('item_no')->nullable();
+            $table->date('delivery_date')->nullable();
+            $table->string('item_name')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->string('so_num')->nullable();
         });
     }
 

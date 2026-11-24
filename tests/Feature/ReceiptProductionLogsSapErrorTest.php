@@ -300,6 +300,7 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
         Http::assertSent(function ($request) {
             if (str_contains($request->url(), '/api/receipt_production/create')) {
                 $data = $request->data();
+
                 return isset($data[0]['PostingDate'])
                     && $data[0]['PostingDate'] === now()->toDateString()
                     && isset($data[0]['posting_date'])
@@ -307,6 +308,7 @@ class ReceiptProductionLogsSapErrorTest extends TestCase
                     && isset($data[0]['remarks'])
                     && str_contains($data[0]['remarks'], 'Created from SPK');
             }
+
             return true;
         });
     }
