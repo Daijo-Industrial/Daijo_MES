@@ -243,4 +243,3 @@ class ReceiptProductionDailySummary extends Component
         ]);
     }
 }
-

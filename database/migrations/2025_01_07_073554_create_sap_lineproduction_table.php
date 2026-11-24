@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sap_lineproduction', function (Blueprint $table) {
-            $table->string("item_code");
-            $table->string("line_production")->nullable();
-            $table->integer("priority" )->nullable();
+            $table->string('item_code');
+            $table->string('line_production')->nullable();
+            $table->integer('priority')->nullable();
         });
     }
 

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('description');
             $table->tinyInteger('order_no')->default(0);
             $table->timestamps();
-            
+
             $table->index(['asakai_id', 'why_level']);
         });
     }

@@ -26,8 +26,8 @@ class ProductionMaterialService
             ->with(['material', 'pallet', 'position.rack.warehouse'])
             ->where(function ($q) {
                 $q->where('issued_to', 'LIKE', '%Produksi%')
-                  ->orWhereNull('issued_to')
-                  ->orWhere('issued_to', '');
+                    ->orWhereNull('issued_to')
+                    ->orWhere('issued_to', '');
             })
             ->when($status !== 'ALL', function ($q) use ($status) {
                 $q->where('received_status', $status);
@@ -81,16 +81,16 @@ class ProductionMaterialService
         $code = trim($code);
         $outgoing = MwhOutgoing::where(function ($q) use ($code) {
             $q->where('outgoing_code', $code)
-              ->orWhere('pallet_id', $code);
+                ->orWhere('pallet_id', $code);
         })
-        ->where('received_status', 'PENDING')
-        ->latest('id')
-        ->first();
+            ->where('received_status', 'PENDING')
+            ->latest('id')
+            ->first();
 
         if (! $outgoing) {
             $alreadyReceived = MwhOutgoing::where(function ($q) use ($code) {
                 $q->where('outgoing_code', $code)
-                  ->orWhere('pallet_id', $code);
+                    ->orWhere('pallet_id', $code);
             })->where('received_status', 'RECEIVED')->first();
 
             if ($alreadyReceived) {
@@ -379,7 +379,7 @@ class ProductionMaterialService
         }
 
         if ($qty > $availableStoreStock) {
-            throw new InvalidArgumentException("Kuantitas permintaan (" . number_format($qty, 2) . " KG) melebihi stok aktual yang tersedia di Gudang Store (" . number_format($availableStoreStock, 2) . " KG).");
+            throw new InvalidArgumentException('Kuantitas permintaan (' . number_format($qty, 2) . ' KG) melebihi stok aktual yang tersedia di Gudang Store (' . number_format($availableStoreStock, 2) . ' KG).');
         }
 
         $material = MasterListMaterial::where('item_code', $itemCode)->first();
@@ -520,4 +520,3 @@ class ProductionMaterialService
         return $request;
     }
 }
-

@@ -6,8 +6,6 @@ use App\Models\Inspection\InspectionDefect;
 use App\Models\Inspection\InspectionReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class MigrateDissInspectionDataCommandTest extends TestCase
@@ -28,8 +26,8 @@ class MigrateDissInspectionDataCommandTest extends TestCase
         $this->artisan('mes:migrate-diss-inspection-data', [
             '--diss-connection' => 'invalid_diss_conn',
         ])
-        ->expectsOutputToContain('Cannot connect to source database')
-        ->assertExitCode(1);
+            ->expectsOutputToContain('Cannot connect to source database')
+            ->assertExitCode(1);
     }
 
     public function test_command_migrates_data_successfully_from_source_connection(): void
@@ -65,16 +63,16 @@ class MigrateDissInspectionDataCommandTest extends TestCase
             '--diss-connection' => 'mock_diss_conn',
             '--dry-run' => true,
         ])
-        ->expectsOutputToContain('DRY-RUN')
-        ->assertSuccessful();
+            ->expectsOutputToContain('DRY-RUN')
+            ->assertSuccessful();
 
         // Run live migration (idempotent upsert)
         $this->artisan('mes:migrate-diss-inspection-data', [
             '--diss-connection' => 'mock_diss_conn',
             '--chunk' => 10,
         ])
-        ->expectsOutputToContain('[LIVE]')
-        ->assertSuccessful();
+            ->expectsOutputToContain('[LIVE]')
+            ->assertSuccessful();
 
         $this->assertDatabaseHas('inspection_defects', [
             'name' => 'Weld Line',

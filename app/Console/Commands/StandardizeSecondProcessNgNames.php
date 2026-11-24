@@ -35,7 +35,8 @@ class StandardizeSecondProcessNgNames extends Command
         $isDryRun = (bool) $this->option('dry-run');
         $isForce = (bool) $this->option('force');
 
-        $this->info($isDryRun
+        $this->info(
+            $isDryRun
             ? '🔍 [DRY-RUN] Scanning second_process_ng_records for non-standard defect names...'
             : '🚀 Scanning second_process_ng_records for non-standard defect names...'
         );
@@ -87,6 +88,7 @@ class StandardizeSecondProcessNgNames extends Command
 
         if (empty($replacements)) {
             $this->info('✅ All second_process_ng_records are already standardized. No alias replacements needed.');
+
             return 0;
         }
 
@@ -107,18 +109,20 @@ class StandardizeSecondProcessNgNames extends Command
         );
 
         $this->newLine();
-        $this->info("Total distinct alias variants: " . count($replacements));
-        $this->info("Total records requiring standardization: " . number_format($totalRecordsToUpdate));
+        $this->info('Total distinct alias variants: ' . count($replacements));
+        $this->info('Total records requiring standardization: ' . number_format($totalRecordsToUpdate));
         $this->newLine();
 
         if ($isDryRun) {
             $this->info('🔍 [DRY-RUN] No changes were written to the database.');
             $this->info('Run without --dry-run to apply these changes.');
+
             return 0;
         }
 
         if (! $isForce && ! $this->confirm("Are you sure you want to update {$totalRecordsToUpdate} records in the database?", false)) {
             $this->warn('❌ Operation aborted by user. Database was not modified.');
+
             return 1;
         }
 
@@ -140,11 +144,13 @@ class StandardizeSecondProcessNgNames extends Command
 
             DB::commit();
             $this->info("🎉 Successfully standardized {$totalRecordsToUpdate} records in second_process_ng_records!");
+
             return 0;
         } catch (Throwable $e) {
             DB::rollBack();
             $this->error("💥 An error occurred during database update: {$e->getMessage()}");
             $this->error('Transaction has been rolled back. Database remains untouched.');
+
             return 1;
         }
     }

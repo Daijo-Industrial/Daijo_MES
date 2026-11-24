@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('pic_name');
             $table->tinyInteger('order_no')->default(0);
             $table->timestamps();
-            
+
             $table->index(['asakai_id', 'order_no']);
         });
     }

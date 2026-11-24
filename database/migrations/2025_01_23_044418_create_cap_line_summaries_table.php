@@ -13,15 +13,15 @@ return new class extends Migration
     {
         Schema::create('cap_line_summaries', function (Blueprint $table) {
             $table->id();
-            $table->integer("department")->nullable();
-            $table->string("line_category")->nullable();
-            $table->integer("line_quantity")->nullable();
-            $table->decimal("work_day",5,2)->nullable();
-            $table->integer("ready_time")->nullable();
-            $table->decimal("efficiency",5,2)->nullable();
-            $table->integer("max_capacity")->nullable();
-            $table->decimal("capacity_req_hour",7,2)->nullable();
-            $table->integer("capacity_req_percent")->nullable();
+            $table->integer('department')->nullable();
+            $table->string('line_category')->nullable();
+            $table->integer('line_quantity')->nullable();
+            $table->decimal('work_day', 5, 2)->nullable();
+            $table->integer('ready_time')->nullable();
+            $table->decimal('efficiency', 5, 2)->nullable();
+            $table->integer('max_capacity')->nullable();
+            $table->decimal('capacity_req_hour', 7, 2)->nullable();
+            $table->integer('capacity_req_percent')->nullable();
         });
     }
 

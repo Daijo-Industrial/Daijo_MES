@@ -88,6 +88,7 @@ class WmsPalletForm extends Model
 
         if ($this->relationLoaded('details') && $this->details->isNotEmpty()) {
             $hasKr = $this->details->contains(fn ($d) => str_starts_with(strtoupper($d->warehouse ?? ''), 'KR'));
+
             return $hasKr ? 'KARAWANG' : 'KBN';
         }
 
@@ -107,16 +108,16 @@ class WmsPalletForm extends Model
         if ($plantUpper === 'KARAWANG') {
             return $query->where(function ($q) {
                 $q->where('plant', 'KARAWANG')
-                  ->orWhereHas('details', function ($d) {
-                      $d->where('warehouse', 'like', 'KR%');
-                  });
+                    ->orWhereHas('details', function ($d) {
+                        $d->where('warehouse', 'like', 'KR%');
+                    });
             });
         } elseif ($plantUpper === 'KBN') {
             return $query->where(function ($q) {
                 $q->where(function ($sq) {
                     $sq->where('plant', 'KBN')
-                       ->orWhereNull('plant')
-                       ->orWhere('plant', '');
+                        ->orWhereNull('plant')
+                        ->orWhere('plant', '');
                 })->whereDoesntHave('details', function ($d) {
                     $d->where('warehouse', 'like', 'KR%');
                 });

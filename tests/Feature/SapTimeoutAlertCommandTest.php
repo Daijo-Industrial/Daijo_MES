@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Mail\SapTimeoutAlertMail;
 use App\Models\ApiLog;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
@@ -178,7 +177,7 @@ class SapTimeoutAlertCommandTest extends TestCase
         Mail::fake();
         Cache::forget('sap_receipt_timeout_alert_cooldown');
 
-        $service = new \App\Services\ReceiptProductionService();
+        $service = new \App\Services\ReceiptProductionService;
         $service->saveApiLog(
             'receipt_production',
             'POST',
@@ -204,7 +203,7 @@ class SapTimeoutAlertCommandTest extends TestCase
         Mail::fake();
         Cache::forget('sap_receipt_timeout_alert_cooldown');
 
-        $service = new \App\Services\ReceiptProductionService();
+        $service = new \App\Services\ReceiptProductionService;
 
         // Panggilan pertama (timeout): harus kirim email
         $service->saveApiLog(
@@ -256,7 +255,7 @@ class SapTimeoutAlertCommandTest extends TestCase
         Mail::fake();
         Cache::forget('sap_receipt_timeout_alert_cooldown');
 
-        $service = new \App\Services\ReceiptProductionService();
+        $service = new \App\Services\ReceiptProductionService;
         $service->saveApiLog(
             'receipt_production',
             'POST',
@@ -297,7 +296,7 @@ class SapTimeoutAlertCommandTest extends TestCase
         ]);
         Cache::forget('sap_receipt_timeout_alert_cooldown');
 
-        $service = new \App\Services\ReceiptProductionService();
+        $service = new \App\Services\ReceiptProductionService;
         $service->saveApiLog(
             'receipt_production',
             'POST',

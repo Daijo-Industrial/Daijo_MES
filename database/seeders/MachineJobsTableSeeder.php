@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\MachineJob;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class MachineJobsTableSeeder extends Seeder
@@ -13,7 +12,7 @@ class MachineJobsTableSeeder extends Seeder
      */
     public function run(): void
     {
-        $users = \App\Models\User::whereHas('role', function($query){
+        $users = \App\Models\User::whereHas('role', function ($query) {
             $query->where('name', 'OPERATOR');
         })->get();
         foreach ($users as $user) {

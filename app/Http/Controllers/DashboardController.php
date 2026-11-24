@@ -2235,6 +2235,7 @@ class DashboardController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Daily Item Code tidak ditemukan.'], 422);
             }
+
             return back()->with('error', 'Daily Item Code tidak ditemukan.');
         }
 

@@ -20,7 +20,7 @@ class SapErrorParserTest extends TestCase
 
     public function test_parse_detects_stock_deficit_error_5002_and_extracts_bom_line(): void
     {
-        $raw = "Error [-5002]: Quantity falls below zero at line 3 of BOM";
+        $raw = 'Error [-5002]: Quantity falls below zero at line 3 of BOM';
         $result = SapErrorParser::parse($raw, 500, 'SPK-2026-001');
 
         $this->assertEquals('stock_deficit', $result['category']);
@@ -31,7 +31,7 @@ class SapErrorParserTest extends TestCase
 
     public function test_parse_detects_connection_timeout(): void
     {
-        $raw = "cURL error 28: Operation timed out after 30000 milliseconds with 0 bytes received";
+        $raw = 'cURL error 28: Operation timed out after 30000 milliseconds with 0 bytes received';
         $result = SapErrorParser::parse($raw, 504);
 
         $this->assertEquals('timeout', $result['category']);
@@ -41,7 +41,7 @@ class SapErrorParserTest extends TestCase
 
     public function test_parse_detects_gateway_authentication_or_com_crash(): void
     {
-        $raw = "Unable to cast COM object of type System.__ComObject to interface";
+        $raw = 'Unable to cast COM object of type System.__ComObject to interface';
         $result = SapErrorParser::parse($raw, 500);
 
         $this->assertEquals('gateway_auth', $result['category']);
@@ -50,7 +50,7 @@ class SapErrorParserTest extends TestCase
 
     public function test_parse_detects_duplicate_spk_already_in_sap(): void
     {
-        $raw = "Document for SPK-1234 already exists in SAP Business One";
+        $raw = 'Document for SPK-1234 already exists in SAP Business One';
         $result = SapErrorParser::parse($raw, 200, 'SPK-1234');
 
         $this->assertEquals('duplicate', $result['category']);

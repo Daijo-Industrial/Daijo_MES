@@ -12,6 +12,7 @@ use Tests\TestCase;
 class NavigationServiceTest extends TestCase
 {
     private NavigationService $service;
+
     private $plantContextMock;
 
     protected function setUp(): void
@@ -29,7 +30,7 @@ class NavigationServiceTest extends TestCase
 
     public function test_user_can_access_evaluates_when_callbacks(): void
     {
-        $user = new User();
+        $user = new User;
 
         $allowedItem = ['when' => fn () => true];
         $deniedItem = ['when' => fn () => false];
@@ -40,8 +41,8 @@ class NavigationServiceTest extends TestCase
 
     public function test_user_can_access_respects_roles(): void
     {
-        $user = new User();
-        $role = new Role();
+        $user = new User;
+        $role = new Role;
         $role->name = 'ADMIN';
         $user->setRelation('role', $role);
 
@@ -66,8 +67,8 @@ class NavigationServiceTest extends TestCase
 
     public function test_get_menu_groups_includes_standalone_when_requested(): void
     {
-        $user = new User();
-        $role = new Role();
+        $user = new User;
+        $role = new Role;
         $role->name = 'SUPER-ADMIN';
         $user->setRelation('role', $role);
 
@@ -87,8 +88,8 @@ class NavigationServiceTest extends TestCase
 
         $service = new NavigationService($mock);
 
-        $user = new User();
-        $role = new Role();
+        $user = new User;
+        $role = new Role;
         $role->name = 'ADMIN';
         $user->setRelation('role', $role);
 

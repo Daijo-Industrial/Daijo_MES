@@ -272,4 +272,3 @@ class ProductionDayDashboardMachineListTest extends TestCase
             ->assertDontSeeHtml('AMANDA'); // AMANDA tetap tersembunyi karena sudah dihapus
     }
 }
-

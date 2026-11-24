@@ -19,7 +19,7 @@ return new class extends Migration
             // index buat search cepat
             $table->index('spk_number');
             $table->index('item_code');
-     
+
             $table->timestamps();
         });
     }

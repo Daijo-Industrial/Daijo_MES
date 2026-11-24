@@ -112,4 +112,3 @@ class SpWorkOrderPolicy
         return Response::allow();
     }
 }
-

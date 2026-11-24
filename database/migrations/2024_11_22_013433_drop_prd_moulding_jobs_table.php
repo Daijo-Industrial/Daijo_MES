@@ -23,7 +23,7 @@ return new class extends Migration
             $table->id();
             $table->integer('user_id');
             $table->datetime('scan_start');
-            $table->datetime('scan_finish')->nullable();       
+            $table->datetime('scan_finish')->nullable();
             $table->timestamps();
         });
     }

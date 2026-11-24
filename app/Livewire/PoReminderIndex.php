@@ -3,12 +3,10 @@
 namespace App\Livewire;
 
 use App\Services\PoReminderService;
-use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -153,7 +151,7 @@ class PoReminderIndex extends Component
         $viewName = $this->activeView === 'net' ? 'Net (Delivery - Stok FG)' : 'Gross (Total Delivery)';
         $materialList = $this->activeView === 'net' ? $result['view2_materials'] : $result['view1_materials'];
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
 
         // ── SHEET 1: REKAP MATERIAL (PO REMINDER) ──
         $sheet1 = $spreadsheet->getActiveSheet();
@@ -226,7 +224,7 @@ class PoReminderIndex extends Component
         $rowNum2 = 5;
         $no2 = 1;
         foreach ($result['fg_items'] as $fg) {
-            $stockStatus = $fg['net_deficit'] > 0 ? "Kurang " . number_format($fg['net_deficit']) : 'Cukup (Stok Aman)';
+            $stockStatus = $fg['net_deficit'] > 0 ? 'Kurang ' . number_format($fg['net_deficit']) : 'Cukup (Stok Aman)';
             $bomStatus = $fg['has_bom'] ? 'Tersedia' : 'BOM Belum Ada';
 
             $sheet2->setCellValue("A{$rowNum2}", $no2++);
@@ -310,4 +308,3 @@ class PoReminderIndex extends Component
         ]);
     }
 }
-

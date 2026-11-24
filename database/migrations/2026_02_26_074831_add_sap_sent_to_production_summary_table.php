@@ -23,7 +23,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('production_summary', function (Blueprint $table) {
-               $table->dropColumn(['sap_sent', 'sap_sent_at']);
+            $table->dropColumn(['sap_sent', 'sap_sent_at']);
         });
     }
 };

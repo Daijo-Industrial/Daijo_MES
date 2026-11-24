@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Audit Verifikasi PE untuk Parent Item / BOM
-        if (!Schema::hasTable('master_bom_verifications')) {
+        if (! Schema::hasTable('master_bom_verifications')) {
             Schema::create('master_bom_verifications', function (Blueprint $table) {
                 $table->id();
                 $table->string('parent_item', 100)->unique()->index();
@@ -25,7 +25,7 @@ return new class extends Migration
         }
 
         // 1b. Log Riwayat Verifikasi Ulang Audit PE
-        if (!Schema::hasTable('master_bom_verification_logs')) {
+        if (! Schema::hasTable('master_bom_verification_logs')) {
             Schema::create('master_bom_verification_logs', function (Blueprint $table) {
                 $table->id();
                 $table->string('parent_item', 100)->index();
@@ -38,7 +38,7 @@ return new class extends Migration
         }
 
         // 2. Override Tipe Material Khusus Engineering / PE
-        if (!Schema::hasTable('master_bom_material_overrides')) {
+        if (! Schema::hasTable('master_bom_material_overrides')) {
             Schema::create('master_bom_material_overrides', function (Blueprint $table) {
                 $table->id();
                 $table->string('item_code', 100)->unique()->index();
@@ -52,13 +52,13 @@ return new class extends Migration
         // 3. Tambah kolom audit verifikasi ke tabel header FG sah jika belum ada
         if (Schema::hasTable('master_bom_fg_headers')) {
             Schema::table('master_bom_fg_headers', function (Blueprint $table) {
-                if (!Schema::hasColumn('master_bom_fg_headers', 'is_verified')) {
+                if (! Schema::hasColumn('master_bom_fg_headers', 'is_verified')) {
                     $table->boolean('is_verified')->default(false)->after('is_active');
                 }
-                if (!Schema::hasColumn('master_bom_fg_headers', 'verified_at')) {
+                if (! Schema::hasColumn('master_bom_fg_headers', 'verified_at')) {
                     $table->timestamp('verified_at')->nullable()->after('is_verified');
                 }
-                if (!Schema::hasColumn('master_bom_fg_headers', 'verified_by_name')) {
+                if (! Schema::hasColumn('master_bom_fg_headers', 'verified_by_name')) {
                     $table->string('verified_by_name', 150)->nullable()->after('verified_at');
                 }
             });

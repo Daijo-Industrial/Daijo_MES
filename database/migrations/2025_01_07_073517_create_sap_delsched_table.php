@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sap_delsched', function (Blueprint $table) {
-            $table->string("item_code");
-            $table->date("delivery_date");
-            $table->integer("delivery_qty");
-            $table->string("so_number");
+            $table->string('item_code');
+            $table->date('delivery_date');
+            $table->integer('delivery_qty');
+            $table->string('so_number');
         });
     }
 

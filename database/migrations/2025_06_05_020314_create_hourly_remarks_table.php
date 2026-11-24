@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('hourly_remarks', function (Blueprint $table) {
-               $table->id();
+            $table->id();
             $table->unsignedBigInteger('dic_id'); // DailyItemCode ID
             $table->time('start_time');
             $table->time('end_time');

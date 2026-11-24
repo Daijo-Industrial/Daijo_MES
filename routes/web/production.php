@@ -37,16 +37,16 @@ use App\Livewire\MasterMachineManager;
 use App\Livewire\Ppic\PpicListUpMachine;
 use App\Livewire\Production\ProductionMaterialStation;
 use App\Livewire\ProductionDashboard;
-use App\Livewire\ProductionYearlyDashboard;
 use App\Livewire\ProductionStoreHandoverIndex;
 use App\Livewire\ProductionSummaryMonitor;
-use App\Livewire\Store\ProductionScanCrosscheck;
+use App\Livewire\ProductionYearlyDashboard;
 use App\Livewire\Qc\QcStockTransfer;
 use App\Livewire\Qc\QcStockTransferKbn;
 use App\Livewire\ReceiptProductionDailySummary;
 use App\Livewire\ReceiptProductionLogs;
 use App\Livewire\Sap\SapMesVerification;
 use App\Livewire\SpkBomChangesView;
+use App\Livewire\Store\ProductionScanCrosscheck;
 use Illuminate\Support\Facades\Route;
 
 // ============================================

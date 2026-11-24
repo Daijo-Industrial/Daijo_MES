@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('label')->default('all');
             $table->date('created_date');
             $table->timestamps();
-            });
+        });
     }
 
     /**

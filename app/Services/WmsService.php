@@ -245,8 +245,8 @@ class WmsService
 
         $palletMatcher = function ($pq) use ($cleanPartNo, $cleanPartNoNoDot, $excludePalletId) {
             $pq->where('total_pallet_qty', '>', 0)
-               ->where('status', '!=', 'OUT')
-               ->whereNull('deleted_at');
+                ->where('status', '!=', 'OUT')
+                ->whereNull('deleted_at');
 
             if ($excludePalletId) {
                 $pq->where('pallet_id', '!=', $excludePalletId);
@@ -254,7 +254,7 @@ class WmsService
 
             $pq->where(function ($q) use ($cleanPartNo, $cleanPartNoNoDot) {
                 $q->whereIn('part_no', [$cleanPartNo, $cleanPartNoNoDot])
-                  ->orWhereHas('details', fn ($dq) => $dq->whereIn('part_no', [$cleanPartNo, $cleanPartNoNoDot])->whereNull('deleted_at'));
+                    ->orWhereHas('details', fn ($dq) => $dq->whereIn('part_no', [$cleanPartNo, $cleanPartNoNoDot])->whereNull('deleted_at'));
             });
         };
 
@@ -271,7 +271,6 @@ class WmsService
     /**
      * Split mixed pallet and assign items to their respective racks (consolidate to existing or new pallet).
      *
-     * @param string $sourcePalletId
      * @param array $itemAssignments Keyed by part_no: ['action' => 'MERGE'|'NEW_PALLET', 'target_position_id' => int, 'target_pallet_id' => string|null]
      * @param int|null $forcePositionId If force assigning entire mixed pallet directly to one position
      * @return array Result summary

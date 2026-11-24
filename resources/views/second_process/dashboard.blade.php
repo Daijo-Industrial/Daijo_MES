@@ -11,6 +11,9 @@
                 <a href="{{ route('dashboard') }}" class="px-4 py-2 bg-gray-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-sm transition uppercase tracking-wider">
                     Main MES
                 </a>
+                <a href="{{ route('second-process.report-analytics') }}" class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl border border-blue-200 shadow-sm transition uppercase tracking-wider">
+                    Analytics Dashboard
+                </a>
                 <a href="{{ route('sp-work-orders.index') }}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl border border-gray-300 shadow-sm transition uppercase tracking-wider">
                     Work Orders List
                 </a>
@@ -30,25 +33,25 @@
             } 
         }">
 
-        {{-- Filter Control Bar --}}
-        <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-            <form action="{{ route('second-process.dashboard') }}" method="GET" class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                <input type="hidden" name="tab" :value="activeTab">
-                <div class="flex items-center gap-2">
-                    <label class="font-semibold text-xs uppercase text-gray-500">Shift:</label>
-                    <select name="shift" class="rounded-xl border-gray-300 text-xs font-bold py-1.5 focus:ring-blue-500" onchange="this.form.submit()">
-                        <option value="all" {{ (string)$shift === 'all' ? 'selected' : '' }}>All Today's Shifts</option>
-                        @foreach(config('mes.sp_shifts', config('mes.shifts', [])) as $sId => $sConf)
-                            <option value="{{ $sId }}" {{ (string)$shift === (string)$sId ? 'selected' : '' }}>{{ $sConf['name'] }} ({{ $sConf['start'] }} - {{ $sConf['end'] }})</option>
-                        @endforeach
-                    </select>
-                </div>
-                <noscript><button type="submit" class="bg-gray-100 px-3 py-1 text-xs font-bold rounded-xl border border-gray-300">Filter</button></noscript>
-            </form>
+        {{-- Live Floor Status Bar --}}
+        <div class="bg-white px-5 py-3.5 rounded-2xl border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div class="flex items-center gap-2.5">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Live Floor Monitor</span>
+                </span>
+                <span class="text-xs font-bold text-slate-800">
+                    {{ $currentShiftConfig['name'] ?? "Shift {$shift}" }}
+                    <span class="text-slate-400 font-normal">({{ $currentShiftConfig['start'] ?? '07:30' }} - {{ $currentShiftConfig['end'] ?? '15:30' }})</span>
+                </span>
+            </div>
 
-            <div class="flex items-center gap-2 text-xs font-bold text-gray-500">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Live Floor View</span>
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span class="font-medium">Auto-refresh: <strong class="text-slate-700 font-bold">30s</strong></span>
+                <span class="text-slate-300">•</span>
+                <a href="{{ route('second-process.report-analytics') }}" class="font-semibold text-blue-600 hover:text-blue-800 transition">
+                    Audit Shift History
+                </a>
             </div>
         </div>
 

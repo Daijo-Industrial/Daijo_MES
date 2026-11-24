@@ -4,7 +4,6 @@ namespace App\Services;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
@@ -32,6 +31,7 @@ class SapVerificationService
         // Pattern dd.mm.yy (e.g. 29.10.26 -> 2026-10-29)
         if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{2})$/', $str, $m)) {
             $year = 2000 + (int) $m[3];
+
             return sprintf('%04d-%02d-%02d', $year, (int) $m[2], (int) $m[1]);
         }
 
@@ -48,6 +48,7 @@ class SapVerificationService
         // Pattern dd/mm/yy
         if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/', $str, $m)) {
             $year = 2000 + (int) $m[3];
+
             return sprintf('%04d-%02d-%02d', $year, (int) $m[2], (int) $m[1]);
         }
 

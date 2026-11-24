@@ -23,7 +23,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasColumn('sp_production_entries', 'reject_qty')) {
+        if (! Schema::hasColumn('sp_production_entries', 'reject_qty')) {
             Schema::table('sp_production_entries', function (Blueprint $table) {
                 $table->integer('reject_qty')->default(0)->after('good_qty');
             });

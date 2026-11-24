@@ -339,6 +339,7 @@ class BusinessPartnerManager extends Component
                             if ($applyAutoBranchKarawang && str_starts_with(strtoupper($item['bp_code']), 'K')) {
                                 return false;
                             }
+
                             return true;
                         })
                         ->pluck('bp_code')

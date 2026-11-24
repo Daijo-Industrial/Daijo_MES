@@ -4,7 +4,6 @@ namespace App\Livewire\Sap;
 
 use App\Models\SapVerificationBatch;
 use App\Services\SapVerificationService;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -18,32 +17,56 @@ class SapMesVerification extends Component
 
     // Tab 1: Receipt from Production Upload & State
     public $receiptFile;
+
     public ?int $receiptBatchId = null;
+
     public ?string $receiptFileName = null;
+
     public ?string $receiptBatchCreatedAt = null;
+
     public array $receiptRawRows = [];
+
     public ?string $receiptMinDate = null;
+
     public ?string $receiptMaxDate = null;
+
     public string $receiptStartDate = '';
+
     public string $receiptEndDate = '';
+
     public string $receiptSearch = '';
+
     public string $receiptStatusFilter = 'ALL'; // ALL, MATCH, QTY_DIFF, MISSING_IN_SAP, ONLY_IN_SAP
+
     public array $receiptComparison = [];
+
     public array $receiptKpi = [];
 
     // Tab 2: Pallet Form / Inventory Transfer Upload & State
     public $palletFile;
+
     public ?int $palletBatchId = null;
+
     public ?string $palletFileName = null;
+
     public ?string $palletBatchCreatedAt = null;
+
     public array $palletRawRows = [];
+
     public ?string $palletMinDate = null;
+
     public ?string $palletMaxDate = null;
+
     public string $palletStartDate = '';
+
     public string $palletEndDate = '';
+
     public string $palletSearch = '';
+
     public string $palletStatusFilter = 'ALL'; // ALL, MATCH, QTY_DIFF, MISSING_IN_SAP, ONLY_IN_SAP
+
     public array $palletComparison = [];
+
     public array $palletKpi = [];
 
     // Modal / Accordion state
@@ -97,6 +120,7 @@ class SapMesVerification extends Component
             if ($notify) {
                 $this->dispatch('notify', ['type' => 'error', 'message' => 'Batch verifikasi tidak ditemukan.']);
             }
+
             return;
         }
 
@@ -131,6 +155,7 @@ class SapMesVerification extends Component
             if ($notify) {
                 $this->dispatch('notify', ['type' => 'error', 'message' => 'Batch verifikasi tidak ditemukan.']);
             }
+
             return;
         }
 
@@ -235,6 +260,7 @@ class SapMesVerification extends Component
     {
         if (empty($this->receiptRawRows)) {
             $this->dispatch('notify', ['type' => 'info', 'message' => 'Silakan upload file baru untuk rentang tanggal berbeda.']);
+
             return;
         }
 
@@ -360,6 +386,7 @@ class SapMesVerification extends Component
     {
         if (empty($this->palletRawRows)) {
             $this->dispatch('notify', ['type' => 'info', 'message' => 'Silakan upload file baru untuk rentang tanggal berbeda.']);
+
             return;
         }
 
@@ -530,6 +557,7 @@ class SapMesVerification extends Component
         $items = $this->filteredReceiptList;
         if (empty($items)) {
             $this->dispatch('notify', ['type' => 'warning', 'message' => 'Tidak ada data untuk diekspor.']);
+
             return;
         }
 
@@ -537,7 +565,7 @@ class SapMesVerification extends Component
 
         return response()->streamDownload(function () use ($items) {
             $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             fputcsv($handle, [
                 'Status Verifikasi',
@@ -583,6 +611,7 @@ class SapMesVerification extends Component
         $items = $this->filteredPalletList;
         if (empty($items)) {
             $this->dispatch('notify', ['type' => 'warning', 'message' => 'Tidak ada data untuk diekspor.']);
+
             return;
         }
 
@@ -590,7 +619,7 @@ class SapMesVerification extends Component
 
         return response()->streamDownload(function () use ($items) {
             $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             fputcsv($handle, [
                 'Status Verifikasi',

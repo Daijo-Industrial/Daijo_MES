@@ -3,10 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Role;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Carbon\Carbon;
 
 class UserMachineSeeder extends Seeder
 {
@@ -30,13 +30,13 @@ class UserMachineSeeder extends Seeder
 
         foreach ($machines as $machine) {
             DB::table('users')->insert([
-                'name'           => $machine,
-                'email'          => strtolower($machine) . '@daijo.co.id',
-                'role_id'        => $roleId,
-                'password'       => Hash::make('daijo1234'),
+                'name' => $machine,
+                'email' => strtolower($machine) . '@daijo.co.id',
+                'role_id' => $roleId,
+                'password' => Hash::make('daijo1234'),
                 'remember_token' => null,
-                'created_at'     => $timestamp,
-                'updated_at'     => $timestamp,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
             ]);
         }
     }

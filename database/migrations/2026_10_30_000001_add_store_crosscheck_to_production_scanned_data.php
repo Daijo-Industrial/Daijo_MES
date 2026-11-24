@@ -77,11 +77,21 @@ return new class extends Migration
         if (Schema::hasTable('production_scanned_data')) {
             Schema::table('production_scanned_data', function (Blueprint $table) {
                 $colsToDrop = [];
-                if (Schema::hasColumn('production_scanned_data', 'store_notes')) $colsToDrop[] = 'store_notes';
-                if (Schema::hasColumn('production_scanned_data', 'store_checked_at')) $colsToDrop[] = 'store_checked_at';
-                if (Schema::hasColumn('production_scanned_data', 'store_checked_by_name')) $colsToDrop[] = 'store_checked_by_name';
-                if (Schema::hasColumn('production_scanned_data', 'store_checked_by')) $colsToDrop[] = 'store_checked_by';
-                if (Schema::hasColumn('production_scanned_data', 'store_check_status')) $colsToDrop[] = 'store_check_status';
+                if (Schema::hasColumn('production_scanned_data', 'store_notes')) {
+                    $colsToDrop[] = 'store_notes';
+                }
+                if (Schema::hasColumn('production_scanned_data', 'store_checked_at')) {
+                    $colsToDrop[] = 'store_checked_at';
+                }
+                if (Schema::hasColumn('production_scanned_data', 'store_checked_by_name')) {
+                    $colsToDrop[] = 'store_checked_by_name';
+                }
+                if (Schema::hasColumn('production_scanned_data', 'store_checked_by')) {
+                    $colsToDrop[] = 'store_checked_by';
+                }
+                if (Schema::hasColumn('production_scanned_data', 'store_check_status')) {
+                    $colsToDrop[] = 'store_check_status';
+                }
 
                 if (! empty($colsToDrop)) {
                     $table->dropColumn($colsToDrop);

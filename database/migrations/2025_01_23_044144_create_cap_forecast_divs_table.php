@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cap_forecast_divs', function (Blueprint $table) { 
-            $table->string("father_part")->nullable();
-            $table->string("item_code")->nullable();
-            $table->integer("quantity")->nullable();
-            $table->integer("level")->nullable();
-            $table->string("paired")->nullable();
+        Schema::create('cap_forecast_divs', function (Blueprint $table) {
+            $table->string('father_part')->nullable();
+            $table->string('item_code')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->integer('level')->nullable();
+            $table->string('paired')->nullable();
         });
     }
 

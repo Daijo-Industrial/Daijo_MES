@@ -20,41 +20,68 @@ class ProductionMaterialStation extends Component
 
     // Tab 1: Penerimaan Material Store
     public string $barcodeInput = '';
+
     public string $searchIncoming = '';
+
     public string $statusFilterIncoming = 'PENDING'; // 'ALL', 'PENDING', 'RECEIVED'
+
     public string $startDateIncoming = '';
+
     public string $endDateIncoming = '';
+
     public ?int $selectedOutgoingId = null;
+
     public string $verificationNotes = '';
+
     public bool $showVerifyModal = false;
 
     // Tab 2: Input Pemakaian Material
     public ?int $selectedBatchId = null;
+
     public string $machineNo = '';
+
     public string $spkCode = '';
+
     public ?float $qtyUsed = null;
+
     public string $purpose = 'PRODUKSI'; // 'PRODUKSI', 'PURGING', 'TRIAL', 'REJECT'
+
     public string $usedAt = '';
+
     public string $usageRemarks = '';
 
     // Tab 3: Stok Lantai Produksi & Riwayat
     public string $searchStock = '';
+
     public string $historySearch = '';
+
     public string $historyMachine = '';
+
     public string $historyPurpose = 'ALL';
+
     public string $historyStartDate = '';
+
     public string $historyEndDate = '';
 
     // Tab 4: Permintaan Material ke Store (Request)
     public string $reqItemCode = '';
+
     public ?float $reqQty = null;
+
     public string $reqMachineNo = '';
+
     public string $reqSpkCode = '';
+
     public string $reqUrgency = 'NORMAL';
+
     public string $reqNeededAt = '';
+
     public string $reqNotes = '';
+
     public string $requestStatusFilter = 'ALL';
+
     public string $requestSearch = '';
+
     public ?array $selectedMaterialStoreStock = null;
 
     protected function getService(): ProductionMaterialService
@@ -374,6 +401,7 @@ class ProductionMaterialStation extends Component
                 'status' => 'error',
                 'message' => "Stok material {$this->reqItemCode} di Gudang Store kosong (0 KG). Permintaan tidak dapat dibuat.",
             ]);
+
             return;
         }
 
@@ -383,6 +411,7 @@ class ProductionMaterialStation extends Component
                 'status' => 'error',
                 'message' => 'Jumlah permintaan melebihi stok yang tersedia di Store (' . number_format($availableStoreStock, 2) . ' KG).',
             ]);
+
             return;
         }
 
@@ -511,4 +540,3 @@ class ProductionMaterialStation extends Component
         ]);
     }
 }
-

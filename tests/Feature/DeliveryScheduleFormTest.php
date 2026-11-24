@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\DeliveryScheduleForm;
 use App\Models\MasterCustomerDelivery;
-use App\Models\MasterDeliverySchedule;
 use App\Models\MasterListItem;
 use App\Models\Role;
 use App\Models\User;
@@ -115,7 +114,7 @@ class DeliveryScheduleFormTest extends TestCase
         ]);
 
         // Generate temporary Excel file in List format
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setCellValue('A1', 'Customer Code');
         $sheet->setCellValue('B1', 'Item Code');
@@ -189,7 +188,7 @@ class DeliveryScheduleFormTest extends TestCase
         ]);
 
         // Generate matrix format: Item Code, Customer Code, and day columns 1, 2, 3
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setCellValue('A1', 'Customer Code');
         $sheet->setCellValue('B1', 'Item Code');
@@ -241,4 +240,3 @@ class DeliveryScheduleFormTest extends TestCase
         }
     }
 }
-

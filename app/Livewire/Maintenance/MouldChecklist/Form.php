@@ -16,29 +16,47 @@ class Form extends Component
 {
     #[Locked]
     public $checklistId = null;
+
     public $isEdit = false;
 
     // Header Fields
     public $check_date;
+
     public $start_date = '';
+
     public $start_time = '';
+
     public $end_date = '';
+
     public $end_time = '';
+
     public $is_ongoing = false;
+
     public $mould_search = '';
+
     public $mould_id = null;
+
     public $mould_no = '';
+
     public $part_no = '';
+
     public $part_name = '';
+
     public $model = '';
+
     public $customer = '';
+
     public $machine_number = '';
+
     public $technician_name = '';
+
     public $doc_number = 'DI-F-P/PD/05/MTM-043';
+
     public $revision = '00';
 
     // Wizard Step Navigation
     public $currentStep = 1;
+
     public $totalSteps = 2;
 
     // 16 Check items array: [item_no => ['point_check', 'cleaning_status', 'lubricate_status', 'remark']]
@@ -46,7 +64,9 @@ class Form extends Component
 
     // Dropdown / Search state
     public $showMouldDropdown = false;
+
     public $isManualMould = false;
+
     public $auto_sign_check_by = false;
 
     protected function rules()
@@ -132,6 +152,7 @@ class Form extends Component
             // Guard: Only DRAFT or REJECTED can be edited
             if ($checklist->status !== 'DRAFT' && $checklist->status !== 'REJECTED' && ! (auth()->user()?->hasRole('SUPER-ADMIN') || auth()->user()?->hasRole('ADMIN'))) {
                 session()->flash('error', 'Dokumen berstatus ' . $checklist->status . ' tidak dapat diedit.');
+
                 return redirect()->route('mould-checklist.show', $checklist->id);
             }
 
@@ -300,7 +321,7 @@ class Form extends Component
             if (! $isOngoing && $this->start_date && $this->end_date && $this->start_date === $this->end_date) {
                 if ($this->start_time && $this->end_time && $this->end_time <= $this->start_time) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
-                        'end_time' => 'Jam selesai harus setelah jam mulai untuk tanggal pengerjaan yang sama.'
+                        'end_time' => 'Jam selesai harus setelah jam mulai untuk tanggal pengerjaan yang sama.',
                     ]);
                 }
             }
@@ -380,14 +401,14 @@ class Form extends Component
             if (! $this->is_ongoing && $this->start_date && $this->end_date && $this->start_date === $this->end_date) {
                 if ($this->start_time && $this->end_time && $this->end_time <= $this->start_time) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
-                        'end_time' => 'Jam selesai harus setelah jam mulai untuk tanggal pengerjaan yang sama.'
+                        'end_time' => 'Jam selesai harus setelah jam mulai untuk tanggal pengerjaan yang sama.',
                     ]);
                 }
             }
         } catch (\Illuminate\Validation\ValidationException $e) {
             $step1Fields = [
                 'check_date', 'start_date', 'start_time', 'end_date', 'end_time',
-                'mould_no', 'part_no', 'part_name', 'customer', 'technician_name', 'machine_number'
+                'mould_no', 'part_no', 'part_name', 'customer', 'technician_name', 'machine_number',
             ];
             foreach ($step1Fields as $f) {
                 if ($e->validator->errors()->has($f)) {
@@ -409,6 +430,7 @@ class Form extends Component
         $checklist = $this->persistChecklist('DRAFT');
 
         session()->flash('success', 'Check sheet berhasil disimpan sebagai DRAFT.');
+
         return redirect()->route('mould-checklist.show', $checklist->id);
     }
 
@@ -416,6 +438,7 @@ class Form extends Component
     {
         if ($this->is_ongoing) {
             session()->flash('error', 'Pekerjaan yang masih berlangsung (Ongoing) hanya dapat disimpan sebagai Draft. Harap selesaikan pekerjaan dan tentukan waktu selesai sebelum submit & tanda tangan.');
+
             return;
         }
 
@@ -424,12 +447,14 @@ class Form extends Component
         $user = auth()->user();
         if (! $user) {
             session()->flash('error', 'Silakan login terlebih dahulu.');
+
             return;
         }
 
         // Check permission to sign issued_by
         if (! $user->canSign('mould_checklist', 'issued_by')) {
             session()->flash('error', 'Anda tidak memiliki wewenang untuk submit dan tanda tangan Issued By.');
+
             return;
         }
 

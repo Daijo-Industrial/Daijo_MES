@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cap_line_capacities', function (Blueprint $table) {     
-            $table->string("line_code")->primary();
-            $table->integer("departement")->nullable();
-            $table->decimal("time_limit", 8,2)->nullable();
-            $table->integer("status")->nullable();
+        Schema::create('cap_line_capacities', function (Blueprint $table) {
+            $table->string('line_code')->primary();
+            $table->integer('departement')->nullable();
+            $table->decimal('time_limit', 8, 2)->nullable();
+            $table->integer('status')->nullable();
 
         });
     }

@@ -24,6 +24,7 @@ class InspectionShowTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected InspectionReport $report;
 
     protected function setUp(): void

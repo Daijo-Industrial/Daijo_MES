@@ -7,7 +7,6 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\WmsPalletForm;
 use App\Services\SapVerificationService;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -19,7 +18,7 @@ class SapMesVerificationTest extends TestCase
 
     public function test_service_parses_various_date_formats(): void
     {
-        $service = new SapVerificationService();
+        $service = new SapVerificationService;
 
         $this->assertEquals('2026-10-29', $service->parseSapDate('29.10.26'));
         $this->assertEquals('2026-09-23', $service->parseSapDate('23.09.26'));
@@ -31,7 +30,7 @@ class SapMesVerificationTest extends TestCase
 
     public function test_service_extracts_spk_and_pallet_from_remarks(): void
     {
-        $service = new SapVerificationService();
+        $service = new SapVerificationService;
 
         // SPK from Receipt Remarks (Gambar 1)
         $this->assertEquals('26030500', $service->extractSpkFromRemarks('Created from SPK 26030500'));
@@ -48,7 +47,7 @@ class SapMesVerificationTest extends TestCase
 
     public function test_service_reconciles_receipt_data_properly(): void
     {
-        $service = new SapVerificationService();
+        $service = new SapVerificationService;
 
         // 1. SPK 26030500: Match (total 24 pcs in MES, 24 pcs in SAP)
         DB::table('production_summary')->insert([
@@ -137,7 +136,7 @@ class SapMesVerificationTest extends TestCase
 
     public function test_service_reconciles_pallet_data_properly(): void
     {
-        $service = new SapVerificationService();
+        $service = new SapVerificationService;
 
         // 1. PLT-20261012-0004: Match (total 448 in MES, 448 in SAP)
         WmsPalletForm::create([
@@ -184,7 +183,7 @@ class SapMesVerificationTest extends TestCase
 
     public function test_service_saves_and_loads_batch_properly(): void
     {
-        $service = new SapVerificationService();
+        $service = new SapVerificationService;
 
         $reconciled = [
             'kpi' => [

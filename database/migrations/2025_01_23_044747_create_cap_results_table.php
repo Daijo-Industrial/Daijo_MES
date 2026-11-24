@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('cap_results', function (Blueprint $table) {
             $table->id();
-            $table->string("line_code")->nullable();
-            $table->string("mould_code")->nullable();
-            $table->integer("forecast_qty")->nullable();
-            $table->decimal("cycle_time",8,2)->nullable();
-            $table->decimal("production_time",10,2)->nullable();
-            $table->decimal("balance",10,2)->nullable();
+            $table->string('line_code')->nullable();
+            $table->string('mould_code')->nullable();
+            $table->integer('forecast_qty')->nullable();
+            $table->decimal('cycle_time', 8, 2)->nullable();
+            $table->decimal('production_time', 10, 2)->nullable();
+            $table->decimal('balance', 10, 2)->nullable();
         });
     }
 

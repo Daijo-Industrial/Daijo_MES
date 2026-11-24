@@ -371,7 +371,7 @@ class BusinessPartnerTest extends TestCase
         ]);
 
         // Generate temporary Excel file with updated name for existing BP and a new BP
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray([
             ['#', 'CardCode', 'CardName', 'ForeignName', 'Type', 'GroupCode', 'SalesEmployee'],
@@ -489,7 +489,7 @@ class BusinessPartnerTest extends TestCase
             'branch_id' => null,
         ]);
 
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray([
             ['#', 'CardCode', 'CardName', 'ForeignName', 'Type', 'GroupCode', 'SalesEmployee'],
@@ -548,7 +548,7 @@ class BusinessPartnerTest extends TestCase
         $jkt = Branch::firstOrCreate(['code' => 'JKT'], ['name' => 'Jakarta Plant', 'is_active' => true]);
         $krw = Branch::firstOrCreate(['code' => 'KRW'], ['name' => 'Karawang Plant', 'is_active' => true]);
 
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray([
             ['#', 'CardCode', 'CardName', 'ForeignName', 'Type', 'GroupCode', 'SalesEmployee'],
@@ -598,7 +598,7 @@ class BusinessPartnerTest extends TestCase
         $jkt = Branch::firstOrCreate(['code' => 'JKT'], ['name' => 'Jakarta Plant', 'is_active' => true]);
         $krw = Branch::firstOrCreate(['code' => 'KRW'], ['name' => 'Karawang Plant', 'is_active' => true]);
 
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray([
             ['#', 'CardCode', 'CardName', 'ForeignName', 'Type', 'GroupCode', 'SalesEmployee'],

@@ -9,7 +9,7 @@ class PoReminderServiceUnitTest extends TestCase
 {
     public function test_calculate_returns_empty_structure_when_no_schedules_exist(): void
     {
-        $service = new PoReminderService();
+        $service = new PoReminderService;
 
         // Query date far in the past or future where no schedule exists
         $result = $service->calculate('1990-01-01', '1990-01-02');
@@ -23,4 +23,3 @@ class PoReminderServiceUnitTest extends TestCase
         $this->assertEquals([], $result['view2_materials']);
     }
 }
-

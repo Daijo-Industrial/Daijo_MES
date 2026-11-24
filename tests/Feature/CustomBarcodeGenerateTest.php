@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\CustomBarcodeLog;
 use App\Models\MasterListItem;
 use App\Models\Role;
 use App\Models\User;

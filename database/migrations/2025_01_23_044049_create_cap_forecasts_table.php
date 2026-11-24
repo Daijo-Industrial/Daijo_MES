@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('cap_forecasts', function (Blueprint $table) {
-            $table->string("item_code")->nullable();
-            $table->integer("quantity")->nullable();
-            $table->integer("quantity_next")->nullable();
-            $table->integer("total")->nullable();
+            $table->string('item_code')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->integer('quantity_next')->nullable();
+            $table->integer('total')->nullable();
         });
     }
 

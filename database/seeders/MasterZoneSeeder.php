@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\MasterZone;
+use Illuminate\Database\Seeder;
 
 class MasterZoneSeeder extends Seeder
 {
@@ -13,7 +13,7 @@ class MasterZoneSeeder extends Seeder
 
         foreach ($zones as $zone) {
             MasterZone::firstOrCreate([
-                'zone_name' => $zone
+                'zone_name' => $zone,
             ]);
         }
     }

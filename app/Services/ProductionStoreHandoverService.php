@@ -9,8 +9,6 @@ use App\Models\ProductionScannedData;
 use App\Models\ProductionStoreHandover;
 use App\Models\ProductionStoreHandoverLog;
 use App\Models\WmsPalletForm;
-use App\Models\WmsPalletFormDetail;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -41,6 +39,7 @@ class ProductionStoreHandoverService
         // 2. Group berdasarkan item_code, shift, dan machine_name (mesin K Karawang dipisah)
         $grouped = $dics->groupBy(function ($item) {
             $machineName = strtoupper(trim($item->user?->name ?: 'UNKNOWN'));
+
             return ($item->item_code ?: 'UNKNOWN') . '|||' . ($item->shift ?: 1) . '|||' . $machineName;
         });
 
@@ -79,7 +78,7 @@ class ProductionStoreHandoverService
                     ->where('item_code', $itemCode)
                     ->where(function ($q) {
                         $q->whereIn('machine_name', ['UNKNOWN', 'N/A', '-', ''])
-                          ->orWhereNull('machine_name');
+                            ->orWhereNull('machine_name');
                     })
                     ->where('store_received_boxes', '<=', 0)
                     ->delete();
@@ -199,6 +198,7 @@ class ProductionStoreHandoverService
         $existingLog = ProductionStoreHandoverLog::where('pallet_id', $palletId)->first();
         if ($existingLog) {
             $formattedTime = $existingLog->created_at ? $existingLog->created_at->copy()->timezone('Asia/Jakarta')->format('H:i d/m/Y') : '-';
+
             return [
                 'success' => false,
                 'message' => "Pallet [{$palletId}] sudah pernah diverifikasi oleh {$existingLog->verified_by_name} pada {$formattedTime}.",
@@ -275,13 +275,13 @@ class ProductionStoreHandoverService
         $query = WmsPalletForm::with(['position.rack.warehouse', 'details'])
             ->where(function ($q) use ($date, $startTime, $endTime) {
                 $q->where('prod_date', $date)
-                  ->orWhereBetween('created_at', [$startTime, $endTime]);
+                    ->orWhereBetween('created_at', [$startTime, $endTime]);
             })
             ->where(function ($q) use ($itemCode) {
                 $q->where('part_no', $itemCode)
-                  ->orWhereHas('details', function ($d) use ($itemCode) {
-                      $d->where('part_no', $itemCode);
-                  });
+                    ->orWhereHas('details', function ($d) use ($itemCode) {
+                        $d->where('part_no', $itemCode);
+                    });
             });
 
         $pallets = $query->orderBy('created_at', 'asc')->get();
@@ -352,26 +352,26 @@ class ProductionStoreHandoverService
         $query = WmsPalletForm::with(['position.rack.warehouse', 'details.item'])
             ->where(function ($q) use ($date, $startTime, $endTime) {
                 $q->where('prod_date', $date)
-                  ->orWhereBetween('created_at', [$startTime, $endTime]);
+                    ->orWhereBetween('created_at', [$startTime, $endTime]);
             });
 
         if (! empty($shift)) {
             $query->where(function ($q) use ($shift) {
                 $q->where('delivery_shift', (string) $shift)
-                  ->orWhere('delivery_shift', $shift);
+                    ->orWhere('delivery_shift', $shift);
             });
         }
 
         if (! empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('pallet_id', 'like', "%{$search}%")
-                  ->orWhere('part_no', 'like', "%{$search}%")
-                  ->orWhere('model_name', 'like', "%{$search}%")
-                  ->orWhere('delivery_name', 'like', "%{$search}%")
-                  ->orWhereHas('details', function ($d) use ($search) {
-                      $d->where('part_no', 'like', "%{$search}%")
-                        ->orWhere('model_name', 'like', "%{$search}%");
-                  });
+                    ->orWhere('part_no', 'like', "%{$search}%")
+                    ->orWhere('model_name', 'like', "%{$search}%")
+                    ->orWhere('delivery_name', 'like', "%{$search}%")
+                    ->orWhereHas('details', function ($d) use ($search) {
+                        $d->where('part_no', 'like', "%{$search}%")
+                            ->orWhere('model_name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -447,7 +447,7 @@ class ProductionStoreHandoverService
                 $sub->whereNotNull('machine_name')
                     ->whereNotIn('machine_name', ['UNKNOWN', 'N/A', '-', '']);
             })->orWhere('operator_actual_qty', '>', 0)
-              ->orWhere('scanned_boxes', '>', 0);
+                ->orWhere('scanned_boxes', '>', 0);
         });
 
         if (! empty($shift)) {
@@ -458,12 +458,12 @@ class ProductionStoreHandoverService
             if ($plant === 'KARAWANG') {
                 $baseQuery->where(function ($q) {
                     $q->where('plant', 'KARAWANG')
-                      ->orWhere('machine_name', 'like', 'K%');
+                        ->orWhere('machine_name', 'like', 'K%');
                 });
             } elseif ($plant === 'KBN') {
                 $baseQuery->where(function ($q) {
                     $q->where('plant', 'KBN')
-                      ->where('machine_name', 'not like', 'K%');
+                        ->where('machine_name', 'not like', 'K%');
                 });
             }
         }
@@ -483,7 +483,7 @@ class ProductionStoreHandoverService
         [$startTime, $endTime] = WmsDeliveryRecapService::getTimeWindow($date);
         $windowPallets = WmsPalletForm::with(['details'])->where(function ($q) use ($date, $startTime, $endTime) {
             $q->where('prod_date', $date)
-              ->orWhereBetween('created_at', [$startTime, $endTime]);
+                ->orWhereBetween('created_at', [$startTime, $endTime]);
         })->get();
 
         $receivedPalletMap = ProductionStoreHandoverLog::whereIn('pallet_id', $windowPallets->pluck('pallet_id'))
@@ -522,6 +522,7 @@ class ProductionStoreHandoverService
                 if ($p->part_no === 'MIXED' || empty($p->part_no)) {
                     return $p->details->contains('part_no', $item->item_code);
                 }
+
                 return false;
             });
 

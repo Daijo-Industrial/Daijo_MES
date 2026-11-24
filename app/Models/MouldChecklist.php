@@ -70,9 +70,10 @@ class MouldChecklist extends Model
     public function getWorkScheduleFormattedAttribute(): string
     {
         if ($this->is_ongoing) {
-            $startStr = $this->start_at 
-                ? $this->start_at->translatedFormat('d M Y, H:i') 
+            $startStr = $this->start_at
+                ? $this->start_at->translatedFormat('d M Y, H:i')
                 : ($this->check_date ? $this->check_date->format('d/m/Y') . ' ' . ($this->start_time ?: '') : '-');
+
             return "Mulai: {$startStr} (Ongoing)";
         }
 
@@ -82,6 +83,7 @@ class MouldChecklist extends Model
             }
             $diffDays = (int) $this->start_at->startOfDay()->diffInDays($this->end_at->startOfDay());
             $diffStr = $diffDays > 0 ? " (+{$diffDays} hari)" : '';
+
             return $this->start_at->translatedFormat('d M Y H:i') . ' s/d ' . $this->end_at->translatedFormat('d M Y H:i') . $diffStr;
         }
 

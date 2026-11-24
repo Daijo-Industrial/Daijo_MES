@@ -117,7 +117,7 @@ class DeliveryScheduleForm extends Component
      */
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Delivery Schedule');
 
@@ -278,7 +278,7 @@ class DeliveryScheduleForm extends Component
 
                 if ($rawItem === '') {
                     $skipped++;
-                    $rowErrors[] = "Baris " . ($i + 1) . ": Item Code kosong.";
+                    $rowErrors[] = 'Baris ' . ($i + 1) . ': Item Code kosong.';
                     continue;
                 }
 
@@ -338,7 +338,7 @@ class DeliveryScheduleForm extends Component
 
                     if (! $tanggal) {
                         $skipped++;
-                        $rowErrors[] = "Baris " . ($i + 1) . ": Format tanggal '{$rawDate}' tidak valid.";
+                        $rowErrors[] = 'Baris ' . ($i + 1) . ": Format tanggal '{$rawDate}' tidak valid.";
                         continue;
                     }
 
@@ -459,7 +459,7 @@ class DeliveryScheduleForm extends Component
     protected function normalizeDate($rawDate, $fallbackYear = null, $fallbackMonth = null)
     {
         if (empty($rawDate)) {
-            return null;
+            return;
         }
 
         if (is_numeric($rawDate)) {
@@ -475,7 +475,7 @@ class DeliveryScheduleForm extends Component
                 try {
                     return Carbon::createFromDate((int) $fallbackYear, (int) $fallbackMonth, (int) $rawDate)->format('Y-m-d');
                 } catch (\Throwable $e) {
-                    return null;
+                    return;
                 }
             }
         }
@@ -485,7 +485,7 @@ class DeliveryScheduleForm extends Component
         try {
             return Carbon::parse($formatted)->format('Y-m-d');
         } catch (\Throwable $e) {
-            return null;
+            return;
         }
     }
 

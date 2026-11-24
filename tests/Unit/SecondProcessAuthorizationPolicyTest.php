@@ -19,11 +19,11 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
 {
     private function createMockUser(string $roleName, array $permissions = []): User
     {
-        $user = new User();
+        $user = new User;
         $user->id = rand(100, 999);
         $user->name = "Test {$roleName}";
 
-        $role = new Role();
+        $role = new Role;
         $role->name = $roleName;
         $user->setRelation('role', $role);
 
@@ -44,7 +44,7 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
 
     public function test_sp_work_order_policy_allows_authorized_users_and_denies_unauthorized()
     {
-        $policy = new SpWorkOrderPolicy();
+        $policy = new SpWorkOrderPolicy;
 
         $authorizedUser = $this->createMockUser('LEADER', ['second-process-work-orders']);
         $unauthorizedUser = $this->createMockUser('OPERATOR', []);
@@ -84,13 +84,13 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
         $this->assertTrue($policy->delete($unauthorizedUser, $draftWo)->denied());
 
         $plannedWoWithSessions = new SpWorkOrder(['status' => 'planned']);
-        $plannedWoWithSessions->setRelation('sessions', collect([new SecondProcessReport()]));
+        $plannedWoWithSessions->setRelation('sessions', collect([new SecondProcessReport]));
         $this->assertTrue($policy->delete($authorizedUser, $plannedWoWithSessions)->denied());
     }
 
     public function test_first_piece_inspection_policy_enforces_qc_signatures()
     {
-        $policy = new FirstPieceInspectionPolicy();
+        $policy = new FirstPieceInspectionPolicy;
 
         $qcUser = $this->createMockUser('QUALITY', ['second-process-first-piece']);
         $operatorUser = $this->createMockUser('OPERATOR', ['second-process-first-piece']);
@@ -116,7 +116,7 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
 
     public function test_ipqc_inspection_policy_guards_completed_inspections()
     {
-        $policy = new IpqcInspectionPolicy();
+        $policy = new IpqcInspectionPolicy;
 
         $qcUser = $this->createMockUser('QUALITY', ['second-process-ipqc']);
         $unauthorizedUser = $this->createMockUser('OPERATOR', []);
@@ -133,7 +133,7 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
 
     public function test_second_process_report_policy_requires_feature_permission()
     {
-        $policy = new SecondProcessReportPolicy();
+        $policy = new SecondProcessReportPolicy;
 
         $reportUser = $this->createMockUser('LEADER', ['second-process-reports']);
         $unauthorizedUser = $this->createMockUser('OPERATOR', []);
@@ -187,4 +187,3 @@ class SecondProcessAuthorizationPolicyTest extends TestCase
         $this->assertEquals('second-process-defects', Role::canonicalizePermissionName('manage-second-process-defects'));
     }
 }
-

@@ -1040,5 +1040,3 @@ class ProductionDashboardOptimizationTest extends TestCase
         $this->assertNotContains('Kholifah', $machineNames);
     }
 }
-
-

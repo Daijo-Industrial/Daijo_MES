@@ -128,7 +128,7 @@ class ProductionStoreHandoverIndex extends Component
 
     public function refreshData(ProductionStoreHandoverService $service)
     {
-        $shift = (!empty($this->shiftFilter) && $this->shiftFilter !== 'ALL') ? (int) $this->shiftFilter : null;
+        $shift = (! empty($this->shiftFilter) && $this->shiftFilter !== 'ALL') ? (int) $this->shiftFilter : null;
         $service->syncDailyProduction($this->selectedDate, $shift);
         $this->dispatch('notify', ['type' => 'info', 'message' => 'Data produksi berhasil disinkronisasi ulang.']);
     }
@@ -158,12 +158,14 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => 'Akses ditolak: Verifikasi penerimaan barang hanya dapat dilakukan oleh staf Store atau Admin.',
             ]);
+
             return;
         }
 
         $handover = ProductionStoreHandover::find($handoverId);
         if (! $handover || $handover->in_transit_boxes <= 0) {
             $this->dispatch('notify', ['type' => 'warning', 'message' => 'Tidak ada box in-transit untuk item ini.']);
+
             return;
         }
 
@@ -187,6 +189,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => 'Akses ditolak: Form penerimaan barang hanya dapat diakses oleh staf Store atau Admin.',
             ]);
+
             return;
         }
 
@@ -223,6 +226,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => 'Akses ditolak: Verifikasi penerimaan barang hanya dapat dilakukan oleh staf Store atau Admin.',
             ]);
+
             return;
         }
 
@@ -301,6 +305,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => 'Akses ditolak: Verifikasi penerimaan pallet hanya dapat dilakukan oleh staf Store atau Admin.',
             ]);
+
             return;
         }
 
@@ -336,6 +341,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => 'Akses ditolak: Verifikasi penerimaan pallet hanya dapat dilakukan oleh staf Store atau Admin.',
             ]);
+
             return;
         }
 
@@ -349,6 +355,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'info',
                 'message' => 'Seluruh Pallet Form untuk item ini sudah diverifikasi.',
             ]);
+
             return;
         }
 
@@ -386,6 +393,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => 'Akses ditolak: Scanner penerimaan store hanya dapat digunakan oleh staf Store atau Admin.',
             ]);
+
             return;
         }
 
@@ -407,6 +415,7 @@ class ProductionStoreHandoverIndex extends Component
                     'type' => 'warning',
                     'message' => "Pallet [{$barcode}] sudah pernah diverifikasi oleh {$alreadyLog->verified_by_name} pada jam {$timeStr}.",
                 ]);
+
                 return;
             }
 
@@ -431,6 +440,7 @@ class ProductionStoreHandoverIndex extends Component
                     'type' => 'error',
                     'message' => "Item part pada Pallet [{$barcode}] tidak ditemukan dalam jadwal produksi tanggal {$this->selectedDate}.",
                 ]);
+
                 return;
             }
 
@@ -446,6 +456,7 @@ class ProductionStoreHandoverIndex extends Component
                     'message' => $res['message'],
                 ]);
             }
+
             return;
         }
 
@@ -457,6 +468,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => "Barcode [{$barcode}] tidak ditemukan di data Pallet Form WMS maupun scan produksi.",
             ]);
+
             return;
         }
 
@@ -469,13 +481,14 @@ class ProductionStoreHandoverIndex extends Component
                     'type' => 'warning',
                     'message' => "Box [{$barcode}] sudah termasuk dalam Pallet [{$palletDetail->pallet_form_id}] yang telah diterima oleh {$alreadyReceivedPallet->verified_by_name}.",
                 ]);
+
                 return;
             }
         }
 
         // Cari handover yang cocok (prioritaskan machine_name jika ada relasi DIC)
         $machineName = strtoupper(trim($box->ParentDailyItemCode?->user?->name ?: ''));
-        
+
         $handoverQuery = ProductionStoreHandover::whereDate('production_date', $this->selectedDate)
             ->where('item_code', $box->item_code);
 
@@ -494,6 +507,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => "Item [{$box->item_code}] belum ada di jadwal produksi tanggal ini.",
             ]);
+
             return;
         }
 
@@ -518,12 +532,14 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => 'Akses ditolak: Verifikasi penerimaan pallet hanya dapat dilakukan oleh staf Store atau Admin.',
             ]);
+
             return;
         }
 
         $pallet = WmsPalletForm::with('details')->where('pallet_id', $palletId)->first();
         if (! $pallet) {
             $this->dispatch('notify', ['type' => 'error', 'message' => "Pallet [{$palletId}] tidak ditemukan."]);
+
             return;
         }
 
@@ -535,6 +551,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'warning',
                 'message' => "Pallet [{$palletId}] sudah pernah diverifikasi oleh {$alreadyLog->verified_by_name} pada jam {$timeStr}.",
             ]);
+
             return;
         }
 
@@ -596,6 +613,7 @@ class ProductionStoreHandoverIndex extends Component
                 'type' => 'error',
                 'message' => 'Akses ditolak: Verifikasi penerimaan pallet hanya dapat dilakukan oleh staf Store atau Admin.',
             ]);
+
             return;
         }
 
@@ -604,6 +622,7 @@ class ProductionStoreHandoverIndex extends Component
 
         if (empty($queue['pending'])) {
             $this->dispatch('notify', ['type' => 'info', 'message' => 'Tidak ada antrean pallet yang menunggu verifikasi.']);
+
             return;
         }
 
@@ -626,7 +645,7 @@ class ProductionStoreHandoverIndex extends Component
 
     public function render(ProductionStoreHandoverService $service)
     {
-        $shift = (!empty($this->shiftFilter) && $this->shiftFilter !== 'ALL') ? (int) $this->shiftFilter : null;
+        $shift = (! empty($this->shiftFilter) && $this->shiftFilter !== 'ALL') ? (int) $this->shiftFilter : null;
         $data = $service->getSummary($this->selectedDate, $shift, $this->plantFilter, $this->search, $this->perPage);
         $queue = $service->getPalletsQueue($this->selectedDate, $shift, $this->search);
 

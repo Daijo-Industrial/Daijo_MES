@@ -51,9 +51,7 @@ class NavigationService
     /**
      * Get filtered navigation menu groups for a given user.
      *
-     * @param  User|null  $user
-     * @param  bool  $includeStandalone  Whether to include standalone sidebar links (System Admin, Operator Report)
-     * @return array
+     * @param bool $includeStandalone Whether to include standalone sidebar links (System Admin, Operator Report)
      */
     public function getMenuGroups(?User $user, bool $includeStandalone = false): array
     {

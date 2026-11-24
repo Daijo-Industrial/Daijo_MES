@@ -16,7 +16,6 @@ class PoReminderService
      * @param string $endDate Tanggal akhir delivery schedule (YYYY-MM-DD)
      * @param string|null $search Filter pencarian kode/nama item FG atau material
      * @param string|null $categoryFilter Filter kategori material (RESIN, PACKAGING, CHEMICAL, HARDWARE, RAW_MATERIAL, WIP)
-     * @return array
      */
     public function calculate(string $startDate, string $endDate, ?string $search = null, ?string $categoryFilter = null): array
     {
@@ -500,4 +499,3 @@ class PoReminderService
         ];
     }
 }
-

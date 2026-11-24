@@ -12,7 +12,7 @@ class AlcPeMasterDataSeeder extends Seeder
      */
     public function run(): void
     {
-      AlcPeMasterData::insert([
+        AlcPeMasterData::insert([
             ['part_code' => '84715-I6RA0', 'qad' => '25007998', 'part_name' => 'KS_PE GRILLE CTR SPEAKER', 'ukuran_label' => '40 x 15', 'alc_code' => 'F1NB', 'project_code' => 'KSPE'],
             ['part_code' => '84767-I6AA0UFD', 'qad' => '25008134', 'part_name' => 'KS_PE CTR FACIA ASSY(8inch)_LHD', 'ukuran_label' => '40 x 15', 'alc_code' => 'D1FD', 'project_code' => 'KSPE'],
             ['part_code' => '84767-I6AB0UFD', 'qad' => '25008135', 'part_name' => 'KS_PE CTR FACIA ASSY(10inch)_LHD', 'ukuran_label' => '40 x 15', 'alc_code' => 'D2FD', 'project_code' => 'KSPE'],
@@ -124,6 +124,6 @@ class AlcPeMasterDataSeeder extends Seeder
             ['part_code' => '84795-I7AA0MRS', 'qad' => '25007728', 'part_name' => 'D-AUDIO GARNISH ASSY CRASH PAD P/SIDE LHD (MRS)', 'ukuran_label' => '40 x 15', 'alc_code' => 'PAAS', 'project_code' => 'SU2ID'],
             ['part_code' => '84750-I7AA0NNB', 'qad' => '25007706', 'part_name' => 'PNL ASSY CRASH PAD LWR D/SIDE NNB LHD', 'ukuran_label' => '40 x 15', 'alc_code' => 'P20', 'project_code' => 'SU2ID'],
             ['part_code' => '84750-I7RA0NNB', 'qad' => '25007749', 'part_name' => 'PNL ASSY CRASH PAD LWR D/SIDE NNB RHD', 'ukuran_label' => '40 x 15', 'alc_code' => 'P21', 'project_code' => 'SU2ID'],
-      ]);
+        ]);
     }
 }

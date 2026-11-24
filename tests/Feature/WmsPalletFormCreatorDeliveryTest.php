@@ -369,6 +369,7 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
                         && $payload['lines'][0]['quantity'] == 80;
                 }
             }
+
             return false;
         });
 
@@ -401,6 +402,7 @@ class WmsPalletFormCreatorDeliveryTest extends TestCase
                         && $payload['lines'][0]['quantity'] == 60;
                 }
             }
+
             return false;
         });
     }

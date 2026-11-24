@@ -10,10 +10,10 @@ return new class extends Migration
     {
         if (Schema::hasTable('wms_racks')) {
             Schema::table('wms_racks', function (Blueprint $table) {
-                if (!Schema::hasColumn('wms_racks', 'zone')) {
+                if (! Schema::hasColumn('wms_racks', 'zone')) {
                     $table->string('zone', 50)->nullable()->default('DEFAULT')->after('orientation');
                 }
-                if (!Schema::hasColumn('wms_racks', 'sort_order')) {
+                if (! Schema::hasColumn('wms_racks', 'sort_order')) {
                     $table->integer('sort_order')->default(0)->after('zone');
                 }
             });

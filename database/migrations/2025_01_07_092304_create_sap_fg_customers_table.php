@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sap_fg_customers', function (Blueprint $table) {
-            $table->string("customer_code")->nullable();
-            $table->string("customer_name")->nullable();
-            $table->string("item_code")->nullable();
+            $table->string('customer_code')->nullable();
+            $table->string('customer_name')->nullable();
+            $table->string('item_code')->nullable();
         });
     }
 

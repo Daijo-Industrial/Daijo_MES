@@ -7,7 +7,6 @@ use App\Models\Inspection\DetailInspectionReport;
 use App\Models\Inspection\InspectionDimension;
 use App\Models\Inspection\InspectionProblem;
 use App\Models\Inspection\InspectionReport;
-use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -64,6 +63,7 @@ class InspectionForm extends Component
             $this->loadDraftFromDatabase($this->report);
             $this->currentStep = (int) session('lastStepVisited', 2);
             $this->filledSteps = $this->computeFilledSteps();
+
             return;
         }
 
@@ -71,6 +71,7 @@ class InspectionForm extends Component
 
         if (request()->query('new') == 1) {
             $this->startNewReport(false);
+
             return;
         }
 
@@ -79,6 +80,7 @@ class InspectionForm extends Component
             if ($draft) {
                 $this->pendingDraftInfo = $draft;
                 $this->continueDraft();
+
                 return;
             }
         }

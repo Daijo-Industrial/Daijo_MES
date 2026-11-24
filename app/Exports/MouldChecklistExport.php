@@ -9,12 +9,16 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class MouldChecklistExport implements FromCollection, WithHeadings, ShouldAutoSize, WithStyles
+class MouldChecklistExport implements FromCollection, ShouldAutoSize, WithHeadings, WithStyles
 {
     protected $dateFrom;
+
     protected $dateTo;
+
     protected $status;
+
     protected $customer;
+
     protected $search;
 
     public function __construct($dateFrom = null, $dateTo = null, $status = null, $customer = null, $search = null)

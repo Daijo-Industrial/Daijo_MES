@@ -1780,6 +1780,7 @@ class ProductionDashboardService
             if ($b['ng_rate'] !== $a['ng_rate']) {
                 return $b['ng_rate'] <=> $a['ng_rate'];
             }
+
             return $b['total_ng'] <=> $a['total_ng'];
         });
 

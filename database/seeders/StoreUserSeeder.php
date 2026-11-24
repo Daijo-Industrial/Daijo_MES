@@ -2,13 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-use Carbon\Carbon;
-use App\Models\User;
-use App\Models\Role;
-
 
 class StoreUserSeeder extends Seeder
 {

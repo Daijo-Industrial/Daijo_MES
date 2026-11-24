@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('wms_pallet_forms', 'plant')) {
+        if (! Schema::hasColumn('wms_pallet_forms', 'plant')) {
             Schema::table('wms_pallet_forms', function (Blueprint $table) {
                 $table->string('plant', 20)->default('KBN')->after('lot_no')->index();
             });

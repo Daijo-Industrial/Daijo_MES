@@ -76,6 +76,7 @@ class FirstPieceInspectionPolicy
         $isAdmin = $user->hasRole('SUPER-ADMIN') || $user->hasRole('ADMIN');
         if (! $isAdmin && ! $user->canSign('first_piece', $slot)) {
             $userRole = $user->role?->name ?? 'No Role';
+
             return Response::deny("Role '{$userRole}' is not authorized to sign as " . ucfirst($slot) . '.');
         }
 
@@ -86,4 +87,3 @@ class FirstPieceInspectionPolicy
         return Response::allow();
     }
 }
-

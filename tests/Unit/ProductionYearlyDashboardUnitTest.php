@@ -45,13 +45,14 @@ class ProductionYearlyDashboardUnitTest extends TestCase
 
     public function test_machine_filter_partitioning_by_plant(): void
     {
-        $component = new class extends ProductionYearlyDashboard {
+        $component = new class extends ProductionYearlyDashboard
+        {
             public function setAllMachinesForTest(array $machines): void
             {
                 $this->allMachines = $machines;
             }
 
-            public function testFilter(): void
+            public function test_filter(): void
             {
                 // call protected/private via reflection or wrapper
                 $ref = new \ReflectionMethod(ProductionYearlyDashboard::class, 'updateFilteredMachines');

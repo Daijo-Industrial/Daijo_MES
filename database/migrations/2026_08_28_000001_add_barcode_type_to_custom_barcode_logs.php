@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('custom_barcode_logs', function (Blueprint $table) {
-            if (!Schema::hasColumn('custom_barcode_logs', 'barcode_type')) {
+            if (! Schema::hasColumn('custom_barcode_logs', 'barcode_type')) {
                 $table->string('barcode_type', 50)->default('default')->after('customer');
             }
         });

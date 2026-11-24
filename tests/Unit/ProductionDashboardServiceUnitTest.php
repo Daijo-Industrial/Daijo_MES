@@ -6,7 +6,6 @@ use App\Models\DailyItemCode;
 use App\Models\HourlyRemark;
 use App\Models\User;
 use App\Services\ProductionDashboardService;
-use Carbon\Carbon;
 use Tests\TestCase;
 
 class ProductionDashboardServiceUnitTest extends TestCase
@@ -16,7 +15,7 @@ class ProductionDashboardServiceUnitTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new ProductionDashboardService();
+        $this->service = new ProductionDashboardService;
     }
 
     public function test_get_weeks_in_month_generates_correct_week_intervals(): void
@@ -93,4 +92,3 @@ class ProductionDashboardServiceUnitTest extends TestCase
         $this->assertEmpty($breakdown['ng_types'] ?? []);
     }
 }
-

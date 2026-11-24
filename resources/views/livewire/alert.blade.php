@@ -9,7 +9,7 @@
                 'bg-green-100 text-green-900': type === 'success',
                 'bg-red-100 text-red-900': type === 'error'
             }"
-            class="fixed top-5 right-5 w-full max-w-sm shadow-lg rounded-lg overflow-hidden p-4 flex items-center space-x-3">
+            class="fixed top-5 right-5 z-50 w-full max-w-sm shadow-lg rounded-lg overflow-hidden p-4 flex items-center space-x-3">
             <!-- Icon -->
             <div class="flex-shrink-0">
                 <template x-if="type === 'success'">

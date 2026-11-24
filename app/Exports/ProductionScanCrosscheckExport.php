@@ -16,11 +16,17 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class ProductionScanCrosscheckExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     protected string $selectedDate;
+
     protected string $plant;
+
     protected string $shift;
+
     protected string $status;
+
     protected string $search;
+
     protected string $machine;
+
     protected int $rowNum = 1;
 
     public function __construct(
@@ -42,6 +48,7 @@ class ProductionScanCrosscheckExport implements FromCollection, ShouldAutoSize, 
     public function collection()
     {
         $service = app(StoreCrosscheckService::class);
+
         return $service->getBaseQuery(
             $this->selectedDate,
             $this->plant,
@@ -137,6 +144,7 @@ class ProductionScanCrosscheckExport implements FromCollection, ShouldAutoSize, 
     public function title(): string
     {
         $plantTitle = $this->plant === 'ALL' ? 'KBN & KRW' : $this->plant;
+
         return 'Crosscheck Store ' . $plantTitle . ' ' . $this->selectedDate;
     }
 }

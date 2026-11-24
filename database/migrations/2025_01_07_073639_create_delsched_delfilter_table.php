@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('delsched_delfilter', function (Blueprint $table) {          
+        Schema::create('delsched_delfilter', function (Blueprint $table) {
             $table->string('item_code')->nullable();
-			$table->date('delivery_date')->nullable();
-			$table->integer('quantity')->nullable();
-			$table->string('so_number')->nullable();
+            $table->date('delivery_date')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->string('so_number')->nullable();
         });
     }
 

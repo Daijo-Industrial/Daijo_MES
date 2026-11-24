@@ -1,9 +1,9 @@
 <?php
- 
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
- 
+
 return new class extends Migration
 {
     /**
@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('so_number')->nullable()->after('noDokumen');
         });
     }
- 
+
     /**
      * Reverse the migrations.
      */

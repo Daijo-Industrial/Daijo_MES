@@ -3,7 +3,6 @@
 namespace App\Livewire\Store;
 
 use App\Exports\ProductionScanCrosscheckExport;
-use App\Models\ProductionScannedData;
 use App\Models\StoreCrosscheckDailyReport;
 use App\Services\StoreCrosscheckService;
 use Carbon\Carbon;
@@ -19,11 +18,17 @@ class ProductionScanCrosscheck extends Component
 
     // Filters
     public string $selectedDate = '';
+
     public string $plantTab = 'KBN'; // 'KBN', 'KARAWANG', 'ALL'
+
     public string $shiftFilter = 'ALL'; // 'ALL', '1', '2', '3'
+
     public string $machineFilter = 'ALL'; // 'ALL', or machine name (e.g. '1', 'K01')
+
     public string $statusFilter = 'ALL'; // 'ALL', 'PENDING', 'FOUND', 'NOT_FOUND'
+
     public string $search = '';
+
     public int $perPage = 50;
 
     // Verifikator / PIC Name (Khususnya jika memakai shared account seperti store01)
@@ -31,17 +36,23 @@ class ProductionScanCrosscheck extends Component
 
     // Barcode Quick Scanner (Disimpan untuk backward-compatibility/fitur masa depan)
     public string $barcodeInput = '';
+
     public ?array $scanFeedback = null;
+
     public bool $audioEnabled = true;
 
     // Batch Selection
     public array $selectedBoxIds = [];
+
     public bool $selectAll = false;
 
     // Snapshot Daily Report Modal
     public bool $showSnapshotModal = false;
+
     public string $dailyNotes = '';
+
     public string $reportStatus = 'OPEN'; // 'OPEN', 'FINALIZED'
+
     public ?string $lastSavedSnapshotAt = null;
 
     // Inline Notes state
@@ -49,6 +60,7 @@ class ProductionScanCrosscheck extends Component
 
     // Flash message
     public ?string $flashSuccess = null;
+
     public ?string $flashError = null;
 
     protected $queryString = [
@@ -302,6 +314,7 @@ class ProductionScanCrosscheck extends Component
     {
         if (empty($this->selectedBoxIds)) {
             $this->flashError = 'Pilih setidaknya 1 box terlebih dahulu!';
+
             return;
         }
 
@@ -323,6 +336,7 @@ class ProductionScanCrosscheck extends Component
     {
         if (empty($this->selectedBoxIds)) {
             $this->flashError = 'Pilih setidaknya 1 box terlebih dahulu!';
+
             return;
         }
 
@@ -347,6 +361,7 @@ class ProductionScanCrosscheck extends Component
 
         if (empty($pendingIds)) {
             $this->flashSuccess = 'Semua box sudah diverifikasi! Tidak ada box yang tertunda.';
+
             return;
         }
 

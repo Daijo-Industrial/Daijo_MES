@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Inspection\InspectionForm;
 
-use App\Models\Inspection\SecondInspection;
 use App\Traits\ClearsNestedSession;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;

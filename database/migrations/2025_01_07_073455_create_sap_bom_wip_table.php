@@ -12,15 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sap_bom_wip', function (Blueprint $table) {
-            $table->string("fg_code");
-            $table->string("semi_first")->nullable();
-            $table->integer("qty_first")->nullable();
-            $table->string("semi_second")->nullable();
-            $table->integer("qty_second")->nullable();
-            $table->string("semi_third")->nullable();
-            $table->integer("qty_third")->nullable();
-            $table->integer("level")->nullable();
-            $table->integer("item_group")->nullable();
+            $table->string('fg_code');
+            $table->string('semi_first')->nullable();
+            $table->integer('qty_first')->nullable();
+            $table->string('semi_second')->nullable();
+            $table->integer('qty_second')->nullable();
+            $table->string('semi_third')->nullable();
+            $table->integer('qty_third')->nullable();
+            $table->integer('level')->nullable();
+            $table->integer('item_group')->nullable();
         });
     }
 

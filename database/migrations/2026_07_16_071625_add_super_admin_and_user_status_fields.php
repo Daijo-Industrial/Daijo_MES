@@ -23,7 +23,7 @@ return new class extends Migration
         });
 
         // 3. Insert SUPER-ADMIN role if not exists
-        if (!\DB::table('roles')->where('name', 'SUPER-ADMIN')->exists()) {
+        if (! \DB::table('roles')->where('name', 'SUPER-ADMIN')->exists()) {
             \DB::table('roles')->insert([
                 'name' => 'SUPER-ADMIN',
                 'created_at' => now(),

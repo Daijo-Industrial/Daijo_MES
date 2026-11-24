@@ -4,9 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\Wms\PalletFormIndex;
 use App\Livewire\Wms\SapSyncMonitor;
-use App\Models\MasterCustomer;
-use App\Models\MasterListItem;
-use App\Models\User;
 use App\Models\WmsPalletForm;
 use App\Models\WmsPalletFormDetail;
 use App\Models\WmsPosition;

@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('delsched_stock', function (Blueprint $table) {
             $table->id();
-			$table->string('item_code')->nullable();
-			$table->integer('quantity')->nullable();
-			$table->integer('total_after')->nullable();
+            $table->string('item_code')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->integer('total_after')->nullable();
         });
     }
 

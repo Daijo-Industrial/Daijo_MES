@@ -190,4 +190,3 @@ class ProductionYearlyDashboard extends Component
         ]);
     }
 }
-

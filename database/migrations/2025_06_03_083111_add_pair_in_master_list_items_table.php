@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('master_list_items', function (Blueprint $table) {
-             $table->dropColumn('pair');
+            $table->dropColumn('pair');
         });
     }
 };

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('sp_production_sessions', 'paused_at')) {
+        if (! Schema::hasColumn('sp_production_sessions', 'paused_at')) {
             Schema::table('sp_production_sessions', function (Blueprint $table) {
                 $table->timestamp('paused_at')->nullable()->after('started_at');
             });

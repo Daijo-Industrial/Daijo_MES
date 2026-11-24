@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Role;
-use App\Models\StoreBoxData;
 use App\Models\StoreBoxDetail;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;

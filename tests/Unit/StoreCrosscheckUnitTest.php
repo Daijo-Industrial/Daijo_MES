@@ -51,7 +51,7 @@ class StoreCrosscheckUnitTest extends TestCase
 
     public function test_get_time_window_never_crashes_on_slash_or_corrupt_date(): void
     {
-        $service = new StoreCrosscheckService();
+        $service = new StoreCrosscheckService;
 
         [$start1, $end1] = $service->getTimeWindow('24/11/2026');
         $this->assertNotNull($start1);
@@ -67,4 +67,3 @@ class StoreCrosscheckUnitTest extends TestCase
         $this->assertNotNull($end3);
     }
 }
-

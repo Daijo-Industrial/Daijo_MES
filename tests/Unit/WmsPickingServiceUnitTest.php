@@ -2,11 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Models\WmsPalletForm;
-use App\Models\WmsPalletFormDetail;
-use App\Models\WmsPosition;
 use App\Services\WmsPickingService;
-use Carbon\Carbon;
 use Tests\TestCase;
 
 class WmsPickingServiceUnitTest extends TestCase
@@ -16,7 +12,7 @@ class WmsPickingServiceUnitTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new WmsPickingService();
+        $this->service = new WmsPickingService;
     }
 
     public function test_calculate_fifo_picking_route_skips_empty_or_zero_qty_requests(): void
