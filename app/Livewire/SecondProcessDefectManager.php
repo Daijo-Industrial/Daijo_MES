@@ -34,7 +34,7 @@ class SecondProcessDefectManager extends Component
 
     public function mount(): void
     {
-        \Illuminate\Support\Facades\Gate::authorize('second-process-reports');
+        \Illuminate\Support\Facades\Gate::authorize('second-process-defects');
     }
 
     public function updatingSearch()

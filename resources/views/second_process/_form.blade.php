@@ -5,7 +5,7 @@
     <div class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-4 sm:p-6">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-                <h1 class="text-xl sm:text-3xl font-extrabold tracking-tight">PT. DAIJO INDUSTRIAL</h1>
+                <h1 class="text-xl sm:text-3xl font-bold tracking-tight">PT. DAIJO INDUSTRIAL</h1>
                 <p class="text-xs sm:text-sm font-semibold opacity-90 mt-0.5 sm:mt-1">Second Process Departement</p>
             </div>
             <div
@@ -89,7 +89,7 @@
                 </svg>
                 1. Setup & Manpower
                 @if ($tabErrorCounts['setup'] > 0)
-                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['setup'] }} error(s)">
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-semibold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['setup'] }} error(s)">
                         {{ $tabErrorCounts['setup'] }}
                     </span>
                 @endif
@@ -103,7 +103,7 @@
                 </svg>
                 2. Materials
                 @if ($tabErrorCounts['materials'] > 0)
-                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['materials'] }} error(s)">
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-semibold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['materials'] }} error(s)">
                         {{ $tabErrorCounts['materials'] }}
                     </span>
                 @endif
@@ -117,7 +117,7 @@
                 </svg>
                 3. Production Logs & NG
                 @if ($tabErrorCounts['production'] > 0)
-                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['production'] }} error(s)">
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-semibold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['production'] }} error(s)">
                         {{ $tabErrorCounts['production'] }}
                     </span>
                 @endif
@@ -131,7 +131,7 @@
                 </svg>
                 4. Handover & Signs
                 @if ($tabErrorCounts['handover'] > 0)
-                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['handover'] }} error(s)">
+                    <span class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-semibold rounded-full bg-red-600 text-white shadow-sm animate-pulse" title="{{ $tabErrorCounts['handover'] }} error(s)">
                         {{ $tabErrorCounts['handover'] }}
                     </span>
                 @endif
@@ -801,7 +801,7 @@
                             <button type="button" onclick="switchTab('materials')" class="text-xs text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer" title="Periksa Item Parts di Tab 2">Tab 2 &rarr;</button>
                         </div>
                         <div class="flex items-baseline justify-between gap-2">
-                            <div class="text-2xl sm:text-3xl font-black font-mono text-gray-900 leading-none">
+                            <div class="text-2xl sm:text-3xl font-bold font-mono text-gray-900 leading-none">
                                 <span id="reconcile-total-input">{{ number_format($calcTotalReportInput) }}</span> <span class="text-xs font-semibold text-gray-500">pcs</span>
                             </div>
                             <div class="text-right text-xs font-mono font-semibold text-gray-600 space-y-0.5 border-l border-gray-100 pl-2.5">
@@ -820,7 +820,7 @@
                             </span>
                         </div>
                         <div class="flex items-baseline justify-between gap-2">
-                            <div class="text-2xl sm:text-3xl font-black font-mono text-gray-900 leading-none">
+                            <div class="text-2xl sm:text-3xl font-bold font-mono text-gray-900 leading-none">
                                 <span id="reconcile-total-output">{{ number_format($calcTotalReportOutput) }}</span> <span class="text-xs font-semibold text-gray-500">pcs</span>
                             </div>
                             <div class="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-mono font-bold border-l border-gray-100 pl-2 sm:pl-2.5">
@@ -835,12 +835,12 @@
                     <div id="reconcile-balance-pill" class="p-3.5 sm:p-4 rounded-xl border flex flex-col justify-between space-y-2 transition-colors duration-200 {{ $calcTotalReportInput < $calcTotalReportOutput ? 'bg-red-50 border-red-300 text-red-900' : ($calcSisaInput > 0 ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-emerald-50 border-emerald-300 text-emerald-900') }}">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-bold uppercase tracking-wider opacity-80">Sisa Material</span>
-                            <span id="reconcile-status-badge" class="text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border {{ $calcTotalReportInput < $calcTotalReportOutput ? 'bg-red-200 text-red-900 border-red-300' : ($calcSisaInput > 0 ? 'bg-amber-200 text-amber-900 border-amber-300' : 'bg-emerald-200 text-emerald-900 border-emerald-300') }}">
-                                {{ $calcTotalReportInput < $calcTotalReportOutput ? '⛔ Defisit' : ($calcSisaInput > 0 ? '⚠️ Ada Sisa' : '✓ Ideal') }}
+                            <span id="reconcile-status-badge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider border {{ $calcTotalReportInput < $calcTotalReportOutput ? 'bg-red-200 text-red-900 border-red-300' : ($calcSisaInput > 0 ? 'bg-amber-200 text-amber-900 border-amber-300' : 'bg-emerald-200 text-emerald-900 border-emerald-300') }}">
+                                {{ $calcTotalReportInput < $calcTotalReportOutput ? '⛔ Defisit' : ($calcSisaInput > 0 ? '⚠️ Ada Sisa' : 'Ideal') }}
                             </span>
                         </div>
                         <div class="flex items-baseline justify-between gap-2">
-                            <div class="text-2xl sm:text-3xl font-black font-mono leading-none">
+                            <div class="text-2xl sm:text-3xl font-bold font-mono leading-none">
                                 <span id="reconcile-sisa-qty">{{ number_format(abs($calcSisaInput)) }}</span> <span class="text-xs font-semibold opacity-75">pcs</span>
                             </div>
                             <div id="reconcile-inline-note" class="text-xs font-semibold text-right leading-tight max-w-[190px]">
@@ -859,8 +859,8 @@
                 <!-- Deficit Alert Banner (Responsive Flex Layout) -->
                 <div id="reconcile-state-deficit" class="{{ $calcTotalReportInput >= $calcTotalReportOutput ? 'hidden' : '' }} px-4 py-2.5 bg-red-100 border-b border-red-300 text-xs sm:text-sm text-red-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="font-extrabold text-red-700">⛔ Peringatan Defisit:</span>
-                        <span>Output melebihi Input sebesar <strong class="reconcile-deficit-amount font-mono text-red-950 font-black">{{ number_format(max(0, $calcTotalReportOutput - $calcTotalReportInput)) }}</strong> pcs.</span>
+                        <span class="font-bold text-red-700">⛔ Peringatan Defisit:</span>
+                        <span>Output melebihi Input sebesar <strong class="reconcile-deficit-amount font-mono text-red-950 font-bold">{{ number_format(max(0, $calcTotalReportOutput - $calcTotalReportInput)) }}</strong> pcs.</span>
                     </div>
                     <button type="button" onclick="switchTab('materials')" class="text-xs sm:text-sm font-bold text-red-900 underline hover:text-red-950 whitespace-nowrap">
                         Sesuaikan di Tab 2 (Materials) &rarr;
@@ -915,7 +915,7 @@
                     <div class="flex items-center justify-between mb-1.5">
                         <label for="sisa_input_remark" class="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5">
                             <span>Alasan / Remark Sisa Input</span>
-                            <span class="text-red-600 font-black text-xs">* (Wajib diisi jika ada sisa)</span>
+                            <span class="text-red-600 font-semibold text-xs">* (Wajib diisi jika ada sisa)</span>
                         </label>
                         <span class="text-xs text-amber-700 font-medium">Jelaskan penanganan sisa WIP</span>
                     </div>
@@ -1084,7 +1084,7 @@
                                                 </div>
                                                 <div class="relative">
                                                     <select name="ngs[{{ $index }}][ng_category]"
-                                                        class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select {{ $currentCategory === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300' }}"
+                                                        class="w-full text-[10px] font-semibold rounded border px-1.5 py-1 transition-colors ng-category-select {{ $currentCategory === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300' }}"
                                                         onchange="updateNgCategoryStyle(this)">
                                                         @foreach ($ngRemarkCategories as $catVal => $catLabel)
                                                             <option value="{{ $catVal }}" {{ strcasecmp($currentCategory, $catVal) === 0 ? 'selected' : '' }}>{{ $catLabel }}</option>
@@ -1130,7 +1130,7 @@
                                             <input type="number" name="hourly[{{ $hour }}][acumulasi_qty]"
                                                 value="{{ $hourlyMatch ? $hourlyMatch->acumulasi_qty : '' }}"
                                                 placeholder="0"
-                                                class="w-full text-center text-sm font-extrabold text-green-700 bg-transparent border-transparent py-2 hourly-accum-input"
+                                                class="w-full text-center text-sm font-semibold text-green-700 bg-transparent border-transparent py-2 hourly-accum-input"
                                                 readonly>
                                         </td>
 
@@ -1139,7 +1139,7 @@
                                             <input type="number" name="hourly[{{ $hour }}][ng_qty]"
                                                 value="{{ $hourlyMatch ? $hourlyMatch->ng_qty : '' }}"
                                                 placeholder="0"
-                                                class="w-full text-center text-sm font-extrabold text-red-700 bg-transparent border-transparent py-2 hourly-ng-total-input"
+                                                class="w-full text-center text-sm font-semibold text-red-700 bg-transparent border-transparent py-2 hourly-ng-total-input"
                                                 readonly>
                                         </td>
 
@@ -1259,7 +1259,7 @@
                     <div class="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-semibold text-gray-500 uppercase">Total Downtime:</span>
-                            <span id="total-downtime-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300">
+                            <span id="total-downtime-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-300">
                                 <span id="total-downtime-minutes">0</span> Mins (<span id="total-downtime-hours">0.0</span> hrs)
                             </span>
                         </div>
@@ -1380,7 +1380,7 @@
                                 <td colspan="4" class="inline-block md:table-cell text-xs font-bold text-gray-600 uppercase tracking-wider md:px-4 md:py-2.5 md:text-right">
                                     Total Loss Time:
                                 </td>
-                                <td class="inline-block md:table-cell font-mono font-black text-xs text-amber-900 md:px-4 md:py-2.5 md:text-right">
+                                <td class="inline-block md:table-cell font-mono font-semibold text-xs text-amber-900 md:px-4 md:py-2.5 md:text-right">
                                     <span id="footer-total-downtime-minutes">0</span> mins
                                 </td>
                                 <td class="hidden md:table-cell"></td>
@@ -2008,10 +2008,10 @@
             <input type="number" inputmode="numeric" name="hourly[${newHour}][ok_qty]" placeholder="-" class="w-full text-center text-sm font-bold text-green-800 rounded-md border-gray-200 focus:border-green-500 focus:ring-green-500 py-2 hourly-ok-input shadow-inner bg-white">
         </td>
         <td class="px-2 py-1.5 bg-green-50/30 border-r border-green-100">
-            <input type="number" name="hourly[${newHour}][acumulasi_qty]" placeholder="0" class="w-full text-center text-sm font-extrabold text-green-700 bg-transparent border-transparent py-2 hourly-accum-input" readonly>
+            <input type="number" name="hourly[${newHour}][acumulasi_qty]" placeholder="0" class="w-full text-center text-sm font-medium text-green-700 bg-transparent border-transparent py-2 hourly-accum-input" readonly>
         </td>
         <td class="px-2 py-1.5 bg-red-50/30 border-r border-red-100">
-            <input type="number" name="hourly[${newHour}][ng_qty]" placeholder="0" class="w-full text-center text-sm font-extrabold text-red-700 bg-transparent border-transparent py-2 hourly-ng-total-input" readonly>
+            <input type="number" name="hourly[${newHour}][ng_qty]" placeholder="0" class="w-full text-center text-sm font-medium text-red-700 bg-transparent border-transparent py-2 hourly-ng-total-input" readonly>
         </td>
         ${ngCells}
     </tr>`;
@@ -2098,7 +2098,7 @@
                         <button type="button" class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity delete-ng-col-btn text-[10px] font-bold" data-ng="${escapeHtml(uppercaseName)}" title="Delete ${escapeHtml(uppercaseName)}">&times;</button>
                     </div>
                     <div class="relative">
-                        <select name="ngs[${newNgIndex}][ng_category]" class="w-full text-[10px] font-black rounded border px-1.5 py-1 transition-colors ng-category-select ${category === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300'}" onchange="updateNgCategoryStyle(this)">
+                        <select name="ngs[${newNgIndex}][ng_category]" class="w-full text-[10px] font-medium rounded border px-1.5 py-1 transition-colors ng-category-select ${category === 'NG-INPUT' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-300'}" onchange="updateNgCategoryStyle(this)">
                             ${optionsHtml}
                         </select>
                     </div>
@@ -2133,7 +2133,7 @@
                 if (isAdded) {
                     el.classList.remove('bg-white', 'text-indigo-700', 'border-indigo-200', 'hover:bg-indigo-50', 'hover:border-indigo-400', 'cursor-pointer');
                     el.classList.add('bg-gray-100', 'text-gray-400', 'border-gray-200', 'cursor-default');
-                    el.innerHTML = `<span class="text-green-600 font-bold">✓</span> <span>${escapeHtml(ng)}</span>`;
+                    el.innerHTML = `<span class="text-green-600 font-bold"></span> <span>${escapeHtml(ng)}</span>`;
                     el.disabled = true;
                 } else {
                     el.classList.remove('bg-gray-100', 'text-gray-400', 'border-gray-200', 'cursor-default');
@@ -2386,14 +2386,14 @@
             // Update status badge & inline note
             if (statusBadge) {
                 if (totalInput < totalOutput) {
-                    statusBadge.className = 'text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border bg-red-200 text-red-900 border-red-300';
+                    statusBadge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider border bg-red-200 text-red-900 border-red-300';
                     statusBadge.textContent = '⛔ Defisit';
                 } else if (sisa > 0) {
-                    statusBadge.className = 'text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border bg-amber-200 text-amber-900 border-amber-300';
+                    statusBadge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider border bg-amber-200 text-amber-900 border-amber-300';
                     statusBadge.textContent = '⚠️ Ada Sisa';
                 } else {
-                    statusBadge.className = 'text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border bg-emerald-200 text-emerald-900 border-emerald-300';
-                    statusBadge.textContent = '✓ Ideal';
+                    statusBadge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider border bg-emerald-200 text-emerald-900 border-emerald-300';
+                    statusBadge.textContent = 'Ideal';
                 }
             }
 

@@ -265,6 +265,11 @@ class SpWorkOrderController extends Controller
                 ->with('error', 'Cannot delete Work Orders that are already in progress or completed.');
         }
 
+        if ($workOrder->sessions()->count() > 0) {
+            return redirect()->back()
+                ->with('error', 'Cannot delete Work Order because production sessions have already been logged.');
+        }
+
         $workOrder->delete();
 
         return redirect()->route('sp-work-orders.index')

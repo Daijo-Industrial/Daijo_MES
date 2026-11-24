@@ -101,6 +101,14 @@ class SpWorkOrderPolicy
             return Response::deny('Cannot delete Work Orders that are already in progress or completed.');
         }
 
+        $sessionsCount = $workOrder->relationLoaded('sessions')
+            ? $workOrder->sessions->count()
+            : $workOrder->sessions()->count();
+
+        if ($sessionsCount > 0) {
+            return Response::deny('Cannot delete Work Order because production sessions have already been logged.');
+        }
+
         return Response::allow();
     }
 }

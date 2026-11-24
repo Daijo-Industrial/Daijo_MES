@@ -87,6 +87,8 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('second-process-approvals', fn ($user) => $user->hasPermission('second-process-approvals'));
         Gate::define('second-process-reports', fn ($user) => $user->hasPermission('second-process-reports'));
         Gate::define('second-process-analytics', fn ($user) => $user->hasPermission('second-process-analytics'));
+        Gate::define('second-process-defects', fn ($user) => $user->hasPermission('second-process-defects'));
+        Gate::define('second-process-defect-manager', fn ($user) => Gate::forUser($user)->allows('second-process-defects'));
 
         // Legacy compatibility gates for Second Process
         Gate::define('view-second-process-links', fn ($user) => Gate::forUser($user)->allows('second-process-work-orders'));

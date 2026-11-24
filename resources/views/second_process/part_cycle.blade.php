@@ -131,7 +131,7 @@
                                                     <div class="text-[11px] text-gray-500 truncate mt-0.5" x-text="p.part_name || 'Tanpa Nama Part'"></div>
                                                 </div>
                                                 <div class="shrink-0 pl-2">
-                                                    <span x-show="selected === p.part_number" class="text-purple-600 font-bold text-sm">✓</span>
+                                                    <span x-show="selected === p.part_number" class="text-purple-600 font-bold text-sm"></span>
                                                     <span x-show="selected !== p.part_number" class="text-xs text-gray-400 group-hover:text-purple-600">&rarr;</span>
                                                 </div>
                                             </div>
@@ -211,7 +211,7 @@
                                     </span>
                                     <span class="text-xs text-gray-500 font-medium">{{ $partInfo['customer'] }}</span>
                                 </div>
-                                <h1 class="text-xl font-black font-mono tracking-wide text-gray-900 mt-1">{{ $partInfo['part_number'] }}</h1>
+                                <h1 class="text-xl font-bold font-mono tracking-wide text-gray-900 mt-1">{{ $partInfo['part_number'] }}</h1>
                                 <p class="text-xs text-gray-600 mt-0.5">
                                     {{ $partInfo['part_name'] }} &bull; Customer: <span class="font-bold text-gray-900">{{ $partInfo['customer'] }}</span> &bull; Model: <span class="font-semibold text-gray-800">{{ $partInfo['model'] }}</span>
                                 </p>
@@ -231,34 +231,34 @@
                     <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
                         <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
                             <span class="text-[10px] font-bold text-gray-500 uppercase block">Total Input WIP</span>
-                            <span class="text-lg font-black text-gray-900 mt-0.5 block">{{ number_format($summary['total_input_wip']) }}</span>
+                            <span class="text-lg font-bold text-gray-900 mt-0.5 block">{{ number_format($summary['total_input_wip']) }}</span>
                             <span class="text-[10px] text-gray-400">Repairan: {{ number_format($summary['total_repairan']) }}</span>
                         </div>
                         <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
                             <span class="text-[10px] font-bold text-gray-500 uppercase block">Total Output OK</span>
-                            <span class="text-lg font-black text-emerald-600 mt-0.5 block">{{ number_format($summary['total_output_ok']) }}</span>
+                            <span class="text-lg font-bold text-emerald-600 mt-0.5 block">{{ number_format($summary['total_output_ok']) }}</span>
                             <span class="text-[10px] text-gray-400">Pcs selesai</span>
                         </div>
                         <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
                             <span class="text-[10px] font-bold text-gray-500 uppercase block">Total Defect NG</span>
-                            <span class="text-lg font-black text-rose-600 mt-0.5 block">{{ number_format($summary['total_output_ng']) }}</span>
+                            <span class="text-lg font-bold text-rose-600 mt-0.5 block">{{ number_format($summary['total_output_ng']) }}</span>
                             <span class="text-[10px] text-gray-400">Reject</span>
                         </div>
                         <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
                             <span class="text-[10px] font-bold text-gray-500 uppercase block">Rasio NG Rata-rata</span>
-                            <span class="text-lg font-black {{ $summary['ng_percentage'] >= 3 ? 'text-rose-600' : 'text-gray-900' }} mt-0.5 block">
+                            <span class="text-lg font-bold {{ $summary['ng_percentage'] >= 3 ? 'text-rose-600' : 'text-gray-900' }} mt-0.5 block">
                                 {{ $summary['ng_percentage'] }}%
                             </span>
                             <span class="text-[10px] text-gray-400">Dari total output</span>
                         </div>
                         <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
                             <span class="text-[10px] font-bold text-gray-500 uppercase block">Akumulasi Sisa</span>
-                            <span class="text-lg font-black text-amber-600 mt-0.5 block">{{ number_format($summary['total_sisa_input']) }}</span>
+                            <span class="text-lg font-bold text-amber-600 mt-0.5 block">{{ number_format($summary['total_sisa_input']) }}</span>
                             <span class="text-[10px] text-gray-400">Sisa WIP</span>
                         </div>
                         <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
                             <span class="text-[10px] font-bold text-gray-500 uppercase block">Tahap Proses</span>
-                            <span class="text-lg font-black text-purple-600 mt-0.5 block">{{ $summary['distinct_processes'] }}</span>
+                            <span class="text-lg font-bold text-purple-600 mt-0.5 block">{{ $summary['distinct_processes'] }}</span>
                             <span class="text-[10px] text-gray-400">Station unik</span>
                         </div>
                     </div>

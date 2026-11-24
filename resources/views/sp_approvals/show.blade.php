@@ -5,12 +5,12 @@
             <div>
                 <div class="flex items-center gap-2 text-xs text-slate-500 font-bold mb-1">
                     <a href="{{ route('sp-approvals.index') }}" class="hover:text-blue-600 transition flex items-center gap-1">
-                        <span>← Back to Approvals</span>
+                        <span>Back to Approvals</span>
                     </a>
                     <span>/</span>
                     <span class="text-slate-800">Session #{{ $session->id }}</span>
                 </div>
-                <h2 class="font-black text-2xl text-slate-900 tracking-tight">
+                <h2 class="font-bold text-2xl text-slate-900 tracking-tight">
                     WO #{{ $session->workOrder->wo_number ?? 'N/A' }} • {{ $session->workOrder->part_name ?? 'Part' }}
                 </h2>
                 <p class="text-xs text-slate-500 font-medium mt-0.5">
@@ -28,7 +28,6 @@
                         <a href="{{ route('second-process-reports.show', $syncedReport->id) }}" target="_blank"
                            class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer">
                             <span>Legacy Report</span>
-                            <span>↗</span>
                         </a>
                     @endif
                 @else
@@ -62,7 +61,7 @@
                 <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start justify-between gap-4 flex-wrap text-xs">
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="px-2 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-black uppercase rounded">Bypassed</span>
+                            <span class="px-2 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-semibold uppercase rounded">Bypassed</span>
                             <h4 class="font-bold text-amber-950 uppercase tracking-wide">Emergency QC Gate Bypassed</h4>
                         </div>
                         <p class="text-amber-900 font-medium mt-1">
@@ -83,7 +82,7 @@
             <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
                 <div class="flex justify-between items-center flex-wrap gap-2 border-b border-slate-100 pb-3">
                     <div>
-                        <h3 class="text-xs font-black text-slate-900 uppercase tracking-wider">Shift Mass Balance & Scorecard</h3>
+                        <h3 class="text-xs font-semibold text-slate-900 uppercase tracking-wider">Shift Mass Balance & Scorecard</h3>
                         <p class="text-[11px] text-slate-500">Reconciled operational metrics verified against shop floor stream logs</p>
                     </div>
                     <div class="flex items-center gap-2 text-xs">
@@ -101,7 +100,7 @@
                     {{-- Good Output --}}
                     <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                         <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Good Output</span>
-                        <span class="text-xl font-black text-emerald-600 leading-tight block mt-0.5">{{ number_format($session->total_good) }} Pcs</span>
+                        <span class="text-xl font-bold text-emerald-600 leading-tight block mt-0.5">{{ number_format($session->total_good) }} Pcs</span>
                         <span class="text-[10px] text-slate-500 block mt-0.5">
                             {{ number_format($directGood) }} direct • {{ number_format($session->total_rework_recovered) }} rework
                         </span>
@@ -110,7 +109,7 @@
                     {{-- Final Scrap --}}
                     <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                         <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Final Scrap</span>
-                        <span class="text-xl font-black text-rose-600 leading-tight block mt-0.5">{{ number_format($finalScrap) }} Pcs</span>
+                        <span class="text-xl font-bold text-rose-600 leading-tight block mt-0.5">{{ number_format($finalScrap) }} Pcs</span>
                         <span class="text-[10px] text-slate-500 block mt-0.5">
                             {{ number_format($session->total_scrap) }} bench • {{ number_format(max(0, $finalScrap - $session->total_scrap)) }} line
                         </span>
@@ -119,7 +118,7 @@
                     {{-- Yield Rate --}}
                     <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                         <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Yield Rate</span>
-                        <span class="text-xl font-black text-slate-900 leading-tight block mt-0.5">{{ number_format($session->yield, 1) }}%</span>
+                        <span class="text-xl font-bold text-slate-900 leading-tight block mt-0.5">{{ number_format($session->yield, 1) }}%</span>
                         <span class="text-[10px] text-slate-500 block mt-0.5">
                             {{ number_format($session->total_good) }} / {{ number_format($session->total_good + $finalScrap) }} processed
                         </span>
@@ -128,7 +127,7 @@
                     {{-- Downtime --}}
                     <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                         <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Downtime</span>
-                        <span class="text-xl font-black text-slate-900 leading-tight block mt-0.5">{{ number_format($totalDowntimeMinutes) }} Mins</span>
+                        <span class="text-xl font-bold text-slate-900 leading-tight block mt-0.5">{{ number_format($totalDowntimeMinutes) }} Mins</span>
                         <span class="text-[10px] text-slate-500 block mt-0.5">
                             {{ $session->downtimeEntries->count() }} stoppage(s)
                         </span>
@@ -625,15 +624,15 @@
                                 <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-xs">
                                     <span class="font-bold text-slate-800 uppercase tracking-wider block text-[10px]">Verification Checklist</span>
                                     <div class="flex items-center gap-2 text-slate-700">
-                                        <span class="text-emerald-600 font-bold">✓</span>
+                                        <span class="text-emerald-600 font-bold"></span>
                                         <span>Mass Balance: {{ number_format($session->total_good) }} OK + {{ number_format($finalScrap) }} Scrap</span>
                                     </div>
                                     <div class="flex items-center gap-2 text-slate-700">
-                                        <span class="{{ $session->materials->count() > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400' }}">✓</span>
+                                        <span class="{{ $session->materials->count() > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400' }}"></span>
                                         <span>{{ $session->materials->count() }} Materials & Lots logged</span>
                                     </div>
                                     <div class="flex items-center gap-2 text-slate-700">
-                                        <span class="{{ $session->downtimeEntries->count() > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400' }}">✓</span>
+                                        <span class="{{ $session->downtimeEntries->count() > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400' }}"></span>
                                         <span>{{ $session->downtimeEntries->count() }} Downtime events recorded</span>
                                     </div>
                                 </div>
@@ -644,7 +643,7 @@
                                     @csrf
                                     <button type="submit"
                                             class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-xs transition uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2">
-                                        <span>✓ APPROVE & SYNC REPORT</span>
+                                        <span>APPROVE & SYNC REPORT</span>
                                     </button>
                                 </form>
 
@@ -677,7 +676,6 @@
                                             <a href="{{ route('second-process-reports.show', $syncedReport->id) }}" target="_blank"
                                                class="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition">
                                                 <span>View Synced Legacy Report #{{ $syncedReport->id }}</span>
-                                                <span>↗</span>
                                             </a>
                                         </div>
                                     @endif
