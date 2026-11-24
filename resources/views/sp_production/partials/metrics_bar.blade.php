@@ -2,11 +2,20 @@
         <div class="bg-white border-b border-gray-200 px-4 py-2.5 shadow-sm flex items-stretch justify-between gap-3 sm:gap-4 flex-shrink-0">
             {{-- Metric 1: Available Balance (Live) — Positioned at the very left for immediate operator visibility --}}
             <button type="button" @click="tab = 'input'; document.getElementById('modalHistory').showModal()"
-                    class="px-3 py-2 rounded-2xl border transition cursor-pointer text-left shadow-xs flex-1 max-w-xs"
-                    :class="availableWip > 0 ? 'bg-blue-50/70 hover:bg-blue-100/80 border-blue-200/80' : 'bg-amber-100/80 hover:bg-amber-200/90 border-amber-300 animate-pulse'"
+                    class="px-3 py-2 rounded-2xl border transition-all cursor-pointer text-left shadow-xs flex-1 max-w-xs relative overflow-hidden"
+                    :class="[
+                        availableWip > 0 ? 'bg-blue-50/70 hover:bg-blue-100/80 border-blue-200/80' : 'bg-amber-100/80 hover:bg-amber-200/90 border-amber-300 animate-pulse',
+                        balanceFlash ? 'ring-4 ring-blue-400 bg-blue-100/90 scale-[1.02]' : ''
+                    ]"
                     title="Click to view Input WIP / Reworkable Logs">
                 <div class="min-w-0">
-                    <span class="text-[10px] font-semibold uppercase tracking-wider block" :class="availableWip > 0 ? 'text-blue-700' : 'text-amber-800'">Available Balance (Live)</span>
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        <span class="relative flex h-1.5 w-1.5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-600"></span>
+                        </span>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider block truncate" :class="availableWip > 0 ? 'text-blue-700' : 'text-amber-800'">Available Balance (Live)</span>
+                    </div>
                     <div class="text-base sm:text-lg font-bold leading-tight" :class="availableWip > 0 ? 'text-blue-950' : 'text-amber-950'">
                         <span x-text="formatNum(availableWip) + ' Pcs Remaining'"></span>
                     </div>

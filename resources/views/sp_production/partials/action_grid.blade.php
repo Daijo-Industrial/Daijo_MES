@@ -2,6 +2,22 @@
         @if($session->status === 'running')
             <div class="flex-1 bg-gray-100 p-3 sm:p-5 flex flex-col justify-between select-none overflow-hidden min-h-0">
                 
+                {{-- Live Activity Stream Ticker (Instant Real-time Feedback) --}}
+                <div class="mb-3 px-3.5 py-1.5 bg-white border border-slate-200/80 rounded-2xl shadow-xs flex items-center justify-between gap-3 text-xs flex-shrink-0">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="relative flex h-2 w-2 flex-shrink-0">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">Recent Action:</span>
+                        <span class="font-bold text-slate-800 truncate text-[11px]" x-text="latestActivityText"></span>
+                    </div>
+                    <button type="button" @click="tab = 'all'; document.getElementById('modalHistory').showModal()"
+                            class="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition flex items-center gap-1 flex-shrink-0 cursor-pointer">
+                        <span>View Logs (<span x-text="allRecords.length"></span>)</span>
+                    </button>
+                </div>
+
                 {{-- 2-Column Hero Action Cards Grid: Left (Direct Operations) vs Right (Intake & Defect Logs) --}}
                 <div class="grid grid-cols-2 gap-3 sm:gap-4 flex-1 min-h-0">
                     

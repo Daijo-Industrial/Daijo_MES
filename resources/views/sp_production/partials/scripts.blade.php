@@ -24,6 +24,7 @@
                         return ![1, 5, 10, 50, 100].includes(this.batchSize);
                     },
                     quickFlash: false,
+                    balanceFlash: false,
                     highlightedEntryId: null,
                     productionEntries: @json($session->productionEntries),
                     rejectEntries: @json($session->rejectEntries),
@@ -53,6 +54,37 @@
                         (this.inputEntries || []).forEach(e => list.push({ ...e, streamType: 'input', timestamp: new Date(e.created_at).getTime() }));
                         (this.manpowerEntries || []).forEach(e => list.push({ ...e, streamType: 'manpower', timestamp: new Date(e.created_at).getTime() }));
                         return list.sort((a, b) => b.timestamp - a.timestamp);
+                    },
+
+                    get latestActivity() {
+                        const recs = this.allRecords;
+                        return (recs && recs.length > 0) ? recs[0] : null;
+                    },
+
+                    get latestActivityText() {
+                        const item = this.latestActivity;
+                        if (!item) return 'No activity recorded yet for this session';
+                        const time = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        if (item.streamType === 'production') {
+                            return '+' + this.formatNum(item.good_qty) + ' Good Output logged at ' + time;
+                        } else if (item.streamType === 'reject') {
+                            return '-' + this.formatNum(item.quantity) + ' ' + (item.defect_type || 'Defect') + ' logged at ' + time;
+                        } else if (item.streamType === 'input') {
+                            return '+' + this.formatNum(item.quantity) + ' ' + (item.source || 'WIP').toUpperCase() + ' Received at ' + time;
+                        } else if (item.streamType === 'rework') {
+                            if (item.action === 'issued') return 'Issued ' + this.formatNum(item.quantity) + ' Pcs to Rework at ' + time;
+                            return 'Completed Rework (' + this.formatNum(item.recovered_qty) + ' Rec. • ' + this.formatNum(item.scrapped_qty) + ' Scrap) at ' + time;
+                        } else if (item.streamType === 'downtime') {
+                            return 'Downtime: ' + (item.reason || 'Stoppage') + ' (' + (item.duration_minutes || 0) + 'm) at ' + time;
+                        } else if (item.streamType === 'manpower') {
+                            return (item.operator_name || 'Operator') + ' joined line team at ' + time;
+                        }
+                        return 'Activity updated at ' + time;
+                    },
+
+                    triggerBalanceFlash() {
+                        this.balanceFlash = true;
+                        setTimeout(() => this.balanceFlash = false, 600);
                     },
 
                     init() {
@@ -153,6 +185,7 @@
                             if (data.success) {
                                 this.pausedAt = data.paused_at;
                                 this.updateClock();
+                                window.dispatchEvent(new CustomEvent('line-pause-changed', { detail: { isPaused: true } }));
                             }
                         } catch (error) {
                             alert(error.message);
@@ -181,12 +214,14 @@
                             const data = await response.json();
                             if (data.success) {
                                 this.pausedAt = null;
+                                window.dispatchEvent(new CustomEvent('line-pause-changed', { detail: { isPaused: false } }));
                                 if (data.downtime) {
                                     this.downtimeEntries.unshift(data.downtime);
                                     this.triggerHighlight(data.downtime.id);
                                 }
                                 if (data.totals) {
                                     this.totals = { ...this.totals, ...data.totals };
+                                    this.triggerBalanceFlash();
                                 }
                                 form.closest('dialog').close();
                                 form.reset();
@@ -351,6 +386,7 @@
                             const data = await response.json();
                             if (data.success) {
                                 this.totals = { ...this.totals, ...data.totals };
+                                this.triggerBalanceFlash();
                                 this.productionEntries.unshift(data.entry);
                                 this.tab = 'production';
                                 this.triggerHighlight(data.entry?.id);
@@ -390,6 +426,7 @@
                             const data = await response.json();
                             if (data.success) {
                                 this.totals = { ...this.totals, ...data.totals };
+                                this.triggerBalanceFlash();
 
                                 const tabMap = {
                                     'production': 'production',
@@ -490,6 +527,7 @@
                             if (data.success) {
                                 if (data.totals) {
                                     this.totals = { ...this.totals, ...data.totals };
+                                    this.triggerBalanceFlash();
                                 }
                                 if (data.entries && data.entries.length) {
                                     data.entries.forEach(e => this.rejectEntries.unshift(e));

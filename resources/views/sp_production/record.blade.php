@@ -9,6 +9,8 @@
                 return {
                     liveTime: '',
                     elapsedTime: '',
+                    isPaused: @json((bool)$session->paused_at),
+                    status: '{{ $session->status }}',
                     teamCount: {{ $session->manpowerEntries->count() }},
                     init() {
                         this.update();
@@ -16,6 +18,11 @@
                         window.addEventListener('team-count-changed', (e) => {
                             if (e.detail && typeof e.detail.count === 'number') {
                                 this.teamCount = e.detail.count;
+                            }
+                        });
+                        window.addEventListener('line-pause-changed', (e) => {
+                            if (e.detail && typeof e.detail.isPaused === 'boolean') {
+                                this.isPaused = e.detail.isPaused;
                             }
                         });
                     },
@@ -36,17 +43,36 @@
             }
         </script>
         <div class="flex items-center justify-between gap-4 py-0.5" x-data="headerClock()" x-cloak>
-            {{-- Left: Status, Line & Work Order Context --}}
+            {{-- Left: Live Status Badge, Line & Work Order Context --}}
             <div class="flex items-center gap-3 min-w-0">
-                @if($session->status === 'running')
-                    @if($session->paused_at)
-                        <span class="w-3 h-3 rounded-full bg-amber-500 animate-pulse flex-shrink-0" title="PAUSED"></span>
-                    @else
-                        <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse flex-shrink-0" title="RUNNING"></span>
-                    @endif
-                @else
-                    <span class="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" title="COMPLETED"></span>
-                @endif
+                {{-- Prominent Pulsating Live Indicator (Alpine Reactive) --}}
+                <template x-if="status === 'running'">
+                    <div class="flex-shrink-0">
+                        {{-- Paused State --}}
+                        <div x-show="isPaused" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-900" title="Line Paused">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                            </span>
+                            <span class="text-[10px] font-bold tracking-wider uppercase">PAUSED</span>
+                        </div>
+
+                        {{-- Active Live Running State --}}
+                        <div x-show="!isPaused" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-900" title="Floor Live Active">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <span class="text-[10px] font-bold tracking-wider uppercase">LIVE</span>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="status !== 'running'">
+                    <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-200 border border-slate-300 text-slate-700 flex-shrink-0">
+                        <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                        <span class="text-[10px] font-bold tracking-wider uppercase">FINISHED</span>
+                    </div>
+                </template>
 
                 <div class="min-w-0 flex flex-col">
                     <div class="flex items-center gap-2 leading-tight">
@@ -67,6 +93,8 @@
                         <span class="truncate max-w-[180px]" title="{{ $session->workOrder->part_number }} - {{ $session->workOrder->part_name }}">
                             {{ $session->workOrder->part_number }}
                         </span>
+                        <span>•</span>
+                        <span class="font-mono text-slate-600 font-semibold" x-text="liveTime"></span>
                         <span>•</span>
                         <span x-text="elapsedTime"></span>
                     </div>
