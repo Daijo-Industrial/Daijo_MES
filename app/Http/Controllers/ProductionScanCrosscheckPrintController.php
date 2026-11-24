@@ -10,7 +10,7 @@ class ProductionScanCrosscheckPrintController extends Controller
 {
     public function print(Request $request, StoreCrosscheckService $service)
     {
-        $selectedDate = $request->query('date', $service->getCurrentProductionDate());
+        $selectedDate = StoreCrosscheckService::normalizeDate($request->query('date', $service->getCurrentProductionDate()));
         $plant = strtoupper($request->query('plant', 'KBN'));
         $shift = $request->query('shift', 'ALL');
         $status = $request->query('status', 'ALL');

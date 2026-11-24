@@ -64,9 +64,7 @@ class ProductionScanCrosscheck extends Component
     {
         StoreCrosscheckService::ensureSchema();
 
-        if (empty($this->selectedDate)) {
-            $this->selectedDate = $service->getCurrentProductionDate();
-        }
+        $this->selectedDate = StoreCrosscheckService::normalizeDate($this->selectedDate ?: $service->getCurrentProductionDate());
 
         // Ambil nama verifikator yang sebelumnya tersimpan di session browser
         $savedVerifier = session('store_crosscheck_verifier_name');
@@ -80,6 +78,14 @@ class ProductionScanCrosscheck extends Component
         $this->loadSavedSnapshot();
     }
 
+    /**
+     * Dapatkan tanggal yang sudah dinormalisasi (anti-crash untuk input slash atau kosong)
+     */
+    public function getEffectiveDate(): string
+    {
+        return StoreCrosscheckService::normalizeDate($this->selectedDate);
+    }
+
     public function updatedVerifierName()
     {
         session(['store_crosscheck_verifier_name' => trim($this->verifierName)]);
@@ -87,6 +93,7 @@ class ProductionScanCrosscheck extends Component
 
     public function updatedSelectedDate()
     {
+        $this->selectedDate = $this->getEffectiveDate();
         $this->resetPage();
         $this->selectedBoxIds = [];
         $this->selectAll = false;
@@ -158,13 +165,23 @@ class ProductionScanCrosscheck extends Component
 
     public function setYesterday()
     {
-        $this->selectedDate = Carbon::parse($this->selectedDate)->subDay()->format('Y-m-d');
+        try {
+            $parsed = Carbon::parse($this->getEffectiveDate(), 'Asia/Jakarta');
+            $this->selectedDate = $parsed->subDay()->format('Y-m-d');
+        } catch (\Throwable $e) {
+            $this->selectedDate = app(StoreCrosscheckService::class)->getCurrentProductionDate();
+        }
         $this->updatedSelectedDate();
     }
 
     public function setTomorrow()
     {
-        $this->selectedDate = Carbon::parse($this->selectedDate)->addDay()->format('Y-m-d');
+        try {
+            $parsed = Carbon::parse($this->getEffectiveDate(), 'Asia/Jakarta');
+            $this->selectedDate = $parsed->addDay()->format('Y-m-d');
+        } catch (\Throwable $e) {
+            $this->selectedDate = app(StoreCrosscheckService::class)->getCurrentProductionDate();
+        }
         $this->updatedSelectedDate();
     }
 
@@ -183,7 +200,7 @@ class ProductionScanCrosscheck extends Component
 
         $result = $service->verifyBarcode(
             $trimmed,
-            $this->selectedDate,
+            $this->getEffectiveDate(),
             $this->plantTab,
             auth()->id(),
             auth()->user()?->name
@@ -356,9 +373,10 @@ class ProductionScanCrosscheck extends Component
      */
     protected function loadSavedSnapshot()
     {
+        $effectiveDate = $this->getEffectiveDate();
         $effectivePlant = in_array($this->plantTab, ['KBN', 'KARAWANG']) ? $this->plantTab : 'KBN';
 
-        $saved = StoreCrosscheckDailyReport::where('report_date', $this->selectedDate)
+        $saved = StoreCrosscheckDailyReport::where('report_date', $effectiveDate)
             ->where('plant', $effectivePlant)
             ->first();
 
@@ -378,10 +396,11 @@ class ProductionScanCrosscheck extends Component
      */
     public function saveDailySnapshot(StoreCrosscheckService $service)
     {
+        $effectiveDate = $this->getEffectiveDate();
         $effectivePlant = in_array($this->plantTab, ['KBN', 'KARAWANG']) ? $this->plantTab : 'KBN';
 
         $report = $service->saveDailyReportSnapshot(
-            $this->selectedDate,
+            $effectiveDate,
             $effectivePlant,
             $this->shiftFilter,
             $this->dailyNotes,
@@ -392,7 +411,7 @@ class ProductionScanCrosscheck extends Component
 
         $this->lastSavedSnapshotAt = $report->updated_at ? $report->updated_at->format('d M Y H:i') : null;
         $this->showSnapshotModal = false;
-        $this->flashSuccess = "Laporan harian Plant {$effectivePlant} tanggal {$this->selectedDate} berhasil disimpan!";
+        $this->flashSuccess = "Laporan harian Plant {$effectivePlant} tanggal {$effectiveDate} berhasil disimpan!";
     }
 
     /**
@@ -400,13 +419,14 @@ class ProductionScanCrosscheck extends Component
      */
     public function exportExcel()
     {
+        $effectiveDate = $this->getEffectiveDate();
         $plantTitle = $this->plantTab === 'ALL' ? 'ALL_PLANT' : $this->plantTab;
         $machineTitle = $this->machineFilter === 'ALL' ? '' : "_{$this->machineFilter}";
-        $filename = "Crosscheck_Store_{$plantTitle}{$machineTitle}_{$this->selectedDate}.xlsx";
+        $filename = "Crosscheck_Store_{$plantTitle}{$machineTitle}_{$effectiveDate}.xlsx";
 
         return Excel::download(
             new ProductionScanCrosscheckExport(
-                $this->selectedDate,
+                $effectiveDate,
                 $this->plantTab,
                 $this->shiftFilter,
                 $this->statusFilter,
@@ -419,11 +439,12 @@ class ProductionScanCrosscheck extends Component
 
     public function render(StoreCrosscheckService $service)
     {
-        $metrics = $service->getSummaryMetrics($this->selectedDate, $this->plantTab);
-        $machines = $service->getAvailableMachines($this->selectedDate, $this->plantTab);
+        $effectiveDate = $this->getEffectiveDate();
+        $metrics = $service->getSummaryMetrics($effectiveDate, $this->plantTab);
+        $machines = $service->getAvailableMachines($effectiveDate, $this->plantTab);
 
         $query = $service->getBaseQuery(
-            $this->selectedDate,
+            $effectiveDate,
             $this->plantTab,
             $this->shiftFilter,
             $this->statusFilter,
