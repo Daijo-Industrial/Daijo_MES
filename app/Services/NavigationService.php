@@ -158,6 +158,8 @@ class NavigationService
             [
                 'label' => 'Dashboard All',
                 'children' => [
+                    ['name' => 'production-dashboard', 'label' => 'Production Dashboard', 'can' => ['view-production-links']],
+                    ['name' => 'production-yearly-dashboard', 'label' => 'Yearly Production Dashboard (BOD)', 'can' => ['view-production-links']],
                     ['name' => 'delschedfinal.dashboard', 'label' => 'Dashboard Delivery Schedule', 'can' => ['view-business-links', 'view-warehouse-links']],
                     ['name' => 'workshop.summary.dashboard', 'label' => 'Dashboard Proses Moulding', 'can' => ['view-workshop-links', 'view-warehouse-links']],
                     ['name' => 'dashboard.moulding.tv', 'label' => 'Dashboard Project Moulding', 'can' => ['view-workshop-links', 'view-warehouse-links']],

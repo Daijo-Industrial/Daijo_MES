@@ -37,6 +37,7 @@ use App\Livewire\MasterMachineManager;
 use App\Livewire\Ppic\PpicListUpMachine;
 use App\Livewire\Production\ProductionMaterialStation;
 use App\Livewire\ProductionDashboard;
+use App\Livewire\ProductionYearlyDashboard;
 use App\Livewire\ProductionStoreHandoverIndex;
 use App\Livewire\ProductionSummaryMonitor;
 use App\Livewire\Store\ProductionScanCrosscheck;
@@ -55,6 +56,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/machine-monitor', [MachineStatusController::class, 'index'])->name('machine.monitor');
 Route::get('/public/machine-monitor', MachineStatusPublic::class)->name('machine.monitor.public');
 Route::get('/production-dashboard', ProductionDashboard::class)->name('production-dashboard');
+Route::get('/production-yearly-dashboard', ProductionYearlyDashboard::class)->name('production-yearly-dashboard');
 
 Route::get('/master-list-item', MasterListItemView::class)->name('master-list-item');
 Route::get('/master-bom', MasterBomView::class)->name('master-bom.index');
