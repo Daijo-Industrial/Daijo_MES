@@ -43,21 +43,6 @@
 
                     {{-- [TOP-RIGHT] Card 2: Receive Input (WIP / Reworkable Intake) --}}
                     <div class="rounded-3xl p-4 sm:p-5 bg-blue-600 border-4 border-blue-400 text-white shadow-xl flex flex-col justify-between items-center text-center transition-all relative overflow-hidden min-h-0">
-                        {{-- Top Type Selector Bar --}}
-                        <div class="w-full flex items-center justify-between gap-1.5 bg-blue-700/60 p-1.5 rounded-2xl backdrop-blur-xs flex-shrink-0 z-10" @click.stop>
-                            <span class="text-[10px] font-semibold uppercase tracking-wider text-blue-200 ml-1">Receive:</span>
-                            <div class="flex items-center gap-1 flex-1 justify-around">
-                                <button type="button" @click="openInputModal('wip')"
-                                        class="px-2.5 py-1 rounded-xl transition text-xs sm:text-sm flex-1 text-center cursor-pointer border border-blue-400/40 bg-white text-blue-900 font-semibold shadow-md hover:bg-blue-50">
-                                    +WIP
-                                </button>
-                                <button type="button" @click="openInputModal('reworkable')"
-                                        class="px-2.5 py-1 rounded-xl transition text-xs sm:text-sm flex-1 text-center cursor-pointer border border-purple-400/50 bg-purple-700/90 hover:bg-purple-600 text-white font-bold shadow-md">
-                                    +Reworkable
-                                </button>
-                            </div>
-                        </div>
-
                         {{-- Main Tap Target --}}
                         <button type="button" @click="openInputModal('wip')"
                                 class="w-full flex-1 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform py-2">
