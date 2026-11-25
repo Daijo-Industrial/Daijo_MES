@@ -32,6 +32,7 @@ class SoDataExport extends DefaultValueBinder implements FromCollection, WithCus
     {
         if (is_string($value) && str_ends_with($value, '.')) {
             $cell->setValueExplicit($value, DataType::TYPE_STRING);
+
             return true;
         }
 

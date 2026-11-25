@@ -52,7 +52,7 @@ class ProductionYearlyDashboardUnitTest extends TestCase
                 $this->allMachines = $machines;
             }
 
-            public function testFilter(): void
+            public function test_filter(): void
             {
                 // call protected/private via reflection or wrapper
                 $ref = new \ReflectionMethod(ProductionYearlyDashboard::class, 'updateFilteredMachines');

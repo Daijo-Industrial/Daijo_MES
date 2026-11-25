@@ -45,7 +45,7 @@ class InspectionIndexTest extends TestCase
         InspectionReport::create([
             'document_number' => 'INSP-20261029-0001-TEST',
             'customer' => 'PT Daijo Industrial',
-            'inspection_date' => '2026-10-29',
+            'inspection_date' => now()->toDateString(),
             'part_number' => 'PART-999-ABC',
             'part_name' => 'WIDGET ALPHA',
             'weight' => 25.4,
@@ -64,7 +64,8 @@ class InspectionIndexTest extends TestCase
             ->call('loadData')
             ->assertSee('INSP-20261029-0001-TEST')
             ->assertSee('PT Daijo Industrial')
-            ->assertSee('PART-999-ABC');
+            ->assertSee('PART-999-ABC')
+            ->assertSee('INJ-01');
     }
 
     public function test_filter_by_search_keyword(): void
@@ -72,7 +73,7 @@ class InspectionIndexTest extends TestCase
         InspectionReport::create([
             'document_number' => 'INSP-MATCH-0001',
             'customer' => 'Client A',
-            'inspection_date' => '2026-10-29',
+            'inspection_date' => now()->toDateString(),
             'part_number' => 'PART-MATCH-123',
             'part_name' => 'Matched Part',
             'weight' => 10.0,
@@ -89,7 +90,7 @@ class InspectionIndexTest extends TestCase
         InspectionReport::create([
             'document_number' => 'INSP-OTHER-0002',
             'customer' => 'Client B',
-            'inspection_date' => '2026-10-29',
+            'inspection_date' => now()->toDateString(),
             'part_number' => 'PART-OTHER-456',
             'part_name' => 'Other Part',
             'weight' => 10.0,
@@ -174,10 +175,11 @@ class InspectionIndexTest extends TestCase
             'status' => 'draft',
         ]);
 
-        // 1. Initially both reports are visible (preset all)
+        // 1. Initially both current-month reports are visible (default preset: this_month)
         $test = Livewire::actingAs($this->user)
             ->test(InspectionIndex::class)
             ->call('loadData')
+            ->assertSet('preset', 'this_month')
             ->assertSee('INSP-SHIFT-1')
             ->assertSee('INSP-SHIFT-2');
 
@@ -192,12 +194,175 @@ class InspectionIndexTest extends TestCase
             ->assertSee('INSP-SHIFT-1')
             ->assertSee('INSP-SHIFT-2');
 
-        // 4. Test Quick Date Presets
-        $test->call('setPreset', 'this_month')
+        // 4. Test Quick Date Presets & Reset back to this_month
+        $test->call('setPreset', 'all')
             ->call('applyFilters')
+            ->assertSet('preset', 'all')
+            ->call('clearFilters')
             ->assertSet('preset', 'this_month')
             ->call('removeFilter', 'date')
             ->assertSet('preset', 'all');
+    }
+
+    public function test_default_preset_is_this_month_and_filters_out_previous_month(): void
+    {
+        InspectionReport::create([
+            'document_number' => 'INSP-CURR-MONTH',
+            'customer' => 'Customer A',
+            'inspection_date' => now()->toDateString(),
+            'part_number' => 'PART-CURR',
+            'part_name' => 'Current Month Part',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'MC-01',
+            'shift' => 1,
+            'operator' => 'Op1',
+            'inspector' => 'Insp1',
+            'status' => 'submitted',
+        ]);
+
+        InspectionReport::create([
+            'document_number' => 'INSP-PREV-MONTH',
+            'customer' => 'Customer A',
+            'inspection_date' => now()->subMonthNoOverflow()->toDateString(),
+            'part_number' => 'PART-PREV',
+            'part_name' => 'Previous Month Part',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'MC-01',
+            'shift' => 1,
+            'operator' => 'Op1',
+            'inspector' => 'Insp1',
+            'status' => 'submitted',
+        ]);
+
+        $test = Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->call('loadData')
+            ->assertSet('preset', 'this_month')
+            ->assertSee('INSP-CURR-MONTH')
+            ->assertDontSee('INSP-PREV-MONTH');
+
+        $test->call('setPreset', 'last_month')
+            ->call('applyFilters')
+            ->assertSet('preset', 'last_month')
+            ->assertSee('INSP-PREV-MONTH')
+            ->assertDontSee('INSP-CURR-MONTH');
+    }
+
+    public function test_filter_by_machine_number_inspector_and_customer_dropdowns(): void
+    {
+        InspectionReport::create([
+            'document_number' => 'INSP-FILTER-1',
+            'customer' => 'PT Alpha',
+            'inspection_date' => now()->toDateString(),
+            'part_number' => 'PART-1',
+            'part_name' => 'Part 1',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'INJ-01',
+            'shift' => 1,
+            'operator' => 'Op1',
+            'inspector' => 'Andi',
+            'status' => 'submitted',
+        ]);
+
+        InspectionReport::create([
+            'document_number' => 'INSP-FILTER-2',
+            'customer' => 'PT Beta',
+            'inspection_date' => now()->toDateString(),
+            'part_number' => 'PART-2',
+            'part_name' => 'Part 2',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'INJ-02',
+            'shift' => 1,
+            'operator' => 'Op2',
+            'inspector' => 'Budi',
+            'status' => 'draft',
+        ]);
+
+        $test = Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->call('loadData');
+
+        $test->set('draftFilters.machine_number', 'INJ-01')
+            ->call('applyFilters')
+            ->assertSee('INSP-FILTER-1')
+            ->assertDontSee('INSP-FILTER-2');
+
+        $test->call('removeFilter', 'machine_number')
+            ->set('draftFilters.inspector', 'Budi')
+            ->call('applyFilters')
+            ->assertSee('INSP-FILTER-2')
+            ->assertDontSee('INSP-FILTER-1');
+
+        $test->call('removeFilter', 'inspector')
+            ->set('draftFilters.customer', 'PT Alpha')
+            ->call('applyFilters')
+            ->assertSee('INSP-FILTER-1')
+            ->assertDontSee('INSP-FILTER-2');
+    }
+
+    public function test_global_search_matches_machine_number_and_inspector(): void
+    {
+        InspectionReport::create([
+            'document_number' => 'INSP-SRCH-1',
+            'customer' => 'PT Alpha',
+            'inspection_date' => now()->toDateString(),
+            'part_number' => 'PART-1',
+            'part_name' => 'Part 1',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'INJ-99',
+            'shift' => 1,
+            'operator' => 'Op1',
+            'inspector' => 'Siti',
+            'status' => 'submitted',
+        ]);
+
+        InspectionReport::create([
+            'document_number' => 'INSP-SRCH-2',
+            'customer' => 'PT Beta',
+            'inspection_date' => now()->toDateString(),
+            'part_number' => 'PART-2',
+            'part_name' => 'Part 2',
+            'weight' => 10.0,
+            'weight_uom' => 'g',
+            'material' => 'PP',
+            'color' => 'BLACK',
+            'tool_number_or_cav_number' => '1',
+            'machine_number' => 'INJ-02',
+            'shift' => 1,
+            'operator' => 'Op2',
+            'inspector' => 'Rina',
+            'status' => 'submitted',
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(InspectionIndex::class)
+            ->call('loadData')
+            ->set('search', 'INJ-99')
+            ->assertSee('INSP-SRCH-1')
+            ->assertDontSee('INSP-SRCH-2')
+            ->set('search', 'Rina')
+            ->assertSee('INSP-SRCH-2')
+            ->assertDontSee('INSP-SRCH-1');
     }
 
     public function test_create_report_button_redirects_directly_when_no_draft_exists(): void

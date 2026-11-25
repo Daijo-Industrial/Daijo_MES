@@ -190,11 +190,23 @@ class WmsDashboard extends Component
                 ->get();
 
             return compact(
-                'totalPositionsCount', 'emptySlotsCount', 'partialSlotsCount', 'fullSlotsCount',
-                'occupancyRate', 'emptyRate', 'fullRate', 'partialRate',
-                'totalStoredPallets', 'totalStoredPcs', 'totalStoredBoxes',
-                'overagedCount', 'overagedPalletsList', 'avgLeadTimeText',
-                'oldestPallets', 'topStoredItems', 'recentLogs'
+                'totalPositionsCount',
+                'emptySlotsCount',
+                'partialSlotsCount',
+                'fullSlotsCount',
+                'occupancyRate',
+                'emptyRate',
+                'fullRate',
+                'partialRate',
+                'totalStoredPallets',
+                'totalStoredPcs',
+                'totalStoredBoxes',
+                'overagedCount',
+                'overagedPalletsList',
+                'avgLeadTimeText',
+                'oldestPallets',
+                'topStoredItems',
+                'recentLogs'
             );
         });
 

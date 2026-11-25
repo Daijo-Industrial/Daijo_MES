@@ -46,24 +46,29 @@ class InspectionIndex extends Component
         'inspection_date' => true,
         'shift' => true,
         'customer' => true,
+        'machine_number' => true,
         'part_number' => true,
+        'inspector' => true,
         'status' => true,
     ];
 
+    #[Url(as: 'f')]
     public array $filters = [
         'document_number' => '',
         'date_from' => '',
         'date_to' => '',
         'shift' => '',
         'customer' => '',
+        'machine_number' => '',
+        'inspector' => '',
         'part_number' => '',
         'status' => '',
     ];
 
     public array $draftFilters = [];
 
-    #[Url(as: 'preset', except: 'all')]
-    public string $preset = 'all';
+    #[Url(as: 'preset', except: 'this_week')]
+    public string $preset = 'this_week';
 
     public bool $ready = false;
 
@@ -72,7 +77,9 @@ class InspectionIndex extends Component
         'inspection_date',
         'shift',
         'customer',
+        'machine_number',
         'part_number',
+        'inspector',
     ];
 
     public function mount(): void
@@ -81,18 +88,55 @@ class InspectionIndex extends Component
 
         $this->ready = false;
 
-        $now = Carbon::now();
-        if ($this->preset === 'this_month' && $this->filters['date_from'] === '' && $this->filters['date_to'] === '') {
-            $this->filters['date_from'] = $now->copy()->startOfMonth()->toDateString();
-            $this->filters['date_to'] = $now->copy()->endOfMonth()->toDateString();
-        } elseif ($this->preset === 'today' && $this->filters['date_from'] === '' && $this->filters['date_to'] === '') {
-            $this->filters['date_from'] = $now->toDateString();
-            $this->filters['date_to'] = $now->toDateString();
+        $this->filters = array_merge([
+            'document_number' => '',
+            'date_from' => '',
+            'date_to' => '',
+            'shift' => '',
+            'customer' => '',
+            'machine_number' => '',
+            'inspector' => '',
+            'part_number' => '',
+            'status' => '',
+        ], $this->filters);
+
+        if ($this->filters['date_from'] === '' && $this->filters['date_to'] === '') {
+            if ($this->preset !== 'all' && $this->preset !== 'custom') {
+                [$from, $to] = $this->resolvePresetDates($this->preset);
+                $this->filters['date_from'] = $from;
+                $this->filters['date_to'] = $to;
+            }
         } else {
             $this->determinePresetFromDates();
         }
 
         $this->draftFilters = $this->filters;
+    }
+
+    private function resolvePresetDates(string $preset): array
+    {
+        $now = Carbon::now();
+
+        return match ($preset) {
+            'today' => [$now->toDateString(), $now->toDateString()],
+            'yesterday' => [
+                $now->copy()->subDay()->toDateString(),
+                $now->copy()->subDay()->toDateString(),
+            ],
+            'this_week' => [
+                $now->copy()->startOfWeek()->toDateString(),
+                $now->copy()->endOfWeek()->toDateString(),
+            ],
+            'this_month' => [
+                $now->copy()->startOfMonth()->toDateString(),
+                $now->copy()->endOfMonth()->toDateString(),
+            ],
+            'last_month' => [
+                $now->copy()->subMonthNoOverflow()->startOfMonth()->toDateString(),
+                $now->copy()->subMonthNoOverflow()->endOfMonth()->toDateString(),
+            ],
+            default => ['', ''],
+        };
     }
 
     public function load(): void
@@ -117,28 +161,9 @@ class InspectionIndex extends Component
 
     public function setPreset(string $preset): void
     {
-        $this->preset = $preset;
-        $now = Carbon::now();
-
-        switch ($preset) {
-            case 'today':
-                $this->draftFilters['date_from'] = $now->toDateString();
-                $this->draftFilters['date_to'] = $now->toDateString();
-                break;
-            case 'yesterday':
-                $yest = $now->copy()->subDay()->toDateString();
-                $this->draftFilters['date_from'] = $yest;
-                $this->draftFilters['date_to'] = $yest;
-                break;
-            case 'this_month':
-                $this->draftFilters['date_from'] = $now->copy()->startOfMonth()->toDateString();
-                $this->draftFilters['date_to'] = $now->copy()->endOfMonth()->toDateString();
-                break;
-            case 'all':
-                $this->draftFilters['date_from'] = '';
-                $this->draftFilters['date_to'] = '';
-                break;
-        }
+        [$from, $to] = $this->resolvePresetDates($preset);
+        $this->draftFilters['date_from'] = $from;
+        $this->draftFilters['date_to'] = $to;
     }
 
     public function applyFilters(): void
@@ -174,10 +199,12 @@ class InspectionIndex extends Component
 
     public function getHasActiveFiltersProperty(): bool
     {
-        return ($this->preset !== 'all' && ($this->filters['date_from'] !== '' || $this->filters['date_to'] !== ''))
+        return $this->preset !== 'this_month'
             || $this->filters['document_number'] !== ''
             || $this->filters['shift'] !== ''
             || $this->filters['customer'] !== ''
+            || $this->filters['machine_number'] !== ''
+            || $this->filters['inspector'] !== ''
             || $this->filters['part_number'] !== ''
             || $this->filters['status'] !== '';
     }
@@ -186,19 +213,23 @@ class InspectionIndex extends Component
     {
         $from = $this->filters['date_from'] ?? '';
         $to = $this->filters['date_to'] ?? '';
-        $now = Carbon::now();
 
         if ($from === '' && $to === '') {
             $this->preset = 'all';
-        } elseif ($from === $now->toDateString() && $to === $now->toDateString()) {
-            $this->preset = 'today';
-        } elseif ($from === $now->copy()->subDay()->toDateString() && $to === $now->copy()->subDay()->toDateString()) {
-            $this->preset = 'yesterday';
-        } elseif ($from === $now->copy()->startOfMonth()->toDateString() && $to === $now->copy()->endOfMonth()->toDateString()) {
-            $this->preset = 'this_month';
-        } else {
-            $this->preset = 'custom';
+
+            return;
         }
+
+        foreach (['today', 'yesterday', 'this_week', 'this_month', 'last_month'] as $candidate) {
+            [$expectedFrom, $expectedTo] = $this->resolvePresetDates($candidate);
+            if ($from === $expectedFrom && $to === $expectedTo) {
+                $this->preset = $candidate;
+
+                return;
+            }
+        }
+
+        $this->preset = 'custom';
     }
 
     public function sortBy(string $field): void
@@ -220,13 +251,17 @@ class InspectionIndex extends Component
 
     public function clearFilters(): void
     {
-        $this->preset = 'all';
+        $this->preset = 'this_month';
+        [$from, $to] = $this->resolvePresetDates('this_month');
+
         $this->filters = [
             'document_number' => '',
-            'date_from' => '',
-            'date_to' => '',
+            'date_from' => $from,
+            'date_to' => $to,
             'shift' => '',
             'customer' => '',
+            'machine_number' => '',
+            'inspector' => '',
             'part_number' => '',
             'status' => '',
         ];
@@ -262,6 +297,8 @@ class InspectionIndex extends Component
                         ->orWhere('customer', 'like', $s)
                         ->orWhere('part_number', 'like', $s)
                         ->orWhere('part_name', 'like', $s)
+                        ->orWhere('machine_number', 'like', $s)
+                        ->orWhere('inspector', 'like', $s)
                 );
             })
             ->when(
@@ -274,11 +311,15 @@ class InspectionIndex extends Component
             )
             ->when(
                 $this->filters['customer'] !== '',
-                fn ($q) => $q->where(
-                    'customer',
-                    'like',
-                    '%' . trim($this->filters['customer']) . '%'
-                )
+                fn ($q) => $q->where('customer', $this->filters['customer'])
+            )
+            ->when(
+                $this->filters['machine_number'] !== '',
+                fn ($q) => $q->where('machine_number', $this->filters['machine_number'])
+            )
+            ->when(
+                $this->filters['inspector'] !== '',
+                fn ($q) => $q->where('inspector', $this->filters['inspector'])
             )
             ->when(
                 $this->filters['part_number'] !== '',
@@ -321,7 +362,9 @@ class InspectionIndex extends Component
             'inspection_date' => 'Date',
             'shift' => 'Shift',
             'customer' => 'Customer',
+            'machine_number' => 'Machine No',
             'part_number' => 'Part Number',
+            'inspector' => 'Inspector',
             'status' => 'Status',
         ];
         $visibleCols = array_keys(array_filter($this->showCol));
@@ -445,9 +488,37 @@ class InspectionIndex extends Component
     {
         $shiftOptions = InspectionReport::query()
             ->select('shift')
+            ->whereNotNull('shift')
             ->distinct()
             ->orderBy('shift')
             ->pluck('shift')
+            ->all();
+
+        $customerOptions = InspectionReport::query()
+            ->select('customer')
+            ->whereNotNull('customer')
+            ->where('customer', '!=', '')
+            ->distinct()
+            ->orderBy('customer')
+            ->pluck('customer')
+            ->all();
+
+        $machineOptions = InspectionReport::query()
+            ->select('machine_number')
+            ->whereNotNull('machine_number')
+            ->where('machine_number', '!=', '')
+            ->distinct()
+            ->orderBy('machine_number')
+            ->pluck('machine_number')
+            ->all();
+
+        $inspectorOptions = InspectionReport::query()
+            ->select('inspector')
+            ->whereNotNull('inspector')
+            ->where('inspector', '!=', '')
+            ->distinct()
+            ->orderBy('inspector')
+            ->pluck('inspector')
             ->all();
 
         $perPageOptions = [10, 25, 50, 100];
@@ -458,7 +529,14 @@ class InspectionIndex extends Component
 
         return view(
             'livewire.inspection.index',
-            compact('reports', 'shiftOptions', 'perPageOptions')
+            compact(
+                'reports',
+                'shiftOptions',
+                'customerOptions',
+                'machineOptions',
+                'inspectorOptions',
+                'perPageOptions'
+            )
         )->layout('layouts.app');
     }
 }
