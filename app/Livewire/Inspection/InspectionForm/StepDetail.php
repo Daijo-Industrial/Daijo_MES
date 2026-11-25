@@ -221,6 +221,7 @@ class StepDetail extends Component
     public function selectPeriod(int $q): void
     {
         $this->period = $q;
+        session()->put('stepDetailSaved.period', $this->period);
         $this->updatedPeriod();
         $this->generateDocumentNumber();
         $this->periodKey = 'p' . $this->period;
@@ -230,6 +231,7 @@ class StepDetail extends Component
     public function startPeriod(int $p): void
     {
         $this->period = $p;
+        session()->put('stepDetailSaved.period', $this->period);
         $this->subStep = 1;
         $this->updatedPeriod();
         $this->generateDocumentNumber();
@@ -1083,11 +1085,13 @@ class StepDetail extends Component
             $problemLossTime = collect($periodProbs)->sum(fn ($pr) => (int) data_get($pr, 'cycle_time', 0));
 
             $isSaved = $this->isPeriodSaved($p);
+            $hasRealData = $this->hasPeriodRealData($p);
 
             $periodsSummary[$p] = [
                 'period' => $p,
                 'time_range' => $this->getPeriodTimeRange($p),
                 'isSaved' => $isSaved,
+                'hasRealData' => $hasRealData,
                 'isLocked' => $this->isPeriodLocked($p),
                 'first' => $first,
                 'first_appearance' => data_get($first, 'appearance'),

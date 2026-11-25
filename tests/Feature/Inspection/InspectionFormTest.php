@@ -1366,4 +1366,44 @@ class InspectionFormTest extends TestCase
 
         $this->assertNull(session('stepHeaderSaved'));
     }
+
+    public function test_partially_saved_period_shows_sebagian_tersimpan_instead_of_belum_diisi(): void
+    {
+        $docNum = 'INSP-PARTIAL-001';
+        session([
+            'stepHeaderSaved' => [
+                'document_number' => $docNum,
+                'customer' => 'PT DAIJO',
+                'inspection_date' => '2026-11-25',
+                'part_number' => 'PART-PARTIAL-01',
+                'part_name' => 'PARTIAL PART',
+                'machine_number' => 'MC-01',
+                'shift' => 1,
+                'operator' => 'Op1',
+                'inspector' => 'Insp1',
+            ],
+            'stepDetailSaved' => [
+                'period' => 1,
+            ],
+        ]);
+
+        $component = Livewire::actingAs($this->user)
+            ->test(StepDetail::class, [
+                'inspection_report_document_number' => $docNum,
+            ])
+            ->call('startPeriod', 2);
+
+        $this->assertEquals(2, session('stepDetailSaved.period'));
+
+        session()->put('stepDetailSaved.first_inspections.p2', [
+            'appearance' => 'OK',
+            'weight' => 12.5,
+            'weight_uom' => 'g',
+        ]);
+
+        $component->call('exitToHub')
+            ->assertSet('isWizardActive', false)
+            ->assertSee('Sebagian Tersimpan')
+            ->assertSee('Lanjutkan Periode 2');
+    }
 }
