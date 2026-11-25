@@ -50,7 +50,7 @@
                         </div>
 
                         {{-- Main Tap Target --}}
-                        <button type="button" @click="quickAddGood()"
+                        <button type="button" @click.stop="quickAddGood()"
                                 class="w-full flex-1 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform py-2">
                             <h1 class="text-3xl sm:text-5xl font-bold tracking-tight drop-shadow-md uppercase" x-text="quickFlash ? 'SAVED!' : ('+' + batchSize + ' GOOD')"></h1>
                             <p class="text-xs sm:text-sm font-bold text-emerald-100 mt-1" x-text="'Tap to log ' + batchSize + ' OK piece(s)'"></p>

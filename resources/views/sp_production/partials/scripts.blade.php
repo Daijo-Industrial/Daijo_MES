@@ -23,6 +23,8 @@
                     get isCustomBatch() {
                         return ![1, 5, 10, 50, 100].includes(this.batchSize);
                     },
+                    isSubmitting: false,
+                    lastTapTime: 0,
                     quickFlash: false,
                     balanceFlash: false,
                     highlightedEntryId: null,
@@ -189,6 +191,8 @@
                             }
                         } catch (error) {
                             alert(error.message);
+                        } finally {
+                            this.isSubmitting = false;
                         }
                     },
 
@@ -227,6 +231,8 @@
                             }
                         } catch (error) {
                             alert(error.message);
+                        } finally {
+                            this.isSubmitting = false;
                         }
                     },
 
@@ -274,6 +280,8 @@
                             }
                         } catch (error) {
                             alert(error.message);
+                        } finally {
+                            this.isSubmitting = false;
                         }
                     },
 
@@ -345,10 +353,16 @@
                             }
                         } catch (error) {
                             alert(error.message);
+                        } finally {
+                            this.isSubmitting = false;
                         }
                     },
 
                     async logOneTimeGood(qty) {
+                        const now = Date.now();
+                        if (now - this.lastTapTime < 400 || this.isSubmitting) return;
+                        this.lastTapTime = now;
+
                         const val = parseInt(qty);
                         if (!val || val <= 0) return;
                         if (this.isPaused) {
@@ -362,6 +376,7 @@
                             return;
                         }
 
+                        this.isSubmitting = true;
                         try {
                             const formData = new FormData();
                             formData.append('good_qty', val);
@@ -395,6 +410,8 @@
                             }
                         } catch (error) {
                             alert(error.message);
+                        } finally {
+                            this.isSubmitting = false;
                         }
                     },
 
@@ -403,6 +420,9 @@
                     },
 
                     async submitForm(event, type) {
+                        if (this.isSubmitting) return;
+                        this.isSubmitting = true;
+
                         const form = event.target;
                         const formData = new FormData(form);
                         const url = form.action;
@@ -483,10 +503,15 @@
                             }
                         } catch (error) {
                             alert(error.message);
+                        } finally {
+                            this.isSubmitting = false;
                         }
                     },
 
                     async submitMultiRejectForm(event) {
+                        if (this.isSubmitting) return;
+                        this.isSubmitting = true;
+
                         const form = event.target;
                         const alpineData = form._x_dataStack ? form._x_dataStack[0] : null;
                         if (!alpineData || !alpineData.validDefects || !alpineData.validDefects.length) {
@@ -542,6 +567,8 @@
                             }
                         } catch (error) {
                             alert(error.message);
+                        } finally {
+                            this.isSubmitting = false;
                         }
                     },
 
@@ -581,6 +608,7 @@
                 return {
                     presetList: presetList || [],
                     stagedItems: [],
+                    lastTapTimes: {},
                     showCustom: false,
                     showCause: false,
                     customName: '',
@@ -594,7 +622,12 @@
                     addDefect(name) {
                         if (!name || !name.trim()) return;
                         const cleanName = name.trim();
-                        const existing = this.stagedItems.find(i => i.defect_type.toLowerCase() === cleanName.toLowerCase());
+                        const key = cleanName.toLowerCase();
+                        const now = Date.now();
+                        if (this.lastTapTimes[key] && now - this.lastTapTimes[key] < 350) return;
+                        this.lastTapTimes[key] = now;
+
+                        const existing = this.stagedItems.find(i => i.defect_type.toLowerCase() === key);
                         if (existing) {
                             existing.quantity += 1;
                         } else {

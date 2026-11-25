@@ -30,7 +30,7 @@
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Common Defects (Tap to add +1)</label>
                         <div class="grid grid-cols-2 gap-2.5">
                             <template x-for="p in presetList" :key="p">
-                                <button type="button" @click="addDefect(p)"
+                                <button type="button" @click.stop="addDefect(p)"
                                         :class="getDefectCount(p) > 0 ? 'bg-red-50 border-red-500 text-red-900 shadow-xs ring-2 ring-red-200' : 'bg-slate-50 hover:bg-red-50/50 border-slate-200 text-slate-800'"
                                         class="p-3.5 rounded-xl border-2 font-bold text-sm flex items-center justify-between transition cursor-pointer select-none active:scale-95 text-left">
                                     <span class="truncate flex-1 pr-1" x-text="p"></span>
