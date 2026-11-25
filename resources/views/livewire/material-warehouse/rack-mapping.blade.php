@@ -1,4 +1,15 @@
 <div class="p-6 bg-gray-50 min-h-screen">
+    <!-- Slot Detail Loading Indicator Overlay -->
+    <div wire:loading wire:target="selectPosition" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-xs">
+        <div class="bg-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-200 animate-in zoom-in-95 duration-150">
+            <svg class="animate-spin w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            <span class="text-xs font-bold text-slate-800">Memuat Detail Slot Rak Material...</span>
+        </div>
+    </div>
+
     <div class="max-w-7xl mx-auto space-y-6">
         
         @if ($isViewOnly)

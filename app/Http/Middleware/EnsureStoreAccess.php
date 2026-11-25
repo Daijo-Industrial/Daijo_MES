@@ -26,9 +26,26 @@ class EnsureStoreAccess
         // Allowed roles: ADMIN, SUPER-ADMIN, STORE, WAREHOUSE
         $allowedRoles = ['ADMIN', 'SUPER-ADMIN', 'STORE', 'WAREHOUSE'];
 
+        // Allow PRODUCTION and PPIC for crosscheck and store handover features
+        $isCrosscheckOrHandover = $request->routeIs('wms.production-scan-crosscheck*')
+            || $request->routeIs('wms.store-handover*')
+            || $request->is('wms/production-scan-crosscheck*')
+            || $request->is('wms/store-handover*');
+
+        if ($isCrosscheckOrHandover) {
+            $allowedRoles[] = 'PRODUCTION';
+            $allowedRoles[] = 'PPIC';
+        }
+
         $hasAccess = in_array($userRole, $allowedRoles)
             || $user->hasRoleAccess('STORE')
-            || $user->hasRoleAccess('ADMIN');
+            || $user->hasRoleAccess('ADMIN')
+            || ($isCrosscheckOrHandover && (
+                $user->hasRoleAccess('PRODUCTION')
+                || $user->hasRoleAccess('PPIC')
+                || $user->can('view-production-links')
+                || $user->can('view-ppic-links')
+            ));
 
         if (! $hasAccess) {
             if ($request->expectsJson()) {

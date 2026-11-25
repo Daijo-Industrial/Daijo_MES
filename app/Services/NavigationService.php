@@ -191,8 +191,8 @@ class NavigationService
             [
                 'label' => 'Production & Moulding',
                 'children' => [
-                    ['name' => 'wms.production-scan-crosscheck', 'label' => 'Crosscheck Scan Produksi', 'can' => ['view-production-links', 'view-store-links']],
-                    ['name' => 'production.store-handover', 'label' => 'Kontrol Produksi - Store', 'can' => ['view-production-links', 'view-store-links']],
+                    ['name' => 'wms.production-scan-crosscheck', 'label' => 'Crosscheck Scan Produksi', 'can' => ['view-production-links', 'view-store-links', 'view-ppic-links']],
+                    ['name' => 'production.store-handover', 'label' => 'Kontrol Produksi - Store', 'can' => ['view-production-links', 'view-store-links', 'view-ppic-links']],
                     ['name' => 'production.material-station', 'label' => 'Station Material Produksi', 'can' => ['view-production-links']],
                     ['name' => 'production.bom.index', 'label' => 'Production BOM', 'can' => ['view-production-links', 'view-warehouse-links']],
                     ['name' => 'daily-item-code.index', 'label' => 'Daily Production Plan', 'can' => ['view-production-links', 'view-ppic-links']],

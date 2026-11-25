@@ -524,7 +524,8 @@ class RackMapping extends Component
             $query->orderBy('level_no', 'desc')
                 ->orderBy('slot_no', 'asc')
                 ->with(['pallets' => function ($pq) {
-                    $pq->where('current_qty', '>', 0)->with('material');
+                    $pq->where('current_qty', '>', 0)
+                        ->select(['id', 'position_id', 'whse_id', 'pallet_id', 'item_code', 'lot_no', 'current_qty', 'status']);
                 }]);
         }]);
 
@@ -546,11 +547,13 @@ class RackMapping extends Component
             });
         }
 
-        $availableItemCodes = $availableItemCodesQuery
-            ->distinct()
-            ->orderBy('item_code', 'asc')
-            ->pluck('item_code')
-            ->toArray();
+        $availableItemCodes = \Illuminate\Support\Facades\Cache::remember("mwh_avail_item_codes_{$activeWhseId}", 120, function () use ($availableItemCodesQuery) {
+            return $availableItemCodesQuery
+                ->distinct()
+                ->orderBy('item_code', 'asc')
+                ->pluck('item_code')
+                ->toArray();
+        });
 
         $matchingPositionIds = [];
         $queryStr = trim($this->searchTerm);

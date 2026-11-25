@@ -26,6 +26,11 @@ class WmsDashboard extends Component
         'search' => ['except' => ''],
     ];
 
+    public function mount(): void
+    {
+        $this->syncPositionStatuses();
+    }
+
     public function selectPosition(int $id): void
     {
         $this->selectedPositionId = $id;
@@ -80,6 +85,8 @@ class WmsDashboard extends Component
 
             $wmsService->logTransaction($pallet->pallet_id, 'ASSIGN_SLOT', $pos->id, auth()->id(), 'Assigned via WMS Dashboard');
 
+            \Illuminate\Support\Facades\Cache::forget('wms_dashboard_metrics');
+
             session()->flash('success', "Pallet {$pallet->pallet_id} berhasil disimpan di slot {$pos->position_code}.");
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal menempatkan pallet: ' . $e->getMessage());
@@ -112,67 +119,97 @@ class WmsDashboard extends Component
 
     public function render()
     {
-        // 0. Auto-sync desynchronized position statuses
-        $this->syncPositionStatuses();
+        // 1. Overall WMS Slot Counts & General KPIs (Cached for 30s for lightning fast slot inspection)
+        $kpis = \Illuminate\Support\Facades\Cache::remember('wms_dashboard_metrics', 30, function () {
+            $totalPositionsCount = WmsPosition::count();
+            $emptySlotsCount = WmsPosition::where('status', 'EMPTY')->count();
+            $partialSlotsCount = WmsPosition::where('status', 'PARTIAL')->count();
+            $fullSlotsCount = WmsPosition::where('status', 'FULL')->count();
 
-        // 1. Overall WMS Slot Counts & Ratios
-        $totalPositionsCount = WmsPosition::count();
-        $emptySlotsCount = WmsPosition::where('status', 'EMPTY')->count();
-        $partialSlotsCount = WmsPosition::where('status', 'PARTIAL')->count();
-        $fullSlotsCount = WmsPosition::where('status', 'FULL')->count();
+            $occupiedSlotsCount = $partialSlotsCount + $fullSlotsCount;
+            $occupancyRate = $totalPositionsCount > 0 ? round(($occupiedSlotsCount / $totalPositionsCount) * 100, 1) : 0;
+            $emptyRate = $totalPositionsCount > 0 ? round(($emptySlotsCount / $totalPositionsCount) * 100, 1) : 0;
+            $fullRate = $totalPositionsCount > 0 ? round(($fullSlotsCount / $totalPositionsCount) * 100, 1) : 0;
+            $partialRate = $totalPositionsCount > 0 ? round(($partialSlotsCount / $totalPositionsCount) * 100, 1) : 0;
 
-        $occupiedSlotsCount = $partialSlotsCount + $fullSlotsCount;
-        $occupancyRate = $totalPositionsCount > 0 ? round(($occupiedSlotsCount / $totalPositionsCount) * 100, 1) : 0;
-        $emptyRate = $totalPositionsCount > 0 ? round(($emptySlotsCount / $totalPositionsCount) * 100, 1) : 0;
-        $fullRate = $totalPositionsCount > 0 ? round(($fullSlotsCount / $totalPositionsCount) * 100, 1) : 0;
-        $partialRate = $totalPositionsCount > 0 ? round(($partialSlotsCount / $totalPositionsCount) * 100, 1) : 0;
+            $storedPalletsQuery = WmsPalletForm::whereNotNull('position_id')->where('total_pallet_qty', '>', 0);
+            $totalStoredPallets = (clone $storedPalletsQuery)->count();
+            $totalStoredPcs = (float) (clone $storedPalletsQuery)->sum('total_pallet_qty');
+            $totalStoredBoxes = (float) (clone $storedPalletsQuery)->sum('box_qty');
 
-        // 2. Total Stored Pallets & Qty Metrics
-        $storedPalletsQuery = WmsPalletForm::whereNotNull('position_id')->where('total_pallet_qty', '>', 0);
-        $totalStoredPallets = (clone $storedPalletsQuery)->count();
-        $totalStoredPcs = (float) (clone $storedPalletsQuery)->sum('total_pallet_qty');
-        $totalStoredBoxes = (float) (clone $storedPalletsQuery)->sum('box_qty');
+            $thirtyDaysAgo = now()->subDays(30);
+            $overagedPalletsQuery = WmsPalletForm::with('position')
+                ->whereNotNull('position_id')
+                ->where('total_pallet_qty', '>', 0)
+                ->where(function ($q) use ($thirtyDaysAgo) {
+                    $q->where('assigned_at', '<=', $thirtyDaysAgo)
+                        ->orWhere(function ($sq) use ($thirtyDaysAgo) {
+                            $sq->whereNull('assigned_at')->where('created_at', '<=', $thirtyDaysAgo);
+                        });
+                });
 
-        // 2b. Overaged Pallets (> 30 days stored in warehouse)
-        $thirtyDaysAgo = now()->subDays(30);
-        $overagedPalletsQuery = WmsPalletForm::with('position')
-            ->whereNotNull('position_id')
-            ->where('total_pallet_qty', '>', 0)
-            ->where(function ($q) use ($thirtyDaysAgo) {
-                $q->where('assigned_at', '<=', $thirtyDaysAgo)
-                    ->orWhere(function ($sq) use ($thirtyDaysAgo) {
-                        $sq->whereNull('assigned_at')->where('created_at', '<=', $thirtyDaysAgo);
-                    });
-            });
+            $overagedCount = (clone $overagedPalletsQuery)->count();
+            $overagedPalletsList = (clone $overagedPalletsQuery)->orderBy('created_at', 'asc')->take(10)->get();
 
-        $overagedCount = (clone $overagedPalletsQuery)->count();
-        $overagedPalletsList = (clone $overagedPalletsQuery)->orderBy('created_at', 'asc')->take(10)->get();
+            $assignedPallets = WmsPalletForm::whereNotNull('assigned_at')->whereNotNull('created_at')->take(100)->get();
+            $avgLeadTimeMin = $assignedPallets->isNotEmpty()
+                ? round($assignedPallets->avg(fn ($p) => $p->created_at->diffInMinutes($p->assigned_at)))
+                : 0;
 
-        // 2c. Average Putaway Lead Time calculation (minutes)
-        $assignedPallets = WmsPalletForm::whereNotNull('assigned_at')->whereNotNull('created_at')->take(100)->get();
-        $avgLeadTimeMin = $assignedPallets->isNotEmpty()
-            ? round($assignedPallets->avg(fn ($p) => $p->created_at->diffInMinutes($p->assigned_at)))
-            : 0;
-
-        $avgLeadTimeText = '-';
-        if ($avgLeadTimeMin > 0) {
-            if ($avgLeadTimeMin < 60) {
-                $avgLeadTimeText = "{$avgLeadTimeMin} Min";
-            } else {
-                $h = floor($avgLeadTimeMin / 60);
-                $m = $avgLeadTimeMin % 60;
-                $avgLeadTimeText = "{$h} J " . ($m > 0 ? "{$m} M" : '');
+            $avgLeadTimeText = '-';
+            if ($avgLeadTimeMin > 0) {
+                if ($avgLeadTimeMin < 60) {
+                    $avgLeadTimeText = "{$avgLeadTimeMin} Min";
+                } else {
+                    $h = floor($avgLeadTimeMin / 60);
+                    $m = $avgLeadTimeMin % 60;
+                    $avgLeadTimeText = "{$h} J " . ($m > 0 ? "{$m} M" : '');
+                }
             }
-        }
 
-        // Unassigned Pallets waiting for slot allocation
+            $oldestPallets = WmsPalletForm::with('position')
+                ->whereNotNull('position_id')
+                ->where('total_pallet_qty', '>', 0)
+                ->orderBy('created_at', 'asc')
+                ->take(5)
+                ->get();
+
+            $topStoredItems = DB::table('wms_pallet_forms')
+                ->whereNotNull('position_id')
+                ->where('total_pallet_qty', '>', 0)
+                ->whereNull('deleted_at')
+                ->select('part_no', 'model_name', DB::raw('SUM(total_pallet_qty) as total_qty'), DB::raw('COUNT(pallet_id) as pallet_count'))
+                ->groupBy('part_no', 'model_name')
+                ->orderBy('total_qty', 'desc')
+                ->take(5)
+                ->get();
+
+            $recentLogs = WmsPalletLog::with(['position', 'pallet'])
+                ->orderBy('id', 'desc')
+                ->take(6)
+                ->get();
+
+            return compact(
+                'totalPositionsCount', 'emptySlotsCount', 'partialSlotsCount', 'fullSlotsCount',
+                'occupancyRate', 'emptyRate', 'fullRate', 'partialRate',
+                'totalStoredPallets', 'totalStoredPcs', 'totalStoredBoxes',
+                'overagedCount', 'overagedPalletsList', 'avgLeadTimeText',
+                'oldestPallets', 'topStoredItems', 'recentLogs'
+            );
+        });
+
+        // Unassigned Pallets waiting for slot allocation (limited for performance)
+        $unassignedCount = WmsPalletForm::whereNull('position_id')
+            ->where('total_pallet_qty', '>', 0)
+            ->count();
         $unassignedPallets = WmsPalletForm::whereNull('position_id')
             ->where('total_pallet_qty', '>', 0)
             ->orderBy('created_at', 'desc')
+            ->take(20)
             ->get();
-        $unassignedCount = $unassignedPallets->count();
 
-        // 3. Query Racks with Filtered Positions
+        // 2. Query Racks with Filtered Positions (Lean eager loading without nested details for slot grid)
+        $thirtyDaysAgo = now()->subDays(30);
         $racksQuery = WmsRack::with(['positions' => function ($q) use ($thirtyDaysAgo) {
             if ($this->statusFilter === 'OVERAGED') {
                 $q->whereHas('palletForms', function ($pq) use ($thirtyDaysAgo) {
@@ -200,7 +237,8 @@ class WmsDashboard extends Component
                 });
             }
             $q->with(['palletForms' => function ($pq) {
-                $pq->where('total_pallet_qty', '>', 0)->with('details');
+                $pq->where('total_pallet_qty', '>', 0)
+                    ->select(['pallet_id', 'position_id', 'part_no', 'model_name', 'total_pallet_qty', 'status', 'assigned_at', 'created_at']);
             }])
                 ->withCount(['palletForms' => function ($pq) {
                     $pq->where('total_pallet_qty', '>', 0);
@@ -211,32 +249,7 @@ class WmsDashboard extends Component
 
         $racks = $racksQuery->get();
 
-        // 4. Oldest Stored Pallets (FIFO Aging Alert)
-        $oldestPallets = WmsPalletForm::with('position')
-            ->whereNotNull('position_id')
-            ->where('total_pallet_qty', '>', 0)
-            ->orderBy('created_at', 'asc')
-            ->take(5)
-            ->get();
-
-        // 5. Top Stored Part Numbers (Distribution)
-        $topStoredItems = DB::table('wms_pallet_forms')
-            ->whereNotNull('position_id')
-            ->where('total_pallet_qty', '>', 0)
-            ->whereNull('deleted_at')
-            ->select('part_no', 'model_name', DB::raw('SUM(total_pallet_qty) as total_qty'), DB::raw('COUNT(pallet_id) as pallet_count'))
-            ->groupBy('part_no', 'model_name')
-            ->orderBy('total_qty', 'desc')
-            ->take(5)
-            ->get();
-
-        // 6. Recent Movement Audit Trail Logs
-        $recentLogs = WmsPalletLog::with(['position', 'pallet'])
-            ->orderBy('id', 'desc')
-            ->take(6)
-            ->get();
-
-        // 7. Selected Slot Data for Detail Modal
+        // 3. Selected Slot Data for Detail Modal (Deep eager-loading ONLY for the selected slot)
         $selectedPosData = $this->selectedPositionId
             ? WmsPosition::with(['rack', 'palletForms' => function ($q) {
                 $q->where('total_pallet_qty', '>', 0)->with('details');
@@ -246,26 +259,26 @@ class WmsDashboard extends Component
             : null;
 
         return view('livewire.wms.wms-dashboard', [
-            'totalPositions' => $totalPositionsCount,
-            'emptySlots' => $emptySlotsCount,
-            'partialSlots' => $partialSlotsCount,
-            'fullSlots' => $fullSlotsCount,
-            'occupancyRate' => $occupancyRate,
-            'emptyRate' => $emptyRate,
-            'fullRate' => $fullRate,
-            'partialRate' => $partialRate,
-            'totalStoredPallets' => $totalStoredPallets,
-            'totalStoredPcs' => $totalStoredPcs,
-            'totalStoredBoxes' => $totalStoredBoxes,
-            'overagedCount' => $overagedCount,
-            'overagedPalletsList' => $overagedPalletsList,
-            'avgLeadTimeText' => $avgLeadTimeText,
+            'totalPositions' => $kpis['totalPositionsCount'],
+            'emptySlots' => $kpis['emptySlotsCount'],
+            'partialSlots' => $kpis['partialSlotsCount'],
+            'fullSlots' => $kpis['fullSlotsCount'],
+            'occupancyRate' => $kpis['occupancyRate'],
+            'emptyRate' => $kpis['emptyRate'],
+            'fullRate' => $kpis['fullRate'],
+            'partialRate' => $kpis['partialRate'],
+            'totalStoredPallets' => $kpis['totalStoredPallets'],
+            'totalStoredPcs' => $kpis['totalStoredPcs'],
+            'totalStoredBoxes' => $kpis['totalStoredBoxes'],
+            'overagedCount' => $kpis['overagedCount'],
+            'overagedPalletsList' => $kpis['overagedPalletsList'],
+            'avgLeadTimeText' => $kpis['avgLeadTimeText'],
             'unassignedPallets' => $unassignedPallets,
             'unassignedCount' => $unassignedCount,
             'racks' => $racks,
-            'oldestPallets' => $oldestPallets,
-            'topStoredItems' => $topStoredItems,
-            'recentLogs' => $recentLogs,
+            'oldestPallets' => $kpis['oldestPallets'],
+            'topStoredItems' => $kpis['topStoredItems'],
+            'recentLogs' => $kpis['recentLogs'],
             'selectedPosData' => $selectedPosData,
         ]);
     }

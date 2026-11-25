@@ -39,13 +39,14 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         // ── Early returns untuk role non-OPERATOR ────────────────────────────
+        if ($user->hasRole('ADMIN') || $user->hasRole('SUPER-ADMIN')) {
+            return view('dashboards.dashboard-admin');
+        }
         if ($user->hasRole('WORKSHOP')) {
             return view('dashboards.dashboard-workshop', compact('user'));
         }
         if (! $user->hasRole('OPERATOR')) {
-            $menuGroups = app(\App\Services\NavigationService::class)->getMenuGroups($user, true);
-
-            return view('dashboard', compact('user', 'menuGroups'));
+            return view('dashboard', compact('user'));
         }
 
         // ════════════════════════════════════════════════════════════════════
