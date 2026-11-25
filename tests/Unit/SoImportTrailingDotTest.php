@@ -9,7 +9,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 
 class SoImportTrailingDotTest extends TestCase
@@ -18,8 +17,8 @@ class SoImportTrailingDotTest extends TestCase
 
     public function test_so_import_custom_value_binder_preserves_trailing_dot(): void
     {
-        $import = new SoImport();
-        $spreadsheet = new Spreadsheet();
+        $import = new SoImport;
+        $spreadsheet = new Spreadsheet;
         $cell = $spreadsheet->getActiveSheet()->getCell('A1');
 
         $import->bindValue($cell, '31099125084.');
@@ -31,7 +30,7 @@ class SoImportTrailingDotTest extends TestCase
     public function test_so_data_export_custom_value_binder_preserves_trailing_dot(): void
     {
         $export = new SoDataExport([]);
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $cell = $spreadsheet->getActiveSheet()->getCell('A1');
 
         $export->bindValue($cell, '31099125084.');
@@ -42,7 +41,7 @@ class SoImportTrailingDotTest extends TestCase
 
     public function test_so_import_model_creates_so_data_with_exact_trailing_dot(): void
     {
-        $import = new SoImport();
+        $import = new SoImport;
         $row = [
             'DOC-DOT-001',
             'CUSTOMER PT TEST',
@@ -92,7 +91,7 @@ class SoImportTrailingDotTest extends TestCase
         $csvPath = 'public/test_dot_roundtrip.csv';
         Excel::store(new SoDataExport($testData), $csvPath);
 
-        $importedRows = Excel::toArray(new SoImport(), storage_path('app/' . $csvPath))[0];
+        $importedRows = Excel::toArray(new SoImport, storage_path('app/' . $csvPath))[0];
         $this->assertSame('31099125084.', (string) $importedRows[0][3]);
 
         if (file_exists(storage_path('app/' . $csvPath))) {
@@ -100,4 +99,3 @@ class SoImportTrailingDotTest extends TestCase
         }
     }
 }
-
