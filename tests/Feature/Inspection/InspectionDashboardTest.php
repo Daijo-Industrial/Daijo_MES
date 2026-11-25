@@ -150,4 +150,31 @@ class InspectionDashboardTest extends TestCase
             ->assertSet('kpi.total_pass', 980)
             ->assertSet('kpi.total_reject', 20);
     }
+
+    public function test_dashboard_batch_apply_machine_inspector_shift_and_reset(): void
+    {
+        $test = Livewire::actingAs($this->user)
+            ->test(InspectionDashboard::class)
+            ->set('draftFilters.date_from', '2026-10-01')
+            ->set('draftFilters.date_to', '2026-10-31')
+            ->set('draftFilters.machine_number', 'M2')
+            ->call('applyFilters')
+            ->assertSet('kpi.total_reports', 1)
+            ->assertSet('kpi.total_output', 2000)
+            ->assertSet('kpi.total_reject', 50);
+
+        $test->call('removeFilter', 'machine_number')
+            ->assertSet('kpi.total_reports', 2)
+            ->set('draftFilters.inspector', 'Insp1')
+            ->set('draftFilters.shift', '1')
+            ->call('applyFilters')
+            ->assertSet('kpi.total_reports', 1)
+            ->assertSet('kpi.total_output', 1000);
+
+        $test->call('clearFilters')
+            ->assertSet('preset', 'this_month')
+            ->assertSet('machineNumber', '')
+            ->assertSet('inspector', '')
+            ->assertSet('shift', '');
+    }
 }

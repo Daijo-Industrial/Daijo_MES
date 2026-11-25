@@ -20,11 +20,28 @@ class InspectionDashboard extends Component
     #[Url(as: 'to', except: '')]
     public string $dateTo = '';
 
+    #[Url(as: 'preset', except: 'this_month')]
+    public string $preset = 'this_month';
+
+    #[Url(as: 'shift', except: '')]
+    public string $shift = '';
+
+    #[Url(as: 'status', except: '')]
+    public string $status = '';
+
     #[Url(as: 'customer', except: '')]
     public string $customer = '';
 
+    #[Url(as: 'machine', except: '')]
+    public string $machineNumber = '';
+
+    #[Url(as: 'inspector', except: '')]
+    public string $inspector = '';
+
     #[Url(as: 'part', except: '')]
     public string $partNumber = '';
+
+    public array $draftFilters = [];
 
     public array $kpi = [];
 
@@ -46,93 +63,248 @@ class InspectionDashboard extends Component
 
     public array $customerOptions = [];
 
+    public array $shiftOptions = [];
+
+    public array $machineOptions = [];
+
+    public array $inspectorOptions = [];
+
     public bool $ready = false;
 
     public function mount(): void
     {
-        if ($this->dateFrom === '') {
-            $this->dateFrom = Carbon::now()->startOfMonth()->toDateString();
-        }
-        if ($this->dateTo === '') {
-            $this->dateTo = Carbon::now()->toDateString();
+        if ($this->dateFrom === '' && $this->dateTo === '') {
+            if ($this->preset !== 'all' && $this->preset !== 'custom') {
+                [$this->dateFrom, $this->dateTo] = $this->resolvePresetDates($this->preset);
+            }
+        } else {
+            $this->determinePresetFromDates();
         }
 
-        $this->customerOptions = InspectionReport::query()
-            ->select('customer')
+        $this->customerOptions = $this->distinctOptions('customer');
+        $this->shiftOptions = InspectionReport::query()
+            ->select('shift')
+            ->whereNotNull('shift')
             ->distinct()
-            ->orderBy('customer')
-            ->pluck('customer')
-            ->toArray();
+            ->orderBy('shift')
+            ->pluck('shift')
+            ->all();
+        $this->machineOptions = $this->distinctOptions('machine_number');
+        $this->inspectorOptions = $this->distinctOptions('inspector');
 
-        $hasData = InspectionReport::query()
-            ->whereDate('inspection_date', '>=', $this->dateFrom)
-            ->whereDate('inspection_date', '<=', $this->dateTo)
-            ->exists();
+        if ($this->dateFrom !== '' || $this->dateTo !== '') {
+            $hasData = InspectionReport::query()
+                ->when($this->dateFrom !== '', fn ($q) => $q->whereDate('inspection_date', '>=', $this->dateFrom))
+                ->when($this->dateTo !== '', fn ($q) => $q->whereDate('inspection_date', '<=', $this->dateTo))
+                ->exists();
 
-        if (! $hasData) {
-            $latestDate = InspectionReport::query()->max('inspection_date');
-            if ($latestDate) {
-                $end = Carbon::parse($latestDate);
-                $this->dateTo = $end->toDateString();
-                $this->dateFrom = $end->copy()->subDays(29)->toDateString();
+            if (! $hasData) {
+                $latestDate = InspectionReport::query()->max('inspection_date');
+                if ($latestDate) {
+                    $end = Carbon::parse($latestDate);
+                    $this->dateTo = $end->toDateString();
+                    $this->dateFrom = $end->copy()->subDays(29)->toDateString();
+                    $this->determinePresetFromDates();
+                }
             }
         }
 
+        $this->syncDraftFromActive();
         $this->computeData();
         $this->ready = true;
     }
 
+    private function distinctOptions(string $column): array
+    {
+        return InspectionReport::query()
+            ->select($column)
+            ->whereNotNull($column)
+            ->where($column, '!=', '')
+            ->distinct()
+            ->orderBy($column)
+            ->pluck($column)
+            ->all();
+    }
+
+    private function resolvePresetDates(string $preset): array
+    {
+        $now = Carbon::now();
+
+        return match ($preset) {
+            'today' => [$now->toDateString(), $now->toDateString()],
+            'yesterday' => [
+                $now->copy()->subDay()->toDateString(),
+                $now->copy()->subDay()->toDateString(),
+            ],
+            'this_week' => [
+                $now->copy()->startOfWeek()->toDateString(),
+                $now->copy()->endOfWeek()->toDateString(),
+            ],
+            'this_month' => [
+                $now->copy()->startOfMonth()->toDateString(),
+                $now->copy()->endOfMonth()->toDateString(),
+            ],
+            'last_month' => [
+                $now->copy()->subMonthNoOverflow()->startOfMonth()->toDateString(),
+                $now->copy()->subMonthNoOverflow()->endOfMonth()->toDateString(),
+            ],
+            default => ['', ''],
+        };
+    }
+
+    private function determinePresetFromDates(): void
+    {
+        if ($this->dateFrom === '' && $this->dateTo === '') {
+            $this->preset = 'all';
+
+            return;
+        }
+
+        foreach (['today', 'yesterday', 'this_week', 'this_month', 'last_month'] as $candidate) {
+            [$expectedFrom, $expectedTo] = $this->resolvePresetDates($candidate);
+            if ($this->dateFrom === $expectedFrom && $this->dateTo === $expectedTo) {
+                $this->preset = $candidate;
+
+                return;
+            }
+        }
+
+        $this->preset = 'custom';
+    }
+
+    private function syncDraftFromActive(): void
+    {
+        $this->draftFilters = [
+            'date_from' => $this->dateFrom,
+            'date_to' => $this->dateTo,
+            'shift' => $this->shift,
+            'status' => $this->status,
+            'customer' => $this->customer,
+            'machine_number' => $this->machineNumber,
+            'inspector' => $this->inspector,
+            'part_number' => $this->partNumber,
+        ];
+    }
+
     public function updatedDateFrom(): void
     {
+        $this->determinePresetFromDates();
+        $this->syncDraftFromActive();
         $this->computeData();
     }
 
     public function updatedDateTo(): void
     {
+        $this->determinePresetFromDates();
+        $this->syncDraftFromActive();
         $this->computeData();
     }
 
     public function updatedCustomer(): void
     {
+        $this->syncDraftFromActive();
         $this->computeData();
     }
 
     public function updatedPartNumber(): void
     {
+        $this->syncDraftFromActive();
         $this->computeData();
+    }
+
+    public function applyFilters(): void
+    {
+        $from = $this->draftFilters['date_from'] ?? '';
+        $to = $this->draftFilters['date_to'] ?? '';
+
+        if ($from !== '' && $to !== '' && $from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        $this->dateFrom = $from;
+        $this->dateTo = $to;
+        $this->shift = (string) ($this->draftFilters['shift'] ?? '');
+        $this->status = (string) ($this->draftFilters['status'] ?? '');
+        $this->customer = (string) ($this->draftFilters['customer'] ?? '');
+        $this->machineNumber = (string) ($this->draftFilters['machine_number'] ?? '');
+        $this->inspector = (string) ($this->draftFilters['inspector'] ?? '');
+        $this->partNumber = (string) ($this->draftFilters['part_number'] ?? '');
+
+        $this->determinePresetFromDates();
+        $this->syncDraftFromActive();
+        $this->computeData();
+    }
+
+    public function removeFilter(string $key): void
+    {
+        match ($key) {
+            'date' => [$this->dateFrom, $this->dateTo, $this->preset] = ['', '', 'all'],
+            'shift' => $this->shift = '',
+            'status' => $this->status = '',
+            'customer' => $this->customer = '',
+            'machine_number' => $this->machineNumber = '',
+            'inspector' => $this->inspector = '',
+            'part_number' => $this->partNumber = '',
+            default => null,
+        };
+
+        $this->syncDraftFromActive();
+        $this->computeData();
+    }
+
+    public function getHasActiveFiltersProperty(): bool
+    {
+        return $this->preset !== 'this_month'
+            || $this->shift !== ''
+            || $this->status !== ''
+            || $this->customer !== ''
+            || $this->machineNumber !== ''
+            || $this->inspector !== ''
+            || $this->partNumber !== '';
     }
 
     public function clearFilters(): void
     {
-        $this->dateFrom = Carbon::now()->startOfMonth()->toDateString();
-        $this->dateTo = Carbon::now()->toDateString();
+        $this->preset = 'this_month';
+        [$this->dateFrom, $this->dateTo] = $this->resolvePresetDates('this_month');
+        $this->shift = '';
+        $this->status = '';
         $this->customer = '';
+        $this->machineNumber = '';
+        $this->inspector = '';
         $this->partNumber = '';
+        $this->syncDraftFromActive();
         $this->computeData();
+    }
+
+    private function applyReportFilters($query, string $table = 'inspection_reports')
+    {
+        return $query
+            ->when($this->dateFrom !== '', fn ($q) => $q->whereDate("{$table}.inspection_date", '>=', $this->dateFrom))
+            ->when($this->dateTo !== '', fn ($q) => $q->whereDate("{$table}.inspection_date", '<=', $this->dateTo))
+            ->when($this->shift !== '', fn ($q) => $q->where("{$table}.shift", $this->shift))
+            ->when($this->status !== '', fn ($q) => $q->where("{$table}.status", $this->status))
+            ->when($this->customer !== '', fn ($q) => $q->where("{$table}.customer", $this->customer))
+            ->when($this->machineNumber !== '', fn ($q) => $q->where("{$table}.machine_number", $this->machineNumber))
+            ->when($this->inspector !== '', fn ($q) => $q->where("{$table}.inspector", $this->inspector))
+            ->when($this->partNumber !== '', fn ($q) => $q->where("{$table}.part_number", 'like', '%' . trim($this->partNumber) . '%'));
     }
 
     private function baseReportQuery()
     {
-        return InspectionReport::query()
-            ->when($this->dateFrom !== '', fn ($q) => $q->whereDate('inspection_date', '>=', $this->dateFrom))
-            ->when($this->dateTo !== '', fn ($q) => $q->whereDate('inspection_date', '<=', $this->dateTo))
-            ->when($this->customer !== '', fn ($q) => $q->where('customer', $this->customer))
-            ->when($this->partNumber !== '', fn ($q) => $q->where('part_number', 'like', '%' . $this->partNumber . '%'));
+        return $this->applyReportFilters(InspectionReport::query());
     }
 
     private function baseQuantityQuery()
     {
-        return InspectionQuantity::query()
-            ->join(
+        return $this->applyReportFilters(
+            InspectionQuantity::query()->join(
                 'inspection_reports',
                 'inspection_quantities.inspection_report_document_number',
                 '=',
                 'inspection_reports.document_number'
             )
-            ->when($this->dateFrom !== '', fn ($q) => $q->whereDate('inspection_reports.inspection_date', '>=', $this->dateFrom))
-            ->when($this->dateTo !== '', fn ($q) => $q->whereDate('inspection_reports.inspection_date', '<=', $this->dateTo))
-            ->when($this->customer !== '', fn ($q) => $q->where('inspection_reports.customer', $this->customer))
-            ->when($this->partNumber !== '', fn ($q) => $q->where('inspection_reports.part_number', 'like', '%' . $this->partNumber . '%'));
+        );
     }
 
     private function computeData(): void
@@ -260,17 +432,14 @@ class InspectionDashboard extends Component
 
     private function computeTopProblemTypes(): void
     {
-        $rows = InspectionProblem::query()
-            ->join(
+        $rows = $this->applyReportFilters(
+            InspectionProblem::query()->join(
                 'inspection_reports',
                 'inspection_problems.inspection_report_document_number',
                 '=',
                 'inspection_reports.document_number'
             )
-            ->when($this->dateFrom !== '', fn ($q) => $q->whereDate('inspection_reports.inspection_date', '>=', $this->dateFrom))
-            ->when($this->dateTo !== '', fn ($q) => $q->whereDate('inspection_reports.inspection_date', '<=', $this->dateTo))
-            ->when($this->customer !== '', fn ($q) => $q->where('inspection_reports.customer', $this->customer))
-            ->when($this->partNumber !== '', fn ($q) => $q->where('inspection_reports.part_number', 'like', '%' . $this->partNumber . '%'))
+        )
             ->selectRaw('inspection_problems.type, COUNT(*) AS cnt')
             ->groupBy('inspection_problems.type')
             ->orderByDesc('cnt')
@@ -307,18 +476,16 @@ class InspectionDashboard extends Component
         $model = new InspectionDimension;
         $table = $model->getTable();
 
-        $rows = DB::connection($model->getConnectionName())->table($table)
-            ->join(
-                'inspection_reports',
-                "{$table}.inspection_report_document_number",
-                '=',
-                'inspection_reports.document_number'
-            )
-            ->where("{$table}.judgement", 'NG')
-            ->when($this->dateFrom !== '', fn ($q) => $q->whereDate('inspection_reports.inspection_date', '>=', $this->dateFrom))
-            ->when($this->dateTo !== '', fn ($q) => $q->whereDate('inspection_reports.inspection_date', '<=', $this->dateTo))
-            ->when($this->customer !== '', fn ($q) => $q->where('inspection_reports.customer', $this->customer))
-            ->when($this->partNumber !== '', fn ($q) => $q->where('inspection_reports.part_number', 'like', '%' . $this->partNumber . '%'))
+        $rows = $this->applyReportFilters(
+            DB::connection($model->getConnectionName())->table($table)
+                ->join(
+                    'inspection_reports',
+                    "{$table}.inspection_report_document_number",
+                    '=',
+                    'inspection_reports.document_number'
+                )
+                ->where("{$table}.judgement", 'NG')
+        )
             ->selectRaw("{$table}.area, COUNT(*) AS ng_count")
             ->groupBy("{$table}.area")
             ->orderByDesc('ng_count')
