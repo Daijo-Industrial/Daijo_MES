@@ -1949,7 +1949,7 @@ class ProductionDashboardService
         ?int $machineUserId = null,
         bool $forceRefresh = false
     ): array {
-        $cacheKey = "production_yearly_dashboard_{$year}_{$plant}_{$machineUserId}";
+        $cacheKey = "production_yearly_dashboard_v2_{$year}_{$plant}_{$machineUserId}";
 
         if ($forceRefresh) {
             Cache::forget($cacheKey);
