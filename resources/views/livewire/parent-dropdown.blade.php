@@ -52,13 +52,25 @@ new class extends Component {
     <!-- Child Links -->
     <div x-show="dropdownOpen" x-transition class="mt-2 space-y-2">
         @foreach ($childRoutes as $childRoute)
-            <livewire:sidebar-link
-                :href="route($childRoute['name'], $childRoute['params'] ?? [])"
-                :label="$childRoute['label']"
-                :active="request()->routeIs($childRoute['name'])"
-                wire:navigate
-                class="ml-6"
-            />
+            @php
+                $isStandaloneDashboard = in_array($childRoute['name'], ['production-dashboard', 'production-yearly-dashboard']);
+            @endphp
+            @if ($isStandaloneDashboard)
+                <livewire:sidebar-link
+                    :href="route($childRoute['name'], $childRoute['params'] ?? [])"
+                    :label="$childRoute['label']"
+                    :active="request()->routeIs($childRoute['name'])"
+                    class="ml-6"
+                />
+            @else
+                <livewire:sidebar-link
+                    :href="route($childRoute['name'], $childRoute['params'] ?? [])"
+                    :label="$childRoute['label']"
+                    :active="request()->routeIs($childRoute['name'])"
+                    wire:navigate
+                    class="ml-6"
+                />
+            @endif
         @endforeach
     </div>
 </div>

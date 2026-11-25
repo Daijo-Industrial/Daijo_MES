@@ -1106,7 +1106,7 @@ class RackMapping extends Component
                     $query->with('customer');
                 }
                 $query->with(['palletForms' => function ($q) {
-                    $q->with('details');
+                    $q->select(['pallet_id', 'position_id', 'part_no', 'model_name', 'lot_no', 'total_pallet_qty', 'status']);
                 }])
                     ->withCount('palletForms')
                     ->orderBy('level_no', 'desc')
@@ -1199,16 +1199,17 @@ class RackMapping extends Component
             : null;
 
         $customers = $hasCustomerTable
-            ? \App\Models\MasterCustomerDelivery::orderBy('customer_code')->get()
+            ? \Illuminate\Support\Facades\Cache::remember('wms_customers_list', 300, fn () => \App\Models\MasterCustomerDelivery::orderBy('customer_code')->get())
             : collect();
 
         $unassignedPallets = \App\Models\WmsPalletForm::whereNull('position_id')
             ->where('total_pallet_qty', '>', 0)
             ->orderBy('created_at', 'desc')
+            ->take(25)
             ->get();
 
         $warehouse = \App\Models\WmsWarehouse::find($this->whseId) ?? \App\Models\WmsWarehouse::first();
-        $warehouses = \App\Models\WmsWarehouse::orderBy('whse_code')->get();
+        $warehouses = \Illuminate\Support\Facades\Cache::remember('wms_warehouses_list', 300, fn () => \App\Models\WmsWarehouse::orderBy('whse_code')->get());
 
         $racksByCode = $racks->keyBy('rack_code');
         $racksSortedByDistance = $racks->sortBy('distance_score')->values();

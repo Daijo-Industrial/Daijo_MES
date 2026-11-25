@@ -15,12 +15,13 @@ class DashboardAdminRoutingUnitTest extends TestCase
         $this->assertStringNotContainsString('livewire:dashboard-admin', $content);
     }
 
-    public function test_generic_dashboard_view_renders_application_workspace(): void
+    public function test_generic_dashboard_view_renders_daijo_logo_for_non_admins(): void
     {
         $content = file_get_contents(resource_path('views/dashboard.blade.php'));
 
-        $this->assertStringContainsString('Application Workspace', $content);
-        $this->assertStringNotContainsString('Dashboard not available yet', $content);
+        $this->assertStringContainsString('x-application-logo', $content);
+        $this->assertStringContainsString('PT Daijo Industrial', $content);
+        $this->assertStringContainsString('Manufacturing Execution System', $content);
     }
 
     public function test_sidebar_and_navigation_include_production_dashboard(): void

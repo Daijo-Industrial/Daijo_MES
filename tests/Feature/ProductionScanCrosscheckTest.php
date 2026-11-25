@@ -456,4 +456,58 @@ class ProductionScanCrosscheckTest extends TestCase
         ]));
         $response->assertStatus(200);
     }
+
+    public function test_production_and_ppic_roles_can_access_crosscheck_route_and_print(): void
+    {
+        $prodRole = Role::firstOrCreate(['name' => 'PRODUCTION']);
+        $prodUser = User::factory()->create([
+            'name' => 'asik',
+            'role_id' => $prodRole->id,
+            'is_active' => true,
+        ]);
+
+        $ppicRole = Role::firstOrCreate(['name' => 'PPIC']);
+        $ppicUser = User::factory()->create([
+            'name' => 'budiman',
+            'role_id' => $ppicRole->id,
+            'is_active' => true,
+        ]);
+
+        $opRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $opUser = User::factory()->create([
+            'name' => 'operator_user',
+            'role_id' => $opRole->id,
+            'is_active' => true,
+        ]);
+
+        // PRODUCTION user (asik) can access
+        $this->actingAs($prodUser);
+        $this->get(route('wms.production-scan-crosscheck'))->assertStatus(200);
+        $this->get(route('wms.production-scan-crosscheck.print'))->assertStatus(200);
+
+        // PPIC user (budiman) can access
+        $this->actingAs($ppicUser);
+        $this->get(route('wms.production-scan-crosscheck'))->assertStatus(200);
+        $this->get(route('wms.production-scan-crosscheck.print'))->assertStatus(200);
+
+        // Unauthorized role (OPERATOR) gets 403 Forbidden
+        $this->actingAs($opUser);
+        $this->get(route('wms.production-scan-crosscheck'))->assertStatus(403);
+        $this->get(route('wms.production-scan-crosscheck.print'))->assertStatus(403);
+    }
+
+    public function test_navigation_schema_allows_ppic_and_production_for_crosscheck(): void
+    {
+        $plantService = app(\App\Services\PlantContextService::class);
+        $navService = new \App\Services\NavigationService($plantService);
+
+        $schema = $navService->navigationSchema();
+        $prodGroup = collect($schema)->firstWhere('label', 'Production & Moulding');
+        $this->assertNotNull($prodGroup);
+
+        $crosscheckItem = collect($prodGroup['children'] ?? [])->firstWhere('name', 'wms.production-scan-crosscheck');
+        $this->assertNotNull($crosscheckItem);
+        $this->assertContains('view-production-links', $crosscheckItem['can']);
+        $this->assertContains('view-ppic-links', $crosscheckItem['can']);
+    }
 }
