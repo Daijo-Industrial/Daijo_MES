@@ -159,6 +159,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/hourly-remarks/{id}/update-actual-production', [DashboardController::class, 'updateActualProduction'])->name('hourly-remarks.updateActualProduction');
     Route::put('/hourly-remarks/{id}/ng', [DashboardController::class, 'updateNgProduction'])->name('hourly-remarks.updateNg');
     Route::post('/hourly-remark/{id}/add-ng', [DashboardController::class, 'addNg']);
+    Route::get('/hourly-remark/{id}/ng-details', [DashboardController::class, 'getHourlyRemarkNgDetails'])->name('hourly-remark.ng-details');
     Route::get('/ng-detail/{id}', [DashboardController::class, 'showNgDetail']);
     Route::put('/ng-detail/{id}', [DashboardController::class, 'updateNgDetail']);
     Route::delete('/ng-detail/{id}', [DashboardController::class, 'destroyNgDetail']);
