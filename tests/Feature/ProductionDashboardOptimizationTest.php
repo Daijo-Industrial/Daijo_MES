@@ -1039,4 +1039,89 @@ class ProductionDashboardOptimizationTest extends TestCase
         $this->assertNotContains('Kemas Kurniatur Akbar', $machineNames);
         $this->assertNotContains('Kholifah', $machineNames);
     }
+
+    public function test_executive_ng_cockpit_replaces_problem_hours_and_respects_plant_filtering(): void
+    {
+        $admin = User::firstOrCreate(['name' => 'Admin Test'], ['email' => 'adm@test.com', 'password' => bcrypt('pass'), 'role_id' => 1]);
+        $this->actingAs($admin);
+
+        // 1. Livewire view renders Executive Cockpit and does NOT render Top 10 Problem Hours
+        Livewire::test(ProductionDashboard::class)
+            ->assertOk()
+            ->assertDontSee('Top 10 Problem Hours')
+            ->assertSee('Pusat Analisis Kualitas dan NG Breakdown (Executive Cockpit)')
+            ->assertSee('Pareto Analisis Cacat Utama (Aturan 80/20)')
+            ->assertSee('Paparan Risiko Customer')
+            ->assertSee('Distribusi Reject per Shift Operasi');
+
+        // 2. Service level test with plant filtering
+        $service = app(ProductionDashboardService::class);
+        $krwMachine = User::firstOrCreate(['name' => 'K1400B'], ['email' => 'k1400b@test.com', 'password' => 'secret']);
+        $kbnMachine = User::firstOrCreate(['name' => '0450B'], ['email' => '0450b@test.com', 'password' => 'secret']);
+        $date = Carbon::parse('2026-11-20');
+
+        $ngTypeGas = ProductionNgType::firstOrCreate(['ng_type' => 'GASMARK']);
+        $ngTypeShort = ProductionNgType::firstOrCreate(['ng_type' => 'SHORTMOULD']);
+
+        // KRW DIC: Gasmark 50 pcs on Shift 1
+        $dicKrw = DailyItemCode::create([
+            'user_id' => $krwMachine->id,
+            'start_date' => $date->toDateString(),
+            'item_code' => 'ITEM-KRW-001',
+            'shift' => 1,
+            'plan_target' => 500,
+            'actual_target' => 450,
+            'total_ok' => 400,
+        ]);
+        $hrKrw = HourlyRemark::create([
+            'dic_id' => $dicKrw->id,
+            'start_time' => '08:00',
+        ]);
+        ProductionNgDetail::create([
+            'hourly_remark_id' => $hrKrw->id,
+            'ng_type_id' => $ngTypeGas->id,
+            'ng_quantity' => 50,
+        ]);
+
+        // KBN DIC: Shortmould 30 pcs on Shift 3
+        $dicKbn = DailyItemCode::create([
+            'user_id' => $kbnMachine->id,
+            'start_date' => $date->toDateString(),
+            'item_code' => 'ITEM-KBN-002',
+            'shift' => 3,
+            'plan_target' => 300,
+            'actual_target' => 270,
+            'total_ok' => 240,
+        ]);
+        $hrKbn = HourlyRemark::create([
+            'dic_id' => $dicKbn->id,
+            'start_time' => '23:00',
+        ]);
+        ProductionNgDetail::create([
+            'hourly_remark_id' => $hrKbn->id,
+            'ng_type_id' => $ngTypeShort->id,
+            'ng_quantity' => 30,
+        ]);
+
+        // Query with Karawang filter
+        $krwData = $service->getAllDashboardData($date, $date, null, null, 'karawang', null, true);
+        $this->assertEquals(50, $krwData['ng_executive_summary']['total_ng']);
+        $this->assertEquals('GASMARK', $krwData['ng_executive_summary']['dominant_defect']);
+        $this->assertEquals('Shift 1', $krwData['ng_executive_summary']['worst_shift']);
+        $this->assertCount(1, $krwData['ng_executive_summary']['top_affected_parts']);
+        $this->assertEquals('ITEM-KRW-001', $krwData['ng_executive_summary']['top_affected_parts'][0]['item_code']);
+
+        // Query with KBN filter
+        $kbnData = $service->getAllDashboardData($date, $date, null, null, 'kbn', null, true);
+        $this->assertEquals(30, $kbnData['ng_executive_summary']['total_ng']);
+        $this->assertEquals('SHORTMOULD', $kbnData['ng_executive_summary']['dominant_defect']);
+        $this->assertEquals('Shift 3', $kbnData['ng_executive_summary']['worst_shift']);
+        $this->assertCount(1, $kbnData['ng_executive_summary']['top_affected_parts']);
+        $this->assertEquals('ITEM-KBN-002', $kbnData['ng_executive_summary']['top_affected_parts'][0]['item_code']);
+
+        // Query with All Plants
+        $allData = $service->getAllDashboardData($date, $date, null, null, '', null, true);
+        $this->assertEquals(80, $allData['ng_executive_summary']['total_ng']);
+        $this->assertCount(2, $allData['ng_executive_summary']['top_affected_parts']);
+    }
 }

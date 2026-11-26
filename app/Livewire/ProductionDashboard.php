@@ -321,6 +321,7 @@ class ProductionDashboard extends Component
 
         $this->dispatch('chartDataUpdated', chartData: $this->chartData);
         $this->dispatch('adjusterChartDataUpdated', adjusterChartData: $data['adjuster_ng_trend'] ?? []);
+        $this->dispatch('ngParetoChartUpdated', paretoData: $data['ng_executive_summary']['pareto_chart'] ?? []);
     }
 
     public function refreshData()
@@ -432,6 +433,7 @@ class ProductionDashboard extends Component
             'chartData' => $this->chartData,
             'purgingDetails' => $data['purging_details'] ?? [],
             'ngBreakdown' => $data['ng_breakdown'] ?? [],
+            'ngExecutiveSummary' => $data['ng_executive_summary'] ?? [],
             'downtimeAnalysis' => $data['downtime_analysis'] ?? [],
             'topRemarks' => $data['top_remarks'] ?? [],
             'machineWorkingHours' => $data['machine_working_hours'] ?? [],

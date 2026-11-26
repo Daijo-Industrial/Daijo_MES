@@ -258,7 +258,8 @@ class ProductionDashboardService
         // 2. Fetch Master Items mapped by item_code
         $neededItemCodes = $dailyData->pluck('item_code')->filter()->unique()->values()->toArray();
         $masterItems = ! empty($neededItemCodes)
-            ? MasterListItem::whereIn('item_code', $neededItemCodes)
+            ? MasterListItem::when(\Illuminate\Support\Facades\Schema::hasTable('master_customer_deliveries'), fn ($q) => $q->with('customer'))
+                ->whereIn('item_code', $neededItemCodes)
                 ->get()
                 ->keyBy('item_code')
             : collect();
@@ -351,11 +352,20 @@ class ProductionDashboardService
             $preloadedHalfDayDates
         );
 
+        $ngExecutiveSummary = $this->processExecutiveNgAnalysis(
+            $dailyData,
+            $masterItems,
+            $adjustLogsRaw,
+            $ngBreakdown,
+            $productionResult['summary'] ?? []
+        );
+
         return [
             'chart_data' => $productionResult['chart_data'] ?? [],
             'summary' => $productionResult['summary'] ?? [],
             'purging_details' => $productionResult['purging_details'] ?? [],
             'ng_breakdown' => $ngBreakdown,
+            'ng_executive_summary' => $ngExecutiveSummary,
             'downtime_analysis' => $downtimeAnalysis,
             'top_remarks' => $topRemarks,
             'machine_working_hours' => $machineWorkingHours,
@@ -746,6 +756,260 @@ class ProductionDashboardService
         usort($ngBreakdown, fn ($a, $b) => $b['total'] <=> $a['total']);
 
         return array_values($ngBreakdown);
+    }
+
+    /**
+     * Executive Quality Analysis & Pareto Generator tailored for Board of Directors (BOD).
+     * Computes Pareto 80/20 defect ranking, Customer risk exposure, Shift breakdown, and Machine Quality Ranking.
+     */
+    public function processExecutiveNgAnalysis($dailyData, $masterItems, $adjustLogs, array $ngBreakdown, array $summary = []): array
+    {
+        $totalActual = (int) ($summary['total_actual'] ?? 0);
+        $totalNg = (int) ($summary['total_ng'] ?? array_sum(array_column($ngBreakdown, 'total')));
+        $ngRate = ($totalActual + $totalNg) > 0 ? round(($totalNg / ($totalActual + $totalNg)) * 100, 2) : 0.0;
+
+        // Toleransi Mutu Pabrik: <=2.0% Aman, 2.1-3.0% Waspada, >3.0% Kritis
+        $healthStatus = 'Aman';
+        $healthClass = 'emerald';
+        if ($ngRate > 3.0) {
+            $healthStatus = 'Kritis';
+            $healthClass = 'rose';
+        } elseif ($ngRate > 2.0) {
+            $healthStatus = 'Waspada';
+            $healthClass = 'amber';
+        }
+
+        // 1. Pareto Defect Analysis
+        $paretoDefects = [];
+        $runningCumulative = 0.0;
+        $chartLabels = [];
+        $chartQuantities = [];
+        $chartCumulative = [];
+
+        foreach ($ngBreakdown as $idx => $ng) {
+            $qty = (int) ($ng['total'] ?? 0);
+            $pct = $totalNg > 0 ? round(($qty / $totalNg) * 100, 1) : 0.0;
+            $runningCumulative = min(100.0, round($runningCumulative + $pct, 1));
+
+            // Klasifikasi akar masalah standar industri injection moulding
+            $nameUpper = strtoupper($ng['name']);
+            $category = 'Operasional';
+            if (preg_match('/GASMARK|SINK|FLOW|SILVER|BURN|FLASH|WELD|JET/i', $nameUpper)) {
+                $category = 'Setting / Parameter';
+            } elseif (preg_match('/SHORT|SCRATCH|PIN|EJECT|CRACK|BEND|DEFORM/i', $nameUpper)) {
+                $category = 'Moulding / Cetakan';
+            } elseif (preg_match('/BLACK|BUBL|BUBBLE|FOREIGN|CONTAM|MOIST/i', $nameUpper)) {
+                $category = 'Raw Material / Drying';
+            }
+
+            $defectItem = [
+                'rank' => $idx + 1,
+                'name' => $ng['name'],
+                'total' => $qty,
+                'percentage' => $pct,
+                'cumulative_percentage' => $runningCumulative,
+                'category' => $category,
+            ];
+            $paretoDefects[] = $defectItem;
+
+            if ($idx < 8) {
+                $chartLabels[] = $ng['name'];
+                $chartQuantities[] = $qty;
+                $chartCumulative[] = $runningCumulative;
+            }
+        }
+
+        // 2. Part & Customer Risk Exposure, 3. Shift Breakdown, 4. Machine Ranking
+        $partAggregates = [];
+        $shiftCounts = [1 => 0, 2 => 0, 3 => 0];
+        $machineAggregates = [];
+
+        foreach ($dailyData as $daily) {
+            $itemCode = $daily->item_code ?? 'UNKNOWN';
+            $machineName = $daily->user?->name ?: '-';
+            $shift = in_array((int) $daily->shift, [1, 2, 3], true) ? (int) $daily->shift : 1;
+
+            foreach ($daily->hourlyRemarks as $hourly) {
+                if ($hourly->ngDetails) {
+                    foreach ($hourly->ngDetails as $ngDetail) {
+                        $qty = (int) ($ngDetail->ng_quantity ?? 0);
+                        if ($qty <= 0) {
+                            continue;
+                        }
+
+                        $ngType = trim((string) ($ngDetail->ngType?->ng_type ?? 'Unknown'));
+
+                        // Accumulate by Part
+                        if (! isset($partAggregates[$itemCode])) {
+                            $master = $masterItems instanceof \Illuminate\Support\Collection
+                                ? $masterItems->get($itemCode)
+                                : ($masterItems[$itemCode] ?? null);
+                            $customerName = $master?->customer?->customer_name ?? $master?->customer_code ?? 'Internal / Non-Customer';
+                            $itemName = $master?->item_name ?: $itemCode;
+
+                            $partAggregates[$itemCode] = [
+                                'item_code' => $itemCode,
+                                'item_name' => $itemName,
+                                'customer' => $customerName,
+                                'total_ng' => 0,
+                                'defects' => [],
+                            ];
+                        }
+                        $partAggregates[$itemCode]['total_ng'] += $qty;
+                        $partAggregates[$itemCode]['defects'][$ngType] = ($partAggregates[$itemCode]['defects'][$ngType] ?? 0) + $qty;
+
+                        // Accumulate by Shift
+                        $shiftCounts[$shift] = ($shiftCounts[$shift] ?? 0) + $qty;
+
+                        // Accumulate by Machine
+                        if (! isset($machineAggregates[$machineName])) {
+                            $isKarawang = preg_match('/^K\d{3,4}[A-Z]?$/i', $machineName);
+                            $machineAggregates[$machineName] = [
+                                'machine_name' => $machineName,
+                                'plant' => $isKarawang ? 'KRW' : 'KBN',
+                                'total_ng' => 0,
+                                'defects' => [],
+                            ];
+                        }
+                        $machineAggregates[$machineName]['total_ng'] += $qty;
+                        $machineAggregates[$machineName]['defects'][$ngType] = ($machineAggregates[$machineName]['defects'][$ngType] ?? 0) + $qty;
+                    }
+                }
+            }
+        }
+
+        // Adjuster logs integration
+        if ($adjustLogs) {
+            foreach ($adjustLogs as $adjustLog) {
+                if (! $adjustLog->relationLoaded('ngDetails') && ! $adjustLog->ngDetails) {
+                    continue;
+                }
+                $itemCode = $adjustLog->item_code ?: 'UNKNOWN';
+                $machineName = $adjustLog->user?->name ?: '-';
+                $createdLocal = self::getLocalCarbon($adjustLog->created_at);
+                $shiftInfo = self::getProductionDateAndShift($createdLocal, false);
+                $shift = in_array((int) ($shiftInfo['shift'] ?? 1), [1, 2, 3], true) ? (int) $shiftInfo['shift'] : 1;
+
+                foreach ($adjustLog->ngDetails as $ngDetail) {
+                    $qty = (int) ($ngDetail->quantity ?? 0);
+                    if ($qty <= 0) {
+                        continue;
+                    }
+                    $ngType = trim((string) ($ngDetail->ngType?->ng_type ?? 'NG Adjuster'));
+
+                    // Part
+                    if (! isset($partAggregates[$itemCode])) {
+                        $master = $masterItems instanceof \Illuminate\Support\Collection
+                            ? $masterItems->get($itemCode)
+                            : ($masterItems[$itemCode] ?? null);
+                        $customerName = $master?->customer?->customer_name ?? $master?->customer_code ?? 'Internal / Non-Customer';
+                        $itemName = $master?->item_name ?: $itemCode;
+
+                        $partAggregates[$itemCode] = [
+                            'item_code' => $itemCode,
+                            'item_name' => $itemName,
+                            'customer' => $customerName,
+                            'total_ng' => 0,
+                            'defects' => [],
+                        ];
+                    }
+                    $partAggregates[$itemCode]['total_ng'] += $qty;
+                    $partAggregates[$itemCode]['defects'][$ngType] = ($partAggregates[$itemCode]['defects'][$ngType] ?? 0) + $qty;
+
+                    // Shift
+                    $shiftCounts[$shift] = ($shiftCounts[$shift] ?? 0) + $qty;
+
+                    // Machine
+                    if (! isset($machineAggregates[$machineName])) {
+                        $isKarawang = preg_match('/^K\d{3,4}[A-Z]?$/i', $machineName);
+                        $machineAggregates[$machineName] = [
+                            'machine_name' => $machineName,
+                            'plant' => $isKarawang ? 'KRW' : 'KBN',
+                            'total_ng' => 0,
+                            'defects' => [],
+                        ];
+                    }
+                    $machineAggregates[$machineName]['total_ng'] += $qty;
+                    $machineAggregates[$machineName]['defects'][$ngType] = ($machineAggregates[$machineName]['defects'][$ngType] ?? 0) + $qty;
+                }
+            }
+        }
+
+        // Top 5 Affected Parts
+        uasort($partAggregates, fn ($a, $b) => $b['total_ng'] <=> $a['total_ng']);
+        $topAffectedParts = [];
+        foreach (array_slice($partAggregates, 0, 5) as $p) {
+            arsort($p['defects']);
+            $domDefect = ! empty($p['defects']) ? array_key_first($p['defects']) : '-';
+            $pShare = $totalNg > 0 ? round(($p['total_ng'] / $totalNg) * 100, 1) : 0.0;
+            $topAffectedParts[] = [
+                'item_code' => $p['item_code'],
+                'item_name' => $p['item_name'],
+                'customer' => $p['customer'],
+                'total_ng' => $p['total_ng'],
+                'dominant_defect' => $domDefect,
+                'percentage' => $pShare,
+            ];
+        }
+
+        // Top 5 Machines by Reject
+        uasort($machineAggregates, fn ($a, $b) => $b['total_ng'] <=> $a['total_ng']);
+        $topMachinesQuality = [];
+        foreach (array_slice($machineAggregates, 0, 5) as $m) {
+            arsort($m['defects']);
+            $domDefect = ! empty($m['defects']) ? array_key_first($m['defects']) : '-';
+            $mShare = $totalNg > 0 ? round(($m['total_ng'] / $totalNg) * 100, 1) : 0.0;
+            $topMachinesQuality[] = [
+                'machine_name' => $m['machine_name'],
+                'plant' => $m['plant'],
+                'total_ng' => $m['total_ng'],
+                'dominant_defect' => $domDefect,
+                'percentage' => $mShare,
+            ];
+        }
+
+        // Shift Summary
+        $totalShiftNg = array_sum($shiftCounts);
+        $shiftSummary = [];
+        $worstShiftNumber = 1;
+        $maxShiftNg = -1;
+        foreach ([1 => 'Shift 1 (Pagi)', 2 => 'Shift 2 (Sore)', 3 => 'Shift 3 (Malam)'] as $sNum => $sLabel) {
+            $sQty = $shiftCounts[$sNum] ?? 0;
+            $sPct = $totalShiftNg > 0 ? round(($sQty / $totalShiftNg) * 100, 1) : 0.0;
+            $shiftSummary[$sNum] = [
+                'shift_number' => $sNum,
+                'label' => $sLabel,
+                'total_ng' => $sQty,
+                'percentage' => $sPct,
+            ];
+            if ($sQty > $maxShiftNg) {
+                $maxShiftNg = $sQty;
+                $worstShiftNumber = $sNum;
+            }
+        }
+
+        return [
+            'total_ng' => $totalNg,
+            'total_actual' => $totalActual,
+            'ng_rate' => $ngRate,
+            'health_status' => $healthStatus,
+            'health_class' => $healthClass,
+            'dominant_defect' => ! empty($paretoDefects[0]) ? $paretoDefects[0]['name'] : '-',
+            'dominant_defect_qty' => ! empty($paretoDefects[0]) ? $paretoDefects[0]['total'] : 0,
+            'dominant_defect_pct' => ! empty($paretoDefects[0]) ? $paretoDefects[0]['percentage'] : 0.0,
+            'worst_shift' => "Shift {$worstShiftNumber}",
+            'worst_shift_label' => $shiftSummary[$worstShiftNumber]['label'] ?? "Shift {$worstShiftNumber}",
+            'worst_shift_qty' => $maxShiftNg,
+            'pareto_defects' => $paretoDefects,
+            'top_affected_parts' => $topAffectedParts,
+            'top_machines_quality' => $topMachinesQuality,
+            'shift_summary' => $shiftSummary,
+            'pareto_chart' => [
+                'labels' => $chartLabels,
+                'quantities' => $chartQuantities,
+                'cumulative' => $chartCumulative,
+            ],
+        ];
     }
 
     /**
@@ -1949,7 +2213,7 @@ class ProductionDashboardService
         ?int $machineUserId = null,
         bool $forceRefresh = false
     ): array {
-        $cacheKey = "production_yearly_dashboard_v2_{$year}_{$plant}_{$machineUserId}";
+        $cacheKey = "production_yearly_dashboard_v3_{$year}_{$plant}_{$machineUserId}";
 
         if ($forceRefresh) {
             Cache::forget($cacheKey);
@@ -2224,8 +2488,14 @@ class ProductionDashboardService
                 ];
             }
 
-            // Sort machines by Actual Output descending
-            usort($machineList, fn ($a, $b) => $b['actual'] <=> $a['actual']);
+            // Sort machines by Achievement Rate descending, with Actual Output as tie-breaker
+            usort($machineList, function ($a, $b) {
+                if ($b['achievement_rate'] != $a['achievement_rate']) {
+                    return $b['achievement_rate'] <=> $a['achievement_rate'];
+                }
+
+                return $b['actual'] <=> $a['actual'];
+            });
 
             // Top 3 Machines
             $topMachines = array_slice($machineList, 0, 3);
