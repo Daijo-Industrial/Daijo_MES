@@ -129,10 +129,119 @@ class WmsPalletSoTrackingTest extends TestCase
         // Verify modal content renders in HTML
         $component->assertSee('SO: SO-2026-999')
             ->assertSee('BOX-TEST-LBL-001')
-            ->assertSee('Detail Pengiriman dan Sales Order (SO)');
+            ->assertSee('Detail Pengiriman Barang ke Sales Order (SO)');
 
         // Close modal
         $component->call('closeSoModal');
         $component->assertSet('showSoModal', false);
+    }
+
+    public function test_partially_shipped_temporary_pallet_shows_button_and_tracks_both_shipped_and_remaining_boxes(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = MasterCustomerDelivery::firstOrCreate(
+            ['customer_code' => 'TVS-MTR-2'],
+            ['customer_name' => 'TVS MOTOR COMPANY INDONESIA PT.']
+        );
+
+        $item = MasterListItem::firstOrCreate(
+            ['item_code' => 'PART-TEMP-001'],
+            [
+                'item_name' => 'TEMPORARY ITEM TEST',
+                'customer_code' => $customer->customer_code,
+            ]
+        );
+
+        // Pallet without rack position (TEMPORARY), with 1 remaining active box
+        $pallet = WmsPalletForm::create([
+            'pallet_id' => 'PLT-TEMP-PARTIAL-001',
+            'position_id' => null,
+            'part_no' => $item->item_code,
+            'model_name' => $item->item_name,
+            'prod_date' => Carbon::now()->toDateString(),
+            'plant' => 'KBN',
+            'box_qty' => 1,
+            'total_pallet_qty' => 25,
+            'status' => 'STORED',
+        ]);
+
+        // Box 1: Shipped via SO
+        $boxShipped = WmsPalletFormDetail::create([
+            'pallet_form_id' => $pallet->pallet_id,
+            'part_no' => $item->item_code,
+            'model_name' => $item->item_name,
+            'spk_no' => 'SPK-TEMP-01',
+            'qty' => 25,
+            'warehouse' => 'FG',
+            'label' => 'BOX-SHIPPED-001',
+        ]);
+        $boxShipped->delete(); // Soft-deleted upon shipment
+
+        // Box 2: Still active on the pallet
+        $boxRemaining = WmsPalletFormDetail::create([
+            'pallet_form_id' => $pallet->pallet_id,
+            'part_no' => $item->item_code,
+            'model_name' => $item->item_name,
+            'spk_no' => 'SPK-TEMP-01',
+            'qty' => 25,
+            'warehouse' => 'FG',
+            'label' => 'BOX-REMAINING-002',
+        ]);
+
+        $so = SoData::firstOrCreate(
+            ['doc_num' => 'SO-TEMP-777'],
+            [
+                'customer' => $customer->customer_name,
+                'posting_date' => Carbon::now()->toDateString(),
+                'item_code' => $item->item_code,
+                'item_name' => $item->item_name,
+                'quantity' => 50,
+                'sales_uom' => 'PCS',
+                'packaging_quantity' => 25,
+                'sales_pack' => 'BOX',
+                'is_finish' => 0,
+                'is_done' => 0,
+                'create_date' => Carbon::now()->toDateString(),
+                'update_date' => Carbon::now()->toDateString(),
+                'update_fulltime' => 12345,
+            ]
+        );
+
+        ScannedData::create([
+            'doc_num' => $so->doc_num,
+            'item_code' => $item->item_code,
+            'spk_code' => 'SPK-TEMP-01',
+            'quantity' => 25,
+            'warehouse' => 'FG',
+            'label' => 'BOX-SHIPPED-001',
+        ]);
+
+        $component = Livewire::test(PalletFormIndex::class)
+            ->set('search', 'PLT-TEMP-PARTIAL-001');
+
+        // Pallet is TEMPORARY, but partially shipped: should show TEMPORARY, Assign Slot, and Terkirim Sebagian (SO) button
+        $component->assertSee('TEMPORARY (BELUM ADA TEMPAT)')
+            ->assertSee('Assign Slot')
+            ->assertSee('Terkirim Sebagian (SO)');
+
+        // Open modal
+        $component->call('openSoModal', $pallet->pallet_id);
+        $component->assertSet('showSoModal', true);
+
+        // Check data in modal
+        $data = $component->get('soDeliveryData');
+        $this->assertFalse($data['is_fully_shipped']);
+        $this->assertEquals(25, $data['shipped_qty']);
+        $this->assertEquals(25, $data['current_qty']);
+        $this->assertCount(1, $data['active_boxes']);
+        $this->assertEquals('BOX-REMAINING-002', $data['active_boxes'][0]['label']);
+
+        // Check HTML renders both shipped SO section and remaining boxes section
+        $component->assertSee('SO: SO-TEMP-777')
+            ->assertSee('BOX-SHIPPED-001')
+            ->assertSee('Sisa Box di Pallet (Belum Dikirim / Ready)')
+            ->assertSee('BOX-REMAINING-002');
     }
 }

@@ -658,11 +658,6 @@ class PalletFormIndex extends Component
                     'doc_num' => $docNum,
                     'customer' => $soData?->customer ?? $pallet->masterItem?->customer?->customer_name ?? 'Customer',
                     'posting_date' => $soData?->posting_date ? \Carbon\Carbon::parse($soData->posting_date)->format('d/m/Y') : '-',
-                    'item_code' => $soData?->item_code ?? $scan->item_code,
-                    'item_name' => $soData?->item_name ?? $pallet->model_name,
-                    'so_target_qty' => $soData?->quantity ?? null,
-                    'is_finish' => $soData?->is_finish ?? null,
-                    'is_done' => $soData?->is_done ?? null,
                     'pallet_shipped_qty' => 0,
                     'pallet_shipped_boxes' => 0,
                     'scan_dates' => [],
@@ -679,7 +674,7 @@ class PalletFormIndex extends Component
 
             $soGroups[$docNum]['boxes'][] = [
                 'label' => $scan->label,
-                'item_code' => $scan->item_code,
+                'item_code' => $scan->item_code ?: $pallet->part_no,
                 'spk_code' => $scan->spk_code,
                 'quantity' => $scan->quantity,
                 'warehouse' => $scan->warehouse,
@@ -697,17 +692,39 @@ class PalletFormIndex extends Component
                         'doc_num' => $docNum,
                         'customer' => $soData?->customer ?? $pallet->masterItem?->customer?->customer_name ?? 'Customer',
                         'posting_date' => $soData?->posting_date ? \Carbon\Carbon::parse($soData->posting_date)->format('d/m/Y') : '-',
-                        'item_code' => $soData?->item_code ?? $pallet->part_no,
-                        'item_name' => $soData?->item_name ?? $pallet->model_name,
-                        'so_target_qty' => $soData?->quantity ?? null,
-                        'is_finish' => $soData?->is_finish ?? null,
-                        'is_done' => $soData?->is_done ?? null,
                         'pallet_shipped_qty' => 0,
                         'pallet_shipped_boxes' => 0,
                         'scan_dates' => [$log->created_at ? $log->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-'],
                         'boxes' => [],
                         'log_note' => $log->notes,
                     ];
+                }
+
+                // If log has box label and qty, capture it if not already in boxes
+                if (preg_match('/Label:\s*([A-Za-z0-9\-]+)/i', $log->notes, $lblMatch)) {
+                    $lbl = $lblMatch[1];
+                    $matchedLabels[$lbl] = true;
+                    $alreadyInBoxes = collect($soGroups[$docNum]['boxes'])->contains('label', $lbl);
+                    if (! $alreadyInBoxes) {
+                        $logQty = 0;
+                        if (preg_match('/Qty:\s*([0-9\.]+)/i', $log->notes, $qMatch)) {
+                            $logQty = (float) $qMatch[1];
+                        }
+                        $logItem = $pallet->part_no;
+                        if (preg_match('/Item:\s*([A-Za-z0-9\.\-]+)/i', $log->notes, $iMatch)) {
+                            $logItem = $iMatch[1];
+                        }
+                        $soGroups[$docNum]['pallet_shipped_qty'] += $logQty;
+                        $soGroups[$docNum]['pallet_shipped_boxes'] += 1;
+                        $soGroups[$docNum]['boxes'][] = [
+                            'label' => $lbl,
+                            'item_code' => $logItem,
+                            'spk_code' => null,
+                            'quantity' => $logQty,
+                            'warehouse' => 'FG',
+                            'scanned_at' => $log->created_at ? $log->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-',
+                        ];
+                    }
                 }
             }
         }
@@ -806,7 +823,7 @@ class PalletFormIndex extends Component
             }
         }
 
-        $palletForms = WmsPalletForm::with(['position.rack.warehouse', 'details.item.customer', 'masterItem.customer'])
+        $palletForms = WmsPalletForm::with(['position.rack.warehouse', 'details.item.customer', 'masterItem.customer', 'allDetails'])
             ->where(function ($query) {
                 $query->where('pallet_id', 'like', '%' . $this->search . '%')
                     ->orWhere('part_no', 'like', '%' . $this->search . '%')
