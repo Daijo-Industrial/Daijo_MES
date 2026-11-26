@@ -244,4 +244,100 @@ class WmsPalletSoTrackingTest extends TestCase
             ->assertSee('Sisa Box di Pallet (Belum Dikirim / Ready)')
             ->assertSee('BOX-REMAINING-002');
     }
+
+    public function test_unshipped_pallet_does_not_match_so_even_if_box_label_exists_in_historical_scans_for_other_parts(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = MasterCustomerDelivery::firstOrCreate(
+            ['customer_code' => 'IKUYO-01'],
+            ['customer_name' => 'IKUYO INDONESIA PT']
+        );
+
+        $itemPallet = MasterListItem::firstOrCreate(
+            ['item_code' => '62040W060P-TEST'],
+            [
+                'item_name' => 'BRKT FR BMPR CTR ICE 4L45W 26MY',
+                'customer_code' => $customer->customer_code,
+            ]
+        );
+
+        $otherItem = MasterListItem::firstOrCreate(
+            ['item_code' => '62040B000P-TEST'],
+            [
+                'item_name' => 'OTHER BUMPER PART',
+                'customer_code' => $customer->customer_code,
+            ]
+        );
+
+        // Pallet with 8 active boxes (NOT trashed / NOT shipped)
+        $pallet = WmsPalletForm::create([
+            'pallet_id' => 'PLT-TEST-UNSHIPPED-0070',
+            'position_id' => null,
+            'part_no' => $itemPallet->item_code,
+            'model_name' => $itemPallet->item_name,
+            'prod_date' => Carbon::now()->toDateString(),
+            'plant' => 'KBN',
+            'box_qty' => 8,
+            'total_pallet_qty' => 16,
+            'status' => 'STORED',
+        ]);
+
+        // Box with generic label '2202', still active in pallet
+        WmsPalletFormDetail::create([
+            'pallet_form_id' => $pallet->pallet_id,
+            'part_no' => $itemPallet->item_code,
+            'model_name' => $itemPallet->item_name,
+            'spk_no' => 'SPK-CURRENT-01',
+            'qty' => 2,
+            'warehouse' => 'FG',
+            'label' => '2202',
+        ]);
+
+        // In history, there was a scan with label '2202', BUT for $otherItem under another SO
+        $soOld = SoData::firstOrCreate(
+            ['doc_num' => 'SO-OLD-HISTORICAL-999'],
+            [
+                'customer' => $customer->customer_name,
+                'posting_date' => Carbon::now()->subMonths(2)->toDateString(),
+                'item_code' => $otherItem->item_code,
+                'item_name' => $otherItem->item_name,
+                'quantity' => 100,
+                'sales_uom' => 'PCS',
+                'packaging_quantity' => 2,
+                'sales_pack' => 'BOX',
+                'is_finish' => 1,
+                'is_done' => 1,
+                'create_date' => Carbon::now()->toDateString(),
+                'update_date' => Carbon::now()->toDateString(),
+                'update_fulltime' => 12345,
+            ]
+        );
+
+        ScannedData::create([
+            'doc_num' => $soOld->doc_num,
+            'item_code' => $otherItem->item_code,
+            'spk_code' => 'SPK-OTHER-OLD',
+            'quantity' => 2,
+            'warehouse' => 'FG',
+            'label' => '2202',
+        ]);
+
+        $component = Livewire::test(PalletFormIndex::class)
+            ->call('openSoModal', $pallet->pallet_id);
+
+        $component->assertSet('showSoModal', true);
+
+        $data = $component->get('soDeliveryData');
+        $this->assertEquals(0, $data['shipped_qty']);
+        $this->assertEquals(16, $data['current_qty']);
+        // Must NOT match the historical scan from another part!
+        $this->assertEmpty($data['so_groups']);
+
+        // Assert clean UI rendering
+        $component->assertSee('BELUM ADA PENGIRIMAN (READY 16 PCS)')
+            ->assertSee('Belum ada barang yang dikirim dari palet ini.')
+            ->assertDontSee('SO-OLD-HISTORICAL-999');
+    }
 }
