@@ -633,22 +633,38 @@
                                 </td>
                                 <td class="px-6 py-4">
                                      @if($form->position && $form->total_pallet_qty > 0 && $form->status !== 'OUT')
-                                         <div class="flex items-center space-x-2">
-                                             <span class="px-3 py-1 bg-gray-800 text-white text-xs font-bold rounded-lg uppercase tracking-tight">
-                                                 {{ $form->position->position_code }}
-                                             </span>
-                                             <button wire:click="openAssignModal('{{ $form->pallet_id }}')" class="text-gray-400 hover:text-blue-600 p-1 cursor-pointer" title="Ubah Slot Rak">
-                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                             </button>
+                                         <div class="flex flex-col items-start gap-1">
+                                             <div class="flex items-center space-x-2">
+                                                 <span class="px-3 py-1 bg-gray-800 text-white text-xs font-bold rounded-lg uppercase tracking-tight">
+                                                     {{ $form->position->position_code }}
+                                                 </span>
+                                                 <button wire:click="openAssignModal('{{ $form->pallet_id }}')" class="text-gray-400 hover:text-blue-600 p-1 cursor-pointer" title="Ubah Slot Rak">
+                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                 </button>
+                                             </div>
+                                             @if($form->allDetails->contains(fn($d) => $d->trashed()))
+                                                 <button wire:click="openSoModal('{{ $form->pallet_id }}')" class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold rounded-md transition cursor-pointer" title="Lihat barang yang sudah dikirim">
+                                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                     Terkirim Sebagian (SO)
+                                                 </button>
+                                             @endif
                                          </div>
                                      @elseif($form->total_pallet_qty > 0 && $form->status !== 'OUT')
-                                         <div class="flex items-center space-x-2">
-                                             <span class="px-2.5 py-1 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold rounded-lg uppercase tracking-tight">
-                                                 TEMPORARY (BELUM ADA TEMPAT)
-                                             </span>
-                                             <button wire:click="openAssignModal('{{ $form->pallet_id }}')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer">
-                                                 Assign Slot
-                                             </button>
+                                         <div class="flex flex-col items-start gap-1">
+                                             <div class="flex items-center space-x-2">
+                                                 <span class="px-2.5 py-1 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold rounded-lg uppercase tracking-tight">
+                                                     TEMPORARY (BELUM ADA TEMPAT)
+                                                 </span>
+                                                 <button wire:click="openAssignModal('{{ $form->pallet_id }}')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer">
+                                                     Assign Slot
+                                                 </button>
+                                             </div>
+                                             @if($form->allDetails->contains(fn($d) => $d->trashed()))
+                                                 <button wire:click="openSoModal('{{ $form->pallet_id }}')" class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold rounded-md transition cursor-pointer" title="Lihat barang yang sudah dikirim dari palet temporary ini">
+                                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                     Terkirim Sebagian (SO)
+                                                 </button>
+                                             @endif
                                          </div>
                                      @else
                                          <div class="flex flex-col items-start gap-1">
@@ -713,7 +729,7 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <h3 class="text-base font-bold text-gray-900">
-                                Detail Pengiriman dan Sales Order (SO)
+                                Detail Pengiriman Barang ke Sales Order (SO)
                             </h3>
                             @if($soDeliveryData['is_fully_shipped'])
                                 <span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold rounded-md">
@@ -726,7 +742,7 @@
                             @endif
                         </div>
                         <p class="text-xs text-gray-500 mt-0.5 font-mono">
-                            Pallet ID: <strong class="text-gray-800">{{ $soDeliveryData['pallet_id'] }}</strong>
+                            Pallet ID: <strong class="text-gray-800">{{ $soDeliveryData['pallet_id'] }}</strong> | Part No: <strong class="text-gray-800">{{ $soDeliveryData['part_no'] }}</strong>
                         </p>
                     </div>
                     <button wire:click="closeSoModal" class="text-gray-400 hover:text-gray-600 font-bold text-2xl cursor-pointer">&times;</button>
@@ -771,10 +787,10 @@
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                            Daftar Sales Order (SO) Terhubung
+                            Daftar Pengiriman per Sales Order (Barang dari Pallet Ini)
                         </h4>
                         <span class="text-[11px] text-gray-500 font-medium">
-                            {{ count($soDeliveryData['so_groups']) }} Sales Order terdeteksi
+                            {{ count($soDeliveryData['so_groups']) }} Sales Order terhubung
                         </span>
                     </div>
 
@@ -792,20 +808,14 @@
                                             <span class="text-[11px] text-indigo-700">Tanggal Posting: {{ $soGroup['posting_date'] }}</span>
                                         </div>
                                     </div>
-                                    <div class="flex items-center gap-4 text-xs font-mono">
-                                        <div>
-                                            <span class="text-[10px] text-gray-500 block uppercase font-sans">Target SO</span>
-                                            <span class="font-bold text-gray-800">{{ $soGroup['so_target_qty'] !== null ? number_format($soGroup['so_target_qty'], 0) . ' pcs' : '-' }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-[10px] text-gray-500 block uppercase font-sans">Dikirim dr Pallet Ini</span>
-                                            <span class="font-bold text-emerald-700">{{ number_format($soGroup['pallet_shipped_qty'], 0) }} pcs ({{ $soGroup['pallet_shipped_boxes'] }} Box)</span>
-                                        </div>
-                                        @if($soGroup['is_finish'] || $soGroup['is_done'])
-                                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[10px] rounded uppercase font-sans">
-                                                SO Selesai
+                                    <div class="flex items-center gap-3 text-xs font-mono">
+                                        <div class="text-right">
+                                            <span class="text-[10px] text-gray-500 block uppercase font-sans font-semibold">Terkirim dari Pallet Ini</span>
+                                            <span class="font-bold text-emerald-700 text-sm">
+                                                {{ number_format($soGroup['pallet_shipped_qty'], 0) }} pcs
+                                                <span class="text-xs text-gray-500 font-normal">({{ $soGroup['pallet_shipped_boxes'] }} Box)</span>
                                             </span>
-                                        @endif
+                                        </div>
                                     </div>
                                 </div>
 
@@ -816,6 +826,7 @@
                                             <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100 sticky top-0">
                                                 <tr>
                                                     <th class="px-3.5 py-2">Barcode Box / Label</th>
+                                                    <th class="px-3.5 py-2">Part No</th>
                                                     <th class="px-3.5 py-2">No. SPK</th>
                                                     <th class="px-3.5 py-2">Qty (Pcs)</th>
                                                     <th class="px-3.5 py-2">Waktu Scan Out</th>
@@ -826,6 +837,7 @@
                                                 @foreach($soGroup['boxes'] as $box)
                                                     <tr class="hover:bg-slate-50/60 font-mono">
                                                         <td class="px-3.5 py-2 font-bold text-indigo-900">{{ $box['label'] }}</td>
+                                                        <td class="px-3.5 py-2 text-slate-700 font-semibold">{{ $box['item_code'] }}</td>
                                                         <td class="px-3.5 py-2 text-slate-600">{{ $box['spk_code'] ?: '-' }}</td>
                                                         <td class="px-3.5 py-2 font-bold text-emerald-700">{{ number_format($box['quantity'], 0) }}</td>
                                                         <td class="px-3.5 py-2 text-slate-600">{{ $box['scanned_at'] }}</td>
@@ -870,6 +882,44 @@
                                                 <td class="px-3 py-1.5">{{ $ubox['spk_no'] ?: '-' }}</td>
                                                 <td class="px-3 py-1.5 font-bold text-amber-800">{{ number_format($ubox['qty'], 0) }}</td>
                                                 <td class="px-3 py-1.5">{{ $ubox['deleted_at'] }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Active Remaining Boxes (if any still on pallet) -->
+                    @if(!empty($soDeliveryData['active_boxes']))
+                        <div class="border border-blue-200 rounded-2xl overflow-hidden bg-blue-50/20 p-3.5">
+                            <div class="flex items-center justify-between mb-2">
+                                <h5 class="text-xs font-bold text-blue-950 uppercase tracking-tight">
+                                    Sisa Box di Pallet (Belum Dikirim / Ready)
+                                </h5>
+                                <span class="text-[11px] font-mono font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">
+                                    {{ count($soDeliveryData['active_boxes']) }} Box ({{ number_format(collect($soDeliveryData['active_boxes'])->sum('qty'), 0) }} pcs)
+                                </span>
+                            </div>
+                            <div class="overflow-x-auto max-h-48 overflow-y-auto">
+                                <table class="w-full text-left text-xs border-collapse">
+                                    <thead class="bg-blue-100/60 text-blue-900 font-semibold border-b border-blue-200 sticky top-0">
+                                        <tr>
+                                            <th class="px-3 py-1.5">Barcode Box</th>
+                                            <th class="px-3 py-1.5">Part No</th>
+                                            <th class="px-3 py-1.5">No SPK</th>
+                                            <th class="px-3 py-1.5">Qty</th>
+                                            <th class="px-3 py-1.5">Gudang</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-blue-100 text-slate-700 font-mono text-[11px]">
+                                        @foreach($soDeliveryData['active_boxes'] as $abox)
+                                            <tr class="hover:bg-blue-50/50">
+                                                <td class="px-3 py-1.5 font-bold text-blue-950">{{ $abox['label'] }}</td>
+                                                <td class="px-3 py-1.5">{{ $abox['part_no'] }}</td>
+                                                <td class="px-3 py-1.5">{{ $abox['spk_no'] ?: '-' }}</td>
+                                                <td class="px-3 py-1.5 font-bold text-blue-800">{{ number_format($abox['qty'], 0) }}</td>
+                                                <td class="px-3 py-1.5 text-slate-500">{{ $abox['warehouse'] ?: '-' }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>
