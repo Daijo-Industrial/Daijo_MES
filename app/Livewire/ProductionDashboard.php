@@ -37,6 +37,8 @@ class ProductionDashboard extends Component
 
     public $showItemCodeDropdown = false;
 
+    public string $ngSourceType = 'all'; // 'all', 'production', 'adjuster'
+
     public array $chartData = [];
 
     public array $summary = [];
@@ -321,7 +323,23 @@ class ProductionDashboard extends Component
 
         $this->dispatch('chartDataUpdated', chartData: $this->chartData);
         $this->dispatch('adjusterChartDataUpdated', adjusterChartData: $data['adjuster_ng_trend'] ?? []);
-        $this->dispatch('ngParetoChartUpdated', paretoData: $data['ng_executive_summary']['pareto_chart'] ?? []);
+
+        $execSummary = $data['ng_executive_summary'] ?? [];
+        $activePareto = $execSummary['modes'][$this->ngSourceType]['pareto_chart']
+            ?? ($execSummary['pareto_chart'] ?? []);
+        $this->dispatch('ngParetoChartUpdated', paretoData: $activePareto);
+    }
+
+    public function setNgSourceType(string $type)
+    {
+        if (in_array($type, ['all', 'production', 'adjuster'], true)) {
+            $this->ngSourceType = $type;
+            $data = $this->getDashboardData();
+            $execSummary = $data['ng_executive_summary'] ?? [];
+            $activePareto = $execSummary['modes'][$this->ngSourceType]['pareto_chart']
+                ?? ($execSummary['pareto_chart'] ?? []);
+            $this->dispatch('ngParetoChartUpdated', paretoData: $activePareto);
+        }
     }
 
     public function refreshData()
@@ -428,12 +446,20 @@ class ProductionDashboard extends Component
     {
         $data = $this->getDashboardData();
 
+        $execData = $data['ng_executive_summary'] ?? [];
+        $activeExec = $execData['modes'][$this->ngSourceType] ?? $execData;
+        $activeExec['active_mode'] = $this->ngSourceType;
+        $activeExec['total_combined_ng'] = $execData['total_combined_ng'] ?? $execData['total_ng'] ?? 0;
+        $activeExec['total_production_ng'] = $execData['total_production_ng'] ?? 0;
+        $activeExec['total_adjuster_ng'] = $execData['total_adjuster_ng'] ?? 0;
+        $activeExec['modes'] = $execData['modes'] ?? [];
+
         return view('livewire.Production-dashboard', array_merge([
             'summary' => $this->summary,
             'chartData' => $this->chartData,
             'purgingDetails' => $data['purging_details'] ?? [],
             'ngBreakdown' => $data['ng_breakdown'] ?? [],
-            'ngExecutiveSummary' => $data['ng_executive_summary'] ?? [],
+            'ngExecutiveSummary' => $activeExec,
             'downtimeAnalysis' => $data['downtime_analysis'] ?? [],
             'topRemarks' => $data['top_remarks'] ?? [],
             'machineWorkingHours' => $data['machine_working_hours'] ?? [],

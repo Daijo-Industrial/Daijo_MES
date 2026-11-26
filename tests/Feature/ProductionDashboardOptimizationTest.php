@@ -1119,9 +1119,55 @@ class ProductionDashboardOptimizationTest extends TestCase
         $this->assertCount(1, $kbnData['ng_executive_summary']['top_affected_parts']);
         $this->assertEquals('ITEM-KBN-002', $kbnData['ng_executive_summary']['top_affected_parts'][0]['item_code']);
 
-        // Query with All Plants
+        // Query with All Plants (Production only so far: 50 + 30 = 80)
         $allData = $service->getAllDashboardData($date, $date, null, null, '', null, true);
         $this->assertEquals(80, $allData['ng_executive_summary']['total_ng']);
         $this->assertCount(2, $allData['ng_executive_summary']['top_affected_parts']);
+
+        // 3. Add Adjuster Setting Log (20 pcs NG) on Karawang machine
+        $adjLog = AdjustMachineLog::create([
+            'user_id' => $krwMachine->id,
+            'item_code' => 'ITEM-KRW-001',
+            'pic' => 'Haerul Anwar',
+        ]);
+        $adjLog->created_at = $date->copy()->setTime(9, 30)->toDateTimeString();
+        $adjLog->save();
+
+        \App\Models\AdjustMachineNgDetail::create([
+            'adjust_machine_log_id' => $adjLog->id,
+            'ng_type_id' => $ngTypeGas->id,
+            'ng_quantity' => 20,
+            'ng_remarks' => 'Setting parameter nozzle',
+        ]);
+
+        // Re-query: Verify 3-way segregation (all, production, adjuster)
+        $segregatedData = $service->getAllDashboardData($date, $date, null, null, '', null, true);
+        $execSummary = $segregatedData['ng_executive_summary'];
+
+        // Mode 'all': 80 (prod) + 20 (adj) = 100 pcs
+        $this->assertEquals(100, $execSummary['modes']['all']['total_ng']);
+        $this->assertEquals(100, $execSummary['total_combined_ng']);
+
+        // Mode 'production': only 80 pcs
+        $this->assertEquals(80, $execSummary['modes']['production']['total_ng']);
+        $this->assertEquals(80, $execSummary['total_production_ng']);
+
+        // Mode 'adjuster': only 20 pcs
+        $this->assertEquals(20, $execSummary['modes']['adjuster']['total_ng']);
+        $this->assertEquals(20, $execSummary['total_adjuster_ng']);
+
+        // 4. Test Livewire switching between 3 modes
+        Livewire::test(ProductionDashboard::class)
+            ->set('viewType', 'daily')
+            ->set('selectedDate', $date->toDateString())
+            ->call('setNgSourceType', 'production')
+            ->assertSet('ngSourceType', 'production')
+            ->assertDispatched('ngParetoChartUpdated')
+            ->call('setNgSourceType', 'adjuster')
+            ->assertSet('ngSourceType', 'adjuster')
+            ->assertDispatched('ngParetoChartUpdated')
+            ->call('setNgSourceType', 'all')
+            ->assertSet('ngSourceType', 'all')
+            ->assertDispatched('ngParetoChartUpdated');
     }
 }
