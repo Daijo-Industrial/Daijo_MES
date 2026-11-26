@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\DailyItemCode;
 use App\Models\HourlyRemark;
 use App\Models\OperatorUser;
+use App\Models\ProductionNgDetail;
+use App\Models\ProductionNgType;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -139,6 +141,21 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
         Schema::create('branches', function ($table) {
             $table->id();
             $table->string('name')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('production_ng_types', function ($table) {
+            $table->id();
+            $table->string('ng_type');
+            $table->timestamps();
+        });
+
+        Schema::create('production_ng_details', function ($table) {
+            $table->id();
+            $table->integer('hourly_remark_id');
+            $table->integer('ng_type_id');
+            $table->integer('ng_quantity');
+            $table->string('ng_remarks')->nullable();
             $table->timestamps();
         });
     }
@@ -557,5 +574,183 @@ class AdminOperatorManualHourlyRemarksTest extends TestCase
         $remark->refresh();
         $this->assertEquals(37, $remark->target);
         $this->assertEquals(1, $remark->is_achieve);
+    }
+
+    public function test_adminoperator_can_fetch_ng_details_and_render_ng_column(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $user = User::create([
+            'name' => 'Mesin 0850D',
+            'email' => 'mesin_ng@daijo.co.id',
+            'password' => bcrypt('password'),
+            'role_id' => $role->id,
+        ]);
+        $this->actingAs($user);
+
+        $ngType = ProductionNgType::create(['ng_type' => 'GASMARK']);
+        $dic = DailyItemCode::create([
+            'user_id' => $user->id,
+            'item_code' => '401-62040-C000P',
+            'shift' => 1,
+            'start_date' => Carbon::today()->toDateString(),
+        ]);
+
+        $remark = HourlyRemark::create([
+            'dic_id' => $dic->id,
+            'start_time' => '07:30:00',
+            'end_time' => '08:30:00',
+            'target' => 100,
+            'actual_production' => 95,
+            'NG' => 5,
+            'pic' => 'Egi Gustian',
+        ]);
+
+        ProductionNgDetail::create([
+            'hourly_remark_id' => $remark->id,
+            'ng_type_id' => $ngType->id,
+            'ng_quantity' => 5,
+            'ng_remarks' => 'Gasmark di bagian bawah',
+        ]);
+
+        // 1. Check view renders NG column and badges
+        $viewResponse = $this->get(route('adminoperator'));
+        $viewResponse->assertStatus(200);
+        $viewResponse->assertSee('GASMARK: 5');
+        $viewResponse->assertSee('Kelola NG');
+
+        // 2. Fetch JSON ng details
+        $jsonResponse = $this->getJson("/hourly-remark/{$remark->id}/ng-details");
+        $jsonResponse->assertStatus(200);
+        $jsonResponse->assertJson([
+            'success' => true,
+            'hourly_remark_id' => $remark->id,
+            'total_ng' => 5,
+        ]);
+        $this->assertCount(1, $jsonResponse->json('ng_details'));
+        $this->assertEquals('GASMARK', $jsonResponse->json('ng_details.0.ng_type_name'));
+    }
+
+    public function test_operator_can_add_edit_and_delete_ng_detail(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'OPERATOR']);
+        $user = User::create([
+            'name' => 'Mesin 0850D',
+            'email' => 'operator_ng_crud@daijo.co.id',
+            'password' => bcrypt('password'),
+            'role_id' => $role->id,
+        ]);
+        $this->actingAs($user);
+
+        $type1 = ProductionNgType::create(['ng_type' => 'BLACKDOT']);
+        $type2 = ProductionNgType::create(['ng_type' => 'SHORTMOULD']);
+
+        $dic = DailyItemCode::create([
+            'user_id' => $user->id,
+            'item_code' => '401-62040-C000P',
+            'shift' => 1,
+            'start_date' => Carbon::today()->toDateString(),
+        ]);
+
+        $remark = HourlyRemark::create([
+            'dic_id' => $dic->id,
+            'start_time' => '07:30:00',
+            'end_time' => '08:30:00',
+            'target' => 100,
+            'actual_production' => 90,
+            'NG' => 0,
+            'pic' => 'Egi Gustian',
+        ]);
+
+        // 1. ADD NG
+        $addRes = $this->postJson("/hourly-remark/{$remark->id}/add-ng", [
+            'ng_type_id' => $type1->id,
+            'ng_quantity' => 4,
+            'ng_remarks' => 'Titik hitam',
+        ]);
+        $addRes->assertStatus(200);
+        $addRes->assertJson(['success' => true, 'total_ng' => 4]);
+
+        $remark->refresh();
+        $this->assertEquals(4, $remark->NG);
+        $this->assertDatabaseHas('production_ng_details', [
+            'hourly_remark_id' => $remark->id,
+            'ng_type_id' => $type1->id,
+            'ng_quantity' => 4,
+        ]);
+
+        $ngDetail = ProductionNgDetail::where('hourly_remark_id', $remark->id)->first();
+
+        // 2. EDIT NG
+        $updateRes = $this->putJson("/ng-detail/{$ngDetail->id}", [
+            'ng_type_id' => $type2->id,
+            'ng_quantity' => 7,
+            'ng_remarks' => 'Diubah jadi shortmould',
+        ]);
+        $updateRes->assertStatus(200);
+        $updateRes->assertJson(['success' => true, 'total_ng' => 7]);
+
+        $remark->refresh();
+        $this->assertEquals(7, $remark->NG);
+        $this->assertDatabaseHas('production_ng_details', [
+            'id' => $ngDetail->id,
+            'ng_type_id' => $type2->id,
+            'ng_quantity' => 7,
+        ]);
+
+        // 3. DELETE NG
+        $deleteRes = $this->deleteJson("/ng-detail/{$ngDetail->id}");
+        $deleteRes->assertStatus(200);
+        $deleteRes->assertJson(['success' => true, 'total_ng' => 0]);
+
+        $remark->refresh();
+        $this->assertEquals(0, $remark->NG);
+        $this->assertDatabaseMissing('production_ng_details', [
+            'id' => $ngDetail->id,
+        ]);
+    }
+
+    public function test_admin_user_can_access_adminoperator_and_switch_machine(): void
+    {
+        $adminRole = Role::firstOrCreate(['name' => 'ADMIN']);
+        $opRole = Role::firstOrCreate(['name' => 'OPERATOR']);
+
+        $admin = User::create([
+            'name' => 'Administrator',
+            'email' => 'admin_user@daijo.co.id',
+            'password' => bcrypt('password'),
+            'role_id' => $adminRole->id,
+        ]);
+
+        $machine1 = User::create([
+            'name' => '0850B',
+            'email' => '0850b@daijo.co.id',
+            'password' => bcrypt('password'),
+            'role_id' => $opRole->id,
+        ]);
+
+        $machine2 = User::create([
+            'name' => '0850D',
+            'email' => '0850d_machine@daijo.co.id',
+            'password' => bcrypt('password'),
+            'role_id' => $opRole->id,
+        ]);
+
+        DailyItemCode::create([
+            'user_id' => $machine2->id,
+            'item_code' => 'ITEM-0850D-TEST',
+            'shift' => 1,
+            'start_date' => Carbon::today()->toDateString(),
+        ]);
+
+        $this->actingAs($admin);
+
+        // Access without param defaults to first operator or machine
+        $res = $this->get(route('adminoperator'));
+        $res->assertStatus(200);
+
+        // Access with ?user_id for machine2
+        $resMachine2 = $this->get(route('adminoperator', ['user_id' => $machine2->id]));
+        $resMachine2->assertStatus(200);
+        $resMachine2->assertSee('ITEM-0850D-TEST');
     }
 }

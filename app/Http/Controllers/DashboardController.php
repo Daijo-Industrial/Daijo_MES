@@ -30,6 +30,7 @@ use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Milon\Barcode\DNS1D;
 
 class DashboardController extends Controller
@@ -523,10 +524,11 @@ class DashboardController extends Controller
         HourlyRemark::where('id', $id)
             ->update(['NG' => $totalNg]);
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'NG added successfully!',
+                'total_ng' => $totalNg,
             ]);
         }
 
@@ -548,6 +550,12 @@ class DashboardController extends Controller
     // function untuk update ng detail (operator)
     public function updateNgDetail(Request $request, $id)
     {
+        $request->validate([
+            'ng_quantity' => 'required|integer|min:1',
+            'ng_type_id' => 'required|integer',
+            'ng_remarks' => 'nullable|string',
+        ]);
+
         try {
             $ng = ProductionNgDetail::findOrFail($id);
 
@@ -558,19 +566,25 @@ class DashboardController extends Controller
             ]);
 
             // Update total NG di hourly remark
-            $ng->hourlyRemark->update([
-                'NG' => $ng->hourlyRemark->ngDetails()->sum('ng_quantity'),
-            ]);
+            $totalNg = 0;
+            if ($ng->hourlyRemark) {
+                $totalNg = (int) $ng->hourlyRemark->ngDetails()->sum('ng_quantity');
+                $ng->hourlyRemark->update([
+                    'NG' => $totalNg,
+                ]);
+            }
 
-            // Return JSON response bukan back()
             return response()->json([
                 'success' => true,
                 'message' => 'NG updated successfully',
+                'total_ng' => $totalNg,
+                'hourly_remark_id' => $ng->hourly_remark_id,
+                'ng_detail' => $ng->fresh(['ngType']),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update NG',
+                'message' => 'Failed to update NG: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -581,24 +595,53 @@ class DashboardController extends Controller
         try {
             $ng = ProductionNgDetail::findOrFail($id);
             $hourly = $ng->hourlyRemark;
+            $hourlyRemarkId = $ng->hourly_remark_id;
 
             $ng->delete();
 
             // Update total
-            $hourly->update([
-                'NG' => $hourly->ngDetails()->sum('ng_quantity'),
-            ]);
+            $totalNg = 0;
+            if ($hourly) {
+                $totalNg = (int) $hourly->ngDetails()->sum('ng_quantity');
+                $hourly->update([
+                    'NG' => $totalNg,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'NG deleted successfully',
+                'total_ng' => $totalNg,
+                'hourly_remark_id' => $hourlyRemarkId,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete NG',
+                'message' => 'Failed to delete NG: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    // function untuk get ng details of an hourly remark (JSON)
+    public function getHourlyRemarkNgDetails($id)
+    {
+        $remark = HourlyRemark::with('ngDetails.ngType')->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'hourly_remark_id' => $remark->id,
+            'total_ng' => (int) ($remark->NG ?? 0),
+            'ng_details' => $remark->ngDetails->map(function ($detail) {
+                return [
+                    'id' => $detail->id,
+                    'hourly_remark_id' => $detail->hourly_remark_id,
+                    'ng_type_id' => $detail->ng_type_id,
+                    'ng_type_name' => $detail->ngType?->ng_type ?? 'Unknown',
+                    'ng_quantity' => (int) $detail->ng_quantity,
+                    'ng_remarks' => $detail->ng_remarks ?? '',
+                ];
+            }),
+        ]);
     }
 
     // function untuk update remark & operator pic & actual (operator)
@@ -2361,24 +2404,34 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        if (! $user->hasRole('OPERATOR')) {
-            return redirect()->back()->with('error', 'Akses ditolak: hanya operator yang bisa membuka halaman ini.');
+        $isAdmin = $user->hasRole('ADMIN') || $user->hasRole('SUPER-ADMIN') || $user->can('view-production-links');
+
+        if (! $user->hasRole('OPERATOR') && ! $isAdmin) {
+            return redirect()->back()->with('error', 'Akses ditolak: hanya operator atau admin yang bisa membuka halaman ini.');
         }
 
         $today = now()->toDateString();
         $yesterday = now()->subDay()->toDateString();
         $tomorrow = now()->addDay()->toDateString();
 
-        $datas = DailyItemCode::where('user_id', $user->id)
+        $targetUserId = ($isAdmin && request('user_id'))
+            ? request('user_id')
+            : ($user->hasRole('OPERATOR') ? $user->id : (User::whereHas('role', fn ($q) => $q->where('name', 'OPERATOR'))->value('id') ?? $user->id));
+
+        $targetUser = User::find($targetUserId) ?? $user;
+
+        $datas = DailyItemCode::where('user_id', $targetUserId)
             ->whereIn('start_date', [$yesterday, $today, $tomorrow])
-            ->with('hourlyRemarks', 'scannedData')
+            ->with(['hourlyRemarks.ngDetails.ngType', 'scannedData'])
             ->orderBy('start_date', 'desc')
             ->orderBy('start_time', 'desc')
             ->get();
 
         $operators = OperatorUser::orderBy('name', 'asc')->get();
+        $ngTypes = Schema::hasTable('production_ng_types') ? ProductionNgType::orderBy('ng_type', 'asc')->get() : collect();
+        $machineUsers = $isAdmin ? User::whereHas('role', fn ($q) => $q->where('name', 'OPERATOR'))->orderBy('name', 'asc')->get() : collect();
 
-        return view('dashboards.adminoperator', compact('datas', 'operators'));
+        return view('dashboards.adminoperator', compact('datas', 'operators', 'ngTypes', 'targetUser', 'machineUsers', 'isAdmin'));
     }
 
     // function untuk membuat data operator baru

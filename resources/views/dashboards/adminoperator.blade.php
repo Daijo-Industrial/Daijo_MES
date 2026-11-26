@@ -3,13 +3,28 @@
         <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
             <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
                 <span>📅 Jadwal Produksi Operator - Mesin:</span>
-                <span class="text-blue-600 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200">{{ auth()->user()->name }}</span>
+                <span class="text-blue-600 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200">{{ $targetUser->name ?? auth()->user()->name }}</span>
             </h1>
 
-            <button onclick="toggleAddForm()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow-sm transition-all duration-150 flex items-center gap-1.5 cursor-pointer">
-                <span>➕</span> Tambah Daily Item
-            </button>
+            <div class="flex items-center gap-3">
+                @if (!empty($isAdmin) && isset($machineUsers) && $machineUsers->isNotEmpty())
+                    <form method="GET" action="{{ route('adminoperator') }}" class="flex items-center gap-2">
+                        <label for="machine_select" class="text-xs font-semibold text-gray-700">Pilih Mesin:</label>
+                        <select id="machine_select" name="user_id" onchange="this.form.submit()" class="text-xs border border-gray-300 rounded-xl px-2.5 py-2 bg-white font-medium focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer">
+                            @foreach ($machineUsers as $mUser)
+                                <option value="{{ $mUser->id }}" {{ (string)$mUser->id === (string)($targetUser->id ?? '') ? 'selected' : '' }}>
+                                    {{ $mUser->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </form>
+                @endif
+
+                <button onclick="toggleAddForm()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow-sm transition-all duration-150 flex items-center gap-1.5 cursor-pointer">
+                    <span>➕</span> Tambah Daily Item
+                </button>
+            </div>
         </div>
 
         {{-- Flash messages --}}
@@ -40,7 +55,7 @@
 
                 <form method="POST" action="{{ route('dicadmin.store') }}">
                     @csrf
-                    <input type="hidden" name="user_id" value="{{ Auth::user()->id }}">
+                    <input type="hidden" name="user_id" value="{{ $targetUser->id ?? Auth::user()->id }}">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Item Code Dropdown AJAX -->
@@ -451,6 +466,138 @@
             </div>
         </div>
 
+        <!-- ============================================================== -->
+        <!-- MODAL: Kelola NG (Defect) Hourly Remark                       -->
+        <!-- ============================================================== -->
+        <div id="ngManagementModal" class="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center hidden p-4">
+            <div class="bg-white rounded-2xl w-full max-w-xl p-6 shadow-2xl max-h-[90vh] flex flex-col">
+                <!-- Header -->
+                <div class="flex justify-between items-start pb-3 border-b mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800">Kelola NG (Defect)</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            Slot: <strong id="ng_modal_slot_time" class="text-gray-700"></strong> | 
+                            Item: <strong id="ng_modal_item_code" class="text-blue-700"></strong> | 
+                            Total NG: <span id="ng_modal_total_display" class="font-bold text-rose-600 font-mono">0</span> pcs
+                        </p>
+                    </div>
+                    <button type="button" onclick="closeNgModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold cursor-pointer">
+                        &times;
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto space-y-5 pr-1">
+                    <!-- 1. Daftar NG yang sudah ada -->
+                    <div>
+                        <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Daftar NG Terdata</h3>
+                        <div id="ng_details_loading" class="text-center py-4 text-xs text-gray-500 hidden">
+                            Memuat data NG...
+                        </div>
+                        <div id="ng_details_empty" class="text-center py-4 bg-gray-50 border border-dashed border-gray-200 rounded-xl text-xs text-gray-500 hidden">
+                            Belum ada data NG untuk jam ini.
+                        </div>
+                        <div id="ng_details_table_wrapper" class="overflow-hidden border border-gray-200 rounded-xl hidden">
+                            <table class="min-w-full text-xs divide-y divide-gray-200">
+                                <thead class="bg-gray-50 text-gray-600 font-semibold">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Jenis Defect</th>
+                                        <th class="px-3 py-2 text-left">Qty</th>
+                                        <th class="px-3 py-2 text-left">Remark</th>
+                                        <th class="px-3 py-2 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ng_details_tbody" class="divide-y divide-gray-100 bg-white">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 2. Form Tambah NG Baru -->
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                        <h3 class="text-xs font-bold text-gray-800 uppercase tracking-wider mb-3">Tambah NG Baru</h3>
+                        <form id="addNgForm" onsubmit="submitAddNg(event)">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Jenis Defect <span class="text-rose-500">*</span></label>
+                                    <select id="add_ng_type_id" name="ng_type_id" required class="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500 bg-white">
+                                        <option value="">-- Pilih Jenis NG --</option>
+                                        @foreach ($ngTypes ?? [] as $type)
+                                            <option value="{{ $type->id }}">{{ $type->ng_type }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Jumlah (Qty) <span class="text-rose-500">*</span></label>
+                                    <input type="number" id="add_ng_quantity" name="ng_quantity" min="1" required class="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500 bg-white" placeholder="Contoh: 5">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Keterangan / Remarks</label>
+                                <input type="text" id="add_ng_remarks" name="ng_remarks" class="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500 bg-white" placeholder="Opsional (misal: baret di bagian tepi)">
+                            </div>
+                            <div class="flex justify-end">
+                                <button type="submit" id="btn_submit_add_ng" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition shadow-sm cursor-pointer flex items-center gap-1.5">
+                                    <span>Simpan NG</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="pt-3 border-t mt-4 flex justify-end">
+                    <button type="button" onclick="closeNgModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition text-xs font-semibold cursor-pointer">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- MODAL: Edit Defect (NG Detail)                                 -->
+        <!-- ============================================================== -->
+        <div id="editNgDetailModal" class="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center hidden p-4">
+            <div class="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl">
+                <div class="flex justify-between items-center pb-2 border-b mb-3">
+                    <h3 class="text-sm font-bold text-gray-800">Edit Data NG</h3>
+                    <button type="button" onclick="closeEditNgDetailModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer">
+                        &times;
+                    </button>
+                </div>
+                <form id="editNgDetailForm" onsubmit="submitUpdateNg(event)">
+                    <input type="hidden" id="edit_ng_detail_id" name="id">
+                    <div class="space-y-3 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Jenis Defect <span class="text-rose-500">*</span></label>
+                            <select id="edit_ng_type_id" name="ng_type_id" required class="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500 bg-white">
+                                <option value="">-- Pilih Jenis NG --</option>
+                                @foreach ($ngTypes ?? [] as $type)
+                                    <option value="{{ $type->id }}">{{ $type->ng_type }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Jumlah (Qty) <span class="text-rose-500">*</span></label>
+                            <input type="number" id="edit_ng_quantity" name="ng_quantity" min="1" required class="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500 bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Keterangan / Remarks</label>
+                            <input type="text" id="edit_ng_remarks" name="ng_remarks" class="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500 bg-white">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2 border-t">
+                        <button type="button" onclick="closeEditNgDetailModal()" class="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition text-xs font-semibold cursor-pointer">
+                            Batal
+                        </button>
+                        <button type="submit" id="btn_submit_update_ng" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs px-4 py-1.5 rounded-lg transition shadow-sm cursor-pointer">
+                            Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         @if ($datas->isEmpty())
             <div class="bg-white rounded-2xl p-8 text-center border border-gray-200 shadow-sm my-6">
                 <span class="text-4xl block mb-2">📭</span>
@@ -639,6 +786,7 @@
                                                                     <th class="px-3 py-2 text-left">Target</th>
                                                                     <th class="px-3 py-2 text-left">Scan</th>
                                                                     <th class="px-3 py-2 text-left">Actual</th>
+                                                                    <th class="px-3 py-2 text-left">NG</th>
                                                                     <th class="px-3 py-2 text-left">Operator (PIC)</th>
                                                                     <th class="px-3 py-2 text-left">Remark</th>
                                                                     <th class="px-3 py-2 text-left">Action</th>
@@ -709,6 +857,26 @@
                                                                         <td class="px-3 py-2">
                                                                             <span x-show="!editing" class="font-bold text-emerald-700" x-text="displayActual"></span>
                                                                             <input x-show="editing" type="number" min="0" x-model="actual" class="w-20 border border-indigo-300 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 font-bold bg-white">
+                                                                        </td>
+
+                                                                        <!-- NG Column -->
+                                                                        <td class="px-3 py-2 min-w-[130px]" id="hr-ng-col-{{ $hr->id }}">
+                                                                            <div class="flex items-center gap-1">
+                                                                                <span class="font-bold text-rose-600 font-mono text-xs" id="hr-ng-total-{{ $hr->id }}">{{ $hr->NG ?? 0 }}</span>
+                                                                                <span class="text-[11px] text-gray-500">pcs</span>
+                                                                            </div>
+                                                                            <div class="flex flex-wrap gap-1 mt-1" id="hr-ng-badges-{{ $hr->id }}">
+                                                                                @foreach ($hr->ngDetails ?? [] as $detail)
+                                                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200" title="{{ $detail->ng_remarks }}">
+                                                                                        {{ $detail->ngType->ng_type ?? 'NG' }}: {{ $detail->ng_quantity }}
+                                                                                    </span>
+                                                                                @endforeach
+                                                                            </div>
+                                                                            <button type="button" 
+                                                                                    onclick="openNgModal({{ $hr->id }}, '{{ \Carbon\Carbon::parse($hr->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($hr->end_time)->format('H:i') }}', '{{ addslashes($item->item_code) }}')"
+                                                                                    class="mt-1.5 inline-flex items-center px-2 py-0.5 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded transition cursor-pointer">
+                                                                                Kelola NG
+                                                                            </button>
                                                                         </td>
 
                                                                         <!-- Operator (PIC) Column -->
@@ -1043,5 +1211,242 @@
             startDateInput.addEventListener('change', updateShiftSchedule);
         }
     });
+
+    // ==============================================================
+    // NG (DEFECT) MANAGEMENT
+    // ==============================================================
+    let currentHourlyRemarkId = null;
+
+    function openNgModal(hourlyRemarkId, slotTime, itemCode) {
+        currentHourlyRemarkId = hourlyRemarkId;
+        document.getElementById('ng_modal_slot_time').textContent = slotTime;
+        document.getElementById('ng_modal_item_code').textContent = itemCode;
+        document.getElementById('add_ng_quantity').value = '';
+        document.getElementById('add_ng_remarks').value = '';
+        document.getElementById('add_ng_type_id').value = '';
+
+        document.getElementById('ngManagementModal').classList.remove('hidden');
+        loadNgDetails(hourlyRemarkId);
+    }
+
+    function closeNgModal() {
+        document.getElementById('ngManagementModal').classList.add('hidden');
+        currentHourlyRemarkId = null;
+    }
+
+    function closeEditNgDetailModal() {
+        document.getElementById('editNgDetailModal').classList.add('hidden');
+    }
+
+    function loadNgDetails(hourlyRemarkId) {
+        const loading = document.getElementById('ng_details_loading');
+        const empty = document.getElementById('ng_details_empty');
+        const tableWrapper = document.getElementById('ng_details_table_wrapper');
+        const tbody = document.getElementById('ng_details_tbody');
+        const totalDisplay = document.getElementById('ng_modal_total_display');
+
+        loading.classList.remove('hidden');
+        empty.classList.add('hidden');
+        tableWrapper.classList.add('hidden');
+        tbody.innerHTML = '';
+
+        fetch(`/hourly-remark/${hourlyRemarkId}/ng-details`, {
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            loading.classList.add('hidden');
+            totalDisplay.textContent = data.total_ng ?? 0;
+            
+            // Update table row in main view too
+            updateTableRowNg(hourlyRemarkId, data.total_ng ?? 0, data.ng_details || []);
+
+            if (!data.ng_details || data.ng_details.length === 0) {
+                empty.classList.remove('hidden');
+            } else {
+                tableWrapper.classList.remove('hidden');
+                let rowsHtml = '';
+                data.ng_details.forEach(item => {
+                    rowsHtml += `
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-3 py-2 font-medium text-gray-900">${escapeHtml(item.ng_type_name)}</td>
+                            <td class="px-3 py-2 font-bold text-rose-600 font-mono">${item.ng_quantity}</td>
+                            <td class="px-3 py-2 text-gray-600">${escapeHtml(item.ng_remarks || '-')}</td>
+                            <td class="px-3 py-2 text-right whitespace-nowrap">
+                                <button type="button" onclick="openEditNgDetailModal(${item.id})" class="text-blue-600 hover:text-blue-800 font-semibold text-xs mr-2 cursor-pointer">Edit</button>
+                                <button type="button" onclick="deleteNgDetail(${item.id})" class="text-rose-600 hover:text-rose-800 font-semibold text-xs cursor-pointer">Hapus</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = rowsHtml;
+            }
+        })
+        .catch(err => {
+            loading.classList.add('hidden');
+            alert('Gagal memuat data NG: ' + err.message);
+        });
+    }
+
+    function updateTableRowNg(hourlyRemarkId, totalNg, ngDetails) {
+        const totalEl = document.getElementById(`hr-ng-total-${hourlyRemarkId}`);
+        if (totalEl) {
+            totalEl.textContent = totalNg;
+        }
+        const badgesEl = document.getElementById(`hr-ng-badges-${hourlyRemarkId}`);
+        if (badgesEl) {
+            if (!ngDetails || ngDetails.length === 0) {
+                badgesEl.innerHTML = '';
+            } else {
+                let badgesHtml = '';
+                ngDetails.forEach(item => {
+                    badgesHtml += `
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200" title="${escapeHtml(item.ng_remarks || '')}">
+                            ${escapeHtml(item.ng_type_name)}: ${item.ng_quantity}
+                        </span>
+                    `;
+                });
+                badgesEl.innerHTML = badgesHtml;
+            }
+        }
+    }
+
+    function submitAddNg(e) {
+        e.preventDefault();
+        if (!currentHourlyRemarkId) return;
+
+        const btn = document.getElementById('btn_submit_add_ng');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        const ngTypeId = document.getElementById('add_ng_type_id').value;
+        const quantity = document.getElementById('add_ng_quantity').value;
+        const remarks = document.getElementById('add_ng_remarks').value;
+
+        fetch(`/hourly-remark/${currentHourlyRemarkId}/add-ng`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                ng_type_id: ngTypeId,
+                ng_quantity: quantity,
+                ng_remarks: remarks
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.textContent = 'Simpan NG';
+            if (data.success) {
+                document.getElementById('add_ng_quantity').value = '';
+                document.getElementById('add_ng_remarks').value = '';
+                loadNgDetails(currentHourlyRemarkId);
+            } else {
+                alert(data.message || 'Gagal menambahkan NG.');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.textContent = 'Simpan NG';
+            alert('Gagal menambahkan NG: ' + err.message);
+        });
+    }
+
+    function openEditNgDetailModal(id) {
+        fetch(`/ng-detail/${id}`, {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('edit_ng_detail_id').value = data.id;
+            document.getElementById('edit_ng_type_id').value = data.ng_type_id;
+            document.getElementById('edit_ng_quantity').value = data.ng_quantity;
+            document.getElementById('edit_ng_remarks').value = data.ng_remarks || '';
+            document.getElementById('editNgDetailModal').classList.remove('hidden');
+        })
+        .catch(err => alert('Gagal mengambil data NG: ' + err.message));
+    }
+
+    function submitUpdateNg(e) {
+        e.preventDefault();
+        const id = document.getElementById('edit_ng_detail_id').value;
+        const btn = document.getElementById('btn_submit_update_ng');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        const ngTypeId = document.getElementById('edit_ng_type_id').value;
+        const quantity = document.getElementById('edit_ng_quantity').value;
+        const remarks = document.getElementById('edit_ng_remarks').value;
+
+        fetch(`/ng-detail/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                ng_type_id: ngTypeId,
+                ng_quantity: quantity,
+                ng_remarks: remarks
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Perubahan';
+            if (data.success) {
+                closeEditNgDetailModal();
+                if (currentHourlyRemarkId) {
+                    loadNgDetails(currentHourlyRemarkId);
+                }
+            } else {
+                alert(data.message || 'Gagal mengubah NG.');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Perubahan';
+            alert('Gagal mengubah NG: ' + err.message);
+        });
+    }
+
+    function deleteNgDetail(id) {
+        if (!confirm('Yakin ingin menghapus data NG ini?')) return;
+
+        fetch(`/ng-detail/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (currentHourlyRemarkId) {
+                    loadNgDetails(currentHourlyRemarkId);
+                }
+            } else {
+                alert(data.message || 'Gagal menghapus NG.');
+            }
+        })
+        .catch(err => alert('Gagal menghapus NG: ' + err.message));
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
     </script>
 </x-app-layout>
