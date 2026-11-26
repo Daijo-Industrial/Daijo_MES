@@ -49,6 +49,13 @@ class PalletFormIndex extends Component
 
     public string $mixedAssignMode = 'SPLIT'; // 'SPLIT' or 'FORCE'
 
+    // SO (Sales Order) / Outbound Delivery Modal State
+    public bool $showSoModal = false;
+
+    public ?string $selectedPalletId = null;
+
+    public array $soDeliveryData = [];
+
     protected $queryString = ['search', 'filterSlot'];
 
     public function updatingSearch()
@@ -593,6 +600,176 @@ class PalletFormIndex extends Component
         }
     }
 
+    public function openSoModal(string $palletId)
+    {
+        $this->selectedPalletId = $palletId;
+        $this->soDeliveryData = $this->loadSoDeliveryData($palletId);
+        $this->showSoModal = true;
+    }
+
+    public function closeSoModal()
+    {
+        $this->showSoModal = false;
+        $this->selectedPalletId = null;
+        $this->soDeliveryData = [];
+    }
+
+    public function loadSoDeliveryData(string $palletId): array
+    {
+        $pallet = WmsPalletForm::withTrashed()
+            ->with(['masterItem.customer', 'position.rack.warehouse'])
+            ->where('pallet_id', $palletId)
+            ->first();
+
+        if (! $pallet) {
+            return [];
+        }
+
+        $allDetails = \App\Models\WmsPalletFormDetail::withTrashed()
+            ->with('item.customer')
+            ->where('pallet_form_id', $palletId)
+            ->get();
+
+        $labels = $allDetails->pluck('label')->filter()->unique()->values()->all();
+
+        $scans = collect();
+        if (! empty($labels)) {
+            $scans = \App\Models\ScannedData::with('soData')
+                ->whereIn('label', $labels)
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
+
+        $outLogs = \App\Models\WmsPalletLog::where('pallet_id', $palletId)
+            ->where('transaction_type', 'OUT')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $soGroups = [];
+        $matchedLabels = [];
+
+        foreach ($scans as $scan) {
+            $docNum = $scan->doc_num ?: 'TANPA-SO';
+            $matchedLabels[$scan->label] = true;
+
+            if (! isset($soGroups[$docNum])) {
+                $soData = $scan->soData ?? \App\Models\SoData::where('doc_num', $docNum)->first();
+                $soGroups[$docNum] = [
+                    'doc_num' => $docNum,
+                    'customer' => $soData?->customer ?? $pallet->masterItem?->customer?->customer_name ?? 'Customer',
+                    'posting_date' => $soData?->posting_date ? \Carbon\Carbon::parse($soData->posting_date)->format('d/m/Y') : '-',
+                    'item_code' => $soData?->item_code ?? $scan->item_code,
+                    'item_name' => $soData?->item_name ?? $pallet->model_name,
+                    'so_target_qty' => $soData?->quantity ?? null,
+                    'is_finish' => $soData?->is_finish ?? null,
+                    'is_done' => $soData?->is_done ?? null,
+                    'pallet_shipped_qty' => 0,
+                    'pallet_shipped_boxes' => 0,
+                    'scan_dates' => [],
+                    'boxes' => [],
+                ];
+            }
+
+            $boxQty = (float) $scan->quantity;
+            $soGroups[$docNum]['pallet_shipped_qty'] += $boxQty;
+            $soGroups[$docNum]['pallet_shipped_boxes'] += 1;
+            if ($scan->created_at) {
+                $soGroups[$docNum]['scan_dates'][] = $scan->created_at->format('d/m/Y H:i');
+            }
+
+            $soGroups[$docNum]['boxes'][] = [
+                'label' => $scan->label,
+                'item_code' => $scan->item_code,
+                'spk_code' => $scan->spk_code,
+                'quantity' => $scan->quantity,
+                'warehouse' => $scan->warehouse,
+                'scanned_at' => $scan->created_at ? $scan->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-',
+            ];
+        }
+
+        // Check if any OUT logs mention DocNum not yet captured
+        foreach ($outLogs as $log) {
+            if (preg_match('/DocNum:\s*([A-Za-z0-9\-]+)/i', $log->notes, $matches)) {
+                $docNum = $matches[1];
+                if (! isset($soGroups[$docNum])) {
+                    $soData = \App\Models\SoData::where('doc_num', $docNum)->first();
+                    $soGroups[$docNum] = [
+                        'doc_num' => $docNum,
+                        'customer' => $soData?->customer ?? $pallet->masterItem?->customer?->customer_name ?? 'Customer',
+                        'posting_date' => $soData?->posting_date ? \Carbon\Carbon::parse($soData->posting_date)->format('d/m/Y') : '-',
+                        'item_code' => $soData?->item_code ?? $pallet->part_no,
+                        'item_name' => $soData?->item_name ?? $pallet->model_name,
+                        'so_target_qty' => $soData?->quantity ?? null,
+                        'is_finish' => $soData?->is_finish ?? null,
+                        'is_done' => $soData?->is_done ?? null,
+                        'pallet_shipped_qty' => 0,
+                        'pallet_shipped_boxes' => 0,
+                        'scan_dates' => [$log->created_at ? $log->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-'],
+                        'boxes' => [],
+                        'log_note' => $log->notes,
+                    ];
+                }
+            }
+        }
+
+        // Unmatched soft-deleted boxes
+        $unmatchedDeletedBoxes = $allDetails->filter(fn ($d) => $d->trashed() && ! isset($matchedLabels[$d->label]))
+            ->map(fn ($d) => [
+                'label' => $d->label,
+                'part_no' => $d->part_no,
+                'spk_no' => $d->spk_no,
+                'qty' => $d->qty,
+                'warehouse' => $d->warehouse,
+                'deleted_at' => $d->deleted_at ? $d->deleted_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-',
+            ])
+            ->values()
+            ->all();
+
+        // Active remaining boxes on pallet
+        $activeBoxes = $allDetails->filter(fn ($d) => ! $d->trashed())
+            ->map(fn ($d) => [
+                'label' => $d->label,
+                'part_no' => $d->part_no,
+                'spk_no' => $d->spk_no,
+                'qty' => $d->qty,
+                'warehouse' => $d->warehouse,
+            ])
+            ->values()
+            ->all();
+
+        $totalHistoricalQty = (float) $allDetails->sum('qty');
+        $totalHistoricalBoxes = $allDetails->count();
+        $currentQty = (float) $pallet->total_pallet_qty;
+        $shippedQty = max(0, $totalHistoricalQty - $currentQty);
+
+        $customerName = $pallet->masterItem?->customer?->customer_name
+            ?? $allDetails->first()?->item?->customer?->customer_name
+            ?? 'No Customer';
+
+        return [
+            'pallet_id' => $pallet->pallet_id,
+            'part_no' => $pallet->part_no,
+            'model_name' => $pallet->model_name,
+            'customer' => $customerName,
+            'status' => $pallet->status,
+            'current_qty' => $currentQty,
+            'current_boxes' => $pallet->box_qty,
+            'total_historical_qty' => $totalHistoricalQty,
+            'total_historical_boxes' => $totalHistoricalBoxes,
+            'shipped_qty' => $shippedQty,
+            'is_fully_shipped' => ($pallet->status === 'OUT' || $currentQty <= 0),
+            'so_groups' => array_values($soGroups),
+            'unmatched_deleted_boxes' => $unmatchedDeletedBoxes,
+            'active_boxes' => $activeBoxes,
+            'logs' => $outLogs->map(fn ($l) => [
+                'transaction_type' => $l->transaction_type,
+                'notes' => $l->notes,
+                'created_at' => $l->created_at ? $l->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i:s') : '-',
+                'user' => $l->user?->name ?? 'System',
+            ])->all(),
+        ];
+    }
+
     public function render(WmsService $wmsService)
     {
         // Self-healing 1: Backfill assigned_at for any pallet with position_id but assigned_at IS NULL
@@ -629,7 +806,7 @@ class PalletFormIndex extends Component
             }
         }
 
-        $palletForms = WmsPalletForm::with(['position.rack.warehouse', 'details.item.customer'])
+        $palletForms = WmsPalletForm::with(['position.rack.warehouse', 'details.item.customer', 'masterItem.customer'])
             ->where(function ($query) {
                 $query->where('pallet_id', 'like', '%' . $this->search . '%')
                     ->orWhere('part_no', 'like', '%' . $this->search . '%')

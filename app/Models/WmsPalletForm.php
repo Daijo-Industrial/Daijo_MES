@@ -40,6 +40,16 @@ class WmsPalletForm extends Model
         return $this->hasMany(WmsPalletFormDetail::class, 'pallet_form_id', 'pallet_id');
     }
 
+    public function allDetails()
+    {
+        return $this->hasMany(WmsPalletFormDetail::class, 'pallet_form_id', 'pallet_id')->withTrashed();
+    }
+
+    public function masterItem()
+    {
+        return $this->belongsTo(MasterListItem::class, 'part_no', 'item_code');
+    }
+
     public function position()
     {
         return $this->belongsTo(WmsPosition::class, 'position_id');
