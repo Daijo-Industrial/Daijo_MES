@@ -761,11 +761,106 @@ class ProductionDashboardService
     /**
      * Executive Quality Analysis & Pareto Generator tailored for Board of Directors (BOD).
      * Computes Pareto 80/20 defect ranking, Customer risk exposure, Shift breakdown, and Machine Quality Ranking.
+     * Segregates data into 3 modes: 'all' (combined), 'production' (running), and 'adjuster' (setting).
      */
     public function processExecutiveNgAnalysis($dailyData, $masterItems, $adjustLogs, array $ngBreakdown, array $summary = []): array
     {
         $totalActual = (int) ($summary['total_actual'] ?? 0);
-        $totalNg = (int) ($summary['total_ng'] ?? array_sum(array_column($ngBreakdown, 'total')));
+
+        // 1. Extract Production Records from $dailyData (Running Operator NG)
+        $productionRecords = [];
+        foreach ($dailyData as $daily) {
+            $itemCode = $daily->item_code ?? 'UNKNOWN';
+            $machineName = $daily->user?->name ?: '-';
+            $shift = in_array((int) $daily->shift, [1, 2, 3], true) ? (int) $daily->shift : 1;
+
+            foreach ($daily->hourlyRemarks as $hourly) {
+                if ($hourly->ngDetails) {
+                    foreach ($hourly->ngDetails as $ngDetail) {
+                        $qty = (int) ($ngDetail->ng_quantity ?? 0);
+                        if ($qty <= 0) {
+                            continue;
+                        }
+                        $ngType = trim((string) ($ngDetail->ngType?->ng_type ?? 'Unknown'));
+                        if ($ngType === '') {
+                            $ngType = 'Unknown';
+                        }
+                        $productionRecords[] = [
+                            'source' => 'production',
+                            'item_code' => $itemCode,
+                            'machine_name' => $machineName,
+                            'shift' => $shift,
+                            'ng_type' => $ngType,
+                            'qty' => $qty,
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 2. Extract Adjuster Records from $adjustLogs (Setting / Trial Scrap)
+        $adjusterRecords = [];
+        if ($adjustLogs) {
+            foreach ($adjustLogs as $adjustLog) {
+                if (! $adjustLog->relationLoaded('ngDetails') && ! $adjustLog->ngDetails) {
+                    continue;
+                }
+                $itemCode = $adjustLog->item_code ?: 'UNKNOWN';
+                $machineName = $adjustLog->user?->name ?: '-';
+                $createdLocal = self::getLocalCarbon($adjustLog->created_at);
+                $shiftInfo = self::getProductionDateAndShift($createdLocal, false);
+                $shift = in_array((int) ($shiftInfo['shift'] ?? 1), [1, 2, 3], true) ? (int) $shiftInfo['shift'] : 1;
+
+                foreach ($adjustLog->ngDetails as $ngDetail) {
+                    $qty = (int) ($ngDetail->ng_quantity ?? 0);
+                    if ($qty <= 0) {
+                        continue;
+                    }
+                    $ngType = trim((string) ($ngDetail->ngType?->ng_type ?? 'NG Adjuster'));
+                    if ($ngType === '') {
+                        $ngType = 'NG Adjuster';
+                    }
+                    $adjusterRecords[] = [
+                        'source' => 'adjuster',
+                        'item_code' => $itemCode,
+                        'machine_name' => $machineName,
+                        'shift' => $shift,
+                        'ng_type' => $ngType,
+                        'qty' => $qty,
+                    ];
+                }
+            }
+        }
+
+        $totalProdNg = array_sum(array_column($productionRecords, 'qty'));
+        $totalAdjNg = array_sum(array_column($adjusterRecords, 'qty'));
+        $totalCombinedNg = $totalProdNg + $totalAdjNg;
+
+        $allRecords = array_merge($productionRecords, $adjusterRecords);
+
+        $sliceAll = $this->aggregateNgSlice($allRecords, $totalActual, $masterItems, 'all', $totalCombinedNg);
+        $sliceProduction = $this->aggregateNgSlice($productionRecords, $totalActual, $masterItems, 'production', $totalCombinedNg);
+        $sliceAdjuster = $this->aggregateNgSlice($adjusterRecords, $totalActual, $masterItems, 'adjuster', $totalCombinedNg);
+
+        return [
+            'total_combined_ng' => $totalCombinedNg,
+            'total_production_ng' => $totalProdNg,
+            'total_adjuster_ng' => $totalAdjNg,
+            'modes' => [
+                'all' => $sliceAll,
+                'production' => $sliceProduction,
+                'adjuster' => $sliceAdjuster,
+            ],
+            ...$sliceAll,
+        ];
+    }
+
+    /**
+     * Aggregates a slice of NG records (all, production, or adjuster) into an executive summary.
+     */
+    protected function aggregateNgSlice(array $records, int $totalActual, $masterItems, string $mode, int $totalCombinedNg): array
+    {
+        $totalNg = array_sum(array_column($records, 'qty'));
         $ngRate = ($totalActual + $totalNg) > 0 ? round(($totalNg / ($totalActual + $totalNg)) * 100, 2) : 0.0;
 
         // Toleransi Mutu Pabrik: <=2.0% Aman, 2.1-3.0% Waspada, >3.0% Kritis
@@ -779,20 +874,73 @@ class ProductionDashboardService
             $healthClass = 'amber';
         }
 
-        // 1. Pareto Defect Analysis
+        // 1. Defect Pareto Breakdown
+        $defectCounts = [];
+        $partAggregates = [];
+        $shiftCounts = [1 => 0, 2 => 0, 3 => 0];
+        $machineAggregates = [];
+
+        foreach ($records as $r) {
+            $qty = $r['qty'];
+            $ngType = $r['ng_type'];
+            $itemCode = $r['item_code'];
+            $machineName = $r['machine_name'];
+            $shift = $r['shift'];
+
+            // Defect Pareto
+            $defectCounts[$ngType] = ($defectCounts[$ngType] ?? 0) + $qty;
+
+            // Part Aggregation
+            if (! isset($partAggregates[$itemCode])) {
+                $master = $masterItems instanceof \Illuminate\Support\Collection
+                    ? $masterItems->get($itemCode)
+                    : ($masterItems[$itemCode] ?? null);
+                $customerName = $master?->customer?->customer_name ?? $master?->customer_code ?? 'Internal / Non-Customer';
+                $itemName = $master?->item_name ?: $itemCode;
+
+                $partAggregates[$itemCode] = [
+                    'item_code' => $itemCode,
+                    'item_name' => $itemName,
+                    'customer' => $customerName,
+                    'total_ng' => 0,
+                    'defects' => [],
+                ];
+            }
+            $partAggregates[$itemCode]['total_ng'] += $qty;
+            $partAggregates[$itemCode]['defects'][$ngType] = ($partAggregates[$itemCode]['defects'][$ngType] ?? 0) + $qty;
+
+            // Shift Aggregation
+            $shiftCounts[$shift] = ($shiftCounts[$shift] ?? 0) + $qty;
+
+            // Machine Aggregation
+            if (! isset($machineAggregates[$machineName])) {
+                $isKarawang = preg_match('/^K\d{3,4}[A-Z]?$/i', $machineName);
+                $machineAggregates[$machineName] = [
+                    'machine_name' => $machineName,
+                    'plant' => $isKarawang ? 'KRW' : 'KBN',
+                    'total_ng' => 0,
+                    'defects' => [],
+                ];
+            }
+            $machineAggregates[$machineName]['total_ng'] += $qty;
+            $machineAggregates[$machineName]['defects'][$ngType] = ($machineAggregates[$machineName]['defects'][$ngType] ?? 0) + $qty;
+        }
+
+        arsort($defectCounts);
+
         $paretoDefects = [];
         $runningCumulative = 0.0;
         $chartLabels = [];
         $chartQuantities = [];
         $chartCumulative = [];
+        $rank = 1;
 
-        foreach ($ngBreakdown as $idx => $ng) {
-            $qty = (int) ($ng['total'] ?? 0);
+        foreach ($defectCounts as $name => $qty) {
             $pct = $totalNg > 0 ? round(($qty / $totalNg) * 100, 1) : 0.0;
             $runningCumulative = min(100.0, round($runningCumulative + $pct, 1));
 
             // Klasifikasi akar masalah standar industri injection moulding
-            $nameUpper = strtoupper($ng['name']);
+            $nameUpper = strtoupper($name);
             $category = 'Operasional';
             if (preg_match('/GASMARK|SINK|FLOW|SILVER|BURN|FLASH|WELD|JET/i', $nameUpper)) {
                 $category = 'Setting / Parameter';
@@ -803,8 +951,8 @@ class ProductionDashboardService
             }
 
             $defectItem = [
-                'rank' => $idx + 1,
-                'name' => $ng['name'],
+                'rank' => $rank,
+                'name' => $name,
                 'total' => $qty,
                 'percentage' => $pct,
                 'cumulative_percentage' => $runningCumulative,
@@ -812,127 +960,12 @@ class ProductionDashboardService
             ];
             $paretoDefects[] = $defectItem;
 
-            if ($idx < 8) {
-                $chartLabels[] = $ng['name'];
+            if ($rank <= 8) {
+                $chartLabels[] = $name;
                 $chartQuantities[] = $qty;
                 $chartCumulative[] = $runningCumulative;
             }
-        }
-
-        // 2. Part & Customer Risk Exposure, 3. Shift Breakdown, 4. Machine Ranking
-        $partAggregates = [];
-        $shiftCounts = [1 => 0, 2 => 0, 3 => 0];
-        $machineAggregates = [];
-
-        foreach ($dailyData as $daily) {
-            $itemCode = $daily->item_code ?? 'UNKNOWN';
-            $machineName = $daily->user?->name ?: '-';
-            $shift = in_array((int) $daily->shift, [1, 2, 3], true) ? (int) $daily->shift : 1;
-
-            foreach ($daily->hourlyRemarks as $hourly) {
-                if ($hourly->ngDetails) {
-                    foreach ($hourly->ngDetails as $ngDetail) {
-                        $qty = (int) ($ngDetail->ng_quantity ?? 0);
-                        if ($qty <= 0) {
-                            continue;
-                        }
-
-                        $ngType = trim((string) ($ngDetail->ngType?->ng_type ?? 'Unknown'));
-
-                        // Accumulate by Part
-                        if (! isset($partAggregates[$itemCode])) {
-                            $master = $masterItems instanceof \Illuminate\Support\Collection
-                                ? $masterItems->get($itemCode)
-                                : ($masterItems[$itemCode] ?? null);
-                            $customerName = $master?->customer?->customer_name ?? $master?->customer_code ?? 'Internal / Non-Customer';
-                            $itemName = $master?->item_name ?: $itemCode;
-
-                            $partAggregates[$itemCode] = [
-                                'item_code' => $itemCode,
-                                'item_name' => $itemName,
-                                'customer' => $customerName,
-                                'total_ng' => 0,
-                                'defects' => [],
-                            ];
-                        }
-                        $partAggregates[$itemCode]['total_ng'] += $qty;
-                        $partAggregates[$itemCode]['defects'][$ngType] = ($partAggregates[$itemCode]['defects'][$ngType] ?? 0) + $qty;
-
-                        // Accumulate by Shift
-                        $shiftCounts[$shift] = ($shiftCounts[$shift] ?? 0) + $qty;
-
-                        // Accumulate by Machine
-                        if (! isset($machineAggregates[$machineName])) {
-                            $isKarawang = preg_match('/^K\d{3,4}[A-Z]?$/i', $machineName);
-                            $machineAggregates[$machineName] = [
-                                'machine_name' => $machineName,
-                                'plant' => $isKarawang ? 'KRW' : 'KBN',
-                                'total_ng' => 0,
-                                'defects' => [],
-                            ];
-                        }
-                        $machineAggregates[$machineName]['total_ng'] += $qty;
-                        $machineAggregates[$machineName]['defects'][$ngType] = ($machineAggregates[$machineName]['defects'][$ngType] ?? 0) + $qty;
-                    }
-                }
-            }
-        }
-
-        // Adjuster logs integration
-        if ($adjustLogs) {
-            foreach ($adjustLogs as $adjustLog) {
-                if (! $adjustLog->relationLoaded('ngDetails') && ! $adjustLog->ngDetails) {
-                    continue;
-                }
-                $itemCode = $adjustLog->item_code ?: 'UNKNOWN';
-                $machineName = $adjustLog->user?->name ?: '-';
-                $createdLocal = self::getLocalCarbon($adjustLog->created_at);
-                $shiftInfo = self::getProductionDateAndShift($createdLocal, false);
-                $shift = in_array((int) ($shiftInfo['shift'] ?? 1), [1, 2, 3], true) ? (int) $shiftInfo['shift'] : 1;
-
-                foreach ($adjustLog->ngDetails as $ngDetail) {
-                    $qty = (int) ($ngDetail->quantity ?? 0);
-                    if ($qty <= 0) {
-                        continue;
-                    }
-                    $ngType = trim((string) ($ngDetail->ngType?->ng_type ?? 'NG Adjuster'));
-
-                    // Part
-                    if (! isset($partAggregates[$itemCode])) {
-                        $master = $masterItems instanceof \Illuminate\Support\Collection
-                            ? $masterItems->get($itemCode)
-                            : ($masterItems[$itemCode] ?? null);
-                        $customerName = $master?->customer?->customer_name ?? $master?->customer_code ?? 'Internal / Non-Customer';
-                        $itemName = $master?->item_name ?: $itemCode;
-
-                        $partAggregates[$itemCode] = [
-                            'item_code' => $itemCode,
-                            'item_name' => $itemName,
-                            'customer' => $customerName,
-                            'total_ng' => 0,
-                            'defects' => [],
-                        ];
-                    }
-                    $partAggregates[$itemCode]['total_ng'] += $qty;
-                    $partAggregates[$itemCode]['defects'][$ngType] = ($partAggregates[$itemCode]['defects'][$ngType] ?? 0) + $qty;
-
-                    // Shift
-                    $shiftCounts[$shift] = ($shiftCounts[$shift] ?? 0) + $qty;
-
-                    // Machine
-                    if (! isset($machineAggregates[$machineName])) {
-                        $isKarawang = preg_match('/^K\d{3,4}[A-Z]?$/i', $machineName);
-                        $machineAggregates[$machineName] = [
-                            'machine_name' => $machineName,
-                            'plant' => $isKarawang ? 'KRW' : 'KBN',
-                            'total_ng' => 0,
-                            'defects' => [],
-                        ];
-                    }
-                    $machineAggregates[$machineName]['total_ng'] += $qty;
-                    $machineAggregates[$machineName]['defects'][$ngType] = ($machineAggregates[$machineName]['defects'][$ngType] ?? 0) + $qty;
-                }
-            }
+            $rank++;
         }
 
         // Top 5 Affected Parts
@@ -989,6 +1022,7 @@ class ProductionDashboardService
         }
 
         return [
+            'mode' => $mode,
             'total_ng' => $totalNg,
             'total_actual' => $totalActual,
             'ng_rate' => $ngRate,
@@ -999,7 +1033,7 @@ class ProductionDashboardService
             'dominant_defect_pct' => ! empty($paretoDefects[0]) ? $paretoDefects[0]['percentage'] : 0.0,
             'worst_shift' => "Shift {$worstShiftNumber}",
             'worst_shift_label' => $shiftSummary[$worstShiftNumber]['label'] ?? "Shift {$worstShiftNumber}",
-            'worst_shift_qty' => $maxShiftNg,
+            'worst_shift_qty' => max(0, $maxShiftNg),
             'pareto_defects' => $paretoDefects,
             'top_affected_parts' => $topAffectedParts,
             'top_machines_quality' => $topMachinesQuality,

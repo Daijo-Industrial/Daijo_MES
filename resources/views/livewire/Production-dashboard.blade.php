@@ -1120,7 +1120,7 @@
             {{-- Header Bar --}}
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 border-b border-gray-100 gap-3">
                 <div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <h2 class="text-xl font-black text-gray-900 tracking-tight">
                             Pusat Analisis Kualitas dan NG Breakdown (Executive Cockpit)
                         </h2>
@@ -1133,9 +1133,30 @@
                         Evaluasi 80/20 Pareto cacat dominan, paparan risiko customer, performa reject antar shift, dan akuntabilitas mesin.
                     </p>
                 </div>
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-                    <span>Target Toleransi Maksimal:</span>
-                    <strong class="text-gray-800 font-bold font-mono">≤ 2.0%</strong>
+
+                {{-- 3-Way Source Filter Toggle & Tolerance Target --}}
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="inline-flex items-center rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-xs font-medium">
+                        <button type="button"
+                            wire:click="setNgSourceType('all')"
+                            class="px-2.5 py-1 rounded-md transition-colors {{ ($ngSourceType ?? 'all') === 'all' ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-bold' : 'text-slate-500 hover:text-slate-800' }}">
+                            Semua Scrap ({{ number_format($ngExecutiveSummary['total_combined_ng'] ?? 0) }})
+                        </button>
+                        <button type="button"
+                            wire:click="setNgSourceType('production')"
+                            class="px-2.5 py-1 rounded-md transition-colors {{ ($ngSourceType ?? 'all') === 'production' ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80 font-bold' : 'text-slate-500 hover:text-slate-800' }}">
+                            Running Produksi ({{ number_format($ngExecutiveSummary['total_production_ng'] ?? 0) }})
+                        </button>
+                        <button type="button"
+                            wire:click="setNgSourceType('adjuster')"
+                            class="px-2.5 py-1 rounded-md transition-colors {{ ($ngSourceType ?? 'all') === 'adjuster' ? 'bg-white text-amber-700 shadow-xs border border-slate-200/80 font-bold' : 'text-slate-500 hover:text-slate-800' }}">
+                            Setting Adjuster ({{ number_format($ngExecutiveSummary['total_adjuster_ng'] ?? 0) }})
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200">
+                        <span>Toleransi:</span>
+                        <strong class="text-gray-800 font-bold font-mono">≤ 2.0%</strong>
+                    </div>
                 </div>
             </div>
 
@@ -1143,12 +1164,37 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {{-- Card 1: Total Scrap / Reject Pcs --}}
                 <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                    <span class="text-[11px] uppercase font-bold text-slate-500 block">Total Reject (Scrap)</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] uppercase font-bold text-slate-500 block">
+                            @if(($ngSourceType ?? 'all') === 'all')
+                                Total Reject (Combined)
+                            @elseif(($ngSourceType ?? 'all') === 'production')
+                                Reject Running Produksi
+                            @else
+                                Reject Setting Adjuster
+                            @endif
+                        </span>
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded {{ ($ngSourceType ?? 'all') === 'all' ? 'bg-slate-200/70 text-slate-700' : (($ngSourceType ?? 'all') === 'production' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800') }}">
+                            @if(($ngSourceType ?? 'all') === 'all')
+                                SEMUA
+                            @elseif(($ngSourceType ?? 'all') === 'production')
+                                OPERATOR
+                            @else
+                                ADJUSTER
+                            @endif
+                        </span>
+                    </div>
                     <span class="text-xl font-black text-slate-900 font-mono block">
                         {{ number_format($ngExecutiveSummary['total_ng'] ?? 0) }} <span class="text-xs font-normal text-slate-500">pcs</span>
                     </span>
                     <span class="text-[11px] text-slate-500 block truncate">
-                        Dari total {{ number_format(($ngExecutiveSummary['total_actual'] ?? 0) + ($ngExecutiveSummary['total_ng'] ?? 0)) }} pcs output
+                        @if(($ngSourceType ?? 'all') === 'all')
+                            Produksi: {{ number_format($ngExecutiveSummary['total_production_ng'] ?? 0) }} &bull; Adjuster: {{ number_format($ngExecutiveSummary['total_adjuster_ng'] ?? 0) }}
+                        @elseif(($ngSourceType ?? 'all') === 'production')
+                            Porsi {{ ($ngExecutiveSummary['total_combined_ng'] ?? 0) > 0 ? round((($ngExecutiveSummary['total_production_ng'] ?? 0) / $ngExecutiveSummary['total_combined_ng']) * 100, 1) : 0 }}% dari Total Scrap Pabrik
+                        @else
+                            Porsi {{ ($ngExecutiveSummary['total_combined_ng'] ?? 0) > 0 ? round((($ngExecutiveSummary['total_adjuster_ng'] ?? 0) / $ngExecutiveSummary['total_combined_ng']) * 100, 1) : 0 }}% dari Total Scrap Pabrik
+                        @endif
                     </span>
                 </div>
 
@@ -1202,8 +1248,8 @@
                                 </h3>
                                 <p class="text-[11px] text-gray-500">Volume reject (bar merah) vs persentase kumulatif (garis ungu)</p>
                             </div>
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-600">
-                                Top 8 Defect
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded {{ ($ngSourceType ?? 'all') === 'all' ? 'bg-slate-100 text-slate-700' : (($ngSourceType ?? 'all') === 'production' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800') }}">
+                                {{ ($ngSourceType ?? 'all') === 'all' ? 'Top 8 Defect (Semua)' : (($ngSourceType ?? 'all') === 'production' ? 'Top 8 Defect (Produksi)' : 'Top 8 Defect (Adjuster)') }}
                             </span>
                         </div>
                         <div class="h-64 relative" wire:ignore>
