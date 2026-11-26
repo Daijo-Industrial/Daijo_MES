@@ -1115,81 +1115,260 @@
             </div>
         </div>
 
-        {{-- ✅ NEW: Top 10 Problematic Remarks Table --}}
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">Top 10 Problem Hours</h2>
-            
-            @if(count($topRemarks) > 0)
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr class="bg-gray-50 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                            <th class="px-4 py-3">Date</th>
-                            <th class="px-4 py-3">Hour</th>
-                            <th class="px-4 py-3">Machine</th>
-                            <th class="px-4 py-3">Item</th>
-                            <th class="px-4 py-3 text-right">Target</th>
-                            <th class="px-4 py-3 text-right">Actual</th>
-                            <th class="px-4 py-3 text-right">Gap</th>
-                            <th class="px-4 py-3 text-right">Downtime</th>
-                            <th class="px-4 py-3">Remark</th>
-                            <th class="px-4 py-3 text-center">Severity</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($topRemarks as $index => $remark)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 text-sm text-gray-700">
-                                {{ date('d M Y', strtotime($remark['date'])) }}
-                            </td>
-                            <td class="px-4 py-3 text-sm font-medium text-gray-900">
-                                {{ $remark['hour'] }}
-                            </td>
-                            <td class="px-4 py-3 text-sm text-gray-700">
-                                {{ $remark['machine'] }}
-                            </td>
-                            <td class="px-4 py-3 text-sm text-gray-700">
-                                {{ $remark['item_code'] }}
-                            </td>
-                            <td class="px-4 py-3 text-sm text-right text-gray-700">
-                                {{ number_format($remark['target']) }}
-                            </td>
-                            <td class="px-4 py-3 text-sm text-right text-gray-700">
-                                {{ number_format($remark['actual']) }}
-                            </td>
-                            <td class="px-4 py-3 text-sm text-right font-medium text-red-600">
-                                {{ number_format($remark['gap']) }} pcs
-                            </td>
-                            <td class="px-4 py-3 text-sm text-right font-medium text-orange-600">
-                                {{ number_format($remark['downtime_minutes'], 1) }}m
-                            </td>
-                            <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title="{{ $remark['remark'] }}">
-                                {{ $remark['remark'] }}
-                            </td>
-                            <td class="px-4 py-3 text-center">
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full
-                                    @if($remark['severity'] === 'critical') bg-red-100 text-red-800
-                                    @elseif($remark['severity'] === 'high') bg-orange-100 text-orange-800
-                                    @elseif($remark['severity'] === 'medium') bg-yellow-100 text-yellow-800
-                                    @else bg-blue-100 text-blue-800
-                                    @endif">
-                                    {{ ucfirst($remark['severity']) }}
-                                </span>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+        {{-- EXECUTIVE QUALITY & NG BREAKDOWN COCKPIT (Replaces Top 10 Problem Hours) --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 space-y-6">
+            {{-- Header Bar --}}
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 border-b border-gray-100 gap-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-xl font-black text-gray-900 tracking-tight">
+                            Pusat Analisis Kualitas dan NG Breakdown (Executive Cockpit)
+                        </h2>
+                        <span class="px-2.5 py-0.5 text-xs font-bold rounded-full uppercase
+                            {{ ($ngExecutiveSummary['health_class'] ?? 'emerald') === 'emerald' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (($ngExecutiveSummary['health_class'] ?? '') === 'amber' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-rose-100 text-rose-800 border border-rose-300') }}">
+                            Mutu: {{ $ngExecutiveSummary['health_status'] ?? 'Aman' }} ({{ $ngExecutiveSummary['ng_rate'] ?? 0 }}%)
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        Evaluasi 80/20 Pareto cacat dominan, paparan risiko customer, performa reject antar shift, dan akuntabilitas mesin.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+                    <span>Target Toleransi Maksimal:</span>
+                    <strong class="text-gray-800 font-bold font-mono">≤ 2.0%</strong>
+                </div>
             </div>
-            @else
-            <div class="text-center py-12 text-gray-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p class="text-lg font-medium">No Problem Hours Found</p>
-                <p class="text-sm mt-1">All production hours met their targets!</p>
+
+            {{-- 1. Executive Summary KPI Cards (4 Cards) --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {{-- Card 1: Total Scrap / Reject Pcs --}}
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                    <span class="text-[11px] uppercase font-bold text-slate-500 block">Total Reject (Scrap)</span>
+                    <span class="text-xl font-black text-slate-900 font-mono block">
+                        {{ number_format($ngExecutiveSummary['total_ng'] ?? 0) }} <span class="text-xs font-normal text-slate-500">pcs</span>
+                    </span>
+                    <span class="text-[11px] text-slate-500 block truncate">
+                        Dari total {{ number_format(($ngExecutiveSummary['total_actual'] ?? 0) + ($ngExecutiveSummary['total_ng'] ?? 0)) }} pcs output
+                    </span>
+                </div>
+
+                {{-- Card 2: Scrap Rate (%) vs Target --}}
+                <div class="p-4 border rounded-xl space-y-1
+                    {{ ($ngExecutiveSummary['health_class'] ?? 'emerald') === 'emerald' ? 'bg-emerald-50/60 border-emerald-200' : (($ngExecutiveSummary['health_class'] ?? '') === 'amber' ? 'bg-amber-50/60 border-amber-200' : 'bg-rose-50/60 border-rose-200') }}">
+                    <span class="text-[11px] uppercase font-bold text-gray-600 block">Tingkat Cacat (NG Rate)</span>
+                    <span class="text-xl font-black font-mono block
+                        {{ ($ngExecutiveSummary['health_class'] ?? 'emerald') === 'emerald' ? 'text-emerald-700' : (($ngExecutiveSummary['health_class'] ?? '') === 'amber' ? 'text-amber-700' : 'text-rose-700') }}">
+                        {{ number_format($ngExecutiveSummary['ng_rate'] ?? 0, 2) }}%
+                    </span>
+                    <span class="text-[11px] text-gray-500 block">
+                        Status: <strong class="font-bold">{{ $ngExecutiveSummary['health_status'] ?? 'Aman' }}</strong> (Ambang batas 2.0%)
+                    </span>
+                </div>
+
+                {{-- Card 3: Defect Dominan (#1) --}}
+                <div class="p-4 bg-red-50/60 border border-red-200 rounded-xl space-y-1">
+                    <span class="text-[11px] uppercase font-bold text-red-600 block">Cacat Dominan #1</span>
+                    <span class="text-xl font-black text-red-900 truncate block" title="{{ $ngExecutiveSummary['dominant_defect'] ?? '-' }}">
+                        {{ $ngExecutiveSummary['dominant_defect'] ?? '-' }}
+                    </span>
+                    <span class="text-[11px] text-red-700 block font-mono">
+                        {{ number_format($ngExecutiveSummary['dominant_defect_qty'] ?? 0) }} pcs ({{ $ngExecutiveSummary['dominant_defect_pct'] ?? 0 }}% dari seluruh NG)
+                    </span>
+                </div>
+
+                {{-- Card 4: Shift Paling Kritis --}}
+                <div class="p-4 bg-orange-50/60 border border-orange-200 rounded-xl space-y-1">
+                    <span class="text-[11px] uppercase font-bold text-orange-700 block">Shift Paling Kritis</span>
+                    <span class="text-xl font-black text-orange-950 block">
+                        {{ $ngExecutiveSummary['worst_shift_label'] ?? 'Shift 1' }}
+                    </span>
+                    <span class="text-[11px] text-orange-700 block font-mono">
+                        {{ number_format($ngExecutiveSummary['worst_shift_qty'] ?? 0) }} pcs reject di shift ini
+                    </span>
+                </div>
             </div>
-            @endif
+
+            {{-- 2. Dual-Column Analytical Grid (Pareto Chart + Shift Bars | Top Parts & Machines) --}}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                
+                {{-- LEFT COLUMN: Pareto Chart & Shift Distribution --}}
+                <div class="space-y-6">
+                    {{-- Pareto Chart 80/20 --}}
+                    <div class="p-4 bg-white border border-gray-200 rounded-xl shadow-2xs space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+                            <div>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-gray-800">
+                                    Pareto Analisis Cacat Utama (Aturan 80/20)
+                                </h3>
+                                <p class="text-[11px] text-gray-500">Volume reject (bar merah) vs persentase kumulatif (garis ungu)</p>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                                Top 8 Defect
+                            </span>
+                        </div>
+                        <div class="h-64 relative" wire:ignore>
+                            <canvas id="ngParetoChart"></canvas>
+                        </div>
+                        {{-- Root Cause Category Badges --}}
+                        <div class="pt-2 border-t border-gray-100 flex flex-wrap gap-2 text-[10px]">
+                            <span class="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-semibold">
+                                Setting / Parameter: Gasmark, Sinkmark, Flash
+                            </span>
+                            <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-semibold">
+                                Moulding / Cetakan: Shortmould, Pin, Scratch
+                            </span>
+                            <span class="px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 font-semibold">
+                                Material / Drying: Blackdot, Bubble / Moisture
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- Shift Distribution Comparison --}}
+                    <div class="p-4 bg-white border border-gray-200 rounded-xl shadow-2xs space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-800">
+                                Distribusi Reject per Shift Operasi
+                            </h3>
+                            <span class="text-[10px] font-bold text-gray-500">3 Regu Kerja</span>
+                        </div>
+                        <div class="space-y-2.5">
+                            @foreach($ngExecutiveSummary['shift_summary'] ?? [] as $sData)
+                                <div class="space-y-1">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="font-bold text-gray-800">{{ $sData['label'] }}</span>
+                                        <div class="flex items-center gap-2 font-mono">
+                                            <span class="font-bold text-gray-900">{{ number_format($sData['total_ng']) }} pcs</span>
+                                            <span class="text-gray-400">({{ $sData['percentage'] }}%)</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-2.5">
+                                        <div class="h-2.5 rounded-full transition-all duration-300 {{ $sData['shift_number'] == 3 ? 'bg-orange-500' : ($sData['shift_number'] == 2 ? 'bg-blue-500' : 'bg-emerald-500') }}"
+                                             style="width: {{ $sData['percentage'] }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                {{-- RIGHT COLUMN: Customer Risk Exposure (Top Parts) & Machine Quality Ranking --}}
+                <div class="space-y-6">
+                    {{-- Top 5 Parts & Customers Affected --}}
+                    <div class="p-4 bg-white border border-gray-200 rounded-xl shadow-2xs space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+                            <div>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-gray-800">
+                                    Paparan Risiko Customer (Top 5 Part Bermasalah)
+                                </h3>
+                                <p class="text-[11px] text-gray-500">Part dan customer yang paling banyak mengalami reject</p>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-700">
+                                Prioritas QC
+                            </span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full table-fixed text-xs text-left">
+                                <thead>
+                                    <tr class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase border-b border-gray-200">
+                                        <th class="py-2 px-2.5 w-[38%]">Part / Model</th>
+                                        <th class="py-2 px-2 w-[32%]">Customer</th>
+                                        <th class="py-2 px-2 text-right w-[15%]">Reject</th>
+                                        <th class="py-2 px-2 text-center w-[15%]">Dominan</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 text-gray-800">
+                                    @forelse($ngExecutiveSummary['top_affected_parts'] ?? [] as $part)
+                                        <tr class="hover:bg-gray-50/70">
+                                            <td class="py-2 px-2.5">
+                                                <div class="font-mono font-bold text-gray-900 truncate" title="{{ $part['item_code'] }}">
+                                                    {{ $part['item_code'] }}
+                                                </div>
+                                                <div class="text-[10px] text-gray-500 truncate" title="{{ $part['item_name'] }}">
+                                                    {{ $part['item_name'] }}
+                                                </div>
+                                            </td>
+                                            <td class="py-2 px-2 font-medium text-gray-700 truncate" title="{{ $part['customer'] }}">
+                                                {{ $part['customer'] }}
+                                            </td>
+                                            <td class="py-2 px-2 text-right font-mono font-bold text-red-600">
+                                                {{ number_format($part['total_ng']) }}
+                                                <span class="block text-[10px] text-gray-400 font-normal">({{ $part['percentage'] }}%)</span>
+                                            </td>
+                                            <td class="py-2 px-2 text-center">
+                                                <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-800 border border-red-200 truncate max-w-full" title="{{ $part['dominant_defect'] }}">
+                                                    {{ $part['dominant_defect'] }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="py-4 text-center text-gray-400">
+                                                Tidak ada part cacat tercatat.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- Top 5 Machines by Reject --}}
+                    <div class="p-4 bg-white border border-gray-200 rounded-xl shadow-2xs space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+                            <div>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-gray-800">
+                                    Akuntabilitas Mesin (Reject Terbanyak)
+                                </h3>
+                                <p class="text-[11px] text-gray-500">Unit mesin dengan total pcs cacat tertinggi</p>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                                Maintenance Target
+                            </span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full table-fixed text-xs text-left">
+                                <thead>
+                                    <tr class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase border-b border-gray-200">
+                                        <th class="py-2 px-2.5 w-[35%]">Mesin</th>
+                                        <th class="py-2 px-2 w-[25%]">Plant</th>
+                                        <th class="py-2 px-2 text-right w-[20%]">Total Reject</th>
+                                        <th class="py-2 px-2 text-center w-[20%]">Cacat Dominan</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 text-gray-800">
+                                    @forelse($ngExecutiveSummary['top_machines_quality'] ?? [] as $mQuality)
+                                        <tr class="hover:bg-gray-50/70">
+                                            <td class="py-2 px-2.5 font-bold font-mono text-gray-900 truncate">
+                                                {{ $mQuality['machine_name'] }}
+                                            </td>
+                                            <td class="py-2 px-2">
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold {{ $mQuality['plant'] === 'KRW' ? 'bg-slate-200 text-slate-800' : 'bg-blue-100 text-blue-800' }}">
+                                                    {{ $mQuality['plant'] === 'KRW' ? 'Karawang' : 'KBN' }}
+                                                </span>
+                                            </td>
+                                            <td class="py-2 px-2 text-right font-mono font-bold text-red-600">
+                                                {{ number_format($mQuality['total_ng']) }}
+                                                <span class="block text-[10px] text-gray-400 font-normal">({{ $mQuality['percentage'] }}%)</span>
+                                            </td>
+                                            <td class="py-2 px-2 text-center">
+                                                <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 truncate max-w-full" title="{{ $mQuality['dominant_defect'] }}">
+                                                    {{ $mQuality['dominant_defect'] }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="py-4 text-center text-gray-400">
+                                                Tidak ada reject mesin tercatat.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1341,6 +1520,123 @@
 
         let adjusterNgChart = null;
 
+        let ngParetoChart = null;
+
+        function initNgParetoChart(paretoData) {
+            console.log('🔵 initNgParetoChart called with data:', paretoData);
+            const ctx = document.getElementById('ngParetoChart');
+            if (!ctx) {
+                console.error('❌ NG Pareto chart canvas not found!');
+                return;
+            }
+
+            if (ngParetoChart) {
+                ngParetoChart.destroy();
+                ngParetoChart = null;
+            }
+
+            if (!paretoData || !paretoData.labels || paretoData.labels.length === 0) {
+                console.warn('⚠️ No NG Pareto chart data to display');
+                return;
+            }
+
+            ngParetoChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: paretoData.labels,
+                    datasets: [
+                        {
+                            label: 'Reject (pcs)',
+                            data: paretoData.quantities,
+                            backgroundColor: 'rgba(239, 68, 68, 0.75)',
+                            borderColor: 'rgba(220, 38, 38, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y',
+                            order: 2,
+                        },
+                        {
+                            label: 'Kumulatif (%)',
+                            data: paretoData.cumulative,
+                            type: 'line',
+                            borderColor: 'rgba(79, 70, 229, 1)',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+                            fill: false,
+                            yAxisID: 'y1',
+                            order: 1,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 10, weight: 'bold' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.yAxisID === 'y1') {
+                                        return 'Kumulatif: ' + context.parsed.y.toFixed(1) + '%';
+                                    }
+                                    return 'Reject: ' + context.parsed.y.toLocaleString() + ' pcs';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Reject (pcs)',
+                                font: { size: 10, weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Kumulatif (%)',
+                                font: { size: 10, weight: 'bold' }
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            console.log('✅ NG Pareto chart created!');
+        }
+
         function initAdjusterChart(chartData) {
             console.log('🔵 initAdjusterChart called with data:', chartData);
             const ctx = document.getElementById('adjusterNgChart');
@@ -1434,6 +1730,9 @@
 
             const initialAdjusterData = @json($adjusterNgTrend);
             initAdjusterChart(initialAdjusterData);
+
+            const initialParetoData = @json($ngExecutiveSummary['pareto_chart'] ?? []);
+            initNgParetoChart(initialParetoData);
         });
 
         document.addEventListener('livewire:init', () => {
@@ -1450,6 +1749,13 @@
                 const adjData = (event && event.adjusterChartData !== undefined) ? event.adjusterChartData : (event && event[0] ? event[0].adjusterChartData : null);
                 if (adjData) {
                     initAdjusterChart(adjData);
+                }
+            });
+
+            Livewire.on('ngParetoChartUpdated', (event) => {
+                const pData = (event && event.paretoData !== undefined) ? event.paretoData : (event && event[0] ? event[0].paretoData : null);
+                if (pData) {
+                    initNgParetoChart(pData);
                 }
             });
         });

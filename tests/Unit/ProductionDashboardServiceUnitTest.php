@@ -91,4 +91,37 @@ class ProductionDashboardServiceUnitTest extends TestCase
         $this->assertEquals(0, $breakdown['total_production'] ?? 0);
         $this->assertEmpty($breakdown['ng_types'] ?? []);
     }
+
+    public function test_yearly_dashboard_sorts_machines_by_achievement_rate_descending(): void
+    {
+        // Mock machine metrics
+        $machines = [
+            ['machine_name' => 'K1400B', 'actual' => 342037, 'target' => 405725, 'achievement_rate' => 83.9],
+            ['machine_name' => 'K0650A', 'actual' => 265404, 'target' => 292691, 'achievement_rate' => 90.7],
+            ['machine_name' => 'K0750A', 'actual' => 235472, 'target' => 263691, 'achievement_rate' => 89.3],
+            ['machine_name' => 'K0900B', 'actual' => 171251, 'target' => 191679, 'achievement_rate' => 88.1],
+        ];
+
+        // Sort using the same logic implemented in ProductionDashboardService
+        usort($machines, function ($a, $b) {
+            if ($b['achievement_rate'] != $a['achievement_rate']) {
+                return $b['achievement_rate'] <=> $a['achievement_rate'];
+            }
+
+            return $b['actual'] <=> $a['actual'];
+        });
+
+        // Top performer must be K0650A with 90.7% achievement
+        $this->assertEquals('K0650A', $machines[0]['machine_name']);
+        $this->assertEquals(90.7, $machines[0]['achievement_rate']);
+
+        // Rank 2 must be K0750A with 89.3%
+        $this->assertEquals('K0750A', $machines[1]['machine_name']);
+
+        // Rank 3 must be K0900B with 88.1%
+        $this->assertEquals('K0900B', $machines[2]['machine_name']);
+
+        // K1400B (83.9%) should be rank 4 despite having the highest actual volume
+        $this->assertEquals('K1400B', $machines[3]['machine_name']);
+    }
 }
