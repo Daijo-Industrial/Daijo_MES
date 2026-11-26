@@ -630,15 +630,9 @@ class PalletFormIndex extends Component
             ->where('pallet_form_id', $palletId)
             ->get();
 
-        $labels = $allDetails->pluck('label')->filter()->unique()->values()->all();
-
-        $scans = collect();
-        if (! empty($labels)) {
-            $scans = \App\Models\ScannedData::with('soData')
-                ->whereIn('label', $labels)
-                ->orderBy('created_at', 'desc')
-                ->get();
-        }
+        $shippedDetails = $allDetails->filter(fn ($d) => $d->trashed());
+        $shippedQty = (float) $shippedDetails->sum('qty');
+        $shippedBoxes = $shippedDetails->count();
 
         $outLogs = \App\Models\WmsPalletLog::where('pallet_id', $palletId)
             ->where('transaction_type', 'OUT')
@@ -648,89 +642,109 @@ class PalletFormIndex extends Component
         $soGroups = [];
         $matchedLabels = [];
 
-        foreach ($scans as $scan) {
-            $docNum = $scan->doc_num ?: 'TANPA-SO';
-            $matchedLabels[$scan->label] = true;
+        // STRICT MATCH: Only search SO deliveries for boxes that were ACTUALLY shipped/deleted from this pallet
+        if ($shippedDetails->isNotEmpty()) {
+            $shippedLabels = $shippedDetails->pluck('label')->filter()->unique()->values()->all();
+            $partNos = $allDetails->pluck('part_no')->filter()->unique()->values()->all();
+            $spkNos = $shippedDetails->pluck('spk_no')->filter()->unique()->values()->all();
 
-            if (! isset($soGroups[$docNum])) {
-                $soData = $scan->soData ?? \App\Models\SoData::where('doc_num', $docNum)->first();
-                $soGroups[$docNum] = [
-                    'doc_num' => $docNum,
-                    'customer' => $soData?->customer ?? $pallet->masterItem?->customer?->customer_name ?? 'Customer',
-                    'posting_date' => $soData?->posting_date ? \Carbon\Carbon::parse($soData->posting_date)->format('d/m/Y') : '-',
-                    'pallet_shipped_qty' => 0,
-                    'pallet_shipped_boxes' => 0,
-                    'scan_dates' => [],
-                    'boxes' => [],
-                ];
+            $scans = collect();
+            if (! empty($shippedLabels)) {
+                $scans = \App\Models\ScannedData::with('soData')
+                    ->whereIn('label', $shippedLabels)
+                    ->whereIn('item_code', $partNos)
+                    ->when(! empty($spkNos), fn ($q) => $q->whereIn('spk_code', $spkNos))
+                    ->orderBy('created_at', 'desc')
+                    ->get();
             }
 
-            $boxQty = (float) $scan->quantity;
-            $soGroups[$docNum]['pallet_shipped_qty'] += $boxQty;
-            $soGroups[$docNum]['pallet_shipped_boxes'] += 1;
-            if ($scan->created_at) {
-                $soGroups[$docNum]['scan_dates'][] = $scan->created_at->format('d/m/Y H:i');
-            }
+            foreach ($scans as $scan) {
+                $docNum = $scan->doc_num ?: 'TANPA-SO';
+                $matchedLabels[$scan->label] = true;
 
-            $soGroups[$docNum]['boxes'][] = [
-                'label' => $scan->label,
-                'item_code' => $scan->item_code ?: $pallet->part_no,
-                'spk_code' => $scan->spk_code,
-                'quantity' => $scan->quantity,
-                'warehouse' => $scan->warehouse,
-                'scanned_at' => $scan->created_at ? $scan->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-',
-            ];
-        }
-
-        // Check if any OUT logs mention DocNum not yet captured
-        foreach ($outLogs as $log) {
-            if (preg_match('/DocNum:\s*([A-Za-z0-9\-]+)/i', $log->notes, $matches)) {
-                $docNum = $matches[1];
                 if (! isset($soGroups[$docNum])) {
-                    $soData = \App\Models\SoData::where('doc_num', $docNum)->first();
+                    $soData = $scan->soData ?? \App\Models\SoData::where('doc_num', $docNum)->first();
                     $soGroups[$docNum] = [
                         'doc_num' => $docNum,
                         'customer' => $soData?->customer ?? $pallet->masterItem?->customer?->customer_name ?? 'Customer',
                         'posting_date' => $soData?->posting_date ? \Carbon\Carbon::parse($soData->posting_date)->format('d/m/Y') : '-',
                         'pallet_shipped_qty' => 0,
                         'pallet_shipped_boxes' => 0,
-                        'scan_dates' => [$log->created_at ? $log->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-'],
+                        'scan_dates' => [],
                         'boxes' => [],
-                        'log_note' => $log->notes,
                     ];
                 }
 
-                // If log has box label and qty, capture it if not already in boxes
-                if (preg_match('/Label:\s*([A-Za-z0-9\-]+)/i', $log->notes, $lblMatch)) {
-                    $lbl = $lblMatch[1];
-                    $matchedLabels[$lbl] = true;
-                    $alreadyInBoxes = collect($soGroups[$docNum]['boxes'])->contains('label', $lbl);
-                    if (! $alreadyInBoxes) {
-                        $logQty = 0;
-                        if (preg_match('/Qty:\s*([0-9\.]+)/i', $log->notes, $qMatch)) {
-                            $logQty = (float) $qMatch[1];
+                $boxQty = (float) $scan->quantity;
+                $soGroups[$docNum]['pallet_shipped_qty'] += $boxQty;
+                $soGroups[$docNum]['pallet_shipped_boxes'] += 1;
+                if ($scan->created_at) {
+                    $soGroups[$docNum]['scan_dates'][] = $scan->created_at->format('d/m/Y H:i');
+                }
+
+                $soGroups[$docNum]['boxes'][] = [
+                    'label' => $scan->label,
+                    'item_code' => $scan->item_code ?: $pallet->part_no,
+                    'spk_code' => $scan->spk_code,
+                    'quantity' => $scan->quantity,
+                    'warehouse' => $scan->warehouse,
+                    'scanned_at' => $scan->created_at ? $scan->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-',
+                ];
+            }
+
+            // Check if any OUT logs mention DocNum for this pallet
+            foreach ($outLogs as $log) {
+                if (preg_match('/DocNum:\s*([A-Za-z0-9\-]+)/i', $log->notes, $matches)) {
+                    $docNum = $matches[1];
+                    $logItem = $pallet->part_no;
+                    if (preg_match('/Item:\s*([A-Za-z0-9\.\-]+)/i', $log->notes, $iMatch)) {
+                        $logItem = $iMatch[1];
+                    }
+
+                    if (in_array($logItem, $partNos) || empty($partNos)) {
+                        if (! isset($soGroups[$docNum])) {
+                            $soData = \App\Models\SoData::where('doc_num', $docNum)->first();
+                            $soGroups[$docNum] = [
+                                'doc_num' => $docNum,
+                                'customer' => $soData?->customer ?? $pallet->masterItem?->customer?->customer_name ?? 'Customer',
+                                'posting_date' => $soData?->posting_date ? \Carbon\Carbon::parse($soData->posting_date)->format('d/m/Y') : '-',
+                                'pallet_shipped_qty' => 0,
+                                'pallet_shipped_boxes' => 0,
+                                'scan_dates' => [$log->created_at ? $log->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-'],
+                                'boxes' => [],
+                                'log_note' => $log->notes,
+                            ];
                         }
-                        $logItem = $pallet->part_no;
-                        if (preg_match('/Item:\s*([A-Za-z0-9\.\-]+)/i', $log->notes, $iMatch)) {
-                            $logItem = $iMatch[1];
+
+                        // If log has box label and qty, capture it if not already in boxes
+                        if (preg_match('/Label:\s*([A-Za-z0-9\-]+)/i', $log->notes, $lblMatch)) {
+                            $lbl = $lblMatch[1];
+                            $matchedLabels[$lbl] = true;
+                            $alreadyInBoxes = collect($soGroups[$docNum]['boxes'])->contains('label', $lbl);
+                            if (! $alreadyInBoxes) {
+                                $logQty = 0;
+                                if (preg_match('/Qty:\s*([0-9\.]+)/i', $log->notes, $qMatch)) {
+                                    $logQty = (float) $qMatch[1];
+                                }
+                                $soGroups[$docNum]['pallet_shipped_qty'] += $logQty;
+                                $soGroups[$docNum]['pallet_shipped_boxes'] += 1;
+                                $soGroups[$docNum]['boxes'][] = [
+                                    'label' => $lbl,
+                                    'item_code' => $logItem,
+                                    'spk_code' => null,
+                                    'quantity' => $logQty,
+                                    'warehouse' => 'FG',
+                                    'scanned_at' => $log->created_at ? $log->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-',
+                                ];
+                            }
                         }
-                        $soGroups[$docNum]['pallet_shipped_qty'] += $logQty;
-                        $soGroups[$docNum]['pallet_shipped_boxes'] += 1;
-                        $soGroups[$docNum]['boxes'][] = [
-                            'label' => $lbl,
-                            'item_code' => $logItem,
-                            'spk_code' => null,
-                            'quantity' => $logQty,
-                            'warehouse' => 'FG',
-                            'scanned_at' => $log->created_at ? $log->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-',
-                        ];
                     }
                 }
             }
         }
 
         // Unmatched soft-deleted boxes
-        $unmatchedDeletedBoxes = $allDetails->filter(fn ($d) => $d->trashed() && ! isset($matchedLabels[$d->label]))
+        $unmatchedDeletedBoxes = $shippedDetails->filter(fn ($d) => ! isset($matchedLabels[$d->label]))
             ->map(fn ($d) => [
                 'label' => $d->label,
                 'part_no' => $d->part_no,

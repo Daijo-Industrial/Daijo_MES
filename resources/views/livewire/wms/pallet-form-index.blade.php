@@ -735,9 +735,13 @@
                                 <span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold rounded-md">
                                     SELESAI DIKIRIM (OUT)
                                 </span>
-                            @else
+                            @elseif($soDeliveryData['shipped_qty'] > 0)
                                 <span class="px-2.5 py-0.5 bg-blue-100 text-blue-800 border border-blue-300 text-[10px] font-bold rounded-md">
                                     TERKIRIM SEBAGIAN (SISA {{ number_format($soDeliveryData['current_qty'], 0) }} PCS)
+                                </span>
+                            @else
+                                <span class="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-bold rounded-md">
+                                    BELUM ADA PENGIRIMAN (READY {{ number_format($soDeliveryData['current_qty'], 0) }} PCS)
                                 </span>
                             @endif
                         </div>
@@ -852,8 +856,13 @@
                         @endforeach
                     @else
                         <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center">
-                            <p class="text-xs font-semibold text-slate-700">Tidak ada data scan spesifik ke Sales Order.</p>
-                            <p class="text-[11px] text-slate-500 mt-0.5">Pallet ini berstatus OUT atau stok berkurang, kemungkinan dikeluarkan melalui relokasi atau penyesuaian manual.</p>
+                            @if($soDeliveryData['shipped_qty'] <= 0)
+                                <p class="text-xs font-semibold text-slate-700">Belum ada barang yang dikirim dari palet ini.</p>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Seluruh stok ({{ number_format($soDeliveryData['current_qty'], 0) }} pcs / {{ $soDeliveryData['current_boxes'] }} box) masih utuh dan tersimpan di palet.</p>
+                            @else
+                                <p class="text-xs font-semibold text-slate-700">Tidak ada data scan spesifik ke Sales Order.</p>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Pallet ini berstatus OUT atau stok berkurang, kemungkinan dikeluarkan melalui relokasi atau penyesuaian manual.</p>
+                            @endif
                         </div>
                     @endif
 
